@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="ru" data-vue-meta="%7B%22lang%22:%7B%22ssr%22:%22ru%22%7D%7D">
+<head >
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
+  <title>Как я данные с BLE-градусника от Xiaomi забирал / Хабр</title>
+  <style>
+    /* cyrillic-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSxf6TF0.woff2) format('woff2');
+      unicode-range: U+0460-052F, U+1C80-1C88, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+    }
+
+    /* cyrillic */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveQhf6TF0.woff2) format('woff2');
+      unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+    }
+
+    /* latin-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSBf6TF0.woff2) format('woff2');
+      unicode-range: U+0100-024F, U+0259, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20CF, U+2113, U+2C60-2C7F, U+A720-A7FF;
+    }
+
+    /* latin */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveRhf6.woff2) format('woff2');
+      unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+    }
+  </style>
+  <link rel="preload" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" as="script"><link rel="preload" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/app.c0af73e7.js" as="script">
+  <link rel="stylesheet" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css"><link rel="stylesheet" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css">
+  <script>window.i18nFetch = new Promise((res, rej) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open('GET', '/js/i18n/ru-compiled.85eb77f0b17c8235e7b64b9f81ea5ec2.json');
+          xhr.responseType = 'json';
+          xhr.onload = function(e) {
+            if (this.status === 200) {
+              res({ru: xhr.response});
+            } else {
+              rej(e);
+            }
+          };
+          xhr.send();
+        });</script>
+  
+  <script data-vue-meta="ssr" src="/js/ads.js" onload="window['zhY4i4nJ9K'] = true" data-vmid="checkad"></script><script data-vue-meta="ssr" type="application/ld+json" data-vmid="ldjson-schema">{"@context":"http:\/\/schema.org","@type":"Article","mainEntityOfPage":{"@type":"WebPage","@id":"https:\/\/habr.com\/ru\/post\/452558\/"},"headline":"Как я данные с BLE-градусника от Xiaomi забирал","datePublished":"2019-05-21T19:04:03+03:00","dateModified":"2019-05-22T11:13:12+03:00","author":{"@type":"Person","name":"Михаил Баранов"},"publisher":{"@type":"Organization","name":"Habr","logo":{"@type":"ImageObject","url":"https:\/\/habrastorage.org\/webt\/a_\/lk\/9m\/a_lk9mjkccjox-zccjrpfolmkmq.png"}},"description":"Предыстория: в качестве одного из хобби у меня случился &laquo;Умный дом&raquo;. Хочется красивых устройств, но при этом ещё хочется свободы и приватности. Поэтому занимаюсь...","url":"https:\/\/habr.com\/ru\/post\/452558\/#post-content-body","about":["h_python","h_home_automation","h_DIY","f_develop","f_popsci"],"image":["https:\/\/habrastorage.org\/webt\/n2\/62\/pf\/n262pfr57ulreqqa4i_vsvvacoa.jpeg","https:\/\/habrastorage.org\/webt\/gy\/xz\/ak\/gyxzakm5oinigfzudk_u7zvs6tw.png","https:\/\/habrastorage.org\/getpro\/habr\/formulas\/d61\/4f5\/cee\/d614f5cee279e5552426bdedb578751e.svg","https:\/\/habrastorage.org\/getpro\/habr\/formulas\/c60\/a00\/f24\/c60a00f24ba45f997b731473c2a1635c.svg","https:\/\/habrastorage.org\/webt\/jm\/eb\/ij\/jmebijgiosb2hpbfup3agswpsgu.png"]}</script>
+  <script src="//www.googletagservices.com/tag/js/gpt.js" async></script>
+  <style>.grecaptcha-badge{visibility: hidden;}</style>
+  <meta name="habr-version" content="2.49.0">
+  
+  <meta data-vue-meta="ssr" property="fb:app_id" content="444736788986613"><meta data-vue-meta="ssr" property="fb:pages" content="472597926099084"><meta data-vue-meta="ssr" name="twitter:card" content="summary_large_image"><meta data-vue-meta="ssr" name="twitter:site" content="@habr_eng"><meta data-vue-meta="ssr" property="og:title" content="Как я данные с BLE-градусника от Xiaomi забирал" data-vmid="og:title"><meta data-vue-meta="ssr" name="twitter:title" content="Как я данные с BLE-градусника от Xiaomi забирал" data-vmid="twitter:title"><meta data-vue-meta="ssr" name="aiturec:title" content="Как я данные с BLE-градусника от Xiaomi забирал" data-vmid="aiturec:title"><meta data-vue-meta="ssr" name="description" content="Предыстория: в качестве одного из хобби у меня случился «Умный дом». Хочется красивых устройств, но при этом ещё хочется свободы и приватности. Поэтому занимаюсь скрещиванием ужика Xiaomi с ёжиком..." data-vmid="description"><meta data-vue-meta="ssr" itemprop="description" content="Предыстория: в качестве одного из хобби у меня случился «Умный дом». Хочется красивых устройств, но при этом ещё хочется свободы и приватности. Поэтому занимаюсь скрещиванием ужика Xiaomi с ёжиком..." data-vmid="description:itemprop"><meta data-vue-meta="ssr" property="og:description" content="Предыстория: в качестве одного из хобби у меня случился «Умный дом». Хочется красивых устройств, но при этом ещё хочется свободы и приватности. Поэтому занимаюсь скрещиванием ужика Xiaomi с ёжиком..." data-vmid="og:description"><meta data-vue-meta="ssr" name="twitter:description" content="Предыстория: в качестве одного из хобби у меня случился «Умный дом». Хочется красивых устройств, но при этом ещё хочется свободы и приватности. Поэтому занимаюсь скрещиванием ужика Xiaomi с ёжиком..." data-vmid="twitter:description"><meta data-vue-meta="ssr" property="aiturec:description" content="Предыстория: в качестве одного из хобби у меня случился «Умный дом». Хочется красивых устройств, но при этом ещё хочется свободы и приватности. Поэтому занимаюсь скрещиванием ужика Xiaomi с ёжиком..." data-vmid="aiturec:description"><meta data-vue-meta="ssr" itemprop="image" content="https://habr.com/share/publication/452558/624732645e1c211b21d1104004c1aeca/" data-vmid="image:itemprop"><meta data-vue-meta="ssr" property="og:image" content="https://habr.com/share/publication/452558/624732645e1c211b21d1104004c1aeca/" data-vmid="og:image"><meta data-vue-meta="ssr" property="aiturec:image" content="https://habr.com/share/publication/452558/624732645e1c211b21d1104004c1aeca/" data-vmid="aiturec:image"><meta data-vue-meta="ssr" name="twitter:image" content="https://habr.com/share/publication/452558/624732645e1c211b21d1104004c1aeca/" data-vmid="twitter:image"><meta data-vue-meta="ssr" property="vk:image" content="https://habr.com/share/publication/452558/624732645e1c211b21d1104004c1aeca/" data-vmid="vk:image"><meta data-vue-meta="ssr" property="aiturec:item_id" content="452558" data-vmid="aiturec:item_id"><meta data-vue-meta="ssr" property="aiturec:datetime" content="2019-05-21T16:04:03.000Z" data-vmid="aiturec:datetime"><meta data-vue-meta="ssr" property="og:type" content="article" data-vmid="og:type"><meta data-vue-meta="ssr" property="og:locale" content="ru_RU" data-vmid="og:locale"><meta data-vue-meta="ssr" property="og:image:width" content="1200" data-vmid="og:image:width"><meta data-vue-meta="ssr" property="og:image:height" content="630" data-vmid="og:image:height">
+  <link data-vue-meta="ssr" href="https://habr.com/ru/rss/post/452558/?fl=ru" type="application/rss+xml" title="" rel="alternate" name="rss"><link data-vue-meta="ssr" href="https://habr.com/ru/post/452558/" rel="canonical" data-vmid="canonical"><link data-vue-meta="ssr" data-vmid="hreflang"><link data-vue-meta="ssr" image_src="image" href="https://habr.com/share/publication/452558/624732645e1c211b21d1104004c1aeca/" data-vmid="image:href">
+  <meta name="apple-mobile-web-app-status-bar-style" content="#303b44">
+  <meta name="msapplication-TileColor" content="#629FBC">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="16x16"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-16.png"
+  >
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="32x32"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-32.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="76x76"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-76.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="120x120"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="152x152"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-152.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="180x180"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-180.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="256x256"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-256.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1136x640.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2436x1125.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1792x828.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_828x1792.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1334x750.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2208x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1125x2436.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2208.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2732x2048.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2688x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2224x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_750x1334.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x2732.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2388x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2224.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_640x1136.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2388.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x1536.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1536x2048.png"
+  >
+  <link
+    rel="mask-icon"
+    color="#77a2b6"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.svg"
+  >
+  <link
+    crossorigin="use-credentials"
+    href="/manifest.webmanifest"
+    rel="manifest"
+  >
+</head>
+<body>
+
+
+<div id="app" data-server-rendered="true" data-async-called="true"><div class="tm-layout__wrapper"><!----> <div></div> <!----> <header class="tm-header"><div class="tm-page-width"><div class="tm-header__container"><!----> <span class="tm-header__logo-wrap"><a href="/ru/" class="tm-header__logo tm-header__logo_ru"><svg height="16" width="16" class="tm-svg-img tm-header__icon"><title>Хабр</title> <use xlink:href="/img/habr-logo-ru.svg#logo"></use></svg></a> <span class="tm-header__beta-sign" style="display:none;">β</span></span> <div class="tm-dropdown tm-header__projects"><div class="tm-dropdown__head"><button class="tm-header__dropdown-toggle"><svg height="16" width="16" class="tm-svg-img tm-header__icon tm-header__icon_dropdown"><title>Открыть список</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#arrow-down"></use></svg></button></div> <!----></div> <a href="/ru/sandbox/start/" class="tm-header__become-author-btn">
+            Как стать автором
+          </a> <div class="tm-feature tm-header__feature tm-feature_variant-inline"><!----></div> <!----> <!----></div></div></header> <div class="tm-layout"><div class="tm-page-progress-bar"></div> <div data-menu-sticky="true" class="tm-base-layout__header tm-base-layout__header_is-sticky"><div class="tm-page-width"><div class="tm-base-layout__header-wrapper"><div class="tm-main-menu"><div class="tm-main-menu__section"><nav class="tm-main-menu__section-content"><!----> <a href="/ru/all/" class="tm-main-menu__item">
+        Все потоки
+      </a> <a href="/ru/flows/develop/" class="tm-main-menu__item">
+          Разработка
+        </a><a href="/ru/flows/admin/" class="tm-main-menu__item">
+          Администрирование
+        </a><a href="/ru/flows/design/" class="tm-main-menu__item">
+          Дизайн
+        </a><a href="/ru/flows/management/" class="tm-main-menu__item">
+          Менеджмент
+        </a><a href="/ru/flows/marketing/" class="tm-main-menu__item">
+          Маркетинг
+        </a><a href="/ru/flows/popsci/" class="tm-main-menu__item">
+          Научпоп
+        </a></nav></div></div> <div class="tm-header-user-menu tm-base-layout__user-menu"><a href="/ru/search/" class="tm-header-user-menu__item tm-header-user-menu__search"><svg height="24" width="24" class="tm-svg-img tm-header-user-menu__icon tm-header-user-menu__icon_search tm-header-user-menu__icon_dark"><title>Поиск</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#search"></use></svg></a> <!----> <!----> <!----> <div class="tm-header-user-menu__item tm-header-user-menu__user_desktop"><div class="tm-dropdown"><div class="tm-dropdown__head"><svg height="24" width="24" data-test-id="menu-toggle-guest" class="tm-svg-img tm-header-user-menu__icon"><title>Профиль</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#header-user"></use></svg> <!----></div> <!----></div> <!----></div> <!----></div></div></div></div> <!----> <div class="tm-page-width"></div> <main class="tm-layout__container"><div hl="ru" data-async-called="true" class="tm-page"><div class="tm-page-width"><!----> <div class="tm-page__wrapper"><div class="tm-page__main tm-page__main_has-sidebar"><div class="pull-down"><div class="pull-down__header" style="height:0px;"><div class="pull-down__content" style="bottom:10px;"><svg height="24" width="24" class="tm-svg-img pull-down__arrow"><title>Обновить</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#pull-arrow"></use></svg></div></div> <div class="tm-article-presenter"> <div class="tm-article-presenter__body"><div class="tm-misprint-area"><div class="tm-misprint-area__wrapper"><article class="tm-article-presenter__content tm-article-presenter__content_narrow"><div class="tm-article-presenter__header"> <div class="tm-article-snippet tm-article-presenter__snippet"><div class="tm-article-snippet__meta-container"><div class="tm-article-snippet__meta"><span class="tm-user-info tm-article-snippet__author"><a href="/ru/users/404/" title="404" class="tm-user-info__userpic"><div class="tm-entity-image"><img alt="" height="24" loading="lazy" src="//habrastorage.org/r/w32/getpro/habr/avatars/797/bc2/d53/797bc2d534a51b3214db3d3711e88af8.jpg" width="24" class="tm-entity-image__pic"></div></a> <span class="tm-user-info__user"><a href="/ru/users/404/" class="tm-user-info__username">
+      404
+    </a> </span></span> <span class="tm-article-snippet__datetime-published"><time datetime="2019-05-21T16:04:03.000Z" title="2019-05-21, 19:04">21  мая  2019 в 19:04</time></span></div> <!----></div> <h1 lang="ru" class="tm-article-snippet__title tm-article-snippet__title_h1"><span>Как я данные с BLE-градусника от Xiaomi забирал</span></h1> <div class="tm-article-snippet__hubs"><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/python/" class="tm-article-snippet__hubs-item-link"><span>Python</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/home_automation/" class="tm-article-snippet__hubs-item-link"><span>Умный дом</span> <!----></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/DIY/" class="tm-article-snippet__hubs-item-link"><span>DIY или Сделай сам</span> <!----></a></span></div> <!----> <!----> <!----></div></div> <!----> <div data-gallery-root="" lang="ru" class="tm-article-body"><div id="post-content-body" class="article-formatted-body article-formatted-body_version-1"><div xmlns="http://www.w3.org/1999/xhtml">Предыстория: в качестве одного из хобби у меня случился «Умный дом». Хочется красивых устройств, но при этом ещё хочется свободы и приватности. Поэтому занимаюсь скрещиванием ужика Xiaomi с ёжиком <a href="https://home-assistant.io/">Home Assistant</a>.<br/>
+<br/>
+Для поддержания комфортных условий нам нужно знать, а что вообще у нас дома происходит. Короче говоря, нужны сенсоры. Их у Xiaomi есть много разных, но больше всего мне понравился квадратный градусник на электронных чернилах. Вот только он совсем не умный, в том смысле, что не предоставляет вообще никаких интерфейсов, кроме графического – ни тебе WiFi, ни BLE, ни ZigBee. Зато батарейки CR2032 хватает на несколько лет. Есть ещё версия с блютусом, но она чуть менее изящная – эдакий толстый блинчик.<br/>
+<br/>
+И вот в начале весны был анонсирован новый датчик температуры/влажности, на электронных чернилах, с BLE, да ещё и с часами. Часы мне не особенно-то и нужны, а вот всё остальное немедленно подавило все рациональные доводы и градусник был заказан на одном из популярных интернет-магазинов, по предзаказу. Ехало оно ехало, и наконец приехало.<br/>
+<br/>
+<img src="https://habrastorage.org/r/w780q1/webt/n2/62/pf/n262pfr57ulreqqa4i_vsvvacoa.jpeg" data-src="https://habrastorage.org/webt/n2/62/pf/n262pfr57ulreqqa4i_vsvvacoa.jpeg" data-blurred="true"/><br/>
+<br/>
+В приложение MiHome датчик добавился без проблем (у меня англоязычный интерфейс везде, с русской версией MiHome, говорят, были трудности перевода). Показывает текущие значения и историю изменения показаний.<br/>
+<br/>
+А вот с интеграцией в Home Assistant приключились сложности. Имеющийся компонент для датчика температуры ни в какую не хотел забирать данные с устройства и жаловался на неверный формат данных. Ну, делать нечего, достаём лопату и начинаем копать.<br/>
+<br/>
+Первой мыслью было ознакомиться с устройством протокола BLE, но оценив размер документации, было принято решение переходить к методу народного тыка.<br/>
+<a name="habracut"></a><br/>
+<h2>Первый подход к снаряду</h2><br/>
+Для начала, открываем терминал на убунте и запускаем bluetoothctl. Видим следующее:<br/>
+<br/>
+<pre><code class="plaintext">[NEW] Controller 00:1A:7D:DA:71:13 fett [default]
+[NEW] Device 3F:59:C8:80:70:BE LYWSD02
+[NEW] Device 4C:65:A8:DC:0D:AF MJ_HT_V1</code></pre><br/>
+MJ_HT_V1 – это старый датчик температуры, LYWSD02 – новый. Разница в формате именования модели несколько настораживает.<br/>
+<br/>
+Дальше надо как-то почитать, а какие данные вообще у нас могут быть получены. Открыл исходники библиотеки <a href="https://github.com/ratcashdev/mitemp">mitemp</a>, которая используется в Home Assistant для получения данных со старого датчика. Там нашёл, что используется библиотека blewrap, которая, в свою очередь, является обёрткой над двумя питоновскими библиотеками для работы с BLE. Столько много слоёв мне ни к чему, будем использовать <a href="http://ianharvey.github.io/bluepy-doc/index.html">bluepy</a>. Документация есть, её не много и не мало, читаем и пишем скрипт, который проходит по всем полям данных, которые есть на устройстве.<br/>
+<br/>
+<pre><code class="python">from bluepy import btle
+
+mac = '3F:59:C8:80:70:BE'
+p = btle.Peripheral(mac)
+
+for s in p.getServices():
+    print('Service:', s.uuid)
+    for c in s.getCharacteristics():
+        print('\tCharacteristic:', c.uuid)
+        print('\t\t', c.propertiesToString())
+        if c.supportsRead():
+            print('\t\t', c.read())</code></pre><br/>
+В целом, всё просто – BLE-устройство предоставляет набор сервисов, каждый из которых состоит из набора характеристик. Каждая характеристика может быть одного из 8 типов, для одной характеристики можно указать несколько типов одновременно. Сервисы и характеристики идентифицируются двумя способами – адресом в виде HEX-значения и UUID. С UUID мне работать как-то привычнее.<br/>
+<br/>
+Итак я считал все характеристики для обоих датчиков, посмотрел на них и понял, что снова под маркой Xiaomi продаются устройства от совершенно разных производителей. Среди значений старого датчика было найдено «Cleargrass Inc», а в новом – «miaomiaoce.com». Структура сервисов и характеристик у этих двух датчиков также абсолютно разные, да и список характеристик у нового датчика длиннее в два раза. Тут стало понятно, что нужно писать свою собственную библиотеку для интеграции с датчиком (нет, я конечно сначала погуглил, может есть чего полезного по запросу LYWSD02, но ничего толкового гугл не выдал).<br/>
+<br/>
+<h2>Как же всё-таки получить данные?</h2><br/>
+Среди имеющихся типов характеристик, кроме READ, есть ещё WRITE и NOTIFY. WRITE – для отправки данных на устройство, а NOTIFY – для получения данных. Есть ещё одновременно WRITE NOTIFY – устройство будет отправлять данные только после того, как на них подпишутся, отправив нужный байт командой WRITE.<br/>
+<br/>
+Попытки сделать что-то руками не принесли никакого результата, был достигнут первый рубеж отчаяния, но в этот момент я обчитался статей про поделки на базе чипов от Nordic Semiconductors и поставил на смартфон программу <a href="https://itunes.apple.com/us/app/nrf-connect/id1054362403">nRF Connect</a>. С её помощью я смог подписаться на все сервисы, которые предоставляло устройство, сохранил логи ответов и стал пытаться понять, что в них лежит.<br/>
+<br/>
+<a href="https://habrastorage.org/webt/bd/iy/3o/bdiy3oyn0xn1yvp455eoeng1uos.png"><img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/gy/xz/ak/gyxzakm5oinigfzudk_u7zvs6tw.png"/></a><br/>
+<br/>
+Вот эти тройные стрелки активируют подписку.<br/>
+<br/>
+Особенностью старого датчика было то, что данные о температуре и влажности приходили в виде UTF-строки, новый же всё отдавал в бинарном виде.<br/>
+<br/>
+<h2>Подписка на уведомления</h2><br/>
+Чтобы получать данные с датчика, нужно отправить запрос на подписку. В библиотеке mitemp для этого отправлялись два байта на характеристику, но непонятно, откуда брать её Тут я посмотрел на то, как выглядит структура данных для старого датчика в nRF Connect и заметил, что нужный адрес указан для характеристики с данными, как некий дескриптор. Тогда я снова стал читать документацию к bluepy и понял, что адрес дескриптора легко можно получить из объекта характеристики. Осталось только написать класс с методом-колбеком, в который будут поступать данные из уведомления. <br/>
+<br/>
+<pre><code class="python">class MyDelegate(btle.DefaultDelegate):
+    def handleNotification(self, cHandle, data):
+        print(data)
+
+mac_addr = '3F:59:C8:80:70:BE'
+p = btle.Peripheral(mac_addr)
+p.setDelegate(MyDelegate())
+uuid = 'EBE0CCC1-7A0A-4B0C-8A1A-6FF2997DA3A6'
+
+# Метод всегда возвращает список, потому что может работать с диапазоном адресов
+ch = p.getCharacteristics(uuid=uuid)[0]
+# Получаем дескрипторы для характеристики
+desc = ch.getDescriptors(forUUID=0x2902)[0]
+
+# Значение байта, который нужно отправить был найден методом научного тыка
+desc.write(0x01.to_bytes(2, byteorder="little"), withResponse=True)
+
+while True:
+        p.waitForNotifications(5.0)</code></pre><br/>
+<h2>Отделяем зёрна от плевел</h2><br/>
+К счастью, только три характеристики были помечены как WRITE NOTIFY, при этом данные приходили с различной частотой и, эм..., визуальными особенностями.<br/>
+<br/>
+Первый запрос присылал сразу большую портянку данных, а потом залипал. При этом первый байт представлял собой монотонно возрастающее число. Похоже, что это накопленная история средних значений.<br/>
+<br/>
+Второй и третий присылались периодически, но приглядевшись, я увидел, что один из них не меняется, а в данных второго меняется только один байт. Ну, значит, это текущее время (напомню, в этом градуснике есть часы. В любом уважающем себя устройстве для умного дома должны быть часы).<br/>
+<br/>
+Предположим, то третья характеристика – это полезные данные о температуре и влажности. Для подтверждения гипотезы был проведён физический эксперимент – подошёл к датчику и грубо надышал на него. На дисплее резко увеличились значения данных, а в терминале – поменялись байтики. Ура, данные где-то рядом.<br/>
+<br/>
+<h2>Разбор данных</h2><br/>
+Я обычно работаю с текстовыми данными (получи данные по HTTP в виде JSON/xml, положи их в файл или в базу), поэтому не очень понимал, как подступиться к задаче. Поэтому начал пытаться трансформировать данные разными способами, которые можно сделать из питона. Написал вот такую функцию-конвертилку и стал смотреть, как это соотносится с данными на экране датчика.<br/>
+<br/>
+<pre><code class="python">def parse(v):
+    print([x for x in v])
+    print('{0:#x}'.format(int.from_bytes(data, byteorder='big')))
+    print('{0:#x}'.format(int.from_bytes(data, byteorder='little')))</code></pre><br/>
+В консоль посыпались строчки разной степени непонятности, однако третий байт всегда был числом, и это число совпадало со значением влажности. Для верности я ещё раз подышал на датчик – и значения влажности на экране и в третьем байте изменились одинаково!<br/>
+<br/>
+Тут я предположил, что в первых двух байтах хранится температура. Для того, чтобы данные менялись – перенёс датчик на полотенцесушитель в ванной. Но, сколько я ни пытался трансформировать результаты – нужных чисел не получалось.<br/>
+<br/>
+<h2>На пути к успеху</h2><br/>
+В этот момент я ещё раз посмотрел на <a href="https://www.banggood.com/Xiaomi-Mijia-BT4_0-Wireless-Smart-Electric-Digital-IndoorOutdoor-Hygrometer-Thermometer-Clock-Tools-Set-p-1447044.html">описание датчика</a> и увидел, что внутри стоит датчик от Swiss Sensirion. Наверно, стоило с этого начинать, но это же не наш метод. На сайте Swiss Sensirion была найдена <a href="https://www.sensirion.com/en/environmental-sensors/humidity-sensors/">пачка датчиков</a>, и даташиты к ним. В даташите, кроме всего прочего была найдена формула для конвертации байт, передаваемых по шине I2C в число.<br/>
+<br/>
+<p></p><p><img src="https://habrastorage.org/getpro/habr/formulas/d61/4f5/cee/d614f5cee279e5552426bdedb578751e.svg" alt="$T[°C] = -45 + 175\cdot\frac{S_T}{2^16-1}$" data-tex="display"/></p><br/>
+<br/>
+Но… Получались очень странные значения. Что-то типа -34.66, а у меня было явно теплее. От грусти и печали я даже вскрыл датчик и проверил, а правда ли там сенсор от Swiss Sensirion. Выяснилось, что правда, но с индексом SHTC3, и для него нужна чуть-чуть другая формула.<br/>
+<br/>
+<p></p><p><img src="https://habrastorage.org/getpro/habr/formulas/c60/a00/f24/c60a00f24ba45f997b731473c2a1635c.svg" alt="$T[°C] = -45 + 175\cdot\frac{S_T}{2^16}$" data-tex="display"/></p><br/>
+<br/>
+Однако, всё равно данные после преобразования даже близко не были похожи на реальные. Тут я ещё больше загрустил, открыл исходники библиотеки для SHTC3 от Adafruit и стал пытаться адаптировать код трансформации из C++ в питон. Вывел всё в табличку – сырые данные, преобразованную сишную структуру и результат.<br/>
+<br/>
+<pre><code class="python">def handleNotification(self, cHandle, data):
+    temp = data[:2]
+    humid = data[2]
+    unpacked = struct.unpack('H', temp)[0]
+    print(data, unpacked, -45 + 175 * unpacked / 2 ** 19, sep='\t')</code></pre><br/>
+Получил что-то такое:<br/>
+<br/>
+<pre><code class="plaintext">b',\n2'	2604	  -44.130821228027344
+b'-\n2'	2605	  -44.1304874420166
+b'+\n2'	2603	  -44.131155014038086
+b',\n2'	2604	  -44.130821228027344</code></pre><br/>
+Да… как-то холодно… Но, стоп, подождите, а что это за 2604? Это же оно, 26.0 градусов на экране! Для подтверждения гипотезы снова унёс датчик на батарею, проверил – значения совпадают.<br/>
+<br/>
+В итоге, получаем такой код преобразования данных:<br/>
+<br/>
+<pre><code class="python">def handleNotification(self, cHandle, data):
+    humid_bytes = data[2]
+    temp_bytes = data[:2]
+    humidity = humid_bytes
+    temperature = struct.unpack('H', temp_bytes)[0] / 100
+    
+    print(temperature, humidity)
+</code></pre><br/>
+<h2>Эпилог</h2><br/>
+На операции по подключению к датчику и поиски правильного алгоритма трансформации ушла пара вечеров. Несколько раз хотелось всё бросить, но одновременно с этим приходили новые идеи и я продолжал попытки.<br/>
+<br/>
+Сейчас данные передаются в Home Assistant, дальше нужно допилить код интеграции и, возможно, переписать её с bluepy на bleak, поскольку bleak использует async/await и лучше подойдёт для Home Assistant, написанного aiohttp.<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/jm/eb/ij/jmebijgiosb2hpbfup3agswpsgu.png"/><br/>
+<br/>
+<h3>Ссылки:</h3><br/>
+<ul>
+<li><a href="https://item.mi.com/product/9542.html">Страничка датчика на mi.com</a></li>
+<li><a href="http://ianharvey.github.io/bluepy-doc/index.html">Документация к bluepy</a></li>
+<li><a href="https://www.sensirion.com/en/environmental-sensors/humidity-sensors/digital-humidity-sensor-shtc3-our-new-standard-for-consumer-electronics/">Сенсор SHTC3</a></li>
+<li><a href="https://gist.github.com/h4/195dbc9f4deee5d642f1b534a7d048e5">Сервисы и характеристики MJ_HT_V1</a></li>
+<li><a href="https://gist.github.com/h4/485c733aff816db5ccce5028819d534a">Сервисы и характеристики LYWSD02</a></li>
+<li><a href="https://github.com/h4/LYWSD02-home-assistant">Репозиторий с черновой версией интеграции в Home Assistant</a></li>
+</ul></div></div> <!----> <!----></div> <div class="tm-article-presenter__meta"><div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Теги:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5BBLE%5D" class="tm-tags-list__link">BLE</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bxiaomi%5D" class="tm-tags-list__link">xiaomi</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bhome-assistant%5D" class="tm-tags-list__link">home-assistant</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bpytnon%5D" class="tm-tags-list__link">pytnon</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5B%D1%80%D0%B5%D0%B2%D0%B5%D1%80%D1%81-%D0%B8%D0%BD%D0%B6%D0%B8%D0%BD%D0%B8%D1%80%D0%B8%D0%BD%D0%B3%5D" class="tm-tags-list__link">реверс-инжиниринг</a></li></ul></div> <div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Хабы:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/hub/python/" class="tm-hubs-list__link">
+    Python
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/home_automation/" class="tm-hubs-list__link">
+    Умный дом
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/DIY/" class="tm-hubs-list__link">
+    DIY или Сделай сам
+  </a></li></ul></div></div></article></div> <!----></div> <div class="tm-article-sticky-panel"><div class="tm-data-icons tm-article-sticky-panel__icons"><div class="tm-article-rating tm-data-icons__item"><div class="tm-votes-meter tm-article-rating__votes-switcher"><svg height="16" width="16" class="tm-svg-img tm-votes-meter__icon tm-votes-meter__icon_medium"><title>Всего голосов 68: ↑67 и ↓1</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-rating"></use></svg> <span title="Всего голосов 68: ↑67 и ↓1" class="tm-votes-meter__value tm-votes-meter__value_positive tm-votes-meter__value_medium">+66</span></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----> <span title="Количество просмотров" class="tm-icon-counter tm-data-icons__item"><svg height="16" width="16" class="tm-svg-img tm-icon-counter__icon"><title>Просмотры</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-views"></use></svg> <span class="tm-icon-counter__value">31K</span></span> <button title="Добавить в закладки" type="button" class="bookmarks-button tm-data-icons__item"><span title="Добавить в закладки" class="tm-svg-icon__wrapper bookmarks-button__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Добавить в закладки</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-favorite"></use></svg></span> <span title="Количество пользователей, добавивших публикацию в закладки" class="bookmarks-button__counter">
+    172
+  </span></button> <!----> <div title="Поделиться" class="tm-sharing tm-data-icons__item"><button type="button" class="tm-sharing__button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="tm-sharing__icon"><path fill="currentColor" d="M10.33.275l9.047 7.572a.2.2 0 010 .306l-9.048 7.572a.2.2 0 01-.328-.153V11c-8 0-9.94 6-9.94 6S-1 5 10 5V.428a.2.2 0 01.328-.153z"></path></svg></button> <!----></div> <DIV class="v-portal" style="display:none;"></DIV></div> </div></div> <!----> <!----> <div class="tm-article-presenter__footer"><div class="tm-article-blocks"><!----> <section class="tm-block tm-block_spacing-bottom"><!----> <div class="tm-block__body tm-block__body_variant-balanced"><div class="tm-article-author"> <div class="tm-user-card tm-article-author__user-card tm-user-card_variant-article"><div class="tm-user-card__info-container"><div class="tm-user-card__header"><div class="tm-user-card__header-data"><a href="/ru/users/404/" class="tm-user-card__userpic tm-user-card__userpic_size-40"><div class="tm-entity-image"><img alt="" src="//habrastorage.org/getpro/habr/avatars/797/bc2/d53/797bc2d534a51b3214db3d3711e88af8.jpg" class="tm-entity-image__pic"></div></a> <div class="tm-user-card__meta"><div title=" 79 голосов " class="tm-karma tm-user-card__karma"><div class="tm-karma__votes tm-karma__votes_positive">
+    65.5
+  </div> <div class="tm-karma__text">
+    Карма
+  </div></div> <div title="Рейтинг пользователя" class="tm-rating tm-user-card__rating"><div class="tm-rating__header"> <div class="tm-rating__counter">0</div></div> <div class="tm-rating__text">
+    Рейтинг
+  </div></div></div></div></div> <div class="tm-user-card__info tm-user-card__info_variant-article"><div class="tm-user-card__title tm-user-card__title_variant-article"><span class="tm-user-card__name tm-user-card__name_variant-article">Михаил Баранов</span> <a href="/ru/users/404/" class="tm-user-card__nickname tm-user-card__nickname_variant-article">
+          @404
+        </a> <!----></div> <p class="tm-user-card__short-info tm-user-card__short-info_variant-article">Мастер-дизастер</p></div></div> <div class="tm-user-card__buttons tm-user-card__buttons_variant-article"><!----> <!----> <!----> <!----> <!----></div></div> <!----></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----></section> <div class="tm-article-blocks__comments"><div class="tm-article-page-comments"><div class="tm-article-comments-counter-link tm-article-comments-counter-button"><a href="/ru/post/452558/comments/" class="tm-article-comments-counter-link__link tm-article-comments-counter-link__link_button-style"><svg height="16" width="16" class="tm-svg-img tm-article-comments-counter-link__icon tm-article-comments-counter-link__icon_contrasted"><title>Комментарии</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-comments"></use></svg> <span class="tm-article-comments-counter-link__value tm-article-comments-counter-link__value_contrasted">
+       Комментарии 42 
+    </span></a> <!----></div></div></div> <div class="tm-ad-banner__container tm-page-article__banner"><!----> <div id="articleBottomBanner" class="tm-ad-banner"></div></div> <!----> <!----> <!----> <!----> </div></div></div></div></div> <div class="tm-page__sidebar"><div class="tm-layout-sidebar"><div class="tm-layout-sidebar__ads tm-layout-sidebar__ads_initial"><div class="tm-ad-banner__container tm-layout-sidebar__banner"><!----> <div id="sidebarBanner" class="tm-ad-banner"></div></div></div> <div class="tm-sexy-sidebar tm-sexy-sidebar_initial" style="margin-top:0px;"><!----> <!----></div></div></div></div></div></div></main> <!----></div> <div class="tm-footer-menu"><div class="tm-page-width"><div class="tm-footer-menu__container"><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Ваш аккаунт
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr/?back=/ru/post/452558/&amp;hl=ru" rel="nofollow" target="_self">
+                Войти
+              </a></li><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr-register/?back=/ru/post/452558/&amp;hl=ru" rel="nofollow" target="_self">
+                Регистрация
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Разделы
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/" class="footer-menu__item-link router-link-active">
+                Публикации
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/news/" class="footer-menu__item-link">
+                Новости
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/hubs/" class="footer-menu__item-link">
+                Хабы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/companies/" class="footer-menu__item-link">
+                Компании
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/users/" class="footer-menu__item-link">
+                Авторы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/sandbox/" class="footer-menu__item-link">
+                Песочница
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Информация
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/docs/help/" class="footer-menu__item-link">
+                Устройство сайта
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/authors/codex/" class="footer-menu__item-link">
+                Для авторов
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/companies/corpblogs/" class="footer-menu__item-link">
+                Для компаний
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/docs/transparency/" class="footer-menu__item-link">
+                Документы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/agreement" target="_blank">
+                Соглашение
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/confidential/" target="_blank">
+                Конфиденциальность
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Услуги
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQLwRfQmXibiUlWaRg-BAc38s7oM3lJiaPju7qmdJsp8ysIvZ_G-Npem0njJLMozE2bPHMpDqiI5hhy/pub?start=false&amp;loop=false&amp;delayms=60000&amp;slide=id.g91a03369cd_4_297" target="_blank">
+                Реклама
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://habrastorage.org/storage/stuff/habr/service_price.pdf" target="_blank">
+                Тарифы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQJJds8-Di7BQSP_guHxICN7woVYoN5NP_22ra-BIo4bqnTT9FR6fB-Ku2P0AoRpX0Ds-LRkDeAoD8F/pub?start=false&amp;loop=false&amp;delayms=60000" target="_blank">
+                Контент
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://tmtm.timepad.ru/" target="_blank">
+                Семинары
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/megaprojects/" class="footer-menu__item-link">
+                Мегапроекты
+              </a></li></ul></div></div></div></div></div> <div class="tm-footer"><div class="tm-page-width"><div class="tm-footer__container"><!----> <div class="tm-footer__social"><a href="https://www.facebook.com/habrahabr.ru" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Facebook</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-facebook"></use></svg></a><a href="https://twitter.com/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Twitter</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-twitter"></use></svg></a><a href="https://vk.com/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>VK</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-vkontakte"></use></svg></a><a href="https://telegram.me/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Telegram</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-telegram"></use></svg></a><a href="https://www.youtube.com/channel/UCd_sTwKqVrweTt4oAKY5y4w" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Youtube</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-youtube"></use></svg></a><a href="https://zen.yandex.ru/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Яндекс Дзен</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-zen"></use></svg></a></div> <DIV class="v-portal" style="display:none;"></DIV> <button class="tm-footer__link"><!---->
+        Настройка языка
+      </button> <a href="/ru/about" class="tm-footer__link">
+        О сайте
+      </a> <a href="/ru/feedback/" class="tm-footer__link">
+        Техническая поддержка
+      </a> <!----> <a href="/berserk-mode-nope" class="tm-footer__link">
+        Вернуться на старую версию
+      </a> <div class="tm-footer-copyright"><span class="tm-copyright"><span class="tm-copyright__years">© 2006–2021 </span> <span class="tm-copyright__name">«<a href="https://company.habr.com/" rel="noopener" target="_blank" class="tm-copyright__link">Habr</a>»</span></span></div></div></div></div> <!----> <!----></div> <div class="vue-portal-target"></div></div>
+<script>window.__INITIAL_STATE__={"adblock":{"hasAcceptableAdsFilter":false,"hasAdblock":false},"articlesList":{"articlesList":{"452558":{"id":"452558","timePublished":"2019-05-21T16:04:03+00:00","isCorporative":false,"lang":"ru","titleHtml":"Как я данные с BLE-градусника от Xiaomi забирал","leadData":{"textHtml":"Предыстория: в качестве одного из хобби у меня случился «Умный дом». Хочется красивых устройств, но при этом ещё хочется свободы и приватности. Поэтому занимаюсь скрещиванием ужика Xiaomi с ёжиком \u003Ca href=\"https:\u002F\u002Fhome-assistant.io\u002F\"\u003EHome Assistant\u003C\u002Fa\u003E.\u003Cbr\u003E\r\n\u003Cbr\u003E\r\nДля поддержания комфортных условий нам нужно знать, а что вообще у нас дома происходит. Короче говоря, нужны сенсоры. Их у Xiaomi есть много разных, но больше всего мне понравился квадратный градусник на электронных чернилах. Вот только он совсем не умный, в том смысле, что не предоставляет вообще никаких интерфейсов, кроме графического – ни тебе WiFi, ни BLE, ни ZigBee. Зато батарейки CR2032 хватает на несколько лет. Есть ещё версия с блютусом, но она чуть менее изящная – эдакий толстый блинчик.\u003Cbr\u003E\r\n\u003Cbr\u003E\r\nИ вот в начале весны был анонсирован новый датчик температуры\u002Fвлажности, на электронных чернилах, с BLE, да ещё и с часами. Часы мне не особенно-то и нужны, а вот всё остальное немедленно подавило все рациональные доводы и градусник был заказан на одном из популярных интернет-магазинов, по предзаказу. Ехало оно ехало, и наконец приехало.\u003Cbr\u003E\r\n\u003Cbr\u003E\r\n\u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fn2\u002F62\u002Fpf\u002Fn262pfr57ulreqqa4i_vsvvacoa.jpeg\"\u003E\u003Cbr\u003E\r\n\u003Cbr\u003E\r\nВ приложение MiHome датчик добавился без проблем (у меня англоязычный интерфейс везде, с русской версией MiHome, говорят, были трудности перевода). Показывает текущие значения и историю изменения показаний.\u003Cbr\u003E\r\n\u003Cbr\u003E\r\nА вот с интеграцией в Home Assistant приключились сложности. Имеющийся компонент для датчика температуры ни в какую не хотел забирать данные с устройства и жаловался на неверный формат данных. Ну, делать нечего, достаём лопату и начинаем копать.\u003Cbr\u003E\r\n\u003Cbr\u003E\r\nПервой мыслью было ознакомиться с устройством протокола BLE, но оценив размер документации, было принято решение переходить к методу народного тыка.\u003Cbr\u003E","imageUrl":null,"buttonTextHtml":"Читать дальше →","image":null},"editorVersion":"1.0","postType":"article","postLabels":[],"author":{"scoreStats":{"score":65.5,"votesCount":79},"rating":0,"relatedData":null,"contacts":[],"authorContacts":[],"paymentDetails":{"paymentYandexMoney":null,"paymentPayPalMe":null,"paymentWebmoney":null},"id":"3976","alias":"404","fullname":"Михаил Баранов","avatarUrl":"\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Favatars\u002F797\u002Fbc2\u002Fd53\u002F797bc2d534a51b3214db3d3711e88af8.jpg","speciality":"Мастер-дизастер"},"statistics":{"commentsCount":42,"favoritesCount":172,"readingCount":30946,"score":66,"votesCount":68},"hubs":[{"relatedData":null,"id":"340","alias":"python","type":"collective","title":"Python","titleHtml":"Python","isProfiled":true},{"relatedData":null,"id":"21966","alias":"home_automation","type":"collective","title":"Умный дом","titleHtml":"Умный дом","isProfiled":false},{"relatedData":null,"id":"21976","alias":"DIY","type":"collective","title":"DIY или Сделай сам","titleHtml":"DIY или Сделай сам","isProfiled":false}],"flows":[{"id":"1","alias":"develop","title":"Разработка"},{"id":"7","alias":"popsci","title":"Научпоп"}],"relatedData":null,"textHtml":"\u003Cdiv xmlns=\"http:\u002F\u002Fwww.w3.org\u002F1999\u002Fxhtml\"\u003EПредыстория: в качестве одного из хобби у меня случился «Умный дом». Хочется красивых устройств, но при этом ещё хочется свободы и приватности. Поэтому занимаюсь скрещиванием ужика Xiaomi с ёжиком \u003Ca href=\"https:\u002F\u002Fhome-assistant.io\u002F\"\u003EHome Assistant\u003C\u002Fa\u003E.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nДля поддержания комфортных условий нам нужно знать, а что вообще у нас дома происходит. Короче говоря, нужны сенсоры. Их у Xiaomi есть много разных, но больше всего мне понравился квадратный градусник на электронных чернилах. Вот только он совсем не умный, в том смысле, что не предоставляет вообще никаких интерфейсов, кроме графического – ни тебе WiFi, ни BLE, ни ZigBee. Зато батарейки CR2032 хватает на несколько лет. Есть ещё версия с блютусом, но она чуть менее изящная – эдакий толстый блинчик.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nИ вот в начале весны был анонсирован новый датчик температуры\u002Fвлажности, на электронных чернилах, с BLE, да ещё и с часами. Часы мне не особенно-то и нужны, а вот всё остальное немедленно подавило все рациональные доводы и градусник был заказан на одном из популярных интернет-магазинов, по предзаказу. Ехало оно ехало, и наконец приехало.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fr\u002Fw780q1\u002Fwebt\u002Fn2\u002F62\u002Fpf\u002Fn262pfr57ulreqqa4i_vsvvacoa.jpeg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fn2\u002F62\u002Fpf\u002Fn262pfr57ulreqqa4i_vsvvacoa.jpeg\" data-blurred=\"true\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВ приложение MiHome датчик добавился без проблем (у меня англоязычный интерфейс везде, с русской версией MiHome, говорят, были трудности перевода). Показывает текущие значения и историю изменения показаний.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nА вот с интеграцией в Home Assistant приключились сложности. Имеющийся компонент для датчика температуры ни в какую не хотел забирать данные с устройства и жаловался на неверный формат данных. Ну, делать нечего, достаём лопату и начинаем копать.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПервой мыслью было ознакомиться с устройством протокола BLE, но оценив размер документации, было принято решение переходить к методу народного тыка.\u003Cbr\u002F\u003E\r\n\u003Ca name=\"habracut\"\u003E\u003C\u002Fa\u003E\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EПервый подход к снаряду\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nДля начала, открываем терминал на убунте и запускаем bluetoothctl. Видим следующее:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E[NEW] Controller 00:1A:7D:DA:71:13 fett [default]\n[NEW] Device 3F:59:C8:80:70:BE LYWSD02\n[NEW] Device 4C:65:A8:DC:0D:AF MJ_HT_V1\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nMJ_HT_V1 – это старый датчик температуры, LYWSD02 – новый. Разница в формате именования модели несколько настораживает.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nДальше надо как-то почитать, а какие данные вообще у нас могут быть получены. Открыл исходники библиотеки \u003Ca href=\"https:\u002F\u002Fgithub.com\u002Fratcashdev\u002Fmitemp\"\u003Emitemp\u003C\u002Fa\u003E, которая используется в Home Assistant для получения данных со старого датчика. Там нашёл, что используется библиотека blewrap, которая, в свою очередь, является обёрткой над двумя питоновскими библиотеками для работы с BLE. Столько много слоёв мне ни к чему, будем использовать \u003Ca href=\"http:\u002F\u002Fianharvey.github.io\u002Fbluepy-doc\u002Findex.html\"\u003Ebluepy\u003C\u002Fa\u003E. Документация есть, её не много и не мало, читаем и пишем скрипт, который проходит по всем полям данных, которые есть на устройстве.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"python\"\u003Efrom bluepy import btle\n\nmac = '3F:59:C8:80:70:BE'\np = btle.Peripheral(mac)\n\nfor s in p.getServices():\n    print('Service:', s.uuid)\n    for c in s.getCharacteristics():\n        print('\\tCharacteristic:', c.uuid)\n        print('\\t\\t', c.propertiesToString())\n        if c.supportsRead():\n            print('\\t\\t', c.read())\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nВ целом, всё просто – BLE-устройство предоставляет набор сервисов, каждый из которых состоит из набора характеристик. Каждая характеристика может быть одного из 8 типов, для одной характеристики можно указать несколько типов одновременно. Сервисы и характеристики идентифицируются двумя способами – адресом в виде HEX-значения и UUID. С UUID мне работать как-то привычнее.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nИтак я считал все характеристики для обоих датчиков, посмотрел на них и понял, что снова под маркой Xiaomi продаются устройства от совершенно разных производителей. Среди значений старого датчика было найдено «Cleargrass Inc», а в новом – «miaomiaoce.com». Структура сервисов и характеристик у этих двух датчиков также абсолютно разные, да и список характеристик у нового датчика длиннее в два раза. Тут стало понятно, что нужно писать свою собственную библиотеку для интеграции с датчиком (нет, я конечно сначала погуглил, может есть чего полезного по запросу LYWSD02, но ничего толкового гугл не выдал).\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EКак же всё-таки получить данные?\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nСреди имеющихся типов характеристик, кроме READ, есть ещё WRITE и NOTIFY. WRITE – для отправки данных на устройство, а NOTIFY – для получения данных. Есть ещё одновременно WRITE NOTIFY – устройство будет отправлять данные только после того, как на них подпишутся, отправив нужный байт командой WRITE.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПопытки сделать что-то руками не принесли никакого результата, был достигнут первый рубеж отчаяния, но в этот момент я обчитался статей про поделки на базе чипов от Nordic Semiconductors и поставил на смартфон программу \u003Ca href=\"https:\u002F\u002Fitunes.apple.com\u002Fus\u002Fapp\u002Fnrf-connect\u002Fid1054362403\"\u003EnRF Connect\u003C\u002Fa\u003E. С её помощью я смог подписаться на все сервисы, которые предоставляло устройство, сохранил логи ответов и стал пытаться понять, что в них лежит.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ca href=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fbd\u002Fiy\u002F3o\u002Fbdiy3oyn0xn1yvp455eoeng1uos.png\"\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fgy\u002Fxz\u002Fak\u002Fgyxzakm5oinigfzudk_u7zvs6tw.png\"\u002F\u003E\u003C\u002Fa\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВот эти тройные стрелки активируют подписку.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nОсобенностью старого датчика было то, что данные о температуре и влажности приходили в виде UTF-строки, новый же всё отдавал в бинарном виде.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EПодписка на уведомления\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nЧтобы получать данные с датчика, нужно отправить запрос на подписку. В библиотеке mitemp для этого отправлялись два байта на характеристику, но непонятно, откуда брать её Тут я посмотрел на то, как выглядит структура данных для старого датчика в nRF Connect и заметил, что нужный адрес указан для характеристики с данными, как некий дескриптор. Тогда я снова стал читать документацию к bluepy и понял, что адрес дескриптора легко можно получить из объекта характеристики. Осталось только написать класс с методом-колбеком, в который будут поступать данные из уведомления. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"python\"\u003Eclass MyDelegate(btle.DefaultDelegate):\n    def handleNotification(self, cHandle, data):\n        print(data)\n\nmac_addr = '3F:59:C8:80:70:BE'\np = btle.Peripheral(mac_addr)\np.setDelegate(MyDelegate())\nuuid = 'EBE0CCC1-7A0A-4B0C-8A1A-6FF2997DA3A6'\n\n# Метод всегда возвращает список, потому что может работать с диапазоном адресов\nch = p.getCharacteristics(uuid=uuid)[0]\n# Получаем дескрипторы для характеристики\ndesc = ch.getDescriptors(forUUID=0x2902)[0]\n\n# Значение байта, который нужно отправить был найден методом научного тыка\ndesc.write(0x01.to_bytes(2, byteorder=\"little\"), withResponse=True)\n\nwhile True:\n        p.waitForNotifications(5.0)\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EОтделяем зёрна от плевел\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nК счастью, только три характеристики были помечены как WRITE NOTIFY, при этом данные приходили с различной частотой и, эм..., визуальными особенностями.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПервый запрос присылал сразу большую портянку данных, а потом залипал. При этом первый байт представлял собой монотонно возрастающее число. Похоже, что это накопленная история средних значений.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВторой и третий присылались периодически, но приглядевшись, я увидел, что один из них не меняется, а в данных второго меняется только один байт. Ну, значит, это текущее время (напомню, в этом градуснике есть часы. В любом уважающем себя устройстве для умного дома должны быть часы).\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПредположим, то третья характеристика – это полезные данные о температуре и влажности. Для подтверждения гипотезы был проведён физический эксперимент – подошёл к датчику и грубо надышал на него. На дисплее резко увеличились значения данных, а в терминале – поменялись байтики. Ура, данные где-то рядом.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EРазбор данных\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nЯ обычно работаю с текстовыми данными (получи данные по HTTP в виде JSON\u002Fxml, положи их в файл или в базу), поэтому не очень понимал, как подступиться к задаче. Поэтому начал пытаться трансформировать данные разными способами, которые можно сделать из питона. Написал вот такую функцию-конвертилку и стал смотреть, как это соотносится с данными на экране датчика.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"python\"\u003Edef parse(v):\n    print([x for x in v])\n    print('{0:#x}'.format(int.from_bytes(data, byteorder='big')))\n    print('{0:#x}'.format(int.from_bytes(data, byteorder='little')))\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nВ консоль посыпались строчки разной степени непонятности, однако третий байт всегда был числом, и это число совпадало со значением влажности. Для верности я ещё раз подышал на датчик – и значения влажности на экране и в третьем байте изменились одинаково!\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nТут я предположил, что в первых двух байтах хранится температура. Для того, чтобы данные менялись – перенёс датчик на полотенцесушитель в ванной. Но, сколько я ни пытался трансформировать результаты – нужных чисел не получалось.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EНа пути к успеху\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nВ этот момент я ещё раз посмотрел на \u003Ca href=\"https:\u002F\u002Fwww.banggood.com\u002FXiaomi-Mijia-BT4_0-Wireless-Smart-Electric-Digital-IndoorOutdoor-Hygrometer-Thermometer-Clock-Tools-Set-p-1447044.html\"\u003Eописание датчика\u003C\u002Fa\u003E и увидел, что внутри стоит датчик от Swiss Sensirion. Наверно, стоило с этого начинать, но это же не наш метод. На сайте Swiss Sensirion была найдена \u003Ca href=\"https:\u002F\u002Fwww.sensirion.com\u002Fen\u002Fenvironmental-sensors\u002Fhumidity-sensors\u002F\"\u003Eпачка датчиков\u003C\u002Fa\u003E, и даташиты к ним. В даташите, кроме всего прочего была найдена формула для конвертации байт, передаваемых по шине I2C в число.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cp\u003E\u003C\u002Fp\u003E\u003Cp\u003E\u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fformulas\u002Fd61\u002F4f5\u002Fcee\u002Fd614f5cee279e5552426bdedb578751e.svg\" alt=\"$T[°C] = -45 + 175\\cdot\\frac{S_T}{2^16-1}$\" data-tex=\"display\"\u002F\u003E\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nНо… Получались очень странные значения. Что-то типа -34.66, а у меня было явно теплее. От грусти и печали я даже вскрыл датчик и проверил, а правда ли там сенсор от Swiss Sensirion. Выяснилось, что правда, но с индексом SHTC3, и для него нужна чуть-чуть другая формула.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cp\u003E\u003C\u002Fp\u003E\u003Cp\u003E\u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fformulas\u002Fc60\u002Fa00\u002Ff24\u002Fc60a00f24ba45f997b731473c2a1635c.svg\" alt=\"$T[°C] = -45 + 175\\cdot\\frac{S_T}{2^16}$\" data-tex=\"display\"\u002F\u003E\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nОднако, всё равно данные после преобразования даже близко не были похожи на реальные. Тут я ещё больше загрустил, открыл исходники библиотеки для SHTC3 от Adafruit и стал пытаться адаптировать код трансформации из C++ в питон. Вывел всё в табличку – сырые данные, преобразованную сишную структуру и результат.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"python\"\u003Edef handleNotification(self, cHandle, data):\n    temp = data[:2]\n    humid = data[2]\n    unpacked = struct.unpack('H', temp)[0]\n    print(data, unpacked, -45 + 175 * unpacked \u002F 2 ** 19, sep='\\t')\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nПолучил что-то такое:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003Eb',\\n2'\t2604\t  -44.130821228027344\nb'-\\n2'\t2605\t  -44.1304874420166\nb'+\\n2'\t2603\t  -44.131155014038086\nb',\\n2'\t2604\t  -44.130821228027344\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nДа… как-то холодно… Но, стоп, подождите, а что это за 2604? Это же оно, 26.0 градусов на экране! Для подтверждения гипотезы снова унёс датчик на батарею, проверил – значения совпадают.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВ итоге, получаем такой код преобразования данных:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"python\"\u003Edef handleNotification(self, cHandle, data):\n    humid_bytes = data[2]\n    temp_bytes = data[:2]\n    humidity = humid_bytes\n    temperature = struct.unpack('H', temp_bytes)[0] \u002F 100\n    \n    print(temperature, humidity)\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EЭпилог\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nНа операции по подключению к датчику и поиски правильного алгоритма трансформации ушла пара вечеров. Несколько раз хотелось всё бросить, но одновременно с этим приходили новые идеи и я продолжал попытки.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nСейчас данные передаются в Home Assistant, дальше нужно допилить код интеграции и, возможно, переписать её с bluepy на bleak, поскольку bleak использует async\u002Fawait и лучше подойдёт для Home Assistant, написанного aiohttp.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fjm\u002Feb\u002Fij\u002Fjmebijgiosb2hpbfup3agswpsgu.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch3\u003EСсылки:\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003E\u003Ca href=\"https:\u002F\u002Fitem.mi.com\u002Fproduct\u002F9542.html\"\u003EСтраничка датчика на mi.com\u003C\u002Fa\u003E\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Ca href=\"http:\u002F\u002Fianharvey.github.io\u002Fbluepy-doc\u002Findex.html\"\u003EДокументация к bluepy\u003C\u002Fa\u003E\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Ca href=\"https:\u002F\u002Fwww.sensirion.com\u002Fen\u002Fenvironmental-sensors\u002Fhumidity-sensors\u002Fdigital-humidity-sensor-shtc3-our-new-standard-for-consumer-electronics\u002F\"\u003EСенсор SHTC3\u003C\u002Fa\u003E\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Ca href=\"https:\u002F\u002Fgist.github.com\u002Fh4\u002F195dbc9f4deee5d642f1b534a7d048e5\"\u003EСервисы и характеристики MJ_HT_V1\u003C\u002Fa\u003E\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Ca href=\"https:\u002F\u002Fgist.github.com\u002Fh4\u002F485c733aff816db5ccce5028819d534a\"\u003EСервисы и характеристики LYWSD02\u003C\u002Fa\u003E\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Ca href=\"https:\u002F\u002Fgithub.com\u002Fh4\u002FLYWSD02-home-assistant\"\u003EРепозиторий с черновой версией интеграции в Home Assistant\u003C\u002Fa\u003E\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003C\u002Fdiv\u003E","tags":[{"titleHtml":"BLE"},{"titleHtml":"xiaomi"},{"titleHtml":"home-assistant"},{"titleHtml":"pytnon"},{"titleHtml":"реверс-инжиниринг"}],"metadata":{"stylesUrls":[],"scriptUrls":[],"shareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F452558\u002F624732645e1c211b21d1104004c1aeca\u002F","shareImageWidth":1200,"shareImageHeight":630,"vkShareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F452558\u002F624732645e1c211b21d1104004c1aeca\u002F?format=vk","schemaJsonLd":"{\"@context\":\"http:\\\u002F\\\u002Fschema.org\",\"@type\":\"Article\",\"mainEntityOfPage\":{\"@type\":\"WebPage\",\"@id\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fru\\\u002Fpost\\\u002F452558\\\u002F\"},\"headline\":\"Как я данные с BLE-градусника от Xiaomi забирал\",\"datePublished\":\"2019-05-21T19:04:03+03:00\",\"dateModified\":\"2019-05-22T11:13:12+03:00\",\"author\":{\"@type\":\"Person\",\"name\":\"Михаил Баранов\"},\"publisher\":{\"@type\":\"Organization\",\"name\":\"Habr\",\"logo\":{\"@type\":\"ImageObject\",\"url\":\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fa_\\\u002Flk\\\u002F9m\\\u002Fa_lk9mjkccjox-zccjrpfolmkmq.png\"}},\"description\":\"Предыстория: в качестве одного из хобби у меня случился &laquo;Умный дом&raquo;. Хочется красивых устройств, но при этом ещё хочется свободы и приватности. Поэтому занимаюсь...\",\"url\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fru\\\u002Fpost\\\u002F452558\\\u002F#post-content-body\",\"about\":[\"h_python\",\"h_home_automation\",\"h_DIY\",\"f_develop\",\"f_popsci\"],\"image\":[\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fn2\\\u002F62\\\u002Fpf\\\u002Fn262pfr57ulreqqa4i_vsvvacoa.jpeg\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fgy\\\u002Fxz\\\u002Fak\\\u002Fgyxzakm5oinigfzudk_u7zvs6tw.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fgetpro\\\u002Fhabr\\\u002Fformulas\\\u002Fd61\\\u002F4f5\\\u002Fcee\\\u002Fd614f5cee279e5552426bdedb578751e.svg\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fgetpro\\\u002Fhabr\\\u002Fformulas\\\u002Fc60\\\u002Fa00\\\u002Ff24\\\u002Fc60a00f24ba45f997b731473c2a1635c.svg\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fjm\\\u002Feb\\\u002Fij\\\u002Fjmebijgiosb2hpbfup3agswpsgu.png\"]}","metaDescription":"Предыстория: в качестве одного из хобби у меня случился «Умный дом». Хочется красивых устройств, но при этом ещё хочется свободы и приватности. Поэтому занимаюсь скрещиванием ужика Xiaomi с ёжиком...","mainImageUrl":null,"amp":false},"polls":[],"commentsEnabled":true,"rulesRemindEnabled":false,"votesEnabled":true,"status":"published","plannedPublishTime":null,"checked":null,"isEditorial":false}},"articlesIds":{},"isLoading":false,"pagesCount":{},"route":{},"reasonsList":null,"view":"cards","lastVisitedRoute":{},"ssrCommentsArticleIds":[""],"karma":{}},"authorContribution":{"authors":{}},"betaTest":{"currentAnnouncement":null,"announcements":{},"announcementCards":null,"announcementComments":{},"announcementCommentThreads":{},"announcementCommentingStatuses":{},"archivedList":[]},"authorStatistics":{"articleRefs":{},"articleIds":{},"pagesCount":{},"route":{},"viewsCount":[],"maxStatsCount":{}},"career":{"seoLandings":[],"hubs":"python,home_automation,DIY"},"comments":{"articleComments":{},"searchCommentsResults":null,"previewComment":null,"pagesCount":null,"commentAccess":{},"scrollParents":{},"pageArticleComments":{"lastViewedComment":0,"postId":null,"lastCommentTimestamp":"","moderated":[],"moderatedIds":[],"commentRoute":""}},"companies":{"companyRefs":{},"companyIds":{},"companyTopIds":{},"pagesCount":{},"companyProfiles":{},"companiesCategories":[],"companiesCategoriesTotalCount":0,"companiesWidgets":{},"companiesWorkers":{},"companiesFans":{},"route":{},"isLoading":false,"companyWorkersLoading":false,"companyFansLoading":false,"vacancies":{}},"companiesContribution":{"hubs":{},"flows":{},"companyRefs":{}},"companyHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"conversation":{"messages":[],"respondent":null,"isLoadMore":false},"conversations":{"conversations":[],"unreadCount":0,"pagesCount":0,"isLoadMore":false},"desktopState":{"desktopFl":null,"desktopHl":null,"isChecked":false,"isLoginDemanded":false},"dfp":{"slotsDict":{}},"docs":{"menu":{},"articles":{},"mainMenu":[],"loading":{"main":false,"dropdown":false,"article":false}},"feature":{"isProbablyVisible":"true"},"flows":{"flows":[{"alias":"develop","id":1,"route":{"name":"FLOW_PAGE","params":{"flowName":"develop"}}},{"alias":"admin","id":6,"route":{"name":"FLOW_PAGE","params":{"flowName":"admin"}}},{"alias":"design","id":2,"route":{"name":"FLOW_PAGE","params":{"flowName":"design"}}},{"alias":"management","id":3,"route":{"name":"FLOW_PAGE","params":{"flowName":"management"}}},{"alias":"marketing","id":4,"route":{"name":"FLOW_PAGE","params":{"flowName":"marketing"}}},{"alias":"popsci","id":7,"route":{"name":"FLOW_PAGE","params":{"flowName":"popsci"}}}]},"global":{"isPwa":false,"device":"desktop","isHabrCom":true},"hubs":{"hubRefs":{},"hubIds":{},"pagesCount":{},"isLoading":false,"route":{}},"hubsBlock":{"hubRefs":{},"hubIds":{}},"i18n":{"fl":"ru","hl":"ru"},"info":{"infoPage":{},"isLoading":true},"location":{"urlStruct":{"protocol":null,"slashes":null,"auth":null,"host":null,"port":null,"hostname":null,"hash":null,"search":null,"query":{},"pathname":null,"path":null,"href":""},"searchQuery":null},"me":{"user":null,"ppgDemanded":false,"karmaResetInfo":{"canReincarnate":null,"wasReincarnated":null,"currentScore":null},"notes":null},"mostReadingList":{"mostReadingListIds":[],"mostReadingListRefs":null,"promoPost":null},"pinnedPost":{"pinnedPost":null},"ppa":{"articles":{},"card":null,"transactions":null,"totalTransactions":null,"isAccessible":null},"projectsBlocks":{"activeBlocks":{}},"pullRefresh":{"shouldRefresh":false},"sandbox":{"articleIds":[],"articleRefs":{},"pagesCount":null,"route":{},"lastVisitedRoute":{},"isLoading":false},"settingsOther":{"inputs":{"uiLang":{"errors":[],"ref":null,"value":""},"articlesLangEnglish":{"errors":[],"ref":null,"value":false},"articlesLangRussian":{"errors":[],"ref":null,"value":false},"agreement":{"errors":[],"ref":null,"value":false},"email":{"errors":[],"ref":null,"value":true},"digest":{"errors":[],"ref":null,"value":true}}},"similarList":{"similarListIds":[],"similarListRefs":null},"ssr":{"error":null,"isDataLoaded":false,"isDataLoading":false,"isHydrationFailed":false,"isServer":false},"userHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"userInvites":{"availableInvites":0,"usedInvitesIds":[],"usedInvitesRefs":{},"usedInvitesPagesCount":0,"unusedInvitesIds":[],"unusedInvitesRefs":{},"unusedInvitesPagesCount":0},"users":{"authorRefs":{},"authorIds":{},"pagesCount":{},"authorProfiles":{},"userHubs":{},"userInvitations":{},"authorFollowers":{},"authorFollowed":{},"karmaStats":[],"statistics":null,"isLoading":false,"authorFollowersLoading":false,"authorFollowedLoading":false,"userHubsLoading":false,"userInvitationsLoading":false,"route":{}},"viewport":{"prevScrollY":{},"scrollY":0,"width":0},"tracker":{"items":{},"pagesCache":{},"markedViewedSilently":{},"markedRead":{},"unreadCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null},"unviewedCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null}}};(function(){var s;(s=document.currentScript||document.scripts[document.scripts.length-1]).parentNode.removeChild(s);}());</script>
+<script src="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" defer></script><script src="https://assets.habr.com/habr-web/js/app.c0af73e7.js" defer></script>
+
+
+
+    <script>
+      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+        (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+        m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+      })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+    </script>
+  
+  <script type="text/javascript" >
+    (function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+    m[i].l=1*new Date();k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})
+    (window, document, "script", "https://mc.yandex.ru/metrika/tag.js", "ym");
+
+    ym(24049213, "init", {
+      defer:true,
+      trackLinks:true,
+      accurateTrackBounce:true,
+      webvisor:false,
+    });
+  </script>
+  <noscript>
+    <div>
+      <img src="https://mc.yandex.ru/watch/24049213" style="position:absolute; left:-9999px;" alt="" />
+    </div>
+  </noscript>
+  
+    <script type="text/javascript">
+      window.addEventListener('load', function () {
+        setTimeout(() => {
+          const img = new Image();
+          img.src = 'https://vk.com/rtrg?p=VK-RTRG-421343-57vKE';
+        }, 0);
+      });
+    </script>
+  
+</body>
+</html>

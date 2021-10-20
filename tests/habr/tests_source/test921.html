@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="ru" data-vue-meta="%7B%22lang%22:%7B%22ssr%22:%22ru%22%7D%7D">
+<head >
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
+  <title>Автоматизация замены дисков с помощью Ansible / Хабр</title>
+  <style>
+    /* cyrillic-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSxf6TF0.woff2) format('woff2');
+      unicode-range: U+0460-052F, U+1C80-1C88, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+    }
+
+    /* cyrillic */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveQhf6TF0.woff2) format('woff2');
+      unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+    }
+
+    /* latin-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSBf6TF0.woff2) format('woff2');
+      unicode-range: U+0100-024F, U+0259, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20CF, U+2113, U+2C60-2C7F, U+A720-A7FF;
+    }
+
+    /* latin */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveRhf6.woff2) format('woff2');
+      unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+    }
+  </style>
+  <link rel="preload" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" as="script"><link rel="preload" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/app.c0af73e7.js" as="script">
+  <link rel="stylesheet" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css"><link rel="stylesheet" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css">
+  <script>window.i18nFetch = new Promise((res, rej) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open('GET', '/js/i18n/ru-compiled.85eb77f0b17c8235e7b64b9f81ea5ec2.json');
+          xhr.responseType = 'json';
+          xhr.onload = function(e) {
+            if (this.status === 200) {
+              res({ru: xhr.response});
+            } else {
+              rej(e);
+            }
+          };
+          xhr.send();
+        });</script>
+  
+  <script data-vue-meta="ssr" src="/js/ads.js" onload="window['zhY4i4nJ9K'] = true" data-vmid="checkad"></script><script data-vue-meta="ssr" type="application/ld+json" data-vmid="ldjson-schema">{"@context":"http:\/\/schema.org","@type":"Article","mainEntityOfPage":{"@type":"WebPage","@id":"https:\/\/habr.com\/ru\/company\/odnoklassniki\/blog\/452110\/"},"headline":"Автоматизация замены дисков с помощью Ansible","datePublished":"2019-05-30T12:18:24+03:00","dateModified":"2021-06-13T22:08:03+03:00","author":{"@type":"Person","name":"Артём Александров"},"publisher":{"@type":"Organization","name":"Habr","logo":{"@type":"ImageObject","url":"https:\/\/habrastorage.org\/webt\/a_\/lk\/9m\/a_lk9mjkccjox-zccjrpfolmkmq.png"}},"description":"Всем привет. Я работаю ведущим системным администратором в ОК и отвечаю за стабильную работу портала. Хочу рассказать о том, как мы выстроили процесс автоматич...","url":"https:\/\/habr.com\/ru\/company\/odnoklassniki\/blog\/452110\/#post-content-body","about":["c_odnoklassniki","h_sys_admin","h_devops","f_admin"],"image":["https:\/\/habrastorage.org\/webt\/s9\/ga\/q9\/s9gaq9eke8gooeu1-nnsr5ocv7o.jpeg","https:\/\/habrastorage.org\/webt\/i8\/92\/cg\/i892cglklhooat_z_qrsexsmzfu.png","https:\/\/habrastorage.org\/webt\/0y\/uz\/jm\/0yuzjmgoz4hgulcpf5o5vhwde18.png","https:\/\/habrastorage.org\/webt\/9x\/b1\/ue\/9xb1ueokh0450wgkhq0ije1lfqa.png","https:\/\/habrastorage.org\/webt\/we\/wc\/du\/wewcdu4q8fqy-gd9wkbutorbabi.png","https:\/\/habrastorage.org\/webt\/ev\/5a\/58\/ev5a58jyosbyuc8cfrhr7sru5zo.png","https:\/\/habrastorage.org\/webt\/xg\/x7\/_z\/xgx7_zk2mlyubhzepgfw0oogbt4.png","https:\/\/habrastorage.org\/webt\/9s\/fy\/q5\/9sfyq5cucem0dbbhahfd3_w7tac.png","https:\/\/habrastorage.org\/webt\/i2\/bk\/nq\/i2bknqits8exw9dtr7sj4zydl58.png","https:\/\/habrastorage.org\/webt\/h9\/m8\/zw\/h9m8zwfrzltmu0q1tz8opctrccu.png","https:\/\/habrastorage.org\/webt\/cv\/js\/w1\/cvjsw1y9qrpkra2twsx-sy4jokc.png","https:\/\/habrastorage.org\/webt\/aa\/rz\/0s\/aarz0srsrqqxbru88guob9spjqm.png","https:\/\/habrastorage.org\/webt\/ef\/0o\/hu\/ef0ohuo0obwa1htij7o4at6dvus.png","https:\/\/habrastorage.org\/webt\/m6\/64\/kr\/m664krcgyi4vkc-rq0almmqv6uy.png","https:\/\/habrastorage.org\/webt\/c4\/ma\/bp\/c4mabpsyezbjbfp2likixvta24k.png","https:\/\/habrastorage.org\/webt\/qf\/vt\/pr\/qfvtprdi9jw2vxserynmxbrmdg8.png"]}</script>
+  <script src="//www.googletagservices.com/tag/js/gpt.js" async></script>
+  <style>.grecaptcha-badge{visibility: hidden;}</style>
+  <meta name="habr-version" content="2.49.0">
+  
+  <meta data-vue-meta="ssr" property="fb:app_id" content="444736788986613"><meta data-vue-meta="ssr" property="fb:pages" content="472597926099084"><meta data-vue-meta="ssr" name="twitter:card" content="summary_large_image"><meta data-vue-meta="ssr" name="twitter:site" content="@habr_eng"><meta data-vue-meta="ssr" property="og:title" content="Автоматизация замены дисков с помощью Ansible" data-vmid="og:title"><meta data-vue-meta="ssr" name="twitter:title" content="Автоматизация замены дисков с помощью Ansible" data-vmid="twitter:title"><meta data-vue-meta="ssr" name="aiturec:title" content="Автоматизация замены дисков с помощью Ansible" data-vmid="aiturec:title"><meta data-vue-meta="ssr" name="description" content="Всем привет. Я работаю ведущим системным администратором в ОК и отвечаю за стабильную работу портала. Хочу рассказать о том, как мы выстроили процесс автоматической замены дисков, а затем, как..." data-vmid="description"><meta data-vue-meta="ssr" itemprop="description" content="Всем привет. Я работаю ведущим системным администратором в ОК и отвечаю за стабильную работу портала. Хочу рассказать о том, как мы выстроили процесс автоматической замены дисков, а затем, как..." data-vmid="description:itemprop"><meta data-vue-meta="ssr" property="og:description" content="Всем привет. Я работаю ведущим системным администратором в ОК и отвечаю за стабильную работу портала. Хочу рассказать о том, как мы выстроили процесс автоматической замены дисков, а затем, как..." data-vmid="og:description"><meta data-vue-meta="ssr" name="twitter:description" content="Всем привет. Я работаю ведущим системным администратором в ОК и отвечаю за стабильную работу портала. Хочу рассказать о том, как мы выстроили процесс автоматической замены дисков, а затем, как..." data-vmid="twitter:description"><meta data-vue-meta="ssr" property="aiturec:description" content="Всем привет. Я работаю ведущим системным администратором в ОК и отвечаю за стабильную работу портала. Хочу рассказать о том, как мы выстроили процесс автоматической замены дисков, а затем, как..." data-vmid="aiturec:description"><meta data-vue-meta="ssr" itemprop="image" content="https://habr.com/share/publication/452110/a4e30bdb5cf5bf700232f7e14c495bb0/" data-vmid="image:itemprop"><meta data-vue-meta="ssr" property="og:image" content="https://habr.com/share/publication/452110/a4e30bdb5cf5bf700232f7e14c495bb0/" data-vmid="og:image"><meta data-vue-meta="ssr" property="aiturec:image" content="https://habr.com/share/publication/452110/a4e30bdb5cf5bf700232f7e14c495bb0/" data-vmid="aiturec:image"><meta data-vue-meta="ssr" name="twitter:image" content="https://habr.com/share/publication/452110/a4e30bdb5cf5bf700232f7e14c495bb0/" data-vmid="twitter:image"><meta data-vue-meta="ssr" property="vk:image" content="https://habr.com/share/publication/452110/a4e30bdb5cf5bf700232f7e14c495bb0/" data-vmid="vk:image"><meta data-vue-meta="ssr" property="aiturec:item_id" content="452110" data-vmid="aiturec:item_id"><meta data-vue-meta="ssr" property="aiturec:datetime" content="2019-05-30T09:18:24.000Z" data-vmid="aiturec:datetime"><meta data-vue-meta="ssr" property="og:type" content="article" data-vmid="og:type"><meta data-vue-meta="ssr" property="og:locale" content="ru_RU" data-vmid="og:locale"><meta data-vue-meta="ssr" property="og:image:width" content="1200" data-vmid="og:image:width"><meta data-vue-meta="ssr" property="og:image:height" content="630" data-vmid="og:image:height">
+  <link data-vue-meta="ssr" href="https://habr.com/ru/rss/post/452110/?fl=ru" type="application/rss+xml" title="" rel="alternate" name="rss"><link data-vue-meta="ssr" href="https://habr.com/ru/company/odnoklassniki/blog/452110/" rel="canonical" data-vmid="canonical"><link data-vue-meta="ssr" data-vmid="hreflang"><link data-vue-meta="ssr" image_src="image" href="https://habr.com/share/publication/452110/a4e30bdb5cf5bf700232f7e14c495bb0/" data-vmid="image:href">
+  <meta name="apple-mobile-web-app-status-bar-style" content="#303b44">
+  <meta name="msapplication-TileColor" content="#629FBC">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="16x16"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-16.png"
+  >
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="32x32"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-32.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="76x76"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-76.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="120x120"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="152x152"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-152.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="180x180"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-180.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="256x256"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-256.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1136x640.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2436x1125.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1792x828.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_828x1792.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1334x750.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2208x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1125x2436.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2208.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2732x2048.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2688x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2224x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_750x1334.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x2732.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2388x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2224.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_640x1136.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2388.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x1536.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1536x2048.png"
+  >
+  <link
+    rel="mask-icon"
+    color="#77a2b6"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.svg"
+  >
+  <link
+    crossorigin="use-credentials"
+    href="/manifest.webmanifest"
+    rel="manifest"
+  >
+</head>
+<body>
+
+
+<div id="app" data-server-rendered="true" data-async-called="true"><div class="tm-layout__wrapper"><!----> <div></div> <!----> <header class="tm-header"><div class="tm-page-width"><div class="tm-header__container"><!----> <span class="tm-header__logo-wrap"><a href="/ru/" class="tm-header__logo tm-header__logo_ru"><svg height="16" width="16" class="tm-svg-img tm-header__icon"><title>Хабр</title> <use xlink:href="/img/habr-logo-ru.svg#logo"></use></svg></a> <span class="tm-header__beta-sign" style="display:none;">β</span></span> <div class="tm-dropdown tm-header__projects"><div class="tm-dropdown__head"><button class="tm-header__dropdown-toggle"><svg height="16" width="16" class="tm-svg-img tm-header__icon tm-header__icon_dropdown"><title>Открыть список</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#arrow-down"></use></svg></button></div> <!----></div> <a href="/ru/sandbox/start/" class="tm-header__become-author-btn">
+            Как стать автором
+          </a> <div class="tm-feature tm-header__feature tm-feature_variant-inline"><!----></div> <!----> <!----></div></div></header> <div class="tm-layout"><div class="tm-page-progress-bar"></div> <div data-menu-sticky="true" class="tm-base-layout__header tm-base-layout__header_is-sticky"><div class="tm-page-width"><div class="tm-base-layout__header-wrapper"><div class="tm-main-menu"><div class="tm-main-menu__section"><nav class="tm-main-menu__section-content"><!----> <a href="/ru/all/" class="tm-main-menu__item">
+        Все потоки
+      </a> <a href="/ru/flows/develop/" class="tm-main-menu__item">
+          Разработка
+        </a><a href="/ru/flows/admin/" class="tm-main-menu__item">
+          Администрирование
+        </a><a href="/ru/flows/design/" class="tm-main-menu__item">
+          Дизайн
+        </a><a href="/ru/flows/management/" class="tm-main-menu__item">
+          Менеджмент
+        </a><a href="/ru/flows/marketing/" class="tm-main-menu__item">
+          Маркетинг
+        </a><a href="/ru/flows/popsci/" class="tm-main-menu__item">
+          Научпоп
+        </a></nav></div></div> <div class="tm-header-user-menu tm-base-layout__user-menu"><a href="/ru/search/" class="tm-header-user-menu__item tm-header-user-menu__search"><svg height="24" width="24" class="tm-svg-img tm-header-user-menu__icon tm-header-user-menu__icon_search tm-header-user-menu__icon_dark"><title>Поиск</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#search"></use></svg></a> <!----> <!----> <!----> <div class="tm-header-user-menu__item tm-header-user-menu__user_desktop"><div class="tm-dropdown"><div class="tm-dropdown__head"><svg height="24" width="24" data-test-id="menu-toggle-guest" class="tm-svg-img tm-header-user-menu__icon"><title>Профиль</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#header-user"></use></svg> <!----></div> <!----></div> <!----></div> <!----></div></div></div></div> <!----> <div class="tm-page-width"></div> <main class="tm-layout__container"><div hl="ru" companyName="odnoklassniki" data-async-called="true" class="tm-page"><div class="tm-page-width"><div class="tm-page__header"><!----></div> <div class="tm-page__wrapper"><div class="tm-page__main tm-page__main_has-sidebar"><div class="pull-down"><div class="pull-down__header" style="height:0px;"><div class="pull-down__content" style="bottom:10px;"><svg height="24" width="24" class="tm-svg-img pull-down__arrow"><title>Обновить</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#pull-arrow"></use></svg></div></div> <div class="tm-article-presenter"><div class="tm-company-card tm-company-article__company-card"><div class="tm-company-card__info"><div class="tm-company-card__header"><a href="/ru/company/odnoklassniki/profile/" class="tm-company-card__avatar"><div class="tm-entity-image"><img alt="" height="48" src="//habrastorage.org/getpro/habr/company/71f/e19/390/71fe19390ed6636132e2286f64397ea7.png" width="48" class="tm-entity-image__pic"></div></a> <!----> <div class="tm-rating tm-company-card__rating"><div class="tm-rating__header"> <div class="tm-rating__counter">85.67</div></div> <div class="tm-rating__text">
+    Рейтинг
+  </div></div></div> <div class="tm-company-card__info"><a href="/ru/company/odnoklassniki/profile/" class="tm-company-card__name">
+        Одноклассники
+      </a> <div class="tm-company-card__description">Делимся экспертизой</div></div></div> <div class="tm-company-card__buttons"><!----> <!----></div></div> <div class="tm-article-presenter__body"><div class="tm-misprint-area"><div class="tm-misprint-area__wrapper"><article class="tm-article-presenter__content tm-article-presenter__content_narrow"><div class="tm-article-presenter__header"> <div class="tm-article-snippet tm-article-presenter__snippet"><div class="tm-article-snippet__meta-container"><div class="tm-article-snippet__meta"><span class="tm-user-info tm-article-snippet__author"><a href="/ru/users/Qk4l/" title="Qk4l" class="tm-user-info__userpic"><div class="tm-entity-image"><img alt="" height="24" loading="lazy" src="//habrastorage.org/r/w32/getpro/habr/avatars/0ab/14c/a78/0ab14ca78c65126554654c6e0536aa34.jpg" width="24" class="tm-entity-image__pic"></div></a> <span class="tm-user-info__user"><a href="/ru/users/Qk4l/" class="tm-user-info__username">
+      Qk4l
+    </a> </span></span> <span class="tm-article-snippet__datetime-published"><time datetime="2019-05-30T09:18:24.000Z" title="2019-05-30, 12:18">30  мая  2019 в 12:18</time></span></div> <!----></div> <h1 lang="ru" class="tm-article-snippet__title tm-article-snippet__title_h1"><span>Автоматизация замены дисков с помощью Ansible</span></h1> <div class="tm-article-snippet__hubs"><span class="tm-article-snippet__hubs-item"><a href="/ru/company/odnoklassniki/blog/" class="tm-article-snippet__hubs-item-link router-link-active"><span>Блог компании Одноклассники</span> <!----></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/sys_admin/" class="tm-article-snippet__hubs-item-link"><span>Системное администрирование</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/devops/" class="tm-article-snippet__hubs-item-link"><span>DevOps</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span></div> <!----> <!----> <!----></div></div> <!----> <div data-gallery-root="" lang="ru" class="tm-article-body"><div id="post-content-body" class="article-formatted-body article-formatted-body_version-1"><div xmlns="http://www.w3.org/1999/xhtml"><img src="https://habrastorage.org/r/w780q1/webt/s9/ga/q9/s9gaq9eke8gooeu1-nnsr5ocv7o.jpeg" data-src="https://habrastorage.org/webt/s9/ga/q9/s9gaq9eke8gooeu1-nnsr5ocv7o.jpeg" data-blurred="true"/><br/>
+<br/>
+Всем привет. Я работаю ведущим системным администратором в ОК и отвечаю за стабильную работу портала. Хочу рассказать о том, как мы выстроили процесс автоматической замены дисков, а затем, как исключили из этого процесса администратора и заменили его ботом.<br/>
+<br/>
+Эта статья является своего рода транслитерацией <a href="https://www.youtube.com/watch?v=5WhbG3FQveE&amp;list=FLKN7KW1sxju7fWJvKuyKxEQ">выступления</a> на HighLoad+ 2018<br/>
+<a name="habracut"></a><br/>
+<h2>Построение процесса по замене дисков</h2><br/>
+<h3>Сначала немного цифр</h3><br/>
+ОК — это гигантский сервис, которым пользуются миллионы людей. Его обслуживают около 7 тыс. серверов, которые расположены в 4 разных дата-центрах. В серверах стоит более 70 тыс. дисков. Если сложить их друг на друга, то получится башня высотой более 1 км. <br/>
+<br/>
+Жёсткие диски — это компонент сервера, который выходит из строя чаще всего. При таких объемах нам приходится менять около 30 дисков в неделю, и эта процедура стала не очень приятной рутиной.<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/i8/92/cg/i892cglklhooat_z_qrsexsmzfu.png"/><br/>
+<br/>
+<h3>Инциденты</h3><br/>
+У нас в компании введен полноценный инцидент-менеджмент. Каждый инцидент мы фиксируем в Jira, а затем решаем и разбираем. Если инцидент был с эффектом для пользователей, то мы обязательно собираемся и думаем, как быстрее реагировать в таких случаях, как снизить эффект и конечно же как предотвратить повторение.<br/>
+<br/>
+Накопители не исключение. За их состоянием следит Zabbix. Мы мониторим сообщения в Syslog на предмет ошибок записи/чтения, анализируем состояние HW/SW-рейдов, следим за SMART, для SSD вычисляем износ. <br/>
+<br/>
+<h3>Как менялись диски раньше</h3><br/>
+Когда в Zabbix загорается какой-то триггер, в Jira создаётся инцидент и автоматически ставится на соответствующих инженеров в дата-центрах. Мы так делаем со всеми HW-инцидентами, то есть такими, которые требуют какой-либо физической работы с оборудованием в дата-центре. <br/>
+Инженер дата-центра — это человек, который решает вопросы, связанные с железом, отвечает за установку, обслуживание, демонтаж серверов. Получив тикет, инженер приступает к работе. В дисковых полках он меняет диски самостоятельно. Но если у него нет доступа к нужному устройству, инженер обращается к дежурным системным администраторам за помощью. В первую очередь нужно вывести диск из ротации. Для этого нужно сделать необходимые изменения на сервере, остановить приложения, отмонтировать диск.<br/>
+<br/>
+Дежурный системный администратор в течение рабочей смены отвечает за работу всего портала. Он расследует инциденты, занимается ремонтом, помогает разработчикам выполнять небольшие задачи. Не занимается он только жёсткими дисками.<br/>
+<br/>
+Раньше инженеры дата-центров общались с системным администратором в чате. Инженеры слали ссылки на Jira-тикеты, администратор проходил по ним, вёл лог работ в каком-нибудь блокноте. Но для таких задач чаты неудобны: информация там не структурирована и быстро теряется. Да и администратор мог просто отойти от компьютера и какое-то время не отвечать на запросы, а инженер стоял у сервера с пачкой дисков и ждал.<br/>
+<br/>
+Но самое плохое было в том, что администраторы не видели картины целиком: какие существуют дисковые инциденты, где потенциально может возникнуть проблема. Это связано с тем, что мы все HW-инциденты отдаём инженерам. Да, можно было отобразить все инциденты на дэшборде администратора. Но их очень много, и администратор привлекался лишь по некоторым из них.<br/>
+<br/>
+Кроме того, инженер не мог корректно расставить приоритеты, потому что он ничего не знает о назначении конкретных серверов, о распределении информации по накопителям.<br/>
+<br/>
+<h3>Новая процедура замены</h3><br/>
+Первое, что мы сделали, это вынесли все дисковые инциденты в отдельный тип «HW-диск» и добавили к нему поля «имя блочного устройства», «размер» и «тип диска», чтобы эта информация сохранялась в тикете, и не приходилось ей постоянно обмениваться в чате. <br/>
+<br/>
+<div style="text-align:center;"><img height="400" src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/0y/uz/jm/0yuzjmgoz4hgulcpf5o5vhwde18.png" data-width="300"/></div><br/>
+Также мы договорились, что в рамках одного инцидента будем менять только один диск. Это существенно упростило в дальнейшем процесс автоматизации, сбор статистики и работу. <br/>
+<br/>
+Кроме этого добавили поле «ответственный администратор». Туда автоматически подставляется дежурный сисадмин. Это очень удобно, потому что теперь инженер всегда видит, кто ответственный. Не нужно идти в календарь и искать. Именно это поле позволило вынести на дэшборд администратора тикеты, в которых, возможно, понадобится его помощь.<br/>
+<br/>
+<div style="text-align:center;"><img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/9x/b1/ue/9xb1ueokh0450wgkhq0ije1lfqa.png"/></div><br/>
+Чтобы все участники получали максимум выгоды от нововведений, мы создали фильтры и дэшборды, рассказали о них ребятам. Когда люди понимают изменения, они не дистанцируются от них, как от чего-то ненужного. Инженеру важно знать номер стойки, где располагается сервер, размер и тип диска. Администратору нужно, в первую очередь, понимать, что это за группа серверов, какой может быть эффект при замене диска.<br/>
+<br/>
+Наличие полей и их отображение — это удобно, но от необходимости использовать чаты нас это не избавило. Для этого пришлось менять рабочий процесс. <br/>
+<br/>
+Раньше он был таким:<br/>
+<br/>
+<div style="text-align:center;"><img height="400" src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/we/wc/du/wewcdu4q8fqy-gd9wkbutorbabi.png" data-width="300"/></div><br/>
+Сегодня так продолжают работать инженеры, когда им не требуется помощь администратора.<br/>
+<br/>
+Первое, что мы сделали, — ввели новый статус <b>Investigate</b>. В этом статусе тикет находится, когда инженер ещё не решил, нужен ему будет администратор или нет. Через этот статус инженер может передать тикет администратору. Кроме того, этим статусом мы помечаем тикеты, когда требуется замена диска, но самого диска на площадке нет. Такое бывает в случае CDN и удаленных площадок.<br/>
+<br/>
+Также мы добавили статус <b>Ready</b>. В него тикет переводится после замены диска. То есть всё уже сделано, но на сервере синхронизируется HW/SW RAID. Это может занимать довольно много времени.<br/>
+<br/>
+Если к работе привлекается администратор, схема немного усложняется.<br/>
+<br/>
+<div style="text-align:center;"><img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/ev/5a/58/ev5a58jyosbyuc8cfrhr7sru5zo.png" data-width="400"/></div><br/>
+Из статуса <b>Open</b> тикет может перевести как системный администратор, так и инженер. В статусе <b>In progress</b> администратор выводит диск из ротации, чтобы инженер мог его просто вытащить: включает подсветку, отмонтирует диск, останавливает приложения, в зависимости от конкретной группы серверов.<br/>
+<br/>
+Затем тикет переводится в <b>Ready to change</b>: это сигнал инженеру, что диск можно вытаскивать. Все поля в Jira уже заполнены, инженер знает, какой тип и размер диска. Эти данные проставляются либо на предыдущем статусе автоматически или администратором.<br/>
+<br/>
+После замены диска тикет переводится в статус <b>Changed</b>. Проверяется, что вставили нужный диск, делается разметка, запускается приложение и какие-то задачи по восстановлению данных. Также тикет может быть переведён в статус <b>Ready</b>, в этом случае ответственным останется администратор, потому что он заводил диск в ротацию. Полная схема выглядит так.<br/>
+<br/>
+<div style="text-align:center;"><img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/xg/x7/_z/xgx7_zk2mlyubhzepgfw0oogbt4.png" data-width="500"/></div><br/>
+Добавление новых полей существенно облегчило нам жизнь. Ребята стали работать со структурированной информацией, стало ясно, что и на каком этапе нужно делать. Приоритеты стали намного релевантнее, так как теперь их выставляет администратор.<br/>
+<br/>
+Отпала необходимость в чатах. Конечно, администратор может написать инженеру «здесь нужно заменить быстрее», или «уже вечер, успеешь заменить?». Но мы уже не общаемся ежедневно в чатах по этим вопросам.<br/>
+<br/>
+Диски стали менять пачками. Если администратор пришел на работу чуть пораньше, у него есть свободное время, и еще ничего не случилось, он может подготовить ряд серверов к замене: проставить поля, вывести диски из ротации и передать задачу инженеру. Инженер чуть позже приходит в дата-центр, видит задачу, берёт со склада нужные накопители и сразу меняет. В результате скорость замены увеличилась.<br/>
+<br/>
+<h3>Вынесенный опыт при построении Workflow</h3><br/>
+<ul>
+<li><b>При построении процедуры нужно собирать информацию из разных источников.</b><br/>
+Некоторые наши администраторы не знали, что инженер меняет диски самостоятельно. Некоторые считали, что за синхронизацией MD RAID следят инженеры, хотя у кого-то из них даже не было доступа для этого. Некоторые ведущие инженеры это делали, но не всегда, потому что процесс нигде не был описан.</li>
+<li><b>Процедура должна быть простой и понятной.</b><br/>
+Человеку тяжело держать в голове множество шагов. Самые главные соседние статусы в Jira нужно выносить на главный экран. Можно их переименовать, например, In progress мы называем Ready to change. А остальные статусы можно прятать в выпадающее меню, чтобы они не мозолили глаза. Но лучше не ограничивать людей, дать возможность сделать переход.<br/>
+Разъясняйте ценность нововведений. Когда люди понимают, они лучше принимают новую процедуру. Для нас было очень важно, чтобы люди не прокликивали весь процесс, а шли по нему. Потом мы строили на этом автоматизацию.</li>
+<li><b>Ждать, анализировать, разбираться.</b><br/>
+У нас ушло около месяца на построение процедуры, техническую реализацию, встречи и обсуждения. А на внедрение — больше трёх месяцев. Я видел, как люди потихоньку начинают пользоваться нововведением. На первых этапах было много негатива. Но он совершенно не зависел от самой процедуры, её технической реализации. Например, один администратор пользовался не Jira, а Jira-плагином в Confluence, и некоторые вещи были ему недоступны. Показали ему Jira, у админа выросла продуктивность и по общим задачам, и по заменам дисков.</li>
+</ul><br/>
+<h2>Автоматизация замены дисков</h2><br/>
+К автоматизации замены дисков мы подступались несколько раз. У нас уже были наработки, скрипты, но все они работали либо в интерактивном, либо в ручном режиме, требовали запуска. И только после внедрения новой процедуры мы поняли, что как раз её нам не хватало.<br/>
+<br/>
+Так как теперь процесс замены у нас разбит на этапы, за каждым из которых определён исполнитель и список действий, мы можем включать автоматизацию поэтапно, а не сразу целиком. Например, самый простой этап — Ready (проверка синхронизации RAID/данных) можно легко делегировать боту. Когда бот чуть обучится, можно ему дать более ответственную задачу — ввод диска в ротацию итд.<br/>
+<br/>
+<h3>Зоопарк сетапов</h3><br/>
+Прежде чем рассказывать про бота, совершим небольшой экскурс в наш зоопарк инсталляций. В первую очередь он обусловлен гигантским размером нашей инфраструктуры. Во-вторых, под каждый сервис мы стараемся подобрать оптимальную конфигурацию железа. У нас около 20 моделей аппаратных RAID, в основном LSI и Adaptec, но встречаются и HP, и DELL разных версий. Каждый RAID-контроллер имеет свою утилиту управления. Набор команд и выдача по ним может отличаться от версии к версии у каждого RAID-контроллера. Там, где не используются HW-RAID, может быть mdraid.<br/>
+<br/>
+Практически все новые инсталляции мы делаем без дискового резервирования. Мы стараемся больше не использовать аппаратные и софтовые RAID, так как резервируем наши системы на уровне дата-центров, а не серверов. Но конечно есть много legacy-серверов, которые нужно поддерживать.<br/>
+<br/>
+Где-то диски в RAID-контроллерах прокидываются raw устройства, где-то используются JBOD. Есть конфигурации с одним системным диском в сервере, и если его нужно заменить, то приходится перераскатывать сервер с установкой ОС и приложений, причем тех же версий, потом добавлять конфигурационные файлы, запускать приложения. Также очень много групп серверов, где резервирование осуществляется не на уровне дисковой подсистемы, а непосредственно в самих приложениях.<br/>
+<br/>
+В общей сложности у нас более 400 уникальных групп серверов, на которых работает около 100 различных приложений. Чтобы покрыть такое огромное количество вариантов, нам нужен был многофункциональный инструмент автоматизации. Желательно с простым DSL, чтобы поддерживать мог не только тот, кто это написал.<br/>
+<br/>
+Мы выбрали Ansible, потому что он agentless: не нужно было подготавливать инфраструктуру, быстрый старт. К тому же, он написан на Python, который принят как стандарт в команде.<br/>
+<br/>
+<h3>Общая схема</h3><br/>
+Давайте рассмотрим общую схему автоматизации на примере одного инцидента. Zabbix детектирует, что диск sdb вышел из строя, загорается триггер, создаётся тикет в Jira. Администратор посмотрел его, понял, что это не дубликат и не false positive, то есть нужно менять диск, и переводит тикет в In progress.<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/9s/fy/q5/9sfyq5cucem0dbbhahfd3_w7tac.png"/><br/>
+Приложение DiskoBot, написанное на Python, периодически опрашивает Jira на предмет новых тикетов. Оно замечает, что появился новый тикет In progress, срабатывает соответствующий thread, который запускает playbook в Ansible (это делается для каждого статуса в Jira). В данном случае запускается Prepare2change.<br/>
+<br/>
+Ansible отправляется на хост, выводит диск из ротации и репортит статус приложению через Callbacks. <br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/i2/bk/nq/i2bknqits8exw9dtr7sj4zydl58.png"/><br/>
+По результатам бот автоматически переводит тикет в Ready to change. Инженер получает уведомление и отправляется менять диск, после чего переводит тикет в Changed. <br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/h9/m8/zw/h9m8zwfrzltmu0q1tz8opctrccu.png"/><br/>
+По вышеописанной схеме тикет попадает обратно к боту, тот запускает другой playbook, идет на хост и вводит диск в ротацию. Бот закрывает тикет. Ура!<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/cv/js/w1/cvjsw1y9qrpkra2twsx-sy4jokc.png"/><br/>
+Теперь поговорим о некоторых компонентах системы.<br/>
+<br/>
+<h3>Diskobot</h3><br/>
+Это приложение написано на Python. Оно выбирает тикеты из Jira в соответствии с <abbr title="JIRA Query Language">JQL</abbr>. В зависимости от статуса тикета последний попадает к соответствующему обработчику, который в свою очередь запускает соответствующий статусу Ansible playbook.<br/>
+<br/>
+JQL и интервалы опроса определены в файле конфигурации приложения.<br/>
+<br/>
+<pre><code class="plaintext">jira_states:
+  investigate:
+    jql: '… status = Open and "Disk Size" is EMPTY'
+    interval: 180
+
+  inprogress:
+    jql: '…  and "Disk Size" is not EMPTY and "Device Name" is not EMPTY'
+ 
+  ready:
+    jql: '… and (labels not in ("dbot_ignore") or labels is EMPTY)'
+    interval: 7200
+</code></pre><br/>
+Например, среди тикетов в статусе In progress, выбираются только те у которых заполнены поля Disk size и Device name. Device name — это имя блочного устройства, нужного для выполнения playbook’а. Disk size нужен для того, чтобы инженер знал какого размера диск необходим.<br/>
+<br/>
+А среди тикетов со статусом Ready отфильтровываются тикеты с лейблом dbot_ignore. К слову, Jira лейблы мы используем как для подобной фильтрации, так и для маркирования дубликатов тикетов, и сбора статистики.<br/>
+<br/>
+В случае сбоя playbook’а Jira присваивает лейбл dbot_failed, чтобы впоследствии можно было разобраться. <br/>
+<br/>
+<h3>Взаимодействие с Ansible</h3><br/>
+Приложение взаимодействует с Ansible через <a href="https://docs.ansible.com/ansible/latest/dev_guide/developing_api.html">Ansible Python API</a>. В playbook_executor мы передаем имя файла и набор переменных. Это позволяет держать Ansible-проект в виде обычных yml-файлов, а не описывать его в Python-коде. <br/>
+<br/>
+Также в Ansible через *extra_vars* передаются имя блочного устройства, статус тикета, а также callback_url, в котором зашит issue key — он используется для callback в HTTP.<br/>
+<br/>
+Для каждого запуска генерируется временный inventory, состоящий из одного хоста и группы, в которую входит этот хост, чтобы применились group_vars.<br/>
+<br/>
+Вот пример таска, в котором реализован HTTP callback.<br/>
+<br/>
+Результат выполнения playbook’ов мы получаем с помощью callaback(-ов). Они двух типов:<br/>
+<br/>
+<ul>
+<li><a href="https://docs.ansible.com/ansible/latest/plugins/callback.html">Ansible callback plugin</a>, он предоставляет данные по результатам выполнения playbook’а. Там описаны задачи, которые были запущены, выполнены удачно или неудачно. Этот callback вызывается по окончанию проигрывания playbook’а.</li>
+<li>HTTP callback для получения информации во время проигрывания playbook’а. В Ansible таске выполняем POST/GET запроc в строну нашего приложения.</li>
+</ul><br/>
+Через HTTP callback(-и) передаются переменные, которые были определены при выполнении playbook’а и которые мы хотим сохранить и использовать в последующих запусках. Эти данные мы пишем в sqlite.<br/>
+<br/>
+Также через HTTP callback мы оставляем комментарии и изменяем статус тикета.<br/>
+<br/>
+<div class="spoiler" role="button" tabindex="0">
+                        <b class="spoiler_title">HTTP callback</b>
+                        <div class="spoiler_text"><pre><code class="plaintext"># Make callback to Diskobot App
+# Variables:
+#    callback_post_body: # A dict with follow keys. All keys are optional
+#       msg: If exist it would be posted to Jira as comment
+#       data: If exist it would be saved in Incident.variables
+#       desire_state: Set desire_state for incident
+#       status: If exist Proceed issue to that status
+
+  - name: Callback to Diskobot app (jira comment/status)
+    uri:
+      url: "{{ callback_url }}/{{ devname }}"
+      user: "{{ diskobot_user }}"
+      password: "{{ diskobot_pass }}"
+      force_basic_auth: True
+      method: POST
+      body: "{{ callback_post_body | to_json }}"
+      body_format: json
+    delegate_to: 127.0.0.1
+</code></pre><br/>
+</div>
+                    </div><br/>
+Как и многие однотипные таски, мы вынесли его в отдельный common file и включаем при необходимости, чтобы не повторять постоянно в playbook’ах. Здесь фигурирует callback_ url, в котором зашиты issue key и host name. Когда Ansible выполняет этот POST-запрос, бот понимает, что он пришел в рамках такого-то инцидента.<br/>
+<br/>
+А вот пример из playbook’а, в котором мы выводили диск из MD-устройства:<br/>
+<br/>
+<pre><code class="plaintext">  # Save mdadm configuration
+  - include: common/callback.yml
+    vars:
+      callback_post_body:
+        status: 'Ready to change'
+        msg: "Removed disk from mdraid {{ mdadm_remove_disk.msg | comment_jira }}"
+        data:
+          mdadm_data: "{{ mdadm_remove_disk.removed }}"
+          parted_info: "{{ parted_info | default() }}"
+    when:
+      - mdadm_remove_disk | changed
+      - mdadm_remove_disk.removed
+</code></pre><br/>
+Данный таск переводит Jira тикет в статус «Ready to change» и добавляет комментарий. Также в переменной mdam_data сохраняется список md-устройств, из которых был удален диск, а в parted_info — дамп партиции от parted. <br/>
+<br/>
+Когда инженер вставит новый диск, мы сможем использовать эти переменные, чтобы восстановить дамп партиций, а также завести диск в те md-устройства, из которых он был удален.<br/>
+<br/>
+<h3>Ansible check mode</h3><br/>
+Включать автоматику было страшно. Поэтому мы решили запускать все playbook’и в режиме <br/>
+<a href="https://docs.ansible.com/ansible/latest/user_guide/playbooks_checkmode.html">dry run</a>, в котором Ansible не выполняет на серверах никаких действий, а только эмулирует их. <br/>
+<br/>
+Такой запуск прогоняется через отдельный callback-модуль, а результат выполнения playbook’а сохраняем в Jira в виде комментария.<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/aa/rz/0s/aarz0srsrqqxbru88guob9spjqm.png"/><br/>
+<br/>
+Во-первых, это позволило валидировать работу бота и playbook’ов. Во-вторых, повысило доверие администраторов к боту. <br/>
+<br/>
+Когда мы прошли валидацию и поняли, что можно запускать Ansible не только в режиме dry run, то сделали в Jira кнопку Run Diskobot для запуска того же playbook’а с теми же самыми переменными на том же самом хосте, но в обычном режиме. <br/>
+<br/>
+Кроме того, кнопка используется для повторного запуска playbook’а в случае его сбоя.<br/>
+<br/>
+<h3>Структура Playbooks</h3><br/>
+Я уже упоминал, что в зависимости от статуса Jira-тикета, бот запускает разные playbook’и.<br/>
+<br/>
+Во-первых, так намного проще организовать вход. <br/>
+Во-вторых, в некоторых случаях это просто необходимо. <br/>
+<br/>
+К примеру, при замене системного диска нужно в первую очередь пойти в систему развёртывания, создать задачу, и после корректного развёртывания сервер станет доступен по ssh, и можно на него накатить приложение. Если бы мы делали всё это в одном плейбуке, то Ansible не смог бы его выполнить из-за недоступности хоста.<br/>
+<br/>
+Мы используем Ansible-роли для каждой группы серверов. Здесь видно, как организованны playbook(-и) в одной из них. <br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/ef/0o/hu/ef0ohuo0obwa1htij7o4at6dvus.png"/><br/>
+<br/>
+Это удобно, потому что сразу понятно, где какие таски расположены. В main.yml, который является входом для Ansible-роли, у нас может быть просто include по статусу тикета или общие таски, необходимые для всех, например, прохождение идентификации или получение токена.<br/>
+<br/>
+<h4>Investigation.yml</h4><br/>
+Запускается для тикетов в статусе Investigation и Open. Самое важное для этого playbook’а — имя блочного устройства. Эта информация не всегда доступна. <br/>
+<br/>
+Для её получения мы анализируем Jira summary, последнее значение от Zabbix-триггера. Там может содержаться имя блочного устройства — повезло. А может содержаться mount point, — тогда нужно пойти на сервер, пропарсить и вычислить нужный диск. Также триггер может передать scsi-адрес или какую-то другую информацию. Но бывает и так, что никаких зацепок нет, и приходится анализировать.<br/>
+<br/>
+Выяснив имя блочного устройства, мы собираем по нему информацию о типе и размере диска для заполнения полей в Jira. Также снимаем информацию о вендоре, модели, прошивке, ID, SMART, и всё это вставляем в комментарий в Jira-тикете. Администратору и инженеру теперь не нужно искать эти данные. :)<br/>
+<br/>
+<div style="text-align:center;"><img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/m6/64/kr/m664krcgyi4vkc-rq0almmqv6uy.png"/></div><br/>
+<br/>
+<h4>prepare2change.yml</h4><br/>
+Вывод диска из ротации, подготовка к замене. Cамый сложный, ответственный этап. Именно здесь можно остановить приложение, когда его нельзя останавливать. Или вытащить диск, у которого не хватало реплик, и тем самым оказать эффект на пользователей, потерять какие-то данные. Здесь у нас больше всего проверок и нотификаций в чате.<br/>
+<br/>
+В самом простом случае речь идёт об удалении диска из HW/MD RAID. <br/>
+<br/>
+В более сложных ситуациях (в наших системах хранения), когда резервирование выполняется на уровне приложения, необходимо пойти в приложение по API, сообщить о выводе диска, деактивировать его и запустить восстановление.<br/>
+<br/>
+Мы сейчас массово мигрируем в <a href="https://habr.com/company/odnoklassniki/blog/346868">облако</a>, и если сервер облачный, то Diskobot обращается к API облака, говорит, что он собирается работать с этим миньоном — сервером, на котором запущены контейнеры, — и просит «смигрируй все контейнеры с этого миньона». И заодно включает подсветку диска, чтобы инженер сразу увидел, какой нужно вытаскивать.<br/>
+<br/>
+<h4>changed.yml</h4><br/>
+После замены диска мы в первую очередь проверяем его доступность. <br/>
+<br/>
+Инженеры не всегда ставят новые диски, поэтому мы добавили проверку удовлетворяющих нас значений SMART.<br/>
+<br/>
+<div class="spoiler" role="button" tabindex="0">
+                        <b class="spoiler_title">Какие атрибуты мы смотрим</b>
+                        <div class="spoiler_text">Reallocated Sectors Count (5) &lt; 100<br/>
+Current Pending Sector Count (107) == 0<br/>
+</div>
+                    </div><br/>
+Если диск не проходит проверку, инженеру сообщается о повторной замене. Если всё в порядке, подсветка выключается, наносится разметка и диск вводится в ротацию.<br/>
+<br/>
+<h4>ready.yml</h4><br/>
+Cамый простой случай: проверка синхронизации HW/SW raid или окончание синхроназации данных в приложении.<br/>
+<br/>
+<h3>API приложений</h3><br/>
+Я несколько раз упоминал о том, что часто бот обращается к API приложений. Конечно, не у всех приложений были необходимые методы, поэтому пришлось их доработать. Вот самые важные методы, которые мы используем:<br/>
+<ul>
+<li>Status. Статус кластера или диска, чтобы понять можно ли с ним работать;<br/>
+</li>
+<li>Start/stop. Активация-деактивация диска;<br/>
+</li>
+<li>Migrate/restore. Миграция и восстановление данных во время и после замены.<br/>
+</li>
+</ul><br/>
+<h3>Вынесенный опыт по Ansible</h3><br/>
+Я очень люблю Ansible. Но часто, когда смотрю на разные opensource-проекты и вижу, как люди пишут playbook’и, мне становится немного страшно. Сложные логические переплетения из when/loop, отсутствие гибкости и идемпотентности из-за частого использования shell/command.<br/>
+<br/>
+Мы решили максимально всё упростить, воспользовавшись преимуществом Ansible — модульностью. На самом верхнем уровне находятся playbook’и, их может писать любой администратор, сторонний разработчик, который чуть-чуть знает Ansible.<br/>
+<br/>
+<pre><code class="plaintext">- name: Blink disk
+  become: True
+  register: locate_action
+  disk_locate:
+      locate: '{{ locate }}'
+      devname: '{{ devname }}'
+      ids: '{{ locate_ids | default(pd_id) | default(omit) }}'
+</code></pre><br/>
+<br/>
+Если какую-то логику сложно реализовать в playbook’ах, мы выносим её в Ansible-модуль или фильтр. Скрипты могут быть написаны как на Python, так и на любом другом языке. <br/>
+<br/>
+Их легко и быстро писать. Например, модуль подсветки диска, пример использования которого приведен выше, состоит из 265 строк.<br/>
+<br/>
+<img height="400" src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/c4/ma/bp/c4mabpsyezbjbfp2likixvta24k.png" data-width="400"/><br/>
+<br/>
+На самом нижнем уровне находится библиотека. Для этого проекта мы написали отдельное приложение, своего рода абстракцию над аппаратными и софтовыми RAID, которые выполняют соответствующие запросы. <br/>
+<br/>
+<img height="400" src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/qf/vt/pr/qfvtprdi9jw2vxserynmxbrmdg8.png" data-width="400"/><br/>
+<br/>
+Самые сильные стороны Ansible — это простота и понятные playbook’и. Я считаю, что нужно этим пользоваться и не генерировать страшные yaml-файлы и огромное количество условий, shell-кода и лупов.<br/>
+<br/>
+Если вы захотите повторить наш опыт с Ansible API, имейте в виду две вещи:<br/>
+<br/>
+<ul>
+<li>Playbook_executor и вообще playbook’у нельзя передать таймаут. Есть таймаут на ssh-сессии, но нет таймаута на playbook. Если мы пытаемся отмонтировать диск, который в системе уже не существует, playbook будет выполняться бесконечно, поэтому пришлось обернуть его запуск в отдельный wrapper и убивать по таймауту.<br/>
+</li>
+<li>Ansible работает на базе fork-процессов, поэтому его API не потокобезопасно. Мы запускаем все наши playbook’и однопоточно.<br/>
+</li>
+</ul><br/>
+В итоге нам удалось автоматизировать замену около 80 % дисков. В целом скорость замены выросла в два раза. Сегодня администратор лишь смотрит на инцидент и принимает решение, нужно ли менять диск или нет, а затем делает один клик.<br/>
+<br/>
+Но теперь мы начинаем сталкиваться с другой проблемой: некоторые новые администраторы не знают, как менять диски. :)</div></div> <!----> <!----></div> <div class="tm-article-presenter__meta"><div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Теги:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bdisk%5D" class="tm-tags-list__link">disk</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bansible%5D" class="tm-tags-list__link">ansible</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bplaybook%5D" class="tm-tags-list__link">playbook</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Binfrastructure%5D" class="tm-tags-list__link">infrastructure</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Binfrastructure%20as%20code%5D" class="tm-tags-list__link">infrastructure as code</a></li></ul></div> <div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Хабы:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/company/odnoklassniki/blog/" class="tm-hubs-list__link router-link-active">
+    Блог компании Одноклассники
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/sys_admin/" class="tm-hubs-list__link">
+    Системное администрирование
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/devops/" class="tm-hubs-list__link">
+    DevOps
+  </a></li></ul></div></div></article></div> <!----></div> <div class="tm-article-sticky-panel"><div class="tm-data-icons tm-article-sticky-panel__icons"><div class="tm-article-rating tm-data-icons__item"><div class="tm-votes-meter tm-article-rating__votes-switcher"><svg height="16" width="16" class="tm-svg-img tm-votes-meter__icon tm-votes-meter__icon_medium"><title>Всего голосов 21: ↑20 и ↓1</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-rating"></use></svg> <span title="Всего голосов 21: ↑20 и ↓1" class="tm-votes-meter__value tm-votes-meter__value_positive tm-votes-meter__value_medium">+19</span></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----> <span title="Количество просмотров" class="tm-icon-counter tm-data-icons__item"><svg height="16" width="16" class="tm-svg-img tm-icon-counter__icon"><title>Просмотры</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-views"></use></svg> <span class="tm-icon-counter__value">8.3K</span></span> <button title="Добавить в закладки" type="button" class="bookmarks-button tm-data-icons__item"><span title="Добавить в закладки" class="tm-svg-icon__wrapper bookmarks-button__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Добавить в закладки</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-favorite"></use></svg></span> <span title="Количество пользователей, добавивших публикацию в закладки" class="bookmarks-button__counter">
+    66
+  </span></button> <!----> <div title="Поделиться" class="tm-sharing tm-data-icons__item"><button type="button" class="tm-sharing__button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="tm-sharing__icon"><path fill="currentColor" d="M10.33.275l9.047 7.572a.2.2 0 010 .306l-9.048 7.572a.2.2 0 01-.328-.153V11c-8 0-9.94 6-9.94 6S-1 5 10 5V.428a.2.2 0 01.328-.153z"></path></svg></button> <!----></div> <DIV class="v-portal" style="display:none;"></DIV></div> </div></div> <!----> <!----> <div class="tm-article-presenter__footer"><div class="tm-article-blocks"><!----> <section class="tm-block tm-block_spacing-bottom"><!----> <div class="tm-block__body tm-block__body_variant-balanced"><div class="tm-article-author"><div class="tm-article-author__company"><div class="tm-article-author__company-card"><div class="tm-company-snippet"><a href="/ru/company/odnoklassniki/profile/" class="tm-company-snippet__logo-link"><div class="tm-entity-image"><img alt="" height="40" src="//habrastorage.org/getpro/habr/company/71f/e19/390/71fe19390ed6636132e2286f64397ea7.png" width="40" class="tm-entity-image__pic"></div></a> <div class="tm-company-snippet__info"><a href="/ru/company/odnoklassniki/profile/" class="tm-company-snippet__title">Одноклассники</a> <div class="tm-company-snippet__description">Делимся экспертизой</div></div></div> <div class="tm-article-author__buttons"><!----> <!----></div></div> <!----> <div class="tm-article-author__separator"></div></div> <div class="tm-user-card tm-article-author__user-card tm-user-card_variant-article"><div class="tm-user-card__info-container"><div class="tm-user-card__header"><div class="tm-user-card__header-data"><a href="/ru/users/Qk4l/" class="tm-user-card__userpic tm-user-card__userpic_size-40"><div class="tm-entity-image"><img alt="" src="//habrastorage.org/getpro/habr/avatars/0ab/14c/a78/0ab14ca78c65126554654c6e0536aa34.jpg" class="tm-entity-image__pic"></div></a> <div class="tm-user-card__meta"><div title=" 29 голосов " class="tm-karma tm-user-card__karma"><div class="tm-karma__votes tm-karma__votes_positive">
+    17.2
+  </div> <div class="tm-karma__text">
+    Карма
+  </div></div> <div title="Рейтинг пользователя" class="tm-rating tm-user-card__rating"><div class="tm-rating__header"> <div class="tm-rating__counter">0</div></div> <div class="tm-rating__text">
+    Рейтинг
+  </div></div></div></div></div> <div class="tm-user-card__info tm-user-card__info_variant-article"><div class="tm-user-card__title tm-user-card__title_variant-article"><span class="tm-user-card__name tm-user-card__name_variant-article">Артём Александров</span> <a href="/ru/users/Qk4l/" class="tm-user-card__nickname tm-user-card__nickname_variant-article">
+          @Qk4l
+        </a> <!----></div> <p class="tm-user-card__short-info tm-user-card__short-info_variant-article">User</p></div></div> <div class="tm-user-card__buttons tm-user-card__buttons_variant-article"><!----> <!----> <!----> <!----> <!----></div></div> <!----></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----></section> <div class="tm-article-blocks__comments"><div class="tm-article-page-comments"><div class="tm-article-comments-counter-link tm-article-comments-counter-button"><a href="/ru/company/odnoklassniki/blog/452110/comments/" class="tm-article-comments-counter-link__link tm-article-comments-counter-link__link_button-style"><svg height="16" width="16" class="tm-svg-img tm-article-comments-counter-link__icon tm-article-comments-counter-link__icon_contrasted"><title>Комментарии</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-comments"></use></svg> <span class="tm-article-comments-counter-link__value tm-article-comments-counter-link__value_contrasted">
+       Комментарии 7 
+    </span></a> <!----></div></div></div>  <!---->  <!----> <!----></div></div></div></div></div> <div class="tm-page__sidebar"><div class="tm-layout-sidebar"><div class="tm-layout-sidebar__placeholder_initial"></div> <div class="tm-sexy-sidebar tm-sexy-sidebar_initial" style="margin-top:0px;"><!----> <section class="tm-block tm-block_spacing-bottom"><header class="tm-block__header"><h2 class="tm-block__title">Информация</h2> <!----></header> <div class="tm-block__body"><div class="tm-company-basic-info"><dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Дата основания</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><time datetime="2006-03-25T21:00:00.000Z" title="2006-03-26, 00:00">26  марта  2006</time></dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Местоположение</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap">
+    Россия
+  </dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Сайт</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><a href="https://ok.ru/" target="_blank" class="tm-company-basic-info__link">
+      ok.ru
+    </a></dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Численность</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap">
+    201–500 человек
+  </dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Дата регистрации</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><time datetime="2008-08-09T07:42:47.000Z" title="2008-08-09, 11:42">9  августа  2008</time></dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Представитель</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><a href="/ru/users/privatelv/" class="tm-company-basic-info__link">
+      Андрей Губа
+    </a></dd></dl></div></div> <!----></section> <div class="tm-company-widgets"></div> <!----></div></div></div></div></div></div></main> <!----></div> <div class="tm-footer-menu"><div class="tm-page-width"><div class="tm-footer-menu__container"><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Ваш аккаунт
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr/?back=/ru/company/odnoklassniki/blog/452110/&amp;hl=ru" rel="nofollow" target="_self">
+                Войти
+              </a></li><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr-register/?back=/ru/company/odnoklassniki/blog/452110/&amp;hl=ru" rel="nofollow" target="_self">
+                Регистрация
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Разделы
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/" class="footer-menu__item-link router-link-active">
+                Публикации
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/news/" class="footer-menu__item-link">
+                Новости
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/hubs/" class="footer-menu__item-link">
+                Хабы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/companies/" class="footer-menu__item-link">
+                Компании
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/users/" class="footer-menu__item-link">
+                Авторы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/sandbox/" class="footer-menu__item-link">
+                Песочница
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Информация
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/docs/help/" class="footer-menu__item-link">
+                Устройство сайта
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/authors/codex/" class="footer-menu__item-link">
+                Для авторов
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/companies/corpblogs/" class="footer-menu__item-link">
+                Для компаний
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/docs/transparency/" class="footer-menu__item-link">
+                Документы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/agreement" target="_blank">
+                Соглашение
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/confidential/" target="_blank">
+                Конфиденциальность
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Услуги
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQLwRfQmXibiUlWaRg-BAc38s7oM3lJiaPju7qmdJsp8ysIvZ_G-Npem0njJLMozE2bPHMpDqiI5hhy/pub?start=false&amp;loop=false&amp;delayms=60000&amp;slide=id.g91a03369cd_4_297" target="_blank">
+                Реклама
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://habrastorage.org/storage/stuff/habr/service_price.pdf" target="_blank">
+                Тарифы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQJJds8-Di7BQSP_guHxICN7woVYoN5NP_22ra-BIo4bqnTT9FR6fB-Ku2P0AoRpX0Ds-LRkDeAoD8F/pub?start=false&amp;loop=false&amp;delayms=60000" target="_blank">
+                Контент
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://tmtm.timepad.ru/" target="_blank">
+                Семинары
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/megaprojects/" class="footer-menu__item-link">
+                Мегапроекты
+              </a></li></ul></div></div></div></div></div> <div class="tm-footer"><div class="tm-page-width"><div class="tm-footer__container"><!----> <div class="tm-footer__social"><a href="https://www.facebook.com/habrahabr.ru" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Facebook</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-facebook"></use></svg></a><a href="https://twitter.com/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Twitter</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-twitter"></use></svg></a><a href="https://vk.com/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>VK</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-vkontakte"></use></svg></a><a href="https://telegram.me/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Telegram</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-telegram"></use></svg></a><a href="https://www.youtube.com/channel/UCd_sTwKqVrweTt4oAKY5y4w" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Youtube</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-youtube"></use></svg></a><a href="https://zen.yandex.ru/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Яндекс Дзен</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-zen"></use></svg></a></div> <DIV class="v-portal" style="display:none;"></DIV> <button class="tm-footer__link"><!---->
+        Настройка языка
+      </button> <a href="/ru/about" class="tm-footer__link">
+        О сайте
+      </a> <a href="/ru/feedback/" class="tm-footer__link">
+        Техническая поддержка
+      </a> <!----> <a href="/berserk-mode-nope" class="tm-footer__link">
+        Вернуться на старую версию
+      </a> <div class="tm-footer-copyright"><span class="tm-copyright"><span class="tm-copyright__years">© 2006–2021 </span> <span class="tm-copyright__name">«<a href="https://company.habr.com/" rel="noopener" target="_blank" class="tm-copyright__link">Habr</a>»</span></span></div></div></div></div> <!----> <!----></div> <div class="vue-portal-target"></div></div>
+<script>window.__INITIAL_STATE__={"adblock":{"hasAcceptableAdsFilter":false,"hasAdblock":false},"articlesList":{"articlesList":{"452110":{"id":"452110","timePublished":"2019-05-30T09:18:24+00:00","isCorporative":true,"lang":"ru","titleHtml":"Автоматизация замены дисков с помощью Ansible","leadData":{"textHtml":"\u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fs9\u002Fga\u002Fq9\u002Fs9gaq9eke8gooeu1-nnsr5ocv7o.jpeg\"\u003E\u003Cbr\u003E\r\n\u003Cbr\u003E\r\nВсем привет. Я работаю ведущим системным администратором в ОК и отвечаю за стабильную работу портала. Хочу рассказать о том, как мы выстроили процесс автоматической замены дисков, а затем, как исключили из этого процесса администратора и заменили его ботом.\u003Cbr\u003E\r\n\u003Cbr\u003E\r\nЭта статья является своего рода транслитерацией \u003Ca href=\"https:\u002F\u002Fwww.youtube.com\u002Fwatch?v=5WhbG3FQveE&amp;list=FLKN7KW1sxju7fWJvKuyKxEQ\" rel=\"nofollow noopener noreferrer\"\u003Eвыступления\u003C\u002Fa\u003E на HighLoad+ 2018\u003Cbr\u003E","imageUrl":null,"buttonTextHtml":"Читать дальше &rarr;","image":null},"editorVersion":"1.0","postType":"article","postLabels":[],"author":{"scoreStats":{"score":17.2,"votesCount":29},"rating":0,"relatedData":null,"contacts":[],"authorContacts":[],"paymentDetails":{"paymentYandexMoney":null,"paymentPayPalMe":null,"paymentWebmoney":null},"id":"28246","alias":"Qk4l","fullname":"Артём Александров","avatarUrl":"\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Favatars\u002F0ab\u002F14c\u002Fa78\u002F0ab14ca78c65126554654c6e0536aa34.jpg","speciality":"User"},"statistics":{"commentsCount":7,"favoritesCount":66,"readingCount":8319,"score":19,"votesCount":21},"hubs":[{"relatedData":null,"id":"5116","alias":"odnoklassniki","type":"corporative","title":"Блог компании Одноклассники","titleHtml":"Блог компании Одноклассники","isProfiled":false},{"relatedData":null,"id":"221","alias":"sys_admin","type":"collective","title":"Системное администрирование","titleHtml":"Системное администрирование","isProfiled":true},{"relatedData":null,"id":"20788","alias":"devops","type":"collective","title":"DevOps","titleHtml":"DevOps","isProfiled":true}],"flows":[{"id":"6","alias":"admin","title":"Администрирование"}],"relatedData":null,"textHtml":"\u003Cdiv xmlns=\"http:\u002F\u002Fwww.w3.org\u002F1999\u002Fxhtml\"\u003E\u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fr\u002Fw780q1\u002Fwebt\u002Fs9\u002Fga\u002Fq9\u002Fs9gaq9eke8gooeu1-nnsr5ocv7o.jpeg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fs9\u002Fga\u002Fq9\u002Fs9gaq9eke8gooeu1-nnsr5ocv7o.jpeg\" data-blurred=\"true\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВсем привет. Я работаю ведущим системным администратором в ОК и отвечаю за стабильную работу портала. Хочу рассказать о том, как мы выстроили процесс автоматической замены дисков, а затем, как исключили из этого процесса администратора и заменили его ботом.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЭта статья является своего рода транслитерацией \u003Ca href=\"https:\u002F\u002Fwww.youtube.com\u002Fwatch?v=5WhbG3FQveE&amp;list=FLKN7KW1sxju7fWJvKuyKxEQ\"\u003Eвыступления\u003C\u002Fa\u003E на HighLoad+ 2018\u003Cbr\u002F\u003E\r\n\u003Ca name=\"habracut\"\u003E\u003C\u002Fa\u003E\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EПостроение процесса по замене дисков\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\n\u003Ch3\u003EСначала немного цифр\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\nОК — это гигантский сервис, которым пользуются миллионы людей. Его обслуживают около 7 тыс. серверов, которые расположены в 4 разных дата-центрах. В серверах стоит более 70 тыс. дисков. Если сложить их друг на друга, то получится башня высотой более 1 км. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЖёсткие диски — это компонент сервера, который выходит из строя чаще всего. При таких объемах нам приходится менять около 30 дисков в неделю, и эта процедура стала не очень приятной рутиной.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fi8\u002F92\u002Fcg\u002Fi892cglklhooat_z_qrsexsmzfu.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch3\u003EИнциденты\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\nУ нас в компании введен полноценный инцидент-менеджмент. Каждый инцидент мы фиксируем в Jira, а затем решаем и разбираем. Если инцидент был с эффектом для пользователей, то мы обязательно собираемся и думаем, как быстрее реагировать в таких случаях, как снизить эффект и конечно же как предотвратить повторение.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nНакопители не исключение. За их состоянием следит Zabbix. Мы мониторим сообщения в Syslog на предмет ошибок записи\u002Fчтения, анализируем состояние HW\u002FSW-рейдов, следим за SMART, для SSD вычисляем износ. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch3\u003EКак менялись диски раньше\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\nКогда в Zabbix загорается какой-то триггер, в Jira создаётся инцидент и автоматически ставится на соответствующих инженеров в дата-центрах. Мы так делаем со всеми HW-инцидентами, то есть такими, которые требуют какой-либо физической работы с оборудованием в дата-центре. \u003Cbr\u002F\u003E\r\nИнженер дата-центра — это человек, который решает вопросы, связанные с железом, отвечает за установку, обслуживание, демонтаж серверов. Получив тикет, инженер приступает к работе. В дисковых полках он меняет диски самостоятельно. Но если у него нет доступа к нужному устройству, инженер обращается к дежурным системным администраторам за помощью. В первую очередь нужно вывести диск из ротации. Для этого нужно сделать необходимые изменения на сервере, остановить приложения, отмонтировать диск.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nДежурный системный администратор в течение рабочей смены отвечает за работу всего портала. Он расследует инциденты, занимается ремонтом, помогает разработчикам выполнять небольшие задачи. Не занимается он только жёсткими дисками.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nРаньше инженеры дата-центров общались с системным администратором в чате. Инженеры слали ссылки на Jira-тикеты, администратор проходил по ним, вёл лог работ в каком-нибудь блокноте. Но для таких задач чаты неудобны: информация там не структурирована и быстро теряется. Да и администратор мог просто отойти от компьютера и какое-то время не отвечать на запросы, а инженер стоял у сервера с пачкой дисков и ждал.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nНо самое плохое было в том, что администраторы не видели картины целиком: какие существуют дисковые инциденты, где потенциально может возникнуть проблема. Это связано с тем, что мы все HW-инциденты отдаём инженерам. Да, можно было отобразить все инциденты на дэшборде администратора. Но их очень много, и администратор привлекался лишь по некоторым из них.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nКроме того, инженер не мог корректно расставить приоритеты, потому что он ничего не знает о назначении конкретных серверов, о распределении информации по накопителям.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch3\u003EНовая процедура замены\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\nПервое, что мы сделали, это вынесли все дисковые инциденты в отдельный тип «HW-диск» и добавили к нему поля «имя блочного устройства», «размер» и «тип диска», чтобы эта информация сохранялась в тикете, и не приходилось ей постоянно обмениваться в чате. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cdiv style=\"text-align:center;\"\u003E\u003Cimg height=\"400\" src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002F0y\u002Fuz\u002Fjm\u002F0yuzjmgoz4hgulcpf5o5vhwde18.png\" data-width=\"300\"\u002F\u003E\u003C\u002Fdiv\u003E\u003Cbr\u002F\u003E\r\nТакже мы договорились, что в рамках одного инцидента будем менять только один диск. Это существенно упростило в дальнейшем процесс автоматизации, сбор статистики и работу. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nКроме этого добавили поле «ответственный администратор». Туда автоматически подставляется дежурный сисадмин. Это очень удобно, потому что теперь инженер всегда видит, кто ответственный. Не нужно идти в календарь и искать. Именно это поле позволило вынести на дэшборд администратора тикеты, в которых, возможно, понадобится его помощь.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cdiv style=\"text-align:center;\"\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002F9x\u002Fb1\u002Fue\u002F9xb1ueokh0450wgkhq0ije1lfqa.png\"\u002F\u003E\u003C\u002Fdiv\u003E\u003Cbr\u002F\u003E\r\nЧтобы все участники получали максимум выгоды от нововведений, мы создали фильтры и дэшборды, рассказали о них ребятам. Когда люди понимают изменения, они не дистанцируются от них, как от чего-то ненужного. Инженеру важно знать номер стойки, где располагается сервер, размер и тип диска. Администратору нужно, в первую очередь, понимать, что это за группа серверов, какой может быть эффект при замене диска.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nНаличие полей и их отображение — это удобно, но от необходимости использовать чаты нас это не избавило. Для этого пришлось менять рабочий процесс. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nРаньше он был таким:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cdiv style=\"text-align:center;\"\u003E\u003Cimg height=\"400\" src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fwe\u002Fwc\u002Fdu\u002Fwewcdu4q8fqy-gd9wkbutorbabi.png\" data-width=\"300\"\u002F\u003E\u003C\u002Fdiv\u003E\u003Cbr\u002F\u003E\r\nСегодня так продолжают работать инженеры, когда им не требуется помощь администратора.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПервое, что мы сделали, — ввели новый статус \u003Cb\u003EInvestigate\u003C\u002Fb\u003E. В этом статусе тикет находится, когда инженер ещё не решил, нужен ему будет администратор или нет. Через этот статус инженер может передать тикет администратору. Кроме того, этим статусом мы помечаем тикеты, когда требуется замена диска, но самого диска на площадке нет. Такое бывает в случае CDN и удаленных площадок.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nТакже мы добавили статус \u003Cb\u003EReady\u003C\u002Fb\u003E. В него тикет переводится после замены диска. То есть всё уже сделано, но на сервере синхронизируется HW\u002FSW RAID. Это может занимать довольно много времени.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЕсли к работе привлекается администратор, схема немного усложняется.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cdiv style=\"text-align:center;\"\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fev\u002F5a\u002F58\u002Fev5a58jyosbyuc8cfrhr7sru5zo.png\" data-width=\"400\"\u002F\u003E\u003C\u002Fdiv\u003E\u003Cbr\u002F\u003E\r\nИз статуса \u003Cb\u003EOpen\u003C\u002Fb\u003E тикет может перевести как системный администратор, так и инженер. В статусе \u003Cb\u003EIn progress\u003C\u002Fb\u003E администратор выводит диск из ротации, чтобы инженер мог его просто вытащить: включает подсветку, отмонтирует диск, останавливает приложения, в зависимости от конкретной группы серверов.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЗатем тикет переводится в \u003Cb\u003EReady to change\u003C\u002Fb\u003E: это сигнал инженеру, что диск можно вытаскивать. Все поля в Jira уже заполнены, инженер знает, какой тип и размер диска. Эти данные проставляются либо на предыдущем статусе автоматически или администратором.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПосле замены диска тикет переводится в статус \u003Cb\u003EChanged\u003C\u002Fb\u003E. Проверяется, что вставили нужный диск, делается разметка, запускается приложение и какие-то задачи по восстановлению данных. Также тикет может быть переведён в статус \u003Cb\u003EReady\u003C\u002Fb\u003E, в этом случае ответственным останется администратор, потому что он заводил диск в ротацию. Полная схема выглядит так.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cdiv style=\"text-align:center;\"\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fxg\u002Fx7\u002F_z\u002Fxgx7_zk2mlyubhzepgfw0oogbt4.png\" data-width=\"500\"\u002F\u003E\u003C\u002Fdiv\u003E\u003Cbr\u002F\u003E\r\nДобавление новых полей существенно облегчило нам жизнь. Ребята стали работать со структурированной информацией, стало ясно, что и на каком этапе нужно делать. Приоритеты стали намного релевантнее, так как теперь их выставляет администратор.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nОтпала необходимость в чатах. Конечно, администратор может написать инженеру «здесь нужно заменить быстрее», или «уже вечер, успеешь заменить?». Но мы уже не общаемся ежедневно в чатах по этим вопросам.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nДиски стали менять пачками. Если администратор пришел на работу чуть пораньше, у него есть свободное время, и еще ничего не случилось, он может подготовить ряд серверов к замене: проставить поля, вывести диски из ротации и передать задачу инженеру. Инженер чуть позже приходит в дата-центр, видит задачу, берёт со склада нужные накопители и сразу меняет. В результате скорость замены увеличилась.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch3\u003EВынесенный опыт при построении Workflow\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003E\u003Cb\u003EПри построении процедуры нужно собирать информацию из разных источников.\u003C\u002Fb\u003E\u003Cbr\u002F\u003E\r\nНекоторые наши администраторы не знали, что инженер меняет диски самостоятельно. Некоторые считали, что за синхронизацией MD RAID следят инженеры, хотя у кого-то из них даже не было доступа для этого. Некоторые ведущие инженеры это делали, но не всегда, потому что процесс нигде не был описан.\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Cb\u003EПроцедура должна быть простой и понятной.\u003C\u002Fb\u003E\u003Cbr\u002F\u003E\r\nЧеловеку тяжело держать в голове множество шагов. Самые главные соседние статусы в Jira нужно выносить на главный экран. Можно их переименовать, например, In progress мы называем Ready to change. А остальные статусы можно прятать в выпадающее меню, чтобы они не мозолили глаза. Но лучше не ограничивать людей, дать возможность сделать переход.\u003Cbr\u002F\u003E\r\nРазъясняйте ценность нововведений. Когда люди понимают, они лучше принимают новую процедуру. Для нас было очень важно, чтобы люди не прокликивали весь процесс, а шли по нему. Потом мы строили на этом автоматизацию.\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Cb\u003EЖдать, анализировать, разбираться.\u003C\u002Fb\u003E\u003Cbr\u002F\u003E\r\nУ нас ушло около месяца на построение процедуры, техническую реализацию, встречи и обсуждения. А на внедрение — больше трёх месяцев. Я видел, как люди потихоньку начинают пользоваться нововведением. На первых этапах было много негатива. Но он совершенно не зависел от самой процедуры, её технической реализации. Например, один администратор пользовался не Jira, а Jira-плагином в Confluence, и некоторые вещи были ему недоступны. Показали ему Jira, у админа выросла продуктивность и по общим задачам, и по заменам дисков.\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EАвтоматизация замены дисков\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nК автоматизации замены дисков мы подступались несколько раз. У нас уже были наработки, скрипты, но все они работали либо в интерактивном, либо в ручном режиме, требовали запуска. И только после внедрения новой процедуры мы поняли, что как раз её нам не хватало.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nТак как теперь процесс замены у нас разбит на этапы, за каждым из которых определён исполнитель и список действий, мы можем включать автоматизацию поэтапно, а не сразу целиком. Например, самый простой этап — Ready (проверка синхронизации RAID\u002Fданных) можно легко делегировать боту. Когда бот чуть обучится, можно ему дать более ответственную задачу — ввод диска в ротацию итд.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch3\u003EЗоопарк сетапов\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\nПрежде чем рассказывать про бота, совершим небольшой экскурс в наш зоопарк инсталляций. В первую очередь он обусловлен гигантским размером нашей инфраструктуры. Во-вторых, под каждый сервис мы стараемся подобрать оптимальную конфигурацию железа. У нас около 20 моделей аппаратных RAID, в основном LSI и Adaptec, но встречаются и HP, и DELL разных версий. Каждый RAID-контроллер имеет свою утилиту управления. Набор команд и выдача по ним может отличаться от версии к версии у каждого RAID-контроллера. Там, где не используются HW-RAID, может быть mdraid.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПрактически все новые инсталляции мы делаем без дискового резервирования. Мы стараемся больше не использовать аппаратные и софтовые RAID, так как резервируем наши системы на уровне дата-центров, а не серверов. Но конечно есть много legacy-серверов, которые нужно поддерживать.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nГде-то диски в RAID-контроллерах прокидываются raw устройства, где-то используются JBOD. Есть конфигурации с одним системным диском в сервере, и если его нужно заменить, то приходится перераскатывать сервер с установкой ОС и приложений, причем тех же версий, потом добавлять конфигурационные файлы, запускать приложения. Также очень много групп серверов, где резервирование осуществляется не на уровне дисковой подсистемы, а непосредственно в самих приложениях.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВ общей сложности у нас более 400 уникальных групп серверов, на которых работает около 100 различных приложений. Чтобы покрыть такое огромное количество вариантов, нам нужен был многофункциональный инструмент автоматизации. Желательно с простым DSL, чтобы поддерживать мог не только тот, кто это написал.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nМы выбрали Ansible, потому что он agentless: не нужно было подготавливать инфраструктуру, быстрый старт. К тому же, он написан на Python, который принят как стандарт в команде.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch3\u003EОбщая схема\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\nДавайте рассмотрим общую схему автоматизации на примере одного инцидента. Zabbix детектирует, что диск sdb вышел из строя, загорается триггер, создаётся тикет в Jira. Администратор посмотрел его, понял, что это не дубликат и не false positive, то есть нужно менять диск, и переводит тикет в In progress.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002F9s\u002Ffy\u002Fq5\u002F9sfyq5cucem0dbbhahfd3_w7tac.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\nПриложение DiskoBot, написанное на Python, периодически опрашивает Jira на предмет новых тикетов. Оно замечает, что появился новый тикет In progress, срабатывает соответствующий thread, который запускает playbook в Ansible (это делается для каждого статуса в Jira). В данном случае запускается Prepare2change.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nAnsible отправляется на хост, выводит диск из ротации и репортит статус приложению через Callbacks. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fi2\u002Fbk\u002Fnq\u002Fi2bknqits8exw9dtr7sj4zydl58.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\nПо результатам бот автоматически переводит тикет в Ready to change. Инженер получает уведомление и отправляется менять диск, после чего переводит тикет в Changed. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fh9\u002Fm8\u002Fzw\u002Fh9m8zwfrzltmu0q1tz8opctrccu.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\nПо вышеописанной схеме тикет попадает обратно к боту, тот запускает другой playbook, идет на хост и вводит диск в ротацию. Бот закрывает тикет. Ура!\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fcv\u002Fjs\u002Fw1\u002Fcvjsw1y9qrpkra2twsx-sy4jokc.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\nТеперь поговорим о некоторых компонентах системы.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch3\u003EDiskobot\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\nЭто приложение написано на Python. Оно выбирает тикеты из Jira в соответствии с \u003Cabbr title=\"JIRA Query Language\"\u003EJQL\u003C\u002Fabbr\u003E. В зависимости от статуса тикета последний попадает к соответствующему обработчику, который в свою очередь запускает соответствующий статусу Ansible playbook.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nJQL и интервалы опроса определены в файле конфигурации приложения.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003Ejira_states:\n  investigate:\n    jql: '… status = Open and \"Disk Size\" is EMPTY'\n    interval: 180\n\n  inprogress:\n    jql: '…  and \"Disk Size\" is not EMPTY and \"Device Name\" is not EMPTY'\n \n  ready:\n    jql: '… and (labels not in (\"dbot_ignore\") or labels is EMPTY)'\n    interval: 7200\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nНапример, среди тикетов в статусе In progress, выбираются только те у которых заполнены поля Disk size и Device name. Device name — это имя блочного устройства, нужного для выполнения playbook’а. Disk size нужен для того, чтобы инженер знал какого размера диск необходим.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nА среди тикетов со статусом Ready отфильтровываются тикеты с лейблом dbot_ignore. К слову, Jira лейблы мы используем как для подобной фильтрации, так и для маркирования дубликатов тикетов, и сбора статистики.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВ случае сбоя playbook’а Jira присваивает лейбл dbot_failed, чтобы впоследствии можно было разобраться. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch3\u003EВзаимодействие с Ansible\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\nПриложение взаимодействует с Ansible через \u003Ca href=\"https:\u002F\u002Fdocs.ansible.com\u002Fansible\u002Flatest\u002Fdev_guide\u002Fdeveloping_api.html\"\u003EAnsible Python API\u003C\u002Fa\u003E. В playbook_executor мы передаем имя файла и набор переменных. Это позволяет держать Ansible-проект в виде обычных yml-файлов, а не описывать его в Python-коде. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nТакже в Ansible через *extra_vars* передаются имя блочного устройства, статус тикета, а также callback_url, в котором зашит issue key — он используется для callback в HTTP.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nДля каждого запуска генерируется временный inventory, состоящий из одного хоста и группы, в которую входит этот хост, чтобы применились group_vars.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВот пример таска, в котором реализован HTTP callback.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nРезультат выполнения playbook’ов мы получаем с помощью callaback(-ов). Они двух типов:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003E\u003Ca href=\"https:\u002F\u002Fdocs.ansible.com\u002Fansible\u002Flatest\u002Fplugins\u002Fcallback.html\"\u003EAnsible callback plugin\u003C\u002Fa\u003E, он предоставляет данные по результатам выполнения playbook’а. Там описаны задачи, которые были запущены, выполнены удачно или неудачно. Этот callback вызывается по окончанию проигрывания playbook’а.\u003C\u002Fli\u003E\r\n\u003Cli\u003EHTTP callback для получения информации во время проигрывания playbook’а. В Ansible таске выполняем POST\u002FGET запроc в строну нашего приложения.\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\nЧерез HTTP callback(-и) передаются переменные, которые были определены при выполнении playbook’а и которые мы хотим сохранить и использовать в последующих запусках. Эти данные мы пишем в sqlite.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nТакже через HTTP callback мы оставляем комментарии и изменяем статус тикета.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cdiv class=\"spoiler\" role=\"button\" tabindex=\"0\"\u003E\n                        \u003Cb class=\"spoiler_title\"\u003EHTTP callback\u003C\u002Fb\u003E\n                        \u003Cdiv class=\"spoiler_text\"\u003E\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E# Make callback to Diskobot App\n# Variables:\n#    callback_post_body: # A dict with follow keys. All keys are optional\n#       msg: If exist it would be posted to Jira as comment\n#       data: If exist it would be saved in Incident.variables\n#       desire_state: Set desire_state for incident\n#       status: If exist Proceed issue to that status\n\n  - name: Callback to Diskobot app (jira comment\u002Fstatus)\n    uri:\n      url: \"{{ callback_url }}\u002F{{ devname }}\"\n      user: \"{{ diskobot_user }}\"\n      password: \"{{ diskobot_pass }}\"\n      force_basic_auth: True\n      method: POST\n      body: \"{{ callback_post_body | to_json }}\"\n      body_format: json\n    delegate_to: 127.0.0.1\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003C\u002Fdiv\u003E\n                    \u003C\u002Fdiv\u003E\u003Cbr\u002F\u003E\r\nКак и многие однотипные таски, мы вынесли его в отдельный common file и включаем при необходимости, чтобы не повторять постоянно в playbook’ах. Здесь фигурирует callback_ url, в котором зашиты issue key и host name. Когда Ansible выполняет этот POST-запрос, бот понимает, что он пришел в рамках такого-то инцидента.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nА вот пример из playbook’а, в котором мы выводили диск из MD-устройства:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E  # Save mdadm configuration\n  - include: common\u002Fcallback.yml\n    vars:\n      callback_post_body:\n        status: 'Ready to change'\n        msg: \"Removed disk from mdraid {{ mdadm_remove_disk.msg | comment_jira }}\"\n        data:\n          mdadm_data: \"{{ mdadm_remove_disk.removed }}\"\n          parted_info: \"{{ parted_info | default() }}\"\n    when:\n      - mdadm_remove_disk | changed\n      - mdadm_remove_disk.removed\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nДанный таск переводит Jira тикет в статус «Ready to change» и добавляет комментарий. Также в переменной mdam_data сохраняется список md-устройств, из которых был удален диск, а в parted_info — дамп партиции от parted. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nКогда инженер вставит новый диск, мы сможем использовать эти переменные, чтобы восстановить дамп партиций, а также завести диск в те md-устройства, из которых он был удален.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch3\u003EAnsible check mode\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\nВключать автоматику было страшно. Поэтому мы решили запускать все playbook’и в режиме \u003Cbr\u002F\u003E\r\n\u003Ca href=\"https:\u002F\u002Fdocs.ansible.com\u002Fansible\u002Flatest\u002Fuser_guide\u002Fplaybooks_checkmode.html\"\u003Edry run\u003C\u002Fa\u003E, в котором Ansible не выполняет на серверах никаких действий, а только эмулирует их. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nТакой запуск прогоняется через отдельный callback-модуль, а результат выполнения playbook’а сохраняем в Jira в виде комментария.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Faa\u002Frz\u002F0s\u002Faarz0srsrqqxbru88guob9spjqm.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВо-первых, это позволило валидировать работу бота и playbook’ов. Во-вторых, повысило доверие администраторов к боту. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nКогда мы прошли валидацию и поняли, что можно запускать Ansible не только в режиме dry run, то сделали в Jira кнопку Run Diskobot для запуска того же playbook’а с теми же самыми переменными на том же самом хосте, но в обычном режиме. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nКроме того, кнопка используется для повторного запуска playbook’а в случае его сбоя.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch3\u003EСтруктура Playbooks\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\nЯ уже упоминал, что в зависимости от статуса Jira-тикета, бот запускает разные playbook’и.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВо-первых, так намного проще организовать вход. \u003Cbr\u002F\u003E\r\nВо-вторых, в некоторых случаях это просто необходимо. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nК примеру, при замене системного диска нужно в первую очередь пойти в систему развёртывания, создать задачу, и после корректного развёртывания сервер станет доступен по ssh, и можно на него накатить приложение. Если бы мы делали всё это в одном плейбуке, то Ansible не смог бы его выполнить из-за недоступности хоста.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nМы используем Ansible-роли для каждой группы серверов. Здесь видно, как организованны playbook(-и) в одной из них. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fef\u002F0o\u002Fhu\u002Fef0ohuo0obwa1htij7o4at6dvus.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЭто удобно, потому что сразу понятно, где какие таски расположены. В main.yml, который является входом для Ansible-роли, у нас может быть просто include по статусу тикета или общие таски, необходимые для всех, например, прохождение идентификации или получение токена.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch4\u003EInvestigation.yml\u003C\u002Fh4\u003E\u003Cbr\u002F\u003E\r\nЗапускается для тикетов в статусе Investigation и Open. Самое важное для этого playbook’а — имя блочного устройства. Эта информация не всегда доступна. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nДля её получения мы анализируем Jira summary, последнее значение от Zabbix-триггера. Там может содержаться имя блочного устройства — повезло. А может содержаться mount point, — тогда нужно пойти на сервер, пропарсить и вычислить нужный диск. Также триггер может передать scsi-адрес или какую-то другую информацию. Но бывает и так, что никаких зацепок нет, и приходится анализировать.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВыяснив имя блочного устройства, мы собираем по нему информацию о типе и размере диска для заполнения полей в Jira. Также снимаем информацию о вендоре, модели, прошивке, ID, SMART, и всё это вставляем в комментарий в Jira-тикете. Администратору и инженеру теперь не нужно искать эти данные. :)\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cdiv style=\"text-align:center;\"\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fm6\u002F64\u002Fkr\u002Fm664krcgyi4vkc-rq0almmqv6uy.png\"\u002F\u003E\u003C\u002Fdiv\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch4\u003Eprepare2change.yml\u003C\u002Fh4\u003E\u003Cbr\u002F\u003E\r\nВывод диска из ротации, подготовка к замене. Cамый сложный, ответственный этап. Именно здесь можно остановить приложение, когда его нельзя останавливать. Или вытащить диск, у которого не хватало реплик, и тем самым оказать эффект на пользователей, потерять какие-то данные. Здесь у нас больше всего проверок и нотификаций в чате.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВ самом простом случае речь идёт об удалении диска из HW\u002FMD RAID. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВ более сложных ситуациях (в наших системах хранения), когда резервирование выполняется на уровне приложения, необходимо пойти в приложение по API, сообщить о выводе диска, деактивировать его и запустить восстановление.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nМы сейчас массово мигрируем в \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fcompany\u002Fodnoklassniki\u002Fblog\u002F346868\"\u003Eоблако\u003C\u002Fa\u003E, и если сервер облачный, то Diskobot обращается к API облака, говорит, что он собирается работать с этим миньоном — сервером, на котором запущены контейнеры, — и просит «смигрируй все контейнеры с этого миньона». И заодно включает подсветку диска, чтобы инженер сразу увидел, какой нужно вытаскивать.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch4\u003Echanged.yml\u003C\u002Fh4\u003E\u003Cbr\u002F\u003E\r\nПосле замены диска мы в первую очередь проверяем его доступность. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nИнженеры не всегда ставят новые диски, поэтому мы добавили проверку удовлетворяющих нас значений SMART.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cdiv class=\"spoiler\" role=\"button\" tabindex=\"0\"\u003E\n                        \u003Cb class=\"spoiler_title\"\u003EКакие атрибуты мы смотрим\u003C\u002Fb\u003E\n                        \u003Cdiv class=\"spoiler_text\"\u003EReallocated Sectors Count (5) &lt; 100\u003Cbr\u002F\u003E\r\nCurrent Pending Sector Count (107) == 0\u003Cbr\u002F\u003E\r\n\u003C\u002Fdiv\u003E\n                    \u003C\u002Fdiv\u003E\u003Cbr\u002F\u003E\r\nЕсли диск не проходит проверку, инженеру сообщается о повторной замене. Если всё в порядке, подсветка выключается, наносится разметка и диск вводится в ротацию.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch4\u003Eready.yml\u003C\u002Fh4\u003E\u003Cbr\u002F\u003E\r\nCамый простой случай: проверка синхронизации HW\u002FSW raid или окончание синхроназации данных в приложении.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch3\u003EAPI приложений\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\nЯ несколько раз упоминал о том, что часто бот обращается к API приложений. Конечно, не у всех приложений были необходимые методы, поэтому пришлось их доработать. Вот самые важные методы, которые мы используем:\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003EStatus. Статус кластера или диска, чтобы понять можно ли с ним работать;\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003Cli\u003EStart\u002Fstop. Активация-деактивация диска;\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003Cli\u003EMigrate\u002Frestore. Миграция и восстановление данных во время и после замены.\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\n\u003Ch3\u003EВынесенный опыт по Ansible\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\nЯ очень люблю Ansible. Но часто, когда смотрю на разные opensource-проекты и вижу, как люди пишут playbook’и, мне становится немного страшно. Сложные логические переплетения из when\u002Floop, отсутствие гибкости и идемпотентности из-за частого использования shell\u002Fcommand.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nМы решили максимально всё упростить, воспользовавшись преимуществом Ansible — модульностью. На самом верхнем уровне находятся playbook’и, их может писать любой администратор, сторонний разработчик, который чуть-чуть знает Ansible.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E- name: Blink disk\n  become: True\n  register: locate_action\n  disk_locate:\n      locate: '{{ locate }}'\n      devname: '{{ devname }}'\n      ids: '{{ locate_ids | default(pd_id) | default(omit) }}'\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЕсли какую-то логику сложно реализовать в playbook’ах, мы выносим её в Ansible-модуль или фильтр. Скрипты могут быть написаны как на Python, так и на любом другом языке. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nИх легко и быстро писать. Например, модуль подсветки диска, пример использования которого приведен выше, состоит из 265 строк.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg height=\"400\" src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fc4\u002Fma\u002Fbp\u002Fc4mabpsyezbjbfp2likixvta24k.png\" data-width=\"400\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nНа самом нижнем уровне находится библиотека. Для этого проекта мы написали отдельное приложение, своего рода абстракцию над аппаратными и софтовыми RAID, которые выполняют соответствующие запросы. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg height=\"400\" src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fqf\u002Fvt\u002Fpr\u002Fqfvtprdi9jw2vxserynmxbrmdg8.png\" data-width=\"400\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nСамые сильные стороны Ansible — это простота и понятные playbook’и. Я считаю, что нужно этим пользоваться и не генерировать страшные yaml-файлы и огромное количество условий, shell-кода и лупов.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЕсли вы захотите повторить наш опыт с Ansible API, имейте в виду две вещи:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003EPlaybook_executor и вообще playbook’у нельзя передать таймаут. Есть таймаут на ssh-сессии, но нет таймаута на playbook. Если мы пытаемся отмонтировать диск, который в системе уже не существует, playbook будет выполняться бесконечно, поэтому пришлось обернуть его запуск в отдельный wrapper и убивать по таймауту.\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003Cli\u003EAnsible работает на базе fork-процессов, поэтому его API не потокобезопасно. Мы запускаем все наши playbook’и однопоточно.\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\nВ итоге нам удалось автоматизировать замену около 80 % дисков. В целом скорость замены выросла в два раза. Сегодня администратор лишь смотрит на инцидент и принимает решение, нужно ли менять диск или нет, а затем делает один клик.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nНо теперь мы начинаем сталкиваться с другой проблемой: некоторые новые администраторы не знают, как менять диски. :)\u003C\u002Fdiv\u003E","tags":[{"titleHtml":"disk"},{"titleHtml":"ansible"},{"titleHtml":"playbook"},{"titleHtml":"infrastructure"},{"titleHtml":"infrastructure as code"}],"metadata":{"stylesUrls":[],"scriptUrls":[],"shareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F452110\u002Fa4e30bdb5cf5bf700232f7e14c495bb0\u002F","shareImageWidth":1200,"shareImageHeight":630,"vkShareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F452110\u002Fa4e30bdb5cf5bf700232f7e14c495bb0\u002F?format=vk","schemaJsonLd":"{\"@context\":\"http:\\\u002F\\\u002Fschema.org\",\"@type\":\"Article\",\"mainEntityOfPage\":{\"@type\":\"WebPage\",\"@id\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fru\\\u002Fcompany\\\u002Fodnoklassniki\\\u002Fblog\\\u002F452110\\\u002F\"},\"headline\":\"Автоматизация замены дисков с помощью Ansible\",\"datePublished\":\"2019-05-30T12:18:24+03:00\",\"dateModified\":\"2021-06-13T22:08:03+03:00\",\"author\":{\"@type\":\"Person\",\"name\":\"Артём Александров\"},\"publisher\":{\"@type\":\"Organization\",\"name\":\"Habr\",\"logo\":{\"@type\":\"ImageObject\",\"url\":\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fa_\\\u002Flk\\\u002F9m\\\u002Fa_lk9mjkccjox-zccjrpfolmkmq.png\"}},\"description\":\"Всем привет. Я работаю ведущим системным администратором в ОК и отвечаю за стабильную работу портала. Хочу рассказать о том, как мы выстроили процесс автоматич...\",\"url\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fru\\\u002Fcompany\\\u002Fodnoklassniki\\\u002Fblog\\\u002F452110\\\u002F#post-content-body\",\"about\":[\"c_odnoklassniki\",\"h_sys_admin\",\"h_devops\",\"f_admin\"],\"image\":[\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fs9\\\u002Fga\\\u002Fq9\\\u002Fs9gaq9eke8gooeu1-nnsr5ocv7o.jpeg\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fi8\\\u002F92\\\u002Fcg\\\u002Fi892cglklhooat_z_qrsexsmzfu.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002F0y\\\u002Fuz\\\u002Fjm\\\u002F0yuzjmgoz4hgulcpf5o5vhwde18.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002F9x\\\u002Fb1\\\u002Fue\\\u002F9xb1ueokh0450wgkhq0ije1lfqa.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fwe\\\u002Fwc\\\u002Fdu\\\u002Fwewcdu4q8fqy-gd9wkbutorbabi.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fev\\\u002F5a\\\u002F58\\\u002Fev5a58jyosbyuc8cfrhr7sru5zo.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fxg\\\u002Fx7\\\u002F_z\\\u002Fxgx7_zk2mlyubhzepgfw0oogbt4.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002F9s\\\u002Ffy\\\u002Fq5\\\u002F9sfyq5cucem0dbbhahfd3_w7tac.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fi2\\\u002Fbk\\\u002Fnq\\\u002Fi2bknqits8exw9dtr7sj4zydl58.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fh9\\\u002Fm8\\\u002Fzw\\\u002Fh9m8zwfrzltmu0q1tz8opctrccu.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fcv\\\u002Fjs\\\u002Fw1\\\u002Fcvjsw1y9qrpkra2twsx-sy4jokc.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Faa\\\u002Frz\\\u002F0s\\\u002Faarz0srsrqqxbru88guob9spjqm.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fef\\\u002F0o\\\u002Fhu\\\u002Fef0ohuo0obwa1htij7o4at6dvus.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fm6\\\u002F64\\\u002Fkr\\\u002Fm664krcgyi4vkc-rq0almmqv6uy.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fc4\\\u002Fma\\\u002Fbp\\\u002Fc4mabpsyezbjbfp2likixvta24k.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fqf\\\u002Fvt\\\u002Fpr\\\u002Fqfvtprdi9jw2vxserynmxbrmdg8.png\"]}","metaDescription":"Всем привет. Я работаю ведущим системным администратором в ОК и отвечаю за стабильную работу портала. Хочу рассказать о том, как мы выстроили процесс автоматической замены дисков, а затем, как...","mainImageUrl":null,"amp":false},"polls":[],"commentsEnabled":true,"rulesRemindEnabled":false,"votesEnabled":true,"status":"published","plannedPublishTime":null,"checked":null,"isEditorial":false}},"articlesIds":{},"isLoading":false,"pagesCount":{},"route":{},"reasonsList":null,"view":"cards","lastVisitedRoute":{},"ssrCommentsArticleIds":[""],"karma":{}},"authorContribution":{"authors":{}},"betaTest":{"currentAnnouncement":null,"announcements":{},"announcementCards":null,"announcementComments":{},"announcementCommentThreads":{},"announcementCommentingStatuses":{},"archivedList":[]},"authorStatistics":{"articleRefs":{},"articleIds":{},"pagesCount":{},"route":{},"viewsCount":[],"maxStatsCount":{}},"career":{"seoLandings":[],"hubs":""},"comments":{"articleComments":{},"searchCommentsResults":null,"previewComment":null,"pagesCount":null,"commentAccess":{},"scrollParents":{},"pageArticleComments":{"lastViewedComment":0,"postId":null,"lastCommentTimestamp":"","moderated":[],"moderatedIds":[],"commentRoute":""}},"companies":{"companyRefs":{"odnoklassniki":{"alias":"odnoklassniki","imageUrl":"\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fcompany\u002F71f\u002Fe19\u002F390\u002F71fe19390ed6636132e2286f64397ea7.png","titleHtml":"Одноклассники","descriptionHtml":"Делимся экспертизой","relatedData":null,"statistics":{"postsCount":104,"newsCount":0,"vacanciesCount":0,"employeesCount":53,"careerRating":null,"subscribersCount":1324,"rating":85.67,"invest":null},"foundationDate":{"year":"2006","month":"03","day":"26"},"location":{"city":{"id":"447159","title":"Москва"},"region":{"id":"1885","title":"Москва и Московская обл."},"country":{"id":"168","title":"Россия"}},"siteUrl":"https:\u002F\u002Fok.ru\u002F","staffNumber":"201–500 человек","registrationDate":"2008-08-09T07:42:47+00:00","representativeUser":{"alias":"privatelv","fullname":"Андрей Губа"},"contacts":[],"settings":{"analyticsSettings":[],"branding":null,"status":"active"},"metadata":{"titleHtml":"Одноклассники, Москва - Делимся экспертизой с 26 марта 2006 г.","title":"Одноклассники, Москва - Делимся экспертизой с 26 марта 2006 г.","keywords":["Машинное обучение","Информационная безопасность","Разработка под Android","Блог компании JUG Ru Group","Тестирование мобильных приложений","google","поиск","яндекс","поисковые системы","seo","поисковые технологии","elasticsearch","nigma","нигма","машинное обучение","поисковая выдача","bing","search","вебальта","mail.ru","поисковик","поисковая оптимизация","microsoft","yahoo","алгоритмы"],"descriptionHtml":"104 статьи от авторов компании Одноклассники","description":"104 статьи от авторов компании Одноклассники"},"aDeskSettings":null,"careerAlias":"odnoklassniki","maxCustomTrackerLinks":0}},"companyIds":{},"companyTopIds":{},"pagesCount":{},"companyProfiles":{},"companiesCategories":[],"companiesCategoriesTotalCount":0,"companiesWidgets":{},"companiesWorkers":{},"companiesFans":{},"route":{},"isLoading":false,"companyWorkersLoading":false,"companyFansLoading":false,"vacancies":{}},"companiesContribution":{"hubs":{},"flows":{},"companyRefs":{}},"companyHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"conversation":{"messages":[],"respondent":null,"isLoadMore":false},"conversations":{"conversations":[],"unreadCount":0,"pagesCount":0,"isLoadMore":false},"desktopState":{"desktopFl":null,"desktopHl":null,"isChecked":false,"isLoginDemanded":false},"dfp":{"slotsDict":{}},"docs":{"menu":{},"articles":{},"mainMenu":[],"loading":{"main":false,"dropdown":false,"article":false}},"feature":{"isProbablyVisible":"true"},"flows":{"flows":[{"alias":"develop","id":1,"route":{"name":"FLOW_PAGE","params":{"flowName":"develop"}}},{"alias":"admin","id":6,"route":{"name":"FLOW_PAGE","params":{"flowName":"admin"}}},{"alias":"design","id":2,"route":{"name":"FLOW_PAGE","params":{"flowName":"design"}}},{"alias":"management","id":3,"route":{"name":"FLOW_PAGE","params":{"flowName":"management"}}},{"alias":"marketing","id":4,"route":{"name":"FLOW_PAGE","params":{"flowName":"marketing"}}},{"alias":"popsci","id":7,"route":{"name":"FLOW_PAGE","params":{"flowName":"popsci"}}}]},"global":{"isPwa":false,"device":"desktop","isHabrCom":true},"hubs":{"hubRefs":{},"hubIds":{},"pagesCount":{},"isLoading":false,"route":{}},"hubsBlock":{"hubRefs":{},"hubIds":{}},"i18n":{"fl":"ru","hl":"ru"},"info":{"infoPage":{},"isLoading":true},"location":{"urlStruct":{"protocol":null,"slashes":null,"auth":null,"host":null,"port":null,"hostname":null,"hash":null,"search":null,"query":{},"pathname":null,"path":null,"href":""},"searchQuery":null},"me":{"user":null,"ppgDemanded":false,"karmaResetInfo":{"canReincarnate":null,"wasReincarnated":null,"currentScore":null},"notes":null},"mostReadingList":{"mostReadingListIds":[],"mostReadingListRefs":null,"promoPost":null},"pinnedPost":{"pinnedPost":null},"ppa":{"articles":{},"card":null,"transactions":null,"totalTransactions":null,"isAccessible":null},"projectsBlocks":{"activeBlocks":{}},"pullRefresh":{"shouldRefresh":false},"sandbox":{"articleIds":[],"articleRefs":{},"pagesCount":null,"route":{},"lastVisitedRoute":{},"isLoading":false},"settingsOther":{"inputs":{"uiLang":{"errors":[],"ref":null,"value":""},"articlesLangEnglish":{"errors":[],"ref":null,"value":false},"articlesLangRussian":{"errors":[],"ref":null,"value":false},"agreement":{"errors":[],"ref":null,"value":false},"email":{"errors":[],"ref":null,"value":true},"digest":{"errors":[],"ref":null,"value":true}}},"similarList":{"similarListIds":[],"similarListRefs":null},"ssr":{"error":null,"isDataLoaded":false,"isDataLoading":false,"isHydrationFailed":false,"isServer":false},"userHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"userInvites":{"availableInvites":0,"usedInvitesIds":[],"usedInvitesRefs":{},"usedInvitesPagesCount":0,"unusedInvitesIds":[],"unusedInvitesRefs":{},"unusedInvitesPagesCount":0},"users":{"authorRefs":{},"authorIds":{},"pagesCount":{},"authorProfiles":{},"userHubs":{},"userInvitations":{},"authorFollowers":{},"authorFollowed":{},"karmaStats":[],"statistics":null,"isLoading":false,"authorFollowersLoading":false,"authorFollowedLoading":false,"userHubsLoading":false,"userInvitationsLoading":false,"route":{}},"viewport":{"prevScrollY":{},"scrollY":0,"width":0},"tracker":{"items":{},"pagesCache":{},"markedViewedSilently":{},"markedRead":{},"unreadCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null},"unviewedCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null}}};(function(){var s;(s=document.currentScript||document.scripts[document.scripts.length-1]).parentNode.removeChild(s);}());</script>
+<script src="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" defer></script><script src="https://assets.habr.com/habr-web/js/app.c0af73e7.js" defer></script>
+
+
+
+    <script>
+      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+        (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+        m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+      })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+    </script>
+  
+  <script type="text/javascript" >
+    (function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+    m[i].l=1*new Date();k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})
+    (window, document, "script", "https://mc.yandex.ru/metrika/tag.js", "ym");
+
+    ym(24049213, "init", {
+      defer:true,
+      trackLinks:true,
+      accurateTrackBounce:true,
+      webvisor:false,
+    });
+  </script>
+  <noscript>
+    <div>
+      <img src="https://mc.yandex.ru/watch/24049213" style="position:absolute; left:-9999px;" alt="" />
+    </div>
+  </noscript>
+  
+    <script type="text/javascript">
+      window.addEventListener('load', function () {
+        setTimeout(() => {
+          const img = new Image();
+          img.src = 'https://vk.com/rtrg?p=VK-RTRG-421343-57vKE';
+        }, 0);
+      });
+    </script>
+  
+</body>
+</html>

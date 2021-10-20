@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="ru" data-vue-meta="%7B%22lang%22:%7B%22ssr%22:%22ru%22%7D%7D">
+<head >
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
+  <title>Indexes in PostgreSQL — 8 (RUM) / Хабр</title>
+  <style>
+    /* cyrillic-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSxf6TF0.woff2) format('woff2');
+      unicode-range: U+0460-052F, U+1C80-1C88, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+    }
+
+    /* cyrillic */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveQhf6TF0.woff2) format('woff2');
+      unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+    }
+
+    /* latin-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSBf6TF0.woff2) format('woff2');
+      unicode-range: U+0100-024F, U+0259, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20CF, U+2113, U+2C60-2C7F, U+A720-A7FF;
+    }
+
+    /* latin */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveRhf6.woff2) format('woff2');
+      unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+    }
+  </style>
+  <link rel="preload" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" as="script"><link rel="preload" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/app.c0af73e7.js" as="script">
+  <link rel="stylesheet" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css"><link rel="stylesheet" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css">
+  <script>window.i18nFetch = new Promise((res, rej) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open('GET', '/js/i18n/ru-compiled.85eb77f0b17c8235e7b64b9f81ea5ec2.json');
+          xhr.responseType = 'json';
+          xhr.onload = function(e) {
+            if (this.status === 200) {
+              res({ru: xhr.response});
+            } else {
+              rej(e);
+            }
+          };
+          xhr.send();
+        });</script>
+  
+  <script data-vue-meta="ssr" src="/js/ads.js" onload="window['zhY4i4nJ9K'] = true" data-vmid="checkad"></script><script data-vue-meta="ssr" type="application/ld+json" data-vmid="ldjson-schema">{"@context":"http:\/\/schema.org","@type":"Article","mainEntityOfPage":{"@type":"WebPage","@id":"https:\/\/habr.com\/en\/company\/postgrespro\/blog\/452116\/"},"headline":"Indexes in PostgreSQL — 8 (RUM)","datePublished":"2019-05-20T12:14:39+03:00","dateModified":"2019-06-03T15:55:53+03:00","author":{"@type":"Person","name":"Егор Рогов"},"publisher":{"@type":"Organization","name":"Habr","logo":{"@type":"ImageObject","url":"https:\/\/habrastorage.org\/webt\/a_\/lk\/9m\/a_lk9mjkccjox-zccjrpfolmkmq.png"}},"description":"We have already discussed PostgreSQL indexing engine, the interface of access methods, and main access methods, such as: hash indexes, B-trees, GiST, SP-GiST,...","url":"https:\/\/habr.com\/en\/company\/postgrespro\/blog\/452116\/#post-content-body","about":["c_postgrespro","h_postgresql","h_sql","f_develop"],"image":["https:\/\/habrastorage.org\/webt\/k0\/up\/gn\/k0upgnbhka1wfwq6oozy9qo24ka.png"]}</script>
+  <script src="//www.googletagservices.com/tag/js/gpt.js" async></script>
+  <style>.grecaptcha-badge{visibility: hidden;}</style>
+  <meta name="habr-version" content="2.49.0">
+  
+  <meta data-vue-meta="ssr" property="fb:app_id" content="444736788986613"><meta data-vue-meta="ssr" property="fb:pages" content="472597926099084"><meta data-vue-meta="ssr" name="twitter:card" content="summary_large_image"><meta data-vue-meta="ssr" name="twitter:site" content="@habr_eng"><meta data-vue-meta="ssr" property="og:title" content="Indexes in PostgreSQL — 8 (RUM)" data-vmid="og:title"><meta data-vue-meta="ssr" name="twitter:title" content="Indexes in PostgreSQL — 8 (RUM)" data-vmid="twitter:title"><meta data-vue-meta="ssr" name="aiturec:title" content="Indexes in PostgreSQL — 8 (RUM)" data-vmid="aiturec:title"><meta data-vue-meta="ssr" name="description" content="We have already discussed PostgreSQL indexing engine, the interface of access methods, and main access methods, such as: hash indexes, B-trees, GiST, SP-GiST, and GIN. In this article, we will watch..." data-vmid="description"><meta data-vue-meta="ssr" itemprop="description" content="We have already discussed PostgreSQL indexing engine, the interface of access methods, and main access methods, such as: hash indexes, B-trees, GiST, SP-GiST, and GIN. In this article, we will watch..." data-vmid="description:itemprop"><meta data-vue-meta="ssr" property="og:description" content="We have already discussed PostgreSQL indexing engine, the interface of access methods, and main access methods, such as: hash indexes, B-trees, GiST, SP-GiST, and GIN. In this article, we will watch..." data-vmid="og:description"><meta data-vue-meta="ssr" name="twitter:description" content="We have already discussed PostgreSQL indexing engine, the interface of access methods, and main access methods, such as: hash indexes, B-trees, GiST, SP-GiST, and GIN. In this article, we will watch..." data-vmid="twitter:description"><meta data-vue-meta="ssr" property="aiturec:description" content="We have already discussed PostgreSQL indexing engine, the interface of access methods, and main access methods, such as: hash indexes, B-trees, GiST, SP-GiST, and GIN. In this article, we will watch..." data-vmid="aiturec:description"><meta data-vue-meta="ssr" itemprop="image" content="https://habr.com/share/publication/452116/f160ec43a1edac3fa0b3ff0a57d00e6b/" data-vmid="image:itemprop"><meta data-vue-meta="ssr" property="og:image" content="https://habr.com/share/publication/452116/f160ec43a1edac3fa0b3ff0a57d00e6b/" data-vmid="og:image"><meta data-vue-meta="ssr" property="aiturec:image" content="https://habr.com/share/publication/452116/f160ec43a1edac3fa0b3ff0a57d00e6b/" data-vmid="aiturec:image"><meta data-vue-meta="ssr" name="twitter:image" content="https://habr.com/share/publication/452116/f160ec43a1edac3fa0b3ff0a57d00e6b/" data-vmid="twitter:image"><meta data-vue-meta="ssr" property="vk:image" content="https://habr.com/share/publication/452116/f160ec43a1edac3fa0b3ff0a57d00e6b/" data-vmid="vk:image"><meta data-vue-meta="ssr" property="aiturec:item_id" content="452116" data-vmid="aiturec:item_id"><meta data-vue-meta="ssr" property="aiturec:datetime" content="2019-05-20T09:14:39.000Z" data-vmid="aiturec:datetime"><meta data-vue-meta="ssr" property="og:type" content="article" data-vmid="og:type"><meta data-vue-meta="ssr" property="og:locale" content="en_US" data-vmid="og:locale"><meta data-vue-meta="ssr" property="og:image:width" content="1200" data-vmid="og:image:width"><meta data-vue-meta="ssr" property="og:image:height" content="630" data-vmid="og:image:height">
+  <link data-vue-meta="ssr" href="https://habr.com/ru/rss/post/452116/?fl=ru" type="application/rss+xml" title="" rel="alternate" name="rss"><link data-vue-meta="ssr" href="https://habr.com/en/company/postgrespro/blog/452116/" rel="canonical" data-vmid="canonical"><link data-vue-meta="ssr" data-vmid="hreflang"><link data-vue-meta="ssr" image_src="image" href="https://habr.com/share/publication/452116/f160ec43a1edac3fa0b3ff0a57d00e6b/" data-vmid="image:href">
+  <meta name="apple-mobile-web-app-status-bar-style" content="#303b44">
+  <meta name="msapplication-TileColor" content="#629FBC">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="16x16"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-16.png"
+  >
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="32x32"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-32.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="76x76"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-76.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="120x120"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="152x152"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-152.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="180x180"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-180.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="256x256"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-256.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1136x640.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2436x1125.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1792x828.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_828x1792.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1334x750.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2208x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1125x2436.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2208.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2732x2048.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2688x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2224x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_750x1334.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x2732.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2388x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2224.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_640x1136.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2388.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x1536.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1536x2048.png"
+  >
+  <link
+    rel="mask-icon"
+    color="#77a2b6"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.svg"
+  >
+  <link
+    crossorigin="use-credentials"
+    href="/manifest.webmanifest"
+    rel="manifest"
+  >
+</head>
+<body>
+
+
+<div id="app" data-server-rendered="true" data-async-called="true"><div class="tm-layout__wrapper"><!----> <div></div> <!----> <header class="tm-header"><div class="tm-page-width"><div class="tm-header__container"><!----> <span class="tm-header__logo-wrap"><a href="/ru/" class="tm-header__logo tm-header__logo_ru"><svg height="16" width="16" class="tm-svg-img tm-header__icon"><title>Хабр</title> <use xlink:href="/img/habr-logo-ru.svg#logo"></use></svg></a> <span class="tm-header__beta-sign" style="display:none;">β</span></span> <div class="tm-dropdown tm-header__projects"><div class="tm-dropdown__head"><button class="tm-header__dropdown-toggle"><svg height="16" width="16" class="tm-svg-img tm-header__icon tm-header__icon_dropdown"><title>Открыть список</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#arrow-down"></use></svg></button></div> <!----></div> <a href="/ru/sandbox/start/" class="tm-header__become-author-btn">
+            Как стать автором
+          </a> <div class="tm-feature tm-header__feature tm-feature_variant-inline"><!----></div> <!----> <!----></div></div></header> <div class="tm-layout"><div class="tm-page-progress-bar"></div> <div data-menu-sticky="true" class="tm-base-layout__header tm-base-layout__header_is-sticky"><div class="tm-page-width"><div class="tm-base-layout__header-wrapper"><div class="tm-main-menu"><div class="tm-main-menu__section"><nav class="tm-main-menu__section-content"><!----> <a href="/ru/all/" class="tm-main-menu__item">
+        Все потоки
+      </a> <a href="/ru/flows/develop/" class="tm-main-menu__item">
+          Разработка
+        </a><a href="/ru/flows/admin/" class="tm-main-menu__item">
+          Администрирование
+        </a><a href="/ru/flows/design/" class="tm-main-menu__item">
+          Дизайн
+        </a><a href="/ru/flows/management/" class="tm-main-menu__item">
+          Менеджмент
+        </a><a href="/ru/flows/marketing/" class="tm-main-menu__item">
+          Маркетинг
+        </a><a href="/ru/flows/popsci/" class="tm-main-menu__item">
+          Научпоп
+        </a></nav></div></div> <div class="tm-header-user-menu tm-base-layout__user-menu"><a href="/ru/search/" class="tm-header-user-menu__item tm-header-user-menu__search"><svg height="24" width="24" class="tm-svg-img tm-header-user-menu__icon tm-header-user-menu__icon_search tm-header-user-menu__icon_dark"><title>Поиск</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#search"></use></svg></a> <!----> <!----> <!----> <div class="tm-header-user-menu__item tm-header-user-menu__user_desktop"><div class="tm-dropdown"><div class="tm-dropdown__head"><svg height="24" width="24" data-test-id="menu-toggle-guest" class="tm-svg-img tm-header-user-menu__icon"><title>Профиль</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#header-user"></use></svg> <!----></div> <!----></div> <!----></div> <!----></div></div></div></div> <!----> <div class="tm-page-width"></div> <main class="tm-layout__container"><div hl="ru" companyName="postgrespro" data-async-called="true" class="tm-page"><div class="tm-page-width"><div class="tm-page__header"><!----></div> <div class="tm-page__wrapper"><div class="tm-page__main tm-page__main_has-sidebar"><div class="pull-down"><div class="pull-down__header" style="height:0px;"><div class="pull-down__content" style="bottom:10px;"><svg height="24" width="24" class="tm-svg-img pull-down__arrow"><title>Обновить</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#pull-arrow"></use></svg></div></div> <div class="tm-article-presenter"><div class="tm-company-card tm-company-article__company-card"><div class="tm-company-card__info"><div class="tm-company-card__header"><a href="/ru/company/postgrespro/profile/" class="tm-company-card__avatar"><div class="tm-entity-image"><img alt="" height="48" src="//habrastorage.org/getpro/habr/company/4e0/339/621/4e0339621abc865fefb88f9e9f44748f.jpg" width="48" class="tm-entity-image__pic"></div></a> <!----> <div class="tm-rating tm-company-card__rating"><div class="tm-rating__header"> <div class="tm-rating__counter">218.7</div></div> <div class="tm-rating__text">
+    Рейтинг
+  </div></div></div> <div class="tm-company-card__info"><a href="/ru/company/postgrespro/profile/" class="tm-company-card__name">
+        Postgres Professional
+      </a> <div class="tm-company-card__description">Разработчик СУБД Postgres Pro</div></div></div> <div class="tm-company-card__buttons"><!----> <!----></div></div> <div class="tm-article-presenter__body"><div class="tm-misprint-area"><div class="tm-misprint-area__wrapper"><article class="tm-article-presenter__content tm-article-presenter__content_narrow"><div class="tm-article-presenter__header"> <div class="tm-article-snippet tm-article-presenter__snippet"><div class="tm-article-snippet__meta-container"><div class="tm-article-snippet__meta"><span class="tm-user-info tm-article-snippet__author"><a href="/ru/users/erogov/" title="erogov" class="tm-user-info__userpic"><div class="tm-entity-image"><img alt="" height="24" loading="lazy" src="//habrastorage.org/r/w32/getpro/habr/avatars/d16/573/7e4/d165737e421383f77f007015ebd01fb1.jpg" width="24" class="tm-entity-image__pic"></div></a> <span class="tm-user-info__user"><a href="/ru/users/erogov/" class="tm-user-info__username">
+      erogov
+    </a> </span></span> <span class="tm-article-snippet__datetime-published"><time datetime="2019-05-20T09:14:39.000Z" title="2019-05-20, 12:14">20  мая  2019 в 12:14</time></span></div> <!----></div> <h1 lang="en" class="tm-article-snippet__title tm-article-snippet__title_h1"><span>Indexes in PostgreSQL — 8 (RUM)</span></h1> <div class="tm-article-snippet__hubs"><span class="tm-article-snippet__hubs-item"><a href="/ru/company/postgrespro/blog/" class="tm-article-snippet__hubs-item-link router-link-active"><span>Блог компании Postgres Professional</span> <!----></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/postgresql/" class="tm-article-snippet__hubs-item-link"><span>PostgreSQL</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/sql/" class="tm-article-snippet__hubs-item-link"><span>SQL</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span></div> <div class="tm-article-snippet__labels"><div class="tm-article-snippet__label"><span>
+        Перевод
+      </span></div></div> <!----> <!----></div></div> <div class="tm-article-presenter__origin"><a href="https://habr.com/ru/company/postgrespro/blog/343488/" target="_blank" class="tm-article-presenter__origin-link">
+                Автор оригинала:
+                <span>
+                  Egor Rogov
+                </span></a></div> <div data-gallery-root="" lang="en" class="tm-article-body"><div id="post-content-body" class="article-formatted-body article-formatted-body_version-1"><div xmlns="http://www.w3.org/1999/xhtml">We have already discussed PostgreSQL <a href="https://habr.com/ru/company/postgrespro/blog/441962/">indexing engine</a>, the interface of access methods, and main access methods, such as: <a href="https://habr.com/post/442776/">hash indexes</a>, <a href="https://habr.com/ru/company/postgrespro/blog/443284/">B-trees</a>, <a href="https://habr.com/ru/company/postgrespro/blog/444742/">GiST</a>, <a href="https://habr.com/ru/company/postgrespro/blog/446624/">SP-GiST</a>, and <a href="https://habr.com/ru/company/postgrespro/blog/448746/">GIN</a>. In this article, we will watch how gin turns into rum.<br/>
+<br/>
+<h1>RUM</h1><br/>
+Although the authors claim that gin is a powerful genie, the theme of drinks has eventually won: next-generation GIN has been called RUM.<br/>
+<br/>
+This access method expands the concept that underlies GIN and enables us to perform full-text search even faster. In this series of articles, this is the only method that is not included in a standard PostgreSQL delivery and is an external extension. Several installation options are available for it:<br/>
+<br/>
+<ul>
+<li>Take «yum» or «apt» package from <a href="https://www.postgresql.org/download/">the PGDG repository</a>. For example, if you installed PostgreSQL from «postgresql-10» package, also install «postgresql-10-rum».</li>
+<li>Build from <a href="https://github.com/postgrespro/rum">source code on github</a> and install on your own (the instruction is there as well).</li>
+<li>Use as a part of Postgres Pro Enterprise (or at least read <a href="https://postgrespro.com/docs/enterprise/9.6/rum">the documentation</a> from there).</li>
+</ul><br/>
+<h2>Limitations of GIN</h2><br/>
+What limitations of GIN does RUM enable us to transcend?<br/>
+<br/>
+First, «tsvector» data type contains not only lexemes, but also information on their positions inside the document. As we observed <a href="https://habr.com/ru/company/postgrespro/blog/448746/">last time</a>, GIN index does not store this information. For this reason, operations to search for phrases, which appeared in version 9.6, are supported by GIN index inefficiently and have to access the original data for recheck.<br/>
+<br/>
+Second, search systems usually return the results sorted by relevance (whatever that means). We can use ranking functions «ts_rank» and «ts_rank_cd» to this end, but they have to be computed for each row of the result, which is certainly slow.<br/>
+<br/>
+To a first approximation, RUM access method can be considered as GIN that additionally stores position information and can return the results in a needed order (like <a href="https://habr.com/ru/company/postgrespro/blog/444742/">GiST</a> can return nearest neighbors). Let's move step by step.<br/>
+<a name="habracut"></a><br/>
+<h2>Searching for phrases</h2><br/>
+A full-text search query can contain special operators that take into account the distance between lexemes. For example, we can find documents in which «hand» is separated from «thigh» with two more word:<br/>
+<br/>
+<pre><code class="pgsql">postgres=# select to_tsvector('Clap your hands, slap your thigh') @@
+                  to_tsquery('hand &lt;3> thigh');
+</code></pre><pre><code class="plaintext"> ?column?
+----------
+ t
+(1 row)
+</code></pre><br/>
+Or we can indicate that the words must be located one after another:<br/>
+<br/>
+<pre><code class="pgsql">postgres=# select to_tsvector('Clap your hands, slap your thigh') @@
+                  to_tsquery('hand &lt;-> slap');
+</code></pre><pre><code class="plaintext"> ?column?
+----------
+ t
+(1 row)
+</code></pre><br/>
+Regular GIN index can return the documents that contain both lexemes, but we can check the distance between them only by looking into tsvector:<br/>
+<br/>
+<pre><code class="pgsql">postgres=# select to_tsvector('Clap your hands, slap your thigh');
+</code></pre><pre><code class="plaintext">             to_tsvector              
+--------------------------------------
+ 'clap':1 'hand':3 'slap':4 'thigh':6
+(1 row)
+</code></pre><br/>
+In RUM index, each lexeme does not just reference the table rows: each TID is supplied with the list of positions where the lexeme occurs in the document. This is how we can envisage the index created on the «slit-sheet» table, which is already quite familiar to us («rum_tsvector_ops» operator class is used for tsvector by default):<br/>
+<br/>
+<pre><code class="pgsql">postgres=# create extension rum;
+
+postgres=# create index on ts using rum(doc_tsv);
+</code></pre><br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/k0/up/gn/k0upgnbhka1wfwq6oozy9qo24ka.png"/><br/>
+<br/>
+Gray squares in the figure contain the position information added:<br/>
+<br/>
+<pre><code class="pgsql">postgres=# select ctid, left(doc,20), doc_tsv from ts;
+</code></pre><pre><code class="plaintext">  ctid |         left         |                         doc_tsv                         
+-------+----------------------+---------------------------------------------------------
+ (0,1) | Can a sheet slitter  | 'sheet':3,6 'slit':5 'slitter':4
+ (0,2) | How many sheets coul | 'could':4 'mani':2 'sheet':3,6 'slit':8 'slitter':7
+ (0,3) | I slit a sheet, a sh | 'sheet':4,6 'slit':2,8
+ (1,1) | Upon a slitted sheet | 'sheet':4 'sit':6 'slit':3 'upon':1
+ (1,2) | Whoever slit the she | 'good':7 'sheet':4,8 'slit':2 'slitter':9 'whoever':1
+ (1,3) | I am a sheet slitter | 'sheet':4 'slitter':5
+ (2,1) | I slit sheets.       | 'sheet':3 'slit':2
+ (2,2) | I am the sleekest sh | 'ever':8 'sheet':5,10 'sleekest':4 'slit':9 'slitter':6
+ (2,3) | She slits the sheet  | 'sheet':4 'sit':6 'slit':2
+(9 rows)
+</code></pre><br/>
+GIN also provides a postponed insertion when «fastupdate» parameter is specified; this functionality is removed from RUM.<br/>
+<br/>
+To see how the index works on live data, let's use the familiar <a href="https://oc.postgrespro.ru/index.php/s/fRxTZ0sVfPZzbmd">archive</a> of pgsql-hackers mailing list.<br/>
+<br/>
+<pre><code class="pgsql">fts=# alter table mail_messages add column tsv tsvector;
+
+fts=# set default_text_search_config = default;
+
+fts=# update mail_messages
+set tsv = to_tsvector(body_plain);
+</code></pre><pre><code class="plaintext">...
+UPDATE 356125
+</code></pre><br/>
+This is how a query that uses search for phrases is performed with GIN index:<br/>
+<br/>
+<pre><code class="pgsql">fts=# create index tsv_gin on mail_messages using gin(tsv);
+
+fts=# explain (costs off, analyze)
+select * from mail_messages where tsv @@ to_tsquery('hello &lt;-> hackers');
+</code></pre><pre><code class="plaintext">                                   QUERY PLAN                                    
+---------------------------------------------------------------------------------
+ Bitmap Heap Scan on mail_messages (actual time=2.490..18.088 rows=259 loops=1)
+   Recheck Cond: (tsv @@ to_tsquery('hello &lt;-> hackers'::text))
+   Rows Removed by Index Recheck: 1517
+   Heap Blocks: exact=1503
+   ->  Bitmap Index Scan on tsv_gin (actual time=2.204..2.204 rows=1776 loops=1)
+         Index Cond: (tsv @@ to_tsquery('hello &lt;-> hackers'::text))
+ Planning time: 0.266 ms
+ Execution time: 18.151 ms
+(8 rows)
+</code></pre><br/>
+As we can see from the plan, GIN index is used, but it returns 1776 potential matches, of which 259 are left and 1517 are dropped at the recheck stage.<br/>
+<br/>
+Let's delete the GIN index and build RUM.<br/>
+<br/>
+<pre><code class="pgsql">fts=# drop index tsv_gin;
+
+fts=# create index tsv_rum on mail_messages using rum(tsv);
+</code></pre><br/>
+The index now contains all the necessary information, and search is performed accurately:<br/>
+<br/>
+<pre><code class="pgsql">fts=# explain (costs off, analyze)
+select * from mail_messages
+where tsv @@ to_tsquery('hello &lt;-> hackers');
+</code></pre><pre><code class="plaintext">                                   QUERY PLAN                                  
+--------------------------------------------------------------------------------
+ Bitmap Heap Scan on mail_messages (actual time=2.798..3.015 rows=259 loops=1)
+   Recheck Cond: (tsv @@ to_tsquery('hello &lt;-> hackers'::text))
+   Heap Blocks: exact=250
+   ->  Bitmap Index Scan on tsv_rum (actual time=2.768..2.768 rows=259 loops=1)
+         Index Cond: (tsv @@ to_tsquery('hello &lt;-> hackers'::text))
+ Planning time: 0.245 ms
+ Execution time: 3.053 ms
+(7 rows)
+</code></pre><br/>
+<h2>Sorting by relevance</h2><br/>
+To return documents readily in the needed order, RUM index supports ordering operators, which we discussed in <a href="https://habr.com/ru/company/postgrespro/blog/444742/">GiST</a>-related article. RUM extension defines such an operator, <code>&lt;=></code>, which returns some distance between the document («tsvector») and query («tsquery»). For example:<br/>
+<br/>
+<pre><code class="pgsql">fts=# select to_tsvector('Can a sheet slitter slit sheets?') &lt;=&amp;gtl to_tsquery('slit');
+</code></pre><pre><code class="plaintext"> ?column?
+----------
+  16.4493
+(1 row)
+</code></pre><pre><code class="pgsql">fts=# select to_tsvector('Can a sheet slitter slit sheets?') &lt;=> to_tsquery('sheet');
+</code></pre><pre><code class="plaintext"> ?column?
+----------
+  13.1595
+(1 row)
+</code></pre><br/>
+The document appeared to be more relevant to the first query than to the second one: the more often the word occurs, the less «valuable» it is.<br/>
+<br/>
+Let's again try to compare GIN and RUM on a relatively large data size: we'll select ten most relevant documents containing «hello» and «hackers».<br/>
+<br/>
+<pre><code class="pgsql">fts=# explain (costs off, analyze)
+select * from mail_messages 
+where tsv @@ to_tsquery('hello &amp; hackers') 
+order by ts_rank(tsv,to_tsquery('hello &amp; hackers')) 
+limit 10;
+</code></pre><pre><code class="plaintext">                                         QUERY PLAN
+---------------------------------------------------------------------------------------------
+ Limit (actual time=27.076..27.078 rows=10 loops=1)
+   ->  Sort (actual time=27.075..27.076 rows=10 loops=1)
+         Sort Key: (ts_rank(tsv, to_tsquery('hello &amp; hackers'::text)))
+         Sort Method: top-N heapsort  Memory: 29kB
+         ->  Bitmap Heap Scan on mail_messages (actual ... rows=1776 loops=1)
+               Recheck Cond: (tsv @@ to_tsquery('hello &amp; hackers'::text))
+               Heap Blocks: exact=1503
+               ->  Bitmap Index Scan on tsv_gin (actual ... rows=1776 loops=1)
+                     Index Cond: (tsv @@ to_tsquery('hello &amp; hackers'::text))
+ Planning time: 0.276 ms
+ Execution time: 27.121 ms
+(11 rows)
+</code></pre><br/>
+GIN index returns 1776 matches, which are then sorted as a separate step to select ten best hits.<br/>
+<br/>
+With RUM index, the query is performed using a simple index scan: no extra documents are looked through, and no separate sorting is required:<br/>
+<br/>
+<pre><code class="pgsql">fts=# explain (costs off, analyze)
+select * from mail_messages
+where tsv @@ to_tsquery('hello &amp; hackers')
+order by tsv &lt;=> to_tsquery('hello &amp; hackers')
+limit 10;
+</code></pre><pre><code class="plaintext">                                         QUERY PLAN
+--------------------------------------------------------------------------------------------
+ Limit (actual time=5.083..5.171 rows=10 loops=1)
+   ->  Index Scan using tsv_rum on mail_messages (actual ... rows=10 loops=1)
+         Index Cond: (tsv @@ to_tsquery('hello &amp; hackers'::text))
+         Order By: (tsv &lt;=> to_tsquery('hello &amp; hackers'::text))
+ Planning time: 0.244 ms
+ Execution time: 5.207 ms
+(6 rows)
+</code></pre><br/>
+<h2>Additional information</h2><br/>
+RUM index, as well as GIN, can be built on several fields. But while GIN stores lexemes from each column independently of those from another column, RUM enables us to «associate» the main field («tsvector» in this case) with an additional one. To do this, we need to use a specialized operator class «rum_tsvector_addon_ops»:<br/>
+<br/>
+<pre><code class="pgsql">fts=# create index on mail_messages using rum(tsv RUM_TSVECTOR_ADDON_OPS, sent)
+  WITH (ATTACH='sent', TO='tsv');
+</code></pre><br/>
+We can use this index to return the results sorted on the additional field:<br/>
+<br/>
+<pre><code class="pgsql">fts=# select id, sent, sent &lt;=> '2017-01-01 15:00:00'
+from mail_messages
+where tsv @@ to_tsquery('hello')
+order by sent &lt;=> '2017-01-01 15:00:00'
+limit 10;
+</code></pre><pre><code class="plaintext">   id    |        sent         | ?column? 
+---------+---------------------+----------
+ 2298548 | 2017-01-01 15:03:22 |      202
+ 2298547 | 2017-01-01 14:53:13 |      407
+ 2298545 | 2017-01-01 13:28:12 |     5508
+ 2298554 | 2017-01-01 18:30:45 |    12645
+ 2298530 | 2016-12-31 20:28:48 |    66672
+ 2298587 | 2017-01-02 12:39:26 |    77966
+ 2298588 | 2017-01-02 12:43:22 |    78202
+ 2298597 | 2017-01-02 13:48:02 |    82082
+ 2298606 | 2017-01-02 15:50:50 |    89450
+ 2298628 | 2017-01-02 18:55:49 |   100549
+(10 rows)
+</code></pre><br/>
+Here we search for matching rows being as close to the specified date as possible, no matter earlier or later. To get the results that are strictly preceding (or following) the specified date, we need to use <code>&lt;=|</code> (or <code>|=></code>) operator.<br/>
+<br/>
+As we expect, the query is performed just by a simple index scan:<br/>
+<br/>
+<pre><code class="pgsql">ts=# explain (costs off)
+select id, sent, sent &lt;=> '2017-01-01 15:00:00' 
+from mail_messages
+where tsv @@ to_tsquery('hello')
+order by sent &lt;=> '2017-01-01 15:00:00'
+limit 10;
+</code></pre><pre><code class="plaintext">                                   QUERY PLAN
+---------------------------------------------------------------------------------
+ Limit
+   ->  Index Scan using mail_messages_tsv_sent_idx on mail_messages
+         Index Cond: (tsv @@ to_tsquery('hello'::text))
+         Order By: (sent &lt;=> '2017-01-01 15:00:00'::timestamp without time zone)
+(4 rows)
+</code></pre><br/>
+If we created the index without the additional information on the field association, for a similar query, we would have to sort all results of the index scan.<br/>
+<br/>
+In addition to the date, we can certainly add fields of other data types to RUM index. Virtually all base types are supported. For example, an online store can quickly display goods by novelty (date), price (numeric), and popularity or discount value (integer or floating-point).<br/>
+<br/>
+<h2>Other operator classes</h2><br/>
+To complete the picture, we should mention other operator classes available.<br/>
+<br/>
+Let's start with <strong>«rum_tsvector_hash_ops»</strong> and <strong>«rum_tsvector_hash_addon_ops»</strong>. They are similar to already discussed «rum_tsvector_ops» and «rum_tsvector_addon_ops», but the index stores hash code of the lexeme rather than the lexeme itself. This can reduce the index size, but of course, search becomes less accurate and requires recheck. Besides, the index no longer supports search of a partial match.<br/>
+<br/>
+It is interesting to look at <strong>«rum_tsquery_ops»</strong> operator class. It enables us to solve an «inverse» problem: find queries that match the document. Why could this be needed? For example, to subscribe a user to new goods according to his/her filter or to automatically categorize new documents. Look at this simple example:<br/>
+<br/>
+<pre><code class="pgsql">fts=# create table categories(query tsquery, category text);
+
+fts=# insert into categories values
+  (to_tsquery('vacuum | autovacuum | freeze'), 'vacuum'),
+  (to_tsquery('xmin | xmax | snapshot | isolation'), 'mvcc'),
+  (to_tsquery('wal | (write &amp; ahead &amp; log) | durability'), 'wal');
+
+fts=# create index on categories using rum(query);
+
+fts=# select array_agg(category)
+from categories
+where to_tsvector(
+  'Hello hackers, the attached patch greatly improves performance of tuple
+   freezing and also reduces size of generated write-ahead logs.'
+) @@ query;
+</code></pre><pre><code class="plaintext">  array_agg  
+--------------
+ {vacuum,wal}
+(1 row)
+</code></pre><br/>
+The remaining operator classes <strong>«rum_anyarray_ops»</strong> and <strong>«rum_anyarray_addon_ops»</strong> are designed to manipulate arrays rather than «tsvector». This was already discussed for GIN <a href="https://habr.com/ru/company/postgrespro/blog/448746/">last time</a> and does not need to be repeated.<br/>
+<br/>
+<h2>The sizes of the index and write-ahead log (WAL)</h2><br/>
+It is clear that since RUM stores more information than GIN, it must have larger size. We were comparing the sizes of different indexes last time; let's add RUM to this table:<br/>
+<br/>
+<pre><code class="plaintext">  rum   |  gin   |  gist  | btree
+--------+--------+--------+--------
+ 457 MB | 179 MB | 125 MB | 546 MB
+</code></pre><br/>
+As we can see, the size grew quite significantly, which is the cost of fast search.<br/>
+<br/>
+It is worth paying attention to one more unobvious point: RUM is an extension, that is, it can be installed without any modifications to the system core. This was enabled in version 9.6 thanks to a patch by <a href="https://habrahabr.ru/users/smagen/">Alexander Korotkov</a>. One of the problems that had to be solved to this end was generation of log records. A technique for logging of operations must be absolutely reliable, therefore, an extension cannot be let into this kitchen. Instead of permitting the extension to create its own types of log records, the following is in place: the code of the extension communicates its intention to modify a page, makes any changes to it, and signals the completion, and it's the system core, which compares the old and new versions of the page and generates unified log records required.<br/>
+<br/>
+The current log generation algorithm compares pages byte by byte, detects updated fragments, and logs each of these fragments, along with its offset from the page start. This works fine when updating only several bytes or the entire page. But if we add a fragment inside a page, moving the rest of the content down (or vice versa, remove a fragment, moving the content up), significantly more bytes will change than were actually added or removed.<br/>
+<br/>
+Due to this, intensively changing RUM index may generate log records of a considerably larger size than GIN (which, being not an extension, but a part of the core, manages the log on its own). The extent of this annoying effect greatly depends on an actual workload, but to get an insight into the issue, let's try to remove and add a number of rows several times, interleaving these operations with “vacuum”. We can evaluate the size of log records as follows: at the beginning and at the end, remember the position in the log using «pg_current_wal_location» function («pg_current_xlog_location» in versions earlier than ten) and then look at the difference.<br/>
+<br/>
+But of course, we should consider a lot of aspects here. We need to make sure that only one user is working with the system (otherwise, «extra» records will be taken into account). Even if this is the case, we take into account not only RUM, but also updates of the table itself and of the index that supports the primary key. Values of configuration parameters also affect the size («replica» log level, without compression, was used here). But let's try anyway.<br/>
+<br/>
+<pre><code class="pgsql">fts=# select pg_current_wal_location() as start_lsn \gset
+</code></pre><br/>
+<pre><code class="pgsql">fts=# insert into mail_messages(parent_id, sent, subject, author, body_plain, tsv)
+  select parent_id, sent, subject, author, body_plain, tsv
+  from mail_messages where id % 100 = 0;
+</code></pre><pre><code class="plaintext">INSERT 0 3576
+</code></pre><br/>
+<pre><code class="pgsql">fts=# delete from mail_messages where id % 100 = 99;
+</code></pre><pre><code class="plaintext">DELETE 3590
+</code></pre><br/>
+<pre><code class="pgsql">fts=# vacuum mail_messages;
+</code></pre><br/>
+<pre><code class="pgsql">fts=# insert into mail_messages(parent_id, sent, subject, author, body_plain, tsv)
+  select parent_id, sent, subject, author, body_plain, tsv
+  from mail_messages where id % 100 = 1;
+</code></pre><pre><code class="plaintext">INSERT 0 3605
+</code></pre><br/>
+<pre><code class="pgsql">fts=# delete from mail_messages where id % 100 = 98;
+</code></pre><pre><code class="plaintext">DELETE 3637
+</code></pre><br/>
+<pre><code class="pgsql">fts=# vacuum mail_messages;
+</code></pre><br/>
+<pre><code class="pgsql">fts=# insert into mail_messages(parent_id, sent, subject, author, body_plain, tsv)
+  select parent_id, sent, subject, author, body_plain, tsv from mail_messages
+  where id % 100 = 2;
+</code></pre><pre><code class="plaintext">INSERT 0 3625
+</code></pre><br/>
+<pre><code class="pgsql">fts=# delete from mail_messages where id % 100 = 97;
+</code></pre><pre><code class="plaintext">DELETE 3668
+</code></pre><br/>
+<pre><code class="pgsql">fts=# vacuum mail_messages;
+</code></pre><br/>
+<pre><code class="pgsql">fts=# select pg_current_wal_location() as end_lsn \gset
+fts=# select pg_size_pretty(:'end_lsn'::pg_lsn - :'start_lsn'::pg_lsn);
+</code></pre><pre><code class="plaintext"> pg_size_pretty
+----------------
+ 3114 MB
+(1 row)
+</code></pre><br/>
+So, we get around 3 GB. But if we repeat the same experiment with GIN index, this will make only around 700 MB.<br/>
+<br/>
+Therefore, it is desirable to have a different algorithm, which will find the minimal number of insert and delete operations that can transform one state of the page into another one. «diff» utility works in a similar way. <a href="https://habr.com/ru/users/tigvarts/">Oleg Ivanov</a> has already implemented such an algorithm, and his <a href="https://commitfest.postgresql.org/15/1363/">patch</a> is being discussed. In the above example, this patch enables us to reduce the size of log records by 1.5 times, to 1900 MB, at the cost of a small slowdown.<br/>
+<br/>
+<blockquote>Unfortunately, the patch has stuck and there's no activity around it.<br/>
+</blockquote><br/>
+<h2>Properties</h2><br/>
+As usual, let's look at the properties of RUM access method, paying attention to the differences from GIN (queries <a href="https://habr.com/ru/company/postgrespro/blog/442546/">have already been provided</a>).<br/>
+<br/>
+The following are the properties of the access method:<br/>
+<br/>
+<pre><code class="plaintext"> amname |     name      | pg_indexam_has_property
+--------+---------------+-------------------------
+ rum    | can_order     | f
+ rum    | can_unique    | f
+ rum    | can_multi_col | t
+ rum    | can_exclude   | t -- f for gin
+</code></pre><br/>
+The following index-layer properties are available:<br/>
+<br/>
+<pre><code class="plaintext">     name      | pg_index_has_property
+---------------+-----------------------
+ clusterable   | f
+ index_scan    | t -- f for gin
+ bitmap_scan   | t
+ backward_scan | f
+</code></pre><br/>
+Note that, unlike GIN, RUM supports index scan — otherwise, it would not have been possible to return exactly the required number of results in queries with «limit» clause. There is no need for the counterpart of «gin_fuzzy_search_limit» parameter accordingly. And as a consequence, the index can be used to support exclusion constraints.<br/>
+<br/>
+The following are column-layer properties:<br/>
+<br/>
+<pre><code class="plaintext">        name        | pg_index_column_has_property 
+--------------------+------------------------------
+ asc                | f
+ desc               | f
+ nulls_first        | f
+ nulls_last         | f
+ orderable          | f
+ distance_orderable | t -- f for gin
+ returnable         | f
+ search_array       | f
+ search_nulls       | f
+</code></pre><br/>
+The difference here is that RUM supports ordering operators. However, this is true not for all operator classes: for example, this is false for «tsquery_ops».<br/>
+<br/>
+<a href="https://habr.com/ru/company/postgrespro/blog/452900/">Read on</a>.</div></div> <!----> <!----></div> <div class="tm-article-presenter__meta"><div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Теги:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bpostgresql%5D" class="tm-tags-list__link">postgresql</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bpostgres%5D" class="tm-tags-list__link">postgres</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bindex%5D" class="tm-tags-list__link">index</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bindexing%5D" class="tm-tags-list__link">indexing</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bsql%5D" class="tm-tags-list__link">sql</a></li></ul></div> <div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Хабы:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/company/postgrespro/blog/" class="tm-hubs-list__link router-link-active">
+    Блог компании Postgres Professional
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/postgresql/" class="tm-hubs-list__link">
+    PostgreSQL
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/sql/" class="tm-hubs-list__link">
+    SQL
+  </a></li></ul></div></div></article></div> <!----></div> <div class="tm-article-sticky-panel"><div class="tm-data-icons tm-article-sticky-panel__icons"><div class="tm-article-rating tm-data-icons__item"><div class="tm-votes-meter tm-article-rating__votes-switcher"><svg height="16" width="16" class="tm-svg-img tm-votes-meter__icon tm-votes-meter__icon_medium"><title>Всего голосов 10: ↑10 и ↓0</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-rating"></use></svg> <span title="Всего голосов 10: ↑10 и ↓0" class="tm-votes-meter__value tm-votes-meter__value_positive tm-votes-meter__value_medium">+10</span></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----> <span title="Количество просмотров" class="tm-icon-counter tm-data-icons__item"><svg height="16" width="16" class="tm-svg-img tm-icon-counter__icon"><title>Просмотры</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-views"></use></svg> <span class="tm-icon-counter__value">5.9K</span></span> <button title="Добавить в закладки" type="button" class="bookmarks-button tm-data-icons__item"><span title="Добавить в закладки" class="tm-svg-icon__wrapper bookmarks-button__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Добавить в закладки</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-favorite"></use></svg></span> <span title="Количество пользователей, добавивших публикацию в закладки" class="bookmarks-button__counter">
+    2
+  </span></button> <!----> <div title="Поделиться" class="tm-sharing tm-data-icons__item"><button type="button" class="tm-sharing__button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="tm-sharing__icon"><path fill="currentColor" d="M10.33.275l9.047 7.572a.2.2 0 010 .306l-9.048 7.572a.2.2 0 01-.328-.153V11c-8 0-9.94 6-9.94 6S-1 5 10 5V.428a.2.2 0 01.328-.153z"></path></svg></button> <!----></div> <DIV class="v-portal" style="display:none;"></DIV></div> </div></div> <!----> <!----> <div class="tm-article-presenter__footer"><div class="tm-article-blocks"><!----> <section class="tm-block tm-block_spacing-bottom"><!----> <div class="tm-block__body tm-block__body_variant-balanced"><div class="tm-article-author"><div class="tm-article-author__company"><div class="tm-article-author__company-card"><div class="tm-company-snippet"><a href="/ru/company/postgrespro/profile/" class="tm-company-snippet__logo-link"><div class="tm-entity-image"><img alt="" height="40" src="//habrastorage.org/getpro/habr/company/4e0/339/621/4e0339621abc865fefb88f9e9f44748f.jpg" width="40" class="tm-entity-image__pic"></div></a> <div class="tm-company-snippet__info"><a href="/ru/company/postgrespro/profile/" class="tm-company-snippet__title">Postgres Professional</a> <div class="tm-company-snippet__description">Разработчик СУБД Postgres Pro</div></div></div> <div class="tm-article-author__buttons"><!----> <!----></div></div> <div class="tm-article-author__company-contacts"><a href="https://facebook.com/PostgresProfessional" rel="noopener" target="_blank" class="tm-article-author__contact">
+      Facebook
+    </a><a href="https://twitter.com/PostgresPro" rel="noopener" target="_blank" class="tm-article-author__contact">
+      Twitter
+    </a><a href="https://vk.com/public101507899" rel="noopener" target="_blank" class="tm-article-author__contact">
+      ВКонтакте
+    </a><a href="https://plus.google.com/+PostgresproRuCompany" rel="noopener" target="_blank" class="tm-article-author__contact">
+      Google+
+    </a><a href="https://postgrespro.livejournal.com/" rel="noopener" target="_blank" class="tm-article-author__contact">
+      LiveJournal
+    </a></div> <div class="tm-article-author__separator"></div></div> <div class="tm-user-card tm-article-author__user-card tm-user-card_variant-article"><div class="tm-user-card__info-container"><div class="tm-user-card__header"><div class="tm-user-card__header-data"><a href="/ru/users/erogov/" class="tm-user-card__userpic tm-user-card__userpic_size-40"><div class="tm-entity-image"><img alt="" src="//habrastorage.org/getpro/habr/avatars/d16/573/7e4/d165737e421383f77f007015ebd01fb1.jpg" class="tm-entity-image__pic"></div></a> <div class="tm-user-card__meta"><div title=" 170 голосов " class="tm-karma tm-user-card__karma"><div class="tm-karma__votes tm-karma__votes_positive">
+    163.5
+  </div> <div class="tm-karma__text">
+    Карма
+  </div></div> <div title="Рейтинг пользователя" class="tm-rating tm-user-card__rating"><div class="tm-rating__header"> <div class="tm-rating__counter">55</div></div> <div class="tm-rating__text">
+    Рейтинг
+  </div></div></div></div></div> <div class="tm-user-card__info tm-user-card__info_variant-article"><div class="tm-user-card__title tm-user-card__title_variant-article"><span class="tm-user-card__name tm-user-card__name_variant-article">Егор Рогов</span> <a href="/ru/users/erogov/" class="tm-user-card__nickname tm-user-card__nickname_variant-article">
+          @erogov
+        </a> <!----></div> <p class="tm-user-card__short-info tm-user-card__short-info_variant-article">Пользователь</p></div></div> <div class="tm-user-card__buttons tm-user-card__buttons_variant-article"><!----> <!----> <!----> <!----> <!----></div></div> <div class="tm-article-author__user-contacts"><a href="http://egorius.dreamwidth.org/" rel="noopener" target="_blank" class="tm-article-author__contact">
+      Сайт
+    </a></div></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----></section> <div class="tm-article-blocks__comments"><div class="tm-article-page-comments"><div class="tm-article-comments-counter-link tm-article-comments-counter-button"><a href="/ru/company/postgrespro/blog/452116/comments/" class="tm-article-comments-counter-link__link tm-article-comments-counter-link__link_button-style"><svg height="16" width="16" class="tm-svg-img tm-article-comments-counter-link__icon tm-article-comments-counter-link__icon_contrasted"><title>Комментарии</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-comments"></use></svg> <span class="tm-article-comments-counter-link__value tm-article-comments-counter-link__value_contrasted">
+       Комментарии 2 
+    </span></a> <!----></div></div></div>  <!---->  <!----> <!----></div></div></div></div></div> <div class="tm-page__sidebar"><div class="tm-layout-sidebar"><div class="tm-layout-sidebar__placeholder_initial"></div> <div class="tm-sexy-sidebar tm-sexy-sidebar_initial" style="margin-top:0px;"><!----> <section class="tm-block tm-block_spacing-bottom"><header class="tm-block__header"><h2 class="tm-block__title">Информация</h2> <!----></header> <div class="tm-block__body"><div class="tm-company-basic-info"><dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Дата основания</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><time datetime="2015-01-26T21:00:00.000Z" title="2015-01-27, 00:00">27  января  2015</time></dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Местоположение</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap">
+    Россия
+  </dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Сайт</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><a href="http://www.postgrespro.ru/" target="_blank" class="tm-company-basic-info__link">
+      www.postgrespro.ru
+    </a></dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Численность</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap">
+    51–100 человек
+  </dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Дата регистрации</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><time datetime="2015-09-30T07:41:09.000Z" title="2015-09-30, 10:41">30  сентября  2015</time></dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Представитель</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><a href="/ru/users/x-wao/" class="tm-company-basic-info__link">
+      Иван Панченко
+    </a></dd></dl></div></div> <!----></section> <div class="tm-company-widgets"></div> <!----></div></div></div></div></div></div></main> <!----></div> <div class="tm-footer-menu"><div class="tm-page-width"><div class="tm-footer-menu__container"><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Ваш аккаунт
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr/?back=/ru/company/postgrespro/blog/452116/&amp;hl=ru" rel="nofollow" target="_self">
+                Войти
+              </a></li><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr-register/?back=/ru/company/postgrespro/blog/452116/&amp;hl=ru" rel="nofollow" target="_self">
+                Регистрация
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Разделы
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/" class="footer-menu__item-link router-link-active">
+                Публикации
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/news/" class="footer-menu__item-link">
+                Новости
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/hubs/" class="footer-menu__item-link">
+                Хабы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/companies/" class="footer-menu__item-link">
+                Компании
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/users/" class="footer-menu__item-link">
+                Авторы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/sandbox/" class="footer-menu__item-link">
+                Песочница
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Информация
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/docs/help/" class="footer-menu__item-link">
+                Устройство сайта
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/authors/codex/" class="footer-menu__item-link">
+                Для авторов
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/companies/corpblogs/" class="footer-menu__item-link">
+                Для компаний
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/docs/transparency/" class="footer-menu__item-link">
+                Документы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/agreement" target="_blank">
+                Соглашение
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/confidential/" target="_blank">
+                Конфиденциальность
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Услуги
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQLwRfQmXibiUlWaRg-BAc38s7oM3lJiaPju7qmdJsp8ysIvZ_G-Npem0njJLMozE2bPHMpDqiI5hhy/pub?start=false&amp;loop=false&amp;delayms=60000&amp;slide=id.g91a03369cd_4_297" target="_blank">
+                Реклама
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://habrastorage.org/storage/stuff/habr/service_price.pdf" target="_blank">
+                Тарифы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQJJds8-Di7BQSP_guHxICN7woVYoN5NP_22ra-BIo4bqnTT9FR6fB-Ku2P0AoRpX0Ds-LRkDeAoD8F/pub?start=false&amp;loop=false&amp;delayms=60000" target="_blank">
+                Контент
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://tmtm.timepad.ru/" target="_blank">
+                Семинары
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/megaprojects/" class="footer-menu__item-link">
+                Мегапроекты
+              </a></li></ul></div></div></div></div></div> <div class="tm-footer"><div class="tm-page-width"><div class="tm-footer__container"><!----> <div class="tm-footer__social"><a href="https://www.facebook.com/habrahabr.ru" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Facebook</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-facebook"></use></svg></a><a href="https://twitter.com/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Twitter</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-twitter"></use></svg></a><a href="https://vk.com/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>VK</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-vkontakte"></use></svg></a><a href="https://telegram.me/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Telegram</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-telegram"></use></svg></a><a href="https://www.youtube.com/channel/UCd_sTwKqVrweTt4oAKY5y4w" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Youtube</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-youtube"></use></svg></a><a href="https://zen.yandex.ru/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Яндекс Дзен</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-zen"></use></svg></a></div> <DIV class="v-portal" style="display:none;"></DIV> <button class="tm-footer__link"><!---->
+        Настройка языка
+      </button> <a href="/ru/about" class="tm-footer__link">
+        О сайте
+      </a> <a href="/ru/feedback/" class="tm-footer__link">
+        Техническая поддержка
+      </a> <!----> <a href="/berserk-mode-nope" class="tm-footer__link">
+        Вернуться на старую версию
+      </a> <div class="tm-footer-copyright"><span class="tm-copyright"><span class="tm-copyright__years">© 2006–2021 </span> <span class="tm-copyright__name">«<a href="https://company.habr.com/" rel="noopener" target="_blank" class="tm-copyright__link">Habr</a>»</span></span></div></div></div></div> <!----> <!----></div> <div class="vue-portal-target"></div></div>
+<script>window.__INITIAL_STATE__={"adblock":{"hasAcceptableAdsFilter":false,"hasAdblock":false},"articlesList":{"articlesList":{"452116":{"id":"452116","timePublished":"2019-05-20T09:14:39+00:00","isCorporative":true,"lang":"en","titleHtml":"Indexes in PostgreSQL — 8 (RUM)","leadData":{"textHtml":"We have already discussed PostgreSQL \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fpostgrespro\u002Fblog\u002F441962\u002F\"\u003Eindexing engine\u003C\u002Fa\u003E, the interface of access methods, and main access methods, such as: \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fpost\u002F442776\u002F\"\u003Ehash indexes\u003C\u002Fa\u003E, \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fpostgrespro\u002Fblog\u002F443284\u002F\"\u003EB-trees\u003C\u002Fa\u003E, \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fpostgrespro\u002Fblog\u002F444742\u002F\"\u003EGiST\u003C\u002Fa\u003E, \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fpostgrespro\u002Fblog\u002F446624\u002F\"\u003ESP-GiST\u003C\u002Fa\u003E, and \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fpostgrespro\u002Fblog\u002F448746\u002F\"\u003EGIN\u003C\u002Fa\u003E. In this article, we will watch how gin turns into rum.\u003Cbr\u003E\r\n\u003Cbr\u003E\r\n\u003Ch1\u003ERUM\u003C\u002Fh1\u003E\u003Cbr\u003E\r\nAlthough the authors claim that gin is a powerful genie, the theme of drinks has eventually won: next-generation GIN has been called RUM.\u003Cbr\u003E\r\n\u003Cbr\u003E\r\nThis access method expands the concept that underlies GIN and enables us to perform full-text search even faster. In this series of articles, this is the only method that is not included in a standard PostgreSQL delivery and is an external extension. Several installation options are available for it:\u003Cbr\u003E\r\n\u003Cbr\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003ETake «yum» or «apt» package from \u003Ca href=\"https:\u002F\u002Fwww.postgresql.org\u002Fdownload\u002F\"\u003Ethe PGDG repository\u003C\u002Fa\u003E. For example, if you installed PostgreSQL from «postgresql-10» package, also install «postgresql-10-rum».\u003C\u002Fli\u003E\r\n\u003Cli\u003EBuild from \u003Ca href=\"https:\u002F\u002Fgithub.com\u002Fpostgrespro\u002Frum\"\u003Esource code on github\u003C\u002Fa\u003E and install on your own (the instruction is there as well).\u003C\u002Fli\u003E\r\n\u003Cli\u003EUse as a part of Postgres Pro Enterprise (or at least read \u003Ca href=\"https:\u002F\u002Fpostgrespro.com\u002Fdocs\u002Fenterprise\u002F9.6\u002Frum\"\u003Ethe documentation\u003C\u002Fa\u003E from there).\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u003E\r\n\u003Ch2\u003ELimitations of GIN\u003C\u002Fh2\u003E\u003Cbr\u003E\r\nWhat limitations of GIN does RUM enable us to transcend?\u003Cbr\u003E\r\n\u003Cbr\u003E\r\nFirst, «tsvector» data type contains not only lexemes, but also information on their positions inside the document. As we observed \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fpostgrespro\u002Fblog\u002F448746\u002F\"\u003Elast time\u003C\u002Fa\u003E, GIN index does not store this information. For this reason, operations to search for phrases, which appeared in version 9.6, are supported by GIN index inefficiently and have to access the original data for recheck.\u003Cbr\u003E\r\n\u003Cbr\u003E\r\nSecond, search systems usually return the results sorted by relevance (whatever that means). We can use ranking functions «ts_rank» and «ts_rank_cd» to this end, but they have to be computed for each row of the result, which is certainly slow.\u003Cbr\u003E\r\n\u003Cbr\u003E\r\nTo a first approximation, RUM access method can be considered as GIN that additionally stores position information and can return the results in a needed order (like \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fpostgrespro\u002Fblog\u002F444742\u002F\"\u003EGiST\u003C\u002Fa\u003E can return nearest neighbors). Let's move step by step.\u003Cbr\u003E","imageUrl":null,"buttonTextHtml":"Read more →","image":null},"editorVersion":"1.0","postType":"article","postLabels":[{"type":"translation","data":{"originalAuthorName":"Egor Rogov","originalUrl":"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fpostgrespro\u002Fblog\u002F343488\u002F"}}],"author":{"scoreStats":{"score":163.5,"votesCount":170},"rating":55,"relatedData":null,"contacts":[{"title":"Сайт","url":"http:\u002F\u002Fegorius.dreamwidth.org\u002F","value":"http:\u002F\u002Fegorius.dreamwidth.org\u002F"}],"authorContacts":[{"title":"Сайт","url":"http:\u002F\u002Fegorius.dreamwidth.org\u002F","value":"http:\u002F\u002Fegorius.dreamwidth.org\u002F"}],"paymentDetails":{"paymentYandexMoney":null,"paymentPayPalMe":null,"paymentWebmoney":null},"id":"594155","alias":"erogov","fullname":"Егор Рогов","avatarUrl":"\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Favatars\u002Fd16\u002F573\u002F7e4\u002Fd165737e421383f77f007015ebd01fb1.jpg","speciality":"Пользователь"},"statistics":{"commentsCount":2,"favoritesCount":2,"readingCount":5898,"score":10,"votesCount":10},"hubs":[{"relatedData":null,"id":"19663","alias":"postgrespro","type":"corporative","title":"Блог компании Postgres Professional","titleHtml":"Блог компании Postgres Professional","isProfiled":false},{"relatedData":null,"id":"358","alias":"postgresql","type":"collective","title":"PostgreSQL","titleHtml":"PostgreSQL","isProfiled":true},{"relatedData":null,"id":"594","alias":"sql","type":"collective","title":"SQL","titleHtml":"SQL","isProfiled":true}],"flows":[{"id":"1","alias":"develop","title":"Разработка"}],"relatedData":null,"textHtml":"\u003Cdiv xmlns=\"http:\u002F\u002Fwww.w3.org\u002F1999\u002Fxhtml\"\u003EWe have already discussed PostgreSQL \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fpostgrespro\u002Fblog\u002F441962\u002F\"\u003Eindexing engine\u003C\u002Fa\u003E, the interface of access methods, and main access methods, such as: \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fpost\u002F442776\u002F\"\u003Ehash indexes\u003C\u002Fa\u003E, \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fpostgrespro\u002Fblog\u002F443284\u002F\"\u003EB-trees\u003C\u002Fa\u003E, \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fpostgrespro\u002Fblog\u002F444742\u002F\"\u003EGiST\u003C\u002Fa\u003E, \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fpostgrespro\u002Fblog\u002F446624\u002F\"\u003ESP-GiST\u003C\u002Fa\u003E, and \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fpostgrespro\u002Fblog\u002F448746\u002F\"\u003EGIN\u003C\u002Fa\u003E. In this article, we will watch how gin turns into rum.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch1\u003ERUM\u003C\u002Fh1\u003E\u003Cbr\u002F\u003E\r\nAlthough the authors claim that gin is a powerful genie, the theme of drinks has eventually won: next-generation GIN has been called RUM.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nThis access method expands the concept that underlies GIN and enables us to perform full-text search even faster. In this series of articles, this is the only method that is not included in a standard PostgreSQL delivery and is an external extension. Several installation options are available for it:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003ETake «yum» or «apt» package from \u003Ca href=\"https:\u002F\u002Fwww.postgresql.org\u002Fdownload\u002F\"\u003Ethe PGDG repository\u003C\u002Fa\u003E. For example, if you installed PostgreSQL from «postgresql-10» package, also install «postgresql-10-rum».\u003C\u002Fli\u003E\r\n\u003Cli\u003EBuild from \u003Ca href=\"https:\u002F\u002Fgithub.com\u002Fpostgrespro\u002Frum\"\u003Esource code on github\u003C\u002Fa\u003E and install on your own (the instruction is there as well).\u003C\u002Fli\u003E\r\n\u003Cli\u003EUse as a part of Postgres Pro Enterprise (or at least read \u003Ca href=\"https:\u002F\u002Fpostgrespro.com\u002Fdocs\u002Fenterprise\u002F9.6\u002Frum\"\u003Ethe documentation\u003C\u002Fa\u003E from there).\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\n\u003Ch2\u003ELimitations of GIN\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nWhat limitations of GIN does RUM enable us to transcend?\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nFirst, «tsvector» data type contains not only lexemes, but also information on their positions inside the document. As we observed \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fpostgrespro\u002Fblog\u002F448746\u002F\"\u003Elast time\u003C\u002Fa\u003E, GIN index does not store this information. For this reason, operations to search for phrases, which appeared in version 9.6, are supported by GIN index inefficiently and have to access the original data for recheck.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nSecond, search systems usually return the results sorted by relevance (whatever that means). We can use ranking functions «ts_rank» and «ts_rank_cd» to this end, but they have to be computed for each row of the result, which is certainly slow.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nTo a first approximation, RUM access method can be considered as GIN that additionally stores position information and can return the results in a needed order (like \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fpostgrespro\u002Fblog\u002F444742\u002F\"\u003EGiST\u003C\u002Fa\u003E can return nearest neighbors). Let's move step by step.\u003Cbr\u002F\u003E\r\n\u003Ca name=\"habracut\"\u003E\u003C\u002Fa\u003E\u003Cbr\u002F\u003E\r\n\u003Ch2\u003ESearching for phrases\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nA full-text search query can contain special operators that take into account the distance between lexemes. For example, we can find documents in which «hand» is separated from «thigh» with two more word:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003Epostgres=# select to_tsvector('Clap your hands, slap your thigh') @@\n                  to_tsquery('hand &lt;3\u003E thigh');\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E ?column?\n----------\n t\n(1 row)\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nOr we can indicate that the words must be located one after another:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003Epostgres=# select to_tsvector('Clap your hands, slap your thigh') @@\n                  to_tsquery('hand &lt;-\u003E slap');\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E ?column?\n----------\n t\n(1 row)\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nRegular GIN index can return the documents that contain both lexemes, but we can check the distance between them only by looking into tsvector:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003Epostgres=# select to_tsvector('Clap your hands, slap your thigh');\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E             to_tsvector              \n--------------------------------------\n 'clap':1 'hand':3 'slap':4 'thigh':6\n(1 row)\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nIn RUM index, each lexeme does not just reference the table rows: each TID is supplied with the list of positions where the lexeme occurs in the document. This is how we can envisage the index created on the «slit-sheet» table, which is already quite familiar to us («rum_tsvector_ops» operator class is used for tsvector by default):\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003Epostgres=# create extension rum;\n\npostgres=# create index on ts using rum(doc_tsv);\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fk0\u002Fup\u002Fgn\u002Fk0upgnbhka1wfwq6oozy9qo24ka.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nGray squares in the figure contain the position information added:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003Epostgres=# select ctid, left(doc,20), doc_tsv from ts;\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E  ctid |         left         |                         doc_tsv                         \n-------+----------------------+---------------------------------------------------------\n (0,1) | Can a sheet slitter  | 'sheet':3,6 'slit':5 'slitter':4\n (0,2) | How many sheets coul | 'could':4 'mani':2 'sheet':3,6 'slit':8 'slitter':7\n (0,3) | I slit a sheet, a sh | 'sheet':4,6 'slit':2,8\n (1,1) | Upon a slitted sheet | 'sheet':4 'sit':6 'slit':3 'upon':1\n (1,2) | Whoever slit the she | 'good':7 'sheet':4,8 'slit':2 'slitter':9 'whoever':1\n (1,3) | I am a sheet slitter | 'sheet':4 'slitter':5\n (2,1) | I slit sheets.       | 'sheet':3 'slit':2\n (2,2) | I am the sleekest sh | 'ever':8 'sheet':5,10 'sleekest':4 'slit':9 'slitter':6\n (2,3) | She slits the sheet  | 'sheet':4 'sit':6 'slit':2\n(9 rows)\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nGIN also provides a postponed insertion when «fastupdate» parameter is specified; this functionality is removed from RUM.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nTo see how the index works on live data, let's use the familiar \u003Ca href=\"https:\u002F\u002Foc.postgrespro.ru\u002Findex.php\u002Fs\u002FfRxTZ0sVfPZzbmd\"\u003Earchive\u003C\u002Fa\u003E of pgsql-hackers mailing list.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003Efts=# alter table mail_messages add column tsv tsvector;\n\nfts=# set default_text_search_config = default;\n\nfts=# update mail_messages\nset tsv = to_tsvector(body_plain);\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E...\nUPDATE 356125\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nThis is how a query that uses search for phrases is performed with GIN index:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003Efts=# create index tsv_gin on mail_messages using gin(tsv);\n\nfts=# explain (costs off, analyze)\nselect * from mail_messages where tsv @@ to_tsquery('hello &lt;-\u003E hackers');\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E                                   QUERY PLAN                                    \n---------------------------------------------------------------------------------\n Bitmap Heap Scan on mail_messages (actual time=2.490..18.088 rows=259 loops=1)\n   Recheck Cond: (tsv @@ to_tsquery('hello &lt;-\u003E hackers'::text))\n   Rows Removed by Index Recheck: 1517\n   Heap Blocks: exact=1503\n   -\u003E  Bitmap Index Scan on tsv_gin (actual time=2.204..2.204 rows=1776 loops=1)\n         Index Cond: (tsv @@ to_tsquery('hello &lt;-\u003E hackers'::text))\n Planning time: 0.266 ms\n Execution time: 18.151 ms\n(8 rows)\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nAs we can see from the plan, GIN index is used, but it returns 1776 potential matches, of which 259 are left and 1517 are dropped at the recheck stage.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nLet's delete the GIN index and build RUM.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003Efts=# drop index tsv_gin;\n\nfts=# create index tsv_rum on mail_messages using rum(tsv);\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nThe index now contains all the necessary information, and search is performed accurately:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003Efts=# explain (costs off, analyze)\nselect * from mail_messages\nwhere tsv @@ to_tsquery('hello &lt;-\u003E hackers');\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E                                   QUERY PLAN                                  \n--------------------------------------------------------------------------------\n Bitmap Heap Scan on mail_messages (actual time=2.798..3.015 rows=259 loops=1)\n   Recheck Cond: (tsv @@ to_tsquery('hello &lt;-\u003E hackers'::text))\n   Heap Blocks: exact=250\n   -\u003E  Bitmap Index Scan on tsv_rum (actual time=2.768..2.768 rows=259 loops=1)\n         Index Cond: (tsv @@ to_tsquery('hello &lt;-\u003E hackers'::text))\n Planning time: 0.245 ms\n Execution time: 3.053 ms\n(7 rows)\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Ch2\u003ESorting by relevance\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nTo return documents readily in the needed order, RUM index supports ordering operators, which we discussed in \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fpostgrespro\u002Fblog\u002F444742\u002F\"\u003EGiST\u003C\u002Fa\u003E-related article. RUM extension defines such an operator, \u003Ccode\u003E&lt;=\u003E\u003C\u002Fcode\u003E, which returns some distance between the document («tsvector») and query («tsquery»). For example:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003Efts=# select to_tsvector('Can a sheet slitter slit sheets?') &lt;=&amp;gtl to_tsquery('slit');\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E ?column?\n----------\n  16.4493\n(1 row)\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003Efts=# select to_tsvector('Can a sheet slitter slit sheets?') &lt;=\u003E to_tsquery('sheet');\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E ?column?\n----------\n  13.1595\n(1 row)\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nThe document appeared to be more relevant to the first query than to the second one: the more often the word occurs, the less «valuable» it is.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nLet's again try to compare GIN and RUM on a relatively large data size: we'll select ten most relevant documents containing «hello» and «hackers».\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003Efts=# explain (costs off, analyze)\nselect * from mail_messages \nwhere tsv @@ to_tsquery('hello &amp; hackers') \norder by ts_rank(tsv,to_tsquery('hello &amp; hackers')) \nlimit 10;\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E                                         QUERY PLAN\n---------------------------------------------------------------------------------------------\n Limit (actual time=27.076..27.078 rows=10 loops=1)\n   -\u003E  Sort (actual time=27.075..27.076 rows=10 loops=1)\n         Sort Key: (ts_rank(tsv, to_tsquery('hello &amp; hackers'::text)))\n         Sort Method: top-N heapsort  Memory: 29kB\n         -\u003E  Bitmap Heap Scan on mail_messages (actual ... rows=1776 loops=1)\n               Recheck Cond: (tsv @@ to_tsquery('hello &amp; hackers'::text))\n               Heap Blocks: exact=1503\n               -\u003E  Bitmap Index Scan on tsv_gin (actual ... rows=1776 loops=1)\n                     Index Cond: (tsv @@ to_tsquery('hello &amp; hackers'::text))\n Planning time: 0.276 ms\n Execution time: 27.121 ms\n(11 rows)\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nGIN index returns 1776 matches, which are then sorted as a separate step to select ten best hits.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nWith RUM index, the query is performed using a simple index scan: no extra documents are looked through, and no separate sorting is required:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003Efts=# explain (costs off, analyze)\nselect * from mail_messages\nwhere tsv @@ to_tsquery('hello &amp; hackers')\norder by tsv &lt;=\u003E to_tsquery('hello &amp; hackers')\nlimit 10;\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E                                         QUERY PLAN\n--------------------------------------------------------------------------------------------\n Limit (actual time=5.083..5.171 rows=10 loops=1)\n   -\u003E  Index Scan using tsv_rum on mail_messages (actual ... rows=10 loops=1)\n         Index Cond: (tsv @@ to_tsquery('hello &amp; hackers'::text))\n         Order By: (tsv &lt;=\u003E to_tsquery('hello &amp; hackers'::text))\n Planning time: 0.244 ms\n Execution time: 5.207 ms\n(6 rows)\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EAdditional information\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nRUM index, as well as GIN, can be built on several fields. But while GIN stores lexemes from each column independently of those from another column, RUM enables us to «associate» the main field («tsvector» in this case) with an additional one. To do this, we need to use a specialized operator class «rum_tsvector_addon_ops»:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003Efts=# create index on mail_messages using rum(tsv RUM_TSVECTOR_ADDON_OPS, sent)\n  WITH (ATTACH='sent', TO='tsv');\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nWe can use this index to return the results sorted on the additional field:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003Efts=# select id, sent, sent &lt;=\u003E '2017-01-01 15:00:00'\nfrom mail_messages\nwhere tsv @@ to_tsquery('hello')\norder by sent &lt;=\u003E '2017-01-01 15:00:00'\nlimit 10;\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E   id    |        sent         | ?column? \n---------+---------------------+----------\n 2298548 | 2017-01-01 15:03:22 |      202\n 2298547 | 2017-01-01 14:53:13 |      407\n 2298545 | 2017-01-01 13:28:12 |     5508\n 2298554 | 2017-01-01 18:30:45 |    12645\n 2298530 | 2016-12-31 20:28:48 |    66672\n 2298587 | 2017-01-02 12:39:26 |    77966\n 2298588 | 2017-01-02 12:43:22 |    78202\n 2298597 | 2017-01-02 13:48:02 |    82082\n 2298606 | 2017-01-02 15:50:50 |    89450\n 2298628 | 2017-01-02 18:55:49 |   100549\n(10 rows)\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nHere we search for matching rows being as close to the specified date as possible, no matter earlier or later. To get the results that are strictly preceding (or following) the specified date, we need to use \u003Ccode\u003E&lt;=|\u003C\u002Fcode\u003E (or \u003Ccode\u003E|=\u003E\u003C\u002Fcode\u003E) operator.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nAs we expect, the query is performed just by a simple index scan:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003Ets=# explain (costs off)\nselect id, sent, sent &lt;=\u003E '2017-01-01 15:00:00' \nfrom mail_messages\nwhere tsv @@ to_tsquery('hello')\norder by sent &lt;=\u003E '2017-01-01 15:00:00'\nlimit 10;\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E                                   QUERY PLAN\n---------------------------------------------------------------------------------\n Limit\n   -\u003E  Index Scan using mail_messages_tsv_sent_idx on mail_messages\n         Index Cond: (tsv @@ to_tsquery('hello'::text))\n         Order By: (sent &lt;=\u003E '2017-01-01 15:00:00'::timestamp without time zone)\n(4 rows)\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nIf we created the index without the additional information on the field association, for a similar query, we would have to sort all results of the index scan.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nIn addition to the date, we can certainly add fields of other data types to RUM index. Virtually all base types are supported. For example, an online store can quickly display goods by novelty (date), price (numeric), and popularity or discount value (integer or floating-point).\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EOther operator classes\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nTo complete the picture, we should mention other operator classes available.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nLet's start with \u003Cstrong\u003E«rum_tsvector_hash_ops»\u003C\u002Fstrong\u003E and \u003Cstrong\u003E«rum_tsvector_hash_addon_ops»\u003C\u002Fstrong\u003E. They are similar to already discussed «rum_tsvector_ops» and «rum_tsvector_addon_ops», but the index stores hash code of the lexeme rather than the lexeme itself. This can reduce the index size, but of course, search becomes less accurate and requires recheck. Besides, the index no longer supports search of a partial match.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nIt is interesting to look at \u003Cstrong\u003E«rum_tsquery_ops»\u003C\u002Fstrong\u003E operator class. It enables us to solve an «inverse» problem: find queries that match the document. Why could this be needed? For example, to subscribe a user to new goods according to his\u002Fher filter or to automatically categorize new documents. Look at this simple example:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003Efts=# create table categories(query tsquery, category text);\n\nfts=# insert into categories values\n  (to_tsquery('vacuum | autovacuum | freeze'), 'vacuum'),\n  (to_tsquery('xmin | xmax | snapshot | isolation'), 'mvcc'),\n  (to_tsquery('wal | (write &amp; ahead &amp; log) | durability'), 'wal');\n\nfts=# create index on categories using rum(query);\n\nfts=# select array_agg(category)\nfrom categories\nwhere to_tsvector(\n  'Hello hackers, the attached patch greatly improves performance of tuple\n   freezing and also reduces size of generated write-ahead logs.'\n) @@ query;\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E  array_agg  \n--------------\n {vacuum,wal}\n(1 row)\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nThe remaining operator classes \u003Cstrong\u003E«rum_anyarray_ops»\u003C\u002Fstrong\u003E and \u003Cstrong\u003E«rum_anyarray_addon_ops»\u003C\u002Fstrong\u003E are designed to manipulate arrays rather than «tsvector». This was already discussed for GIN \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fpostgrespro\u002Fblog\u002F448746\u002F\"\u003Elast time\u003C\u002Fa\u003E and does not need to be repeated.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EThe sizes of the index and write-ahead log (WAL)\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nIt is clear that since RUM stores more information than GIN, it must have larger size. We were comparing the sizes of different indexes last time; let's add RUM to this table:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E  rum   |  gin   |  gist  | btree\n--------+--------+--------+--------\n 457 MB | 179 MB | 125 MB | 546 MB\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nAs we can see, the size grew quite significantly, which is the cost of fast search.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nIt is worth paying attention to one more unobvious point: RUM is an extension, that is, it can be installed without any modifications to the system core. This was enabled in version 9.6 thanks to a patch by \u003Ca href=\"https:\u002F\u002Fhabrahabr.ru\u002Fusers\u002Fsmagen\u002F\"\u003EAlexander Korotkov\u003C\u002Fa\u003E. One of the problems that had to be solved to this end was generation of log records. A technique for logging of operations must be absolutely reliable, therefore, an extension cannot be let into this kitchen. Instead of permitting the extension to create its own types of log records, the following is in place: the code of the extension communicates its intention to modify a page, makes any changes to it, and signals the completion, and it's the system core, which compares the old and new versions of the page and generates unified log records required.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nThe current log generation algorithm compares pages byte by byte, detects updated fragments, and logs each of these fragments, along with its offset from the page start. This works fine when updating only several bytes or the entire page. But if we add a fragment inside a page, moving the rest of the content down (or vice versa, remove a fragment, moving the content up), significantly more bytes will change than were actually added or removed.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nDue to this, intensively changing RUM index may generate log records of a considerably larger size than GIN (which, being not an extension, but a part of the core, manages the log on its own). The extent of this annoying effect greatly depends on an actual workload, but to get an insight into the issue, let's try to remove and add a number of rows several times, interleaving these operations with “vacuum”. We can evaluate the size of log records as follows: at the beginning and at the end, remember the position in the log using «pg_current_wal_location» function («pg_current_xlog_location» in versions earlier than ten) and then look at the difference.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nBut of course, we should consider a lot of aspects here. We need to make sure that only one user is working with the system (otherwise, «extra» records will be taken into account). Even if this is the case, we take into account not only RUM, but also updates of the table itself and of the index that supports the primary key. Values of configuration parameters also affect the size («replica» log level, without compression, was used here). But let's try anyway.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003Efts=# select pg_current_wal_location() as start_lsn \\gset\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003Efts=# insert into mail_messages(parent_id, sent, subject, author, body_plain, tsv)\n  select parent_id, sent, subject, author, body_plain, tsv\n  from mail_messages where id % 100 = 0;\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003EINSERT 0 3576\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003Efts=# delete from mail_messages where id % 100 = 99;\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003EDELETE 3590\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003Efts=# vacuum mail_messages;\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003Efts=# insert into mail_messages(parent_id, sent, subject, author, body_plain, tsv)\n  select parent_id, sent, subject, author, body_plain, tsv\n  from mail_messages where id % 100 = 1;\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003EINSERT 0 3605\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003Efts=# delete from mail_messages where id % 100 = 98;\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003EDELETE 3637\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003Efts=# vacuum mail_messages;\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003Efts=# insert into mail_messages(parent_id, sent, subject, author, body_plain, tsv)\n  select parent_id, sent, subject, author, body_plain, tsv from mail_messages\n  where id % 100 = 2;\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003EINSERT 0 3625\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003Efts=# delete from mail_messages where id % 100 = 97;\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003EDELETE 3668\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003Efts=# vacuum mail_messages;\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003Efts=# select pg_current_wal_location() as end_lsn \\gset\nfts=# select pg_size_pretty(:'end_lsn'::pg_lsn - :'start_lsn'::pg_lsn);\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E pg_size_pretty\n----------------\n 3114 MB\n(1 row)\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nSo, we get around 3 GB. But if we repeat the same experiment with GIN index, this will make only around 700 MB.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nTherefore, it is desirable to have a different algorithm, which will find the minimal number of insert and delete operations that can transform one state of the page into another one. «diff» utility works in a similar way. \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fusers\u002Ftigvarts\u002F\"\u003EOleg Ivanov\u003C\u002Fa\u003E has already implemented such an algorithm, and his \u003Ca href=\"https:\u002F\u002Fcommitfest.postgresql.org\u002F15\u002F1363\u002F\"\u003Epatch\u003C\u002Fa\u003E is being discussed. In the above example, this patch enables us to reduce the size of log records by 1.5 times, to 1900 MB, at the cost of a small slowdown.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cblockquote\u003EUnfortunately, the patch has stuck and there's no activity around it.\u003Cbr\u002F\u003E\r\n\u003C\u002Fblockquote\u003E\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EProperties\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nAs usual, let's look at the properties of RUM access method, paying attention to the differences from GIN (queries \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fpostgrespro\u002Fblog\u002F442546\u002F\"\u003Ehave already been provided\u003C\u002Fa\u003E).\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nThe following are the properties of the access method:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E amname |     name      | pg_indexam_has_property\n--------+---------------+-------------------------\n rum    | can_order     | f\n rum    | can_unique    | f\n rum    | can_multi_col | t\n rum    | can_exclude   | t -- f for gin\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nThe following index-layer properties are available:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E     name      | pg_index_has_property\n---------------+-----------------------\n clusterable   | f\n index_scan    | t -- f for gin\n bitmap_scan   | t\n backward_scan | f\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nNote that, unlike GIN, RUM supports index scan — otherwise, it would not have been possible to return exactly the required number of results in queries with «limit» clause. There is no need for the counterpart of «gin_fuzzy_search_limit» parameter accordingly. And as a consequence, the index can be used to support exclusion constraints.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nThe following are column-layer properties:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E        name        | pg_index_column_has_property \n--------------------+------------------------------\n asc                | f\n desc               | f\n nulls_first        | f\n nulls_last         | f\n orderable          | f\n distance_orderable | t -- f for gin\n returnable         | f\n search_array       | f\n search_nulls       | f\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nThe difference here is that RUM supports ordering operators. However, this is true not for all operator classes: for example, this is false for «tsquery_ops».\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fpostgrespro\u002Fblog\u002F452900\u002F\"\u003ERead on\u003C\u002Fa\u003E.\u003C\u002Fdiv\u003E","tags":[{"titleHtml":"postgresql"},{"titleHtml":"postgres"},{"titleHtml":"index"},{"titleHtml":"indexing"},{"titleHtml":"sql"}],"metadata":{"stylesUrls":[],"scriptUrls":[],"shareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F452116\u002Ff160ec43a1edac3fa0b3ff0a57d00e6b\u002F","shareImageWidth":1200,"shareImageHeight":630,"vkShareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F452116\u002Ff160ec43a1edac3fa0b3ff0a57d00e6b\u002F?format=vk","schemaJsonLd":"{\"@context\":\"http:\\\u002F\\\u002Fschema.org\",\"@type\":\"Article\",\"mainEntityOfPage\":{\"@type\":\"WebPage\",\"@id\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fen\\\u002Fcompany\\\u002Fpostgrespro\\\u002Fblog\\\u002F452116\\\u002F\"},\"headline\":\"Indexes in PostgreSQL — 8 (RUM)\",\"datePublished\":\"2019-05-20T12:14:39+03:00\",\"dateModified\":\"2019-06-03T15:55:53+03:00\",\"author\":{\"@type\":\"Person\",\"name\":\"Егор Рогов\"},\"publisher\":{\"@type\":\"Organization\",\"name\":\"Habr\",\"logo\":{\"@type\":\"ImageObject\",\"url\":\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fa_\\\u002Flk\\\u002F9m\\\u002Fa_lk9mjkccjox-zccjrpfolmkmq.png\"}},\"description\":\"We have already discussed PostgreSQL indexing engine, the interface of access methods, and main access methods, such as: hash indexes, B-trees, GiST, SP-GiST,...\",\"url\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fen\\\u002Fcompany\\\u002Fpostgrespro\\\u002Fblog\\\u002F452116\\\u002F#post-content-body\",\"about\":[\"c_postgrespro\",\"h_postgresql\",\"h_sql\",\"f_develop\"],\"image\":[\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fk0\\\u002Fup\\\u002Fgn\\\u002Fk0upgnbhka1wfwq6oozy9qo24ka.png\"]}","metaDescription":"We have already discussed PostgreSQL indexing engine, the interface of access methods, and main access methods, such as: hash indexes, B-trees, GiST, SP-GiST, and GIN. In this article, we will watch...","mainImageUrl":null,"amp":false},"polls":[],"commentsEnabled":true,"rulesRemindEnabled":false,"votesEnabled":true,"status":"published","plannedPublishTime":null,"checked":null,"isEditorial":false}},"articlesIds":{},"isLoading":false,"pagesCount":{},"route":{},"reasonsList":null,"view":"cards","lastVisitedRoute":{},"ssrCommentsArticleIds":[""],"karma":{}},"authorContribution":{"authors":{}},"betaTest":{"currentAnnouncement":null,"announcements":{},"announcementCards":null,"announcementComments":{},"announcementCommentThreads":{},"announcementCommentingStatuses":{},"archivedList":[]},"authorStatistics":{"articleRefs":{},"articleIds":{},"pagesCount":{},"route":{},"viewsCount":[],"maxStatsCount":{}},"career":{"seoLandings":[],"hubs":""},"comments":{"articleComments":{},"searchCommentsResults":null,"previewComment":null,"pagesCount":null,"commentAccess":{},"scrollParents":{},"pageArticleComments":{"lastViewedComment":0,"postId":null,"lastCommentTimestamp":"","moderated":[],"moderatedIds":[],"commentRoute":""}},"companies":{"companyRefs":{"postgrespro":{"alias":"postgrespro","imageUrl":"\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fcompany\u002F4e0\u002F339\u002F621\u002F4e0339621abc865fefb88f9e9f44748f.jpg","titleHtml":"Postgres Professional","descriptionHtml":"Разработчик СУБД Postgres Pro","relatedData":null,"statistics":{"postsCount":151,"newsCount":0,"vacanciesCount":0,"employeesCount":22,"careerRating":null,"subscribersCount":41642,"rating":218.7,"invest":null},"foundationDate":{"year":"2015","month":"01","day":"27"},"location":{"city":{"id":"447159","title":"Москва"},"region":{"id":"1885","title":"Москва и Московская обл."},"country":{"id":"168","title":"Россия"}},"siteUrl":"http:\u002F\u002Fwww.postgrespro.ru\u002F","staffNumber":"51–100 человек","registrationDate":"2015-09-30T07:41:09+00:00","representativeUser":{"alias":"x-wao","fullname":"Иван Панченко"},"contacts":[{"title":"Facebook","url":"https:\u002F\u002Ffacebook.com\u002FPostgresProfessional"},{"title":"Twitter","url":"https:\u002F\u002Ftwitter.com\u002FPostgresPro"},{"title":"ВКонтакте","url":"https:\u002F\u002Fvk.com\u002Fpublic101507899"},{"title":"Google+","url":"https:\u002F\u002Fplus.google.com\u002F+PostgresproRuCompany"},{"title":"LiveJournal","url":"https:\u002F\u002Fpostgrespro.livejournal.com\u002F"}],"settings":{"analyticsSettings":[{"type":"ga","trackingId":"UA-55152600-4"}],"branding":null,"status":"active"},"metadata":{"titleHtml":"Postgres Professional, Москва - Разработчик СУБД Postgres Pro с 27 января 2015 г.","title":"Postgres Professional, Москва - Разработчик СУБД Postgres Pro с 27 января 2015 г.","keywords":["PostgreSQL","SQL","Занимательные задачки","Конференции","Администрирование баз данных"],"descriptionHtml":"151 статья от авторов компании Postgres Professional","description":"151 статья от авторов компании Postgres Professional"},"aDeskSettings":null,"careerAlias":"postgrespro","maxCustomTrackerLinks":0}},"companyIds":{},"companyTopIds":{},"pagesCount":{},"companyProfiles":{},"companiesCategories":[],"companiesCategoriesTotalCount":0,"companiesWidgets":{},"companiesWorkers":{},"companiesFans":{},"route":{},"isLoading":false,"companyWorkersLoading":false,"companyFansLoading":false,"vacancies":{}},"companiesContribution":{"hubs":{},"flows":{},"companyRefs":{}},"companyHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"conversation":{"messages":[],"respondent":null,"isLoadMore":false},"conversations":{"conversations":[],"unreadCount":0,"pagesCount":0,"isLoadMore":false},"desktopState":{"desktopFl":null,"desktopHl":null,"isChecked":false,"isLoginDemanded":false},"dfp":{"slotsDict":{}},"docs":{"menu":{},"articles":{},"mainMenu":[],"loading":{"main":false,"dropdown":false,"article":false}},"feature":{"isProbablyVisible":"true"},"flows":{"flows":[{"alias":"develop","id":1,"route":{"name":"FLOW_PAGE","params":{"flowName":"develop"}}},{"alias":"admin","id":6,"route":{"name":"FLOW_PAGE","params":{"flowName":"admin"}}},{"alias":"design","id":2,"route":{"name":"FLOW_PAGE","params":{"flowName":"design"}}},{"alias":"management","id":3,"route":{"name":"FLOW_PAGE","params":{"flowName":"management"}}},{"alias":"marketing","id":4,"route":{"name":"FLOW_PAGE","params":{"flowName":"marketing"}}},{"alias":"popsci","id":7,"route":{"name":"FLOW_PAGE","params":{"flowName":"popsci"}}}]},"global":{"isPwa":false,"device":"desktop","isHabrCom":true},"hubs":{"hubRefs":{},"hubIds":{},"pagesCount":{},"isLoading":false,"route":{}},"hubsBlock":{"hubRefs":{},"hubIds":{}},"i18n":{"fl":"ru","hl":"ru"},"info":{"infoPage":{},"isLoading":true},"location":{"urlStruct":{"protocol":null,"slashes":null,"auth":null,"host":null,"port":null,"hostname":null,"hash":null,"search":null,"query":{},"pathname":null,"path":null,"href":""},"searchQuery":null},"me":{"user":null,"ppgDemanded":false,"karmaResetInfo":{"canReincarnate":null,"wasReincarnated":null,"currentScore":null},"notes":null},"mostReadingList":{"mostReadingListIds":[],"mostReadingListRefs":null,"promoPost":null},"pinnedPost":{"pinnedPost":null},"ppa":{"articles":{},"card":null,"transactions":null,"totalTransactions":null,"isAccessible":null},"projectsBlocks":{"activeBlocks":{}},"pullRefresh":{"shouldRefresh":false},"sandbox":{"articleIds":[],"articleRefs":{},"pagesCount":null,"route":{},"lastVisitedRoute":{},"isLoading":false},"settingsOther":{"inputs":{"uiLang":{"errors":[],"ref":null,"value":""},"articlesLangEnglish":{"errors":[],"ref":null,"value":false},"articlesLangRussian":{"errors":[],"ref":null,"value":false},"agreement":{"errors":[],"ref":null,"value":false},"email":{"errors":[],"ref":null,"value":true},"digest":{"errors":[],"ref":null,"value":true}}},"similarList":{"similarListIds":[],"similarListRefs":null},"ssr":{"error":null,"isDataLoaded":false,"isDataLoading":false,"isHydrationFailed":false,"isServer":false},"userHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"userInvites":{"availableInvites":0,"usedInvitesIds":[],"usedInvitesRefs":{},"usedInvitesPagesCount":0,"unusedInvitesIds":[],"unusedInvitesRefs":{},"unusedInvitesPagesCount":0},"users":{"authorRefs":{},"authorIds":{},"pagesCount":{},"authorProfiles":{},"userHubs":{},"userInvitations":{},"authorFollowers":{},"authorFollowed":{},"karmaStats":[],"statistics":null,"isLoading":false,"authorFollowersLoading":false,"authorFollowedLoading":false,"userHubsLoading":false,"userInvitationsLoading":false,"route":{}},"viewport":{"prevScrollY":{},"scrollY":0,"width":0},"tracker":{"items":{},"pagesCache":{},"markedViewedSilently":{},"markedRead":{},"unreadCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null},"unviewedCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null}}};(function(){var s;(s=document.currentScript||document.scripts[document.scripts.length-1]).parentNode.removeChild(s);}());</script>
+<script src="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" defer></script><script src="https://assets.habr.com/habr-web/js/app.c0af73e7.js" defer></script>
+
+
+
+    <script>
+      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+        (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+        m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+      })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+    </script>
+  
+  <script type="text/javascript" >
+    (function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+    m[i].l=1*new Date();k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})
+    (window, document, "script", "https://mc.yandex.ru/metrika/tag.js", "ym");
+
+    ym(24049213, "init", {
+      defer:true,
+      trackLinks:true,
+      accurateTrackBounce:true,
+      webvisor:false,
+    });
+  </script>
+  <noscript>
+    <div>
+      <img src="https://mc.yandex.ru/watch/24049213" style="position:absolute; left:-9999px;" alt="" />
+    </div>
+  </noscript>
+  
+    <script type="text/javascript">
+      window.addEventListener('load', function () {
+        setTimeout(() => {
+          const img = new Image();
+          img.src = 'https://vk.com/rtrg?p=VK-RTRG-421343-57vKE';
+        }, 0);
+      });
+    </script>
+  
+</body>
+</html>

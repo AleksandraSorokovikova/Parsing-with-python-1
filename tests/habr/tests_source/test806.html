@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="ru" data-vue-meta="%7B%22lang%22:%7B%22ssr%22:%22ru%22%7D%7D">
+<head >
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
+  <title>Автоматизация управления Let&#x27;s Encrypt SSL сертификатами используя DNS-01 challenge и AWS / Хабр</title>
+  <style>
+    /* cyrillic-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSxf6TF0.woff2) format('woff2');
+      unicode-range: U+0460-052F, U+1C80-1C88, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+    }
+
+    /* cyrillic */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveQhf6TF0.woff2) format('woff2');
+      unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+    }
+
+    /* latin-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSBf6TF0.woff2) format('woff2');
+      unicode-range: U+0100-024F, U+0259, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20CF, U+2113, U+2C60-2C7F, U+A720-A7FF;
+    }
+
+    /* latin */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveRhf6.woff2) format('woff2');
+      unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+    }
+  </style>
+  <link rel="preload" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" as="script"><link rel="preload" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/app.c0af73e7.js" as="script">
+  <link rel="stylesheet" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css"><link rel="stylesheet" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css">
+  <script>window.i18nFetch = new Promise((res, rej) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open('GET', '/js/i18n/ru-compiled.85eb77f0b17c8235e7b64b9f81ea5ec2.json');
+          xhr.responseType = 'json';
+          xhr.onload = function(e) {
+            if (this.status === 200) {
+              res({ru: xhr.response});
+            } else {
+              rej(e);
+            }
+          };
+          xhr.send();
+        });</script>
+  
+  <script data-vue-meta="ssr" src="/js/ads.js" onload="window['zhY4i4nJ9K'] = true" data-vmid="checkad"></script><script data-vue-meta="ssr" type="application/ld+json" data-vmid="ldjson-schema">{"@context":"http:\/\/schema.org","@type":"Article","mainEntityOfPage":{"@type":"WebPage","@id":"https:\/\/habr.com\/ru\/post\/451848\/"},"headline":"Автоматизация управления Let's Encrypt SSL сертификатами используя DNS-01 challenge и AWS","datePublished":"2019-05-14T21:10:12+03:00","dateModified":"2019-05-20T10:23:46+03:00","author":{"@type":"Person","name":"Roman"},"publisher":{"@type":"Organization","name":"Habr","logo":{"@type":"ImageObject","url":"https:\/\/habrastorage.org\/webt\/a_\/lk\/9m\/a_lk9mjkccjox-zccjrpfolmkmq.png"}},"description":"Пост описывает шаги для автоматизации управления SSL сертификатами от Let's Encrypt CA используя DNS-01 challenge и AWS. acme-dns-route53 &mdash; это инструмент, котор...","url":"https:\/\/habr.com\/ru\/post\/451848\/#post-content-body","about":["h_aws","h_dns","h_go","f_develop","f_admin"],"image":["https:\/\/habr.com\/share\/publication\/451848\/21cfa18c87a24c8fa75e64b160adeffe\/"]}</script>
+  <script src="//www.googletagservices.com/tag/js/gpt.js" async></script>
+  <style>.grecaptcha-badge{visibility: hidden;}</style>
+  <meta name="habr-version" content="2.49.0">
+  
+  <meta data-vue-meta="ssr" property="fb:app_id" content="444736788986613"><meta data-vue-meta="ssr" property="fb:pages" content="472597926099084"><meta data-vue-meta="ssr" name="twitter:card" content="summary_large_image"><meta data-vue-meta="ssr" name="twitter:site" content="@habr_eng"><meta data-vue-meta="ssr" property="og:title" content="Автоматизация управления Let&#x27;s Encrypt SSL сертификатами используя DNS-01 challenge и AWS" data-vmid="og:title"><meta data-vue-meta="ssr" name="twitter:title" content="Автоматизация управления Let&#x27;s Encrypt SSL сертификатами используя DNS-01 challenge и AWS" data-vmid="twitter:title"><meta data-vue-meta="ssr" name="aiturec:title" content="Автоматизация управления Let&#x27;s Encrypt SSL сертификатами используя DNS-01 challenge и AWS" data-vmid="aiturec:title"><meta data-vue-meta="ssr" name="description" content="Пост описывает шаги для автоматизации управления SSL сертификатами от Let&amp;#039;s Encrypt CA используя DNS-01 challenge и AWS.
+acme-dns-route53 — это инструмент, который позволит нам реализовать данную..." data-vmid="description"><meta data-vue-meta="ssr" itemprop="description" content="Пост описывает шаги для автоматизации управления SSL сертификатами от Let&amp;#039;s Encrypt CA используя DNS-01 challenge и AWS.
+acme-dns-route53 — это инструмент, который позволит нам реализовать данную..." data-vmid="description:itemprop"><meta data-vue-meta="ssr" property="og:description" content="Пост описывает шаги для автоматизации управления SSL сертификатами от Let&amp;#039;s Encrypt CA используя DNS-01 challenge и AWS.
+acme-dns-route53 — это инструмент, который позволит нам реализовать данную..." data-vmid="og:description"><meta data-vue-meta="ssr" name="twitter:description" content="Пост описывает шаги для автоматизации управления SSL сертификатами от Let&amp;#039;s Encrypt CA используя DNS-01 challenge и AWS.
+acme-dns-route53 — это инструмент, который позволит нам реализовать данную..." data-vmid="twitter:description"><meta data-vue-meta="ssr" property="aiturec:description" content="Пост описывает шаги для автоматизации управления SSL сертификатами от Let&amp;#039;s Encrypt CA используя DNS-01 challenge и AWS.
+acme-dns-route53 — это инструмент, который позволит нам реализовать данную..." data-vmid="aiturec:description"><meta data-vue-meta="ssr" itemprop="image" content="https://habr.com/share/publication/451848/21cfa18c87a24c8fa75e64b160adeffe/" data-vmid="image:itemprop"><meta data-vue-meta="ssr" property="og:image" content="https://habr.com/share/publication/451848/21cfa18c87a24c8fa75e64b160adeffe/" data-vmid="og:image"><meta data-vue-meta="ssr" property="aiturec:image" content="https://habr.com/share/publication/451848/21cfa18c87a24c8fa75e64b160adeffe/" data-vmid="aiturec:image"><meta data-vue-meta="ssr" name="twitter:image" content="https://habr.com/share/publication/451848/21cfa18c87a24c8fa75e64b160adeffe/" data-vmid="twitter:image"><meta data-vue-meta="ssr" property="vk:image" content="https://habr.com/share/publication/451848/21cfa18c87a24c8fa75e64b160adeffe/" data-vmid="vk:image"><meta data-vue-meta="ssr" property="aiturec:item_id" content="451848" data-vmid="aiturec:item_id"><meta data-vue-meta="ssr" property="aiturec:datetime" content="2019-05-14T18:10:12.000Z" data-vmid="aiturec:datetime"><meta data-vue-meta="ssr" property="og:type" content="article" data-vmid="og:type"><meta data-vue-meta="ssr" property="og:locale" content="ru_RU" data-vmid="og:locale"><meta data-vue-meta="ssr" property="og:image:width" content="1200" data-vmid="og:image:width"><meta data-vue-meta="ssr" property="og:image:height" content="630" data-vmid="og:image:height">
+  <link data-vue-meta="ssr" href="https://habr.com/ru/rss/post/451848/?fl=ru" type="application/rss+xml" title="" rel="alternate" name="rss"><link data-vue-meta="ssr" href="https://habr.com/ru/post/451848/" rel="canonical" data-vmid="canonical"><link data-vue-meta="ssr" data-vmid="hreflang"><link data-vue-meta="ssr" image_src="image" href="https://habr.com/share/publication/451848/21cfa18c87a24c8fa75e64b160adeffe/" data-vmid="image:href">
+  <meta name="apple-mobile-web-app-status-bar-style" content="#303b44">
+  <meta name="msapplication-TileColor" content="#629FBC">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="16x16"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-16.png"
+  >
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="32x32"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-32.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="76x76"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-76.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="120x120"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="152x152"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-152.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="180x180"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-180.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="256x256"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-256.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1136x640.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2436x1125.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1792x828.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_828x1792.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1334x750.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2208x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1125x2436.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2208.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2732x2048.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2688x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2224x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_750x1334.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x2732.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2388x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2224.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_640x1136.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2388.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x1536.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1536x2048.png"
+  >
+  <link
+    rel="mask-icon"
+    color="#77a2b6"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.svg"
+  >
+  <link
+    crossorigin="use-credentials"
+    href="/manifest.webmanifest"
+    rel="manifest"
+  >
+</head>
+<body>
+
+
+<div id="app" data-server-rendered="true" data-async-called="true"><div class="tm-layout__wrapper"><!----> <div></div> <!----> <header class="tm-header"><div class="tm-page-width"><div class="tm-header__container"><!----> <span class="tm-header__logo-wrap"><a href="/ru/" class="tm-header__logo tm-header__logo_ru"><svg height="16" width="16" class="tm-svg-img tm-header__icon"><title>Хабр</title> <use xlink:href="/img/habr-logo-ru.svg#logo"></use></svg></a> <span class="tm-header__beta-sign" style="display:none;">β</span></span> <div class="tm-dropdown tm-header__projects"><div class="tm-dropdown__head"><button class="tm-header__dropdown-toggle"><svg height="16" width="16" class="tm-svg-img tm-header__icon tm-header__icon_dropdown"><title>Открыть список</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#arrow-down"></use></svg></button></div> <!----></div> <a href="/ru/sandbox/start/" class="tm-header__become-author-btn">
+            Как стать автором
+          </a> <div class="tm-feature tm-header__feature tm-feature_variant-inline"><!----></div> <!----> <!----></div></div></header> <div class="tm-layout"><div class="tm-page-progress-bar"></div> <div data-menu-sticky="true" class="tm-base-layout__header tm-base-layout__header_is-sticky"><div class="tm-page-width"><div class="tm-base-layout__header-wrapper"><div class="tm-main-menu"><div class="tm-main-menu__section"><nav class="tm-main-menu__section-content"><!----> <a href="/ru/all/" class="tm-main-menu__item">
+        Все потоки
+      </a> <a href="/ru/flows/develop/" class="tm-main-menu__item">
+          Разработка
+        </a><a href="/ru/flows/admin/" class="tm-main-menu__item">
+          Администрирование
+        </a><a href="/ru/flows/design/" class="tm-main-menu__item">
+          Дизайн
+        </a><a href="/ru/flows/management/" class="tm-main-menu__item">
+          Менеджмент
+        </a><a href="/ru/flows/marketing/" class="tm-main-menu__item">
+          Маркетинг
+        </a><a href="/ru/flows/popsci/" class="tm-main-menu__item">
+          Научпоп
+        </a></nav></div></div> <div class="tm-header-user-menu tm-base-layout__user-menu"><a href="/ru/search/" class="tm-header-user-menu__item tm-header-user-menu__search"><svg height="24" width="24" class="tm-svg-img tm-header-user-menu__icon tm-header-user-menu__icon_search tm-header-user-menu__icon_dark"><title>Поиск</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#search"></use></svg></a> <!----> <!----> <!----> <div class="tm-header-user-menu__item tm-header-user-menu__user_desktop"><div class="tm-dropdown"><div class="tm-dropdown__head"><svg height="24" width="24" data-test-id="menu-toggle-guest" class="tm-svg-img tm-header-user-menu__icon"><title>Профиль</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#header-user"></use></svg> <!----></div> <!----></div> <!----></div> <!----></div></div></div></div> <!----> <div class="tm-page-width"></div> <main class="tm-layout__container"><div hl="ru" data-async-called="true" class="tm-page"><div class="tm-page-width"><!----> <div class="tm-page__wrapper"><div class="tm-page__main tm-page__main_has-sidebar"><div class="pull-down"><div class="pull-down__header" style="height:0px;"><div class="pull-down__content" style="bottom:10px;"><svg height="24" width="24" class="tm-svg-img pull-down__arrow"><title>Обновить</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#pull-arrow"></use></svg></div></div> <div class="tm-article-presenter"> <div class="tm-article-presenter__body"><div class="tm-misprint-area"><div class="tm-misprint-area__wrapper"><article class="tm-article-presenter__content tm-article-presenter__content_narrow"><div class="tm-article-presenter__header"> <div class="tm-article-snippet tm-article-presenter__snippet"><div class="tm-article-snippet__meta-container"><div class="tm-article-snippet__meta"><span class="tm-user-info tm-article-snippet__author"><a href="/ru/users/behmaroman/" title="behmaroman" class="tm-user-info__userpic"><div class="tm-entity-image"><img alt="" height="24" loading="lazy" src="//habrastorage.org/r/w32/getpro/habr/avatars/555/d3f/1d4/555d3f1d43962fea3744507c0888f3b7.jpg" width="24" class="tm-entity-image__pic"></div></a> <span class="tm-user-info__user"><a href="/ru/users/behmaroman/" class="tm-user-info__username">
+      behmaroman
+    </a> </span></span> <span class="tm-article-snippet__datetime-published"><time datetime="2019-05-14T18:10:12.000Z" title="2019-05-14, 21:10">14  мая  2019 в 21:10</time></span></div> <!----></div> <h1 lang="ru" class="tm-article-snippet__title tm-article-snippet__title_h1"><span>Автоматизация управления Let's Encrypt SSL сертификатами используя DNS-01 challenge и AWS</span></h1> <div class="tm-article-snippet__hubs"><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/aws/" class="tm-article-snippet__hubs-item-link"><span>Amazon Web Services</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/dns/" class="tm-article-snippet__hubs-item-link"><span>DNS</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/go/" class="tm-article-snippet__hubs-item-link"><span>Go</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span></div> <div class="tm-article-snippet__labels"><div class="tm-article-snippet__label"><span>
+        Tutorial
+      </span></div></div> <!----> <!----></div></div> <!----> <div data-gallery-root="" lang="ru" class="tm-article-body"><div id="post-content-body" class="article-formatted-body article-formatted-body_version-1"><div xmlns="http://www.w3.org/1999/xhtml"><p>Пост описывает шаги для автоматизации управления SSL сертификатами от <strong><a href="https://letsencrypt.org/">Let's Encrypt CA</a></strong> используя <em><a href="https://letsencrypt.org/docs/challenge-types/">DNS-01 challenge</a></em> и <em>AWS</em>.</p><br/>
+<p><strong><a href="https://github.com/begmaroman/acme-dns-route53">acme-dns-route53</a></strong> — это инструмент, который позволит нам реализовать данную фичу. Он умеет работать с SSL сертификатами от Let's Encrypt, сохранять их в Amazon Certificate Manager, использовать Route53 API для реализации DNS-01 challenge, и, в конце, пушить уведомления в SNS. В <em>acme-dns-route53</em> так же присутствует built-in функционал для использования внутри AWS Lambda, и это то, что нам нужно. </p><a name="habracut"></a><br/>
+<p>Данная статья разбита на 4 раздела:</p><br/>
+<ul>
+<li>создание zip файла;</li>
+<li>создание IAM роли;</li>
+<li>создание лямбда функции которая запускает <em>acme-dns-route53</em>;</li>
+<li>создание CloudWatch таймера который триггерит функцию 2 раза в день;</li>
+</ul><br/>
+<p><em><strong>Note:</strong> перед началом необходимо установить <a href="https://golang.org/doc/install">GoLang 1.9+</a> и <a href="https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-install.html">AWS CLI</a></em></p><br/>
+<h3 id="sozdanie-zip-fayla">Создание zip файла</h3><br/>
+<p><em>acme-dns-route53 написан на GoLang и поддерживает версию не ниже 1.9.</em></p><br/>
+<p>Нам нужно создать zip файл с бинарником <code>acme-dns-route53</code> внутри. Для этого необходимо установить <code>acme-dns-route53</code> из GitHub репозитория используя команду <code>go install</code>:</p><br/>
+<pre><code class="bash">$ env GOOS=linux GOARCH=amd64 go install github.com/begmaroman/acme-dns-route53</code></pre><br/>
+<p>Бинарник установлен в <code>$GOPATH/bin</code> директорию. Обратите внимание на то, что при установке мы указали две переенные окружениея: <code>GOOS=linux</code> и <code>GOARCH=amd64</code>. Они дают понять Go компилятору об необходимости создания бинарника подходящего для Linux OS и amd64 архитектуры — это то, что запускается в AWS.<br/>
+AWS пердполагает деплой нашей программы в zip файле, так что давайте создадим <code>acme-dns-route53.zip</code> архив который будет содержать только что установленный бинарник:</p><br/>
+<pre><code class="bash">$ zip -j ~/acme-dns-route53.zip $GOPATH/bin/acme-dns-route53</code></pre><br/>
+<p><em><strong>Note:</strong> бинарник должен быть в корне zip архива. Для этого мы используем <code>-j</code> флаг.</em></p><br/>
+<p>Теперь наш zip-ник готов к деплою, осталось только создать роль с необходимыми правами.</p><br/>
+<h3 id="sozdanie-iam-roli">Создание IAM роли</h3><br/>
+<p>Нам нужно засетапить IAM роль с правами, необходимыми нашей лямбде во время ее выполнения.<br/>
+Давайте назовем эту policy <code>lambda-acme-dns-route53-executor</code> и сразу дадим ей базовую роль <code>AWSLambdaBasicExecutionRole</code>. Это позволит нашей лямбде запуститься и писать логи в AWS CloudWatch сервис.<br/>
+Для начала создаем JSON файл в котором описаны наши права. Это, по сути, разрешит лямбда-сервисам использовать роль <code>lambda-acme-dns-route53-executor</code>:</p><br/>
+<pre><code class="bash">$ touch ~/lambda-acme-dns-route53-executor-policy.json</code></pre><br/>
+<p>Содержимое нашего файла следующее:</p><br/>
+<pre><code class="json">{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "logs:CreateLogGroup"
+            ],
+            "Resource": "arn:aws:logs:&lt;AWS_REGION>:&lt;AWS_ACCOUNT_ID>:*"
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "logs:PutLogEvents",
+                "logs:CreateLogStream"
+            ],
+            "Resource": "arn:aws:logs:&lt;AWS_REGION>:&lt;AWS_ACCOUNT_ID>:log-group:/aws/lambda/acme-dns-route53:*"
+        },
+        {
+            "Sid": "",
+            "Effect": "Allow",
+            "Action": [
+                "route53:ListHostedZones",
+                "cloudwatch:PutMetricData",
+                "acm:ImportCertificate",
+                "acm:ListCertificates"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Sid": "",
+            "Effect": "Allow",
+            "Action": [
+                "sns:Publish",
+                "route53:GetChange",
+                "route53:ChangeResourceRecordSets",
+                "acm:ImportCertificate",
+                "acm:DescribeCertificate"
+            ],
+            "Resource": [
+                "arn:aws:sns:&lt;AWS_REGION>:&lt;AWS_ACCOUNT_ID>:&lt;TOPIC_NAME>",
+                "arn:aws:route53:::hostedzone/*",
+                "arn:aws:route53:::change/*",
+                "arn:aws:acm:&lt;AWS_REGION>:&lt;AWS_ACCOUNT_ID>:certificate/*"
+            ]
+        }
+    ]
+}</code></pre><br/>
+<p>Теперь выполним команду <code>aws iam create-role</code> для создания роли:</p><br/>
+<pre><code class="bash">$ aws iam create-role --role-name lambda-acme-dns-route53-executor \
+ --assume-role-policy-document ~/lambda-acme-dns-route53-executor-policy.json</code></pre><br/>
+<p><em><strong>Note:</strong> запомните policy ARN (Amazon Resource Name) — он нам понадобится на следующих этапах.</em></p><br/>
+<p>Роль <code>lambda-acme-dns-route53-executor</code> создана, теперь нам нужно указать разрешения для нее. Самый простой способ сделать это — использовать команду <code>aws iam attach-role-policy</code>, передав policy ARN <code>AWSLambdaBasicExecutionRole</code> следующим образом:</p><br/>
+<pre><code class="bash">$ aws iam attach-role-policy --role-name lambda-acme-dns-route53-executor \
+--policy-arn arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole</code></pre><br/>
+<p><em><strong>Note:</strong> список с остальными политиками можно найти <a href="https://docs.aws.amazon.com/lambda/latest/dg/lambda-permissions.html#lambda-intro-execution-role">здесь</a>.</em></p><br/>
+<h3 id="sozdanie-lyambda-funkcii-kotoraya-zapuskaet-acme-dns-route53">Создание лямбда функции которая запускает <em>acme-dns-route53</em></h3><br/>
+<p>Ура! Теперь можно и задеплоить нашу функцию на AWS с помощью команды <code>aws lambda create-function</code>. Лямбда должна быть сконфигурированна используя следующие переменные окружения:</p><br/>
+<ul>
+<li><code>AWS_LAMBDA</code> — дает понять <em>acme-dns-route53</em> о том, что выполнение происходить внутри AWS Lambda.</li>
+<li><code>DOMAINS</code> — список доменов, разделенных запятыми.</li>
+<li><code>LETSENCRYPT_EMAIL</code> — содержит <a href="https://letsencrypt.org/docs/expiration-emails/">Let’s Encrypt Email</a>.</li>
+<li><code>NOTIFICATION_TOPIC</code> — название SNS Notification Topic (опционально).</li>
+<li><code>STAGING</code> — при значении <code>1</code> используется staging environment.</li>
+<li><code>RENEW_BEFORE</code> — количество дней, определяющих период до истечения срока, в течение которого сертификат должен быть продлен.</li>
+<li><code>1024</code> MB — лимит памяти, может быть изменен. </li>
+<li><code>900</code> secs (15 min) — таймаут.</li>
+<li><code>acme-dns-route53</code> — название нашего бинарника, который лежит в архиве.</li>
+<li><code>fileb://~/acme-dns-route53.zip</code> — путь к архиву, который мы создали.</li>
+</ul><br/>
+<p>Теперь деплоим:</p><br/>
+<pre><code class="bash">$ aws lambda create-function \
+ --function-name acme-dns-route53 \
+ --runtime go1.x \
+ --role arn:aws:iam::&lt;AWS_ACCOUNT_ID>:role/lambda-acme-dns-route53-executor \
+ --environment Variables="{AWS_LAMBDA=1,DOMAINS=\"example1.com,example2.com\",LETSENCRYPT_EMAIL=begmaroman@gmail.com,STAGING=0,NOTIFICATION_TOPIC=acme-dns-route53-obtained,RENEW_BEFORE=7}" \
+ --memory-size 1024 \
+ --timeout 900 \
+ --handler acme-dns-route53 \
+ --zip-file fileb://~/acme-dns-route53.zip
+
+ {
+     "FunctionName": "acme-dns-route53", 
+     "LastModified": "2019-05-03T19:07:09.325+0000", 
+     "RevisionId": "e3fadec9-2180-4bff-bb9a-999b1b71a558", 
+     "MemorySize": 1024, 
+     "Environment": {
+         "Variables": {
+            "DOMAINS": "example1.com,example2.com", 
+            "STAGING": "1", 
+            "LETSENCRYPT_EMAIL": "your@email.com", 
+            "NOTIFICATION_TOPIC": "acme-dns-route53-obtained", 
+            "RENEW_BEFORE": "7",
+            "AWS_LAMBDA": "1"
+         }
+     }, 
+     "Version": "$LATEST", 
+     "Role": "arn:aws:iam::&lt;AWS_ACCOUNT_ID>:role/lambda-acme-dns-route53-executor", 
+     "Timeout": 900, 
+     "Runtime": "go1.x", 
+     "TracingConfig": {
+         "Mode": "PassThrough"
+     }, 
+     "CodeSha256": "+2KgE5mh5LGaOsni36pdmPP9O35wgZ6TbddspyaIXXw=", 
+     "Description": "", 
+     "CodeSize": 8456317,
+"FunctionArn": "arn:aws:lambda:us-east-1:&lt;AWS_ACCOUNT_ID>:function:acme-dns-route53", 
+     "Handler": "acme-dns-route53"
+ }</code></pre><br/>
+<h3 id="sozdanie-cloudwatch-taymera-kotoryy-triggerit-funkciyu-2-raza-v-den">Создание CloudWatch таймера который триггерит функцию 2 раза в день</h3><br/>
+<p>Последний шаг — это настроить крон, который вызывает нашу функцию дважды в день:</p><br/>
+<ul>
+<li>создать правило CloudWatch со значением <code>schedule_expression</code>.</li>
+<li>создать цель правила (что должно выполняться), указав ARN лямбда-функции.</li>
+<li>дать разрешение правилу вызов лямбда-функции.</li>
+</ul><br/>
+<p>Ниже я прикрепил свой Terraform конфиг, но на самом деле это делается очень просто с помощью AWS консоль или AWS CLI.</p><br/>
+<pre><code class="plaintext"># Cloudwatch event rule that runs acme-dns-route53 lambda every 12 hours
+resource "aws_cloudwatch_event_rule" "acme_dns_route53_sheduler" {
+  name                = "acme-dns-route53-issuer-scheduler"
+  schedule_expression = "cron(0 */12 * * ? *)"
+}
+
+# Specify the lambda function to run
+resource "aws_cloudwatch_event_target" "acme_dns_route53_sheduler_target" {
+  rule = "${aws_cloudwatch_event_rule.acme_dns_route53_sheduler.name}"
+  arn  = "${aws_lambda_function.acme_dns_route53.arn}"
+}
+
+# Give CloudWatch permission to invoke the function
+resource "aws_lambda_permission" "permission" {
+  action        = "lambda:InvokeFunction"
+  function_name = "${aws_lambda_function.acme_dns_route53.function_name}"
+  principal     = "events.amazonaws.com"
+  source_arn    = "${aws_cloudwatch_event_rule.acme_dns_route53_sheduler.arn}"
+}</code></pre><br/>
+<p>Теперь и у вас настроено автоматическое создание и обновление SSL сертификатов</p></div></div> <!----> <!----></div> <div class="tm-article-presenter__meta"><div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Теги:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Baws%5D" class="tm-tags-list__link">aws</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Broute53%5D" class="tm-tags-list__link">route53</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bamazon%20certificate%20manager%5D" class="tm-tags-list__link">amazon certificate manager</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bacm%5D" class="tm-tags-list__link">acm</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bacme%5D" class="tm-tags-list__link">acme</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bletsencrypt%5D" class="tm-tags-list__link">letsencrypt</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bdns%5D" class="tm-tags-list__link">dns</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bcloudwatch%5D" class="tm-tags-list__link">cloudwatch</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bssl%20certificate%5D" class="tm-tags-list__link">ssl certificate</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bcertificate%20authorities%5D" class="tm-tags-list__link">certificate authorities</a></li></ul></div> <div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Хабы:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/hub/aws/" class="tm-hubs-list__link">
+    Amazon Web Services
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/dns/" class="tm-hubs-list__link">
+    DNS
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/go/" class="tm-hubs-list__link">
+    Go
+  </a></li></ul></div></div></article></div> <!----></div> <div class="tm-article-sticky-panel"><div class="tm-data-icons tm-article-sticky-panel__icons"><div class="tm-article-rating tm-data-icons__item"><div class="tm-votes-meter tm-article-rating__votes-switcher"><svg height="16" width="16" class="tm-svg-img tm-votes-meter__icon tm-votes-meter__icon_medium"><title>Всего голосов 8: ↑8 и ↓0</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-rating"></use></svg> <span title="Всего голосов 8: ↑8 и ↓0" class="tm-votes-meter__value tm-votes-meter__value_positive tm-votes-meter__value_medium">+8</span></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----> <span title="Количество просмотров" class="tm-icon-counter tm-data-icons__item"><svg height="16" width="16" class="tm-svg-img tm-icon-counter__icon"><title>Просмотры</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-views"></use></svg> <span class="tm-icon-counter__value">3.5K</span></span> <button title="Добавить в закладки" type="button" class="bookmarks-button tm-data-icons__item"><span title="Добавить в закладки" class="tm-svg-icon__wrapper bookmarks-button__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Добавить в закладки</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-favorite"></use></svg></span> <span title="Количество пользователей, добавивших публикацию в закладки" class="bookmarks-button__counter">
+    37
+  </span></button> <!----> <div title="Поделиться" class="tm-sharing tm-data-icons__item"><button type="button" class="tm-sharing__button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="tm-sharing__icon"><path fill="currentColor" d="M10.33.275l9.047 7.572a.2.2 0 010 .306l-9.048 7.572a.2.2 0 01-.328-.153V11c-8 0-9.94 6-9.94 6S-1 5 10 5V.428a.2.2 0 01.328-.153z"></path></svg></button> <!----></div> <DIV class="v-portal" style="display:none;"></DIV></div> </div></div> <!----> <!----> <div class="tm-article-presenter__footer"><div class="tm-article-blocks"><!----> <section class="tm-block tm-block_spacing-bottom"><!----> <div class="tm-block__body tm-block__body_variant-balanced"><div class="tm-article-author"> <div class="tm-user-card tm-article-author__user-card tm-user-card_variant-article"><div class="tm-user-card__info-container"><div class="tm-user-card__header"><div class="tm-user-card__header-data"><a href="/ru/users/behmaroman/" class="tm-user-card__userpic tm-user-card__userpic_size-40"><div class="tm-entity-image"><img alt="" src="//habrastorage.org/getpro/habr/avatars/555/d3f/1d4/555d3f1d43962fea3744507c0888f3b7.jpg" class="tm-entity-image__pic"></div></a> <div class="tm-user-card__meta"><div title=" 6 голосов " class="tm-karma tm-user-card__karma"><div class="tm-karma__votes tm-karma__votes_positive">
+    6
+  </div> <div class="tm-karma__text">
+    Карма
+  </div></div> <div title="Рейтинг пользователя" class="tm-rating tm-user-card__rating"><div class="tm-rating__header"> <div class="tm-rating__counter">0</div></div> <div class="tm-rating__text">
+    Рейтинг
+  </div></div></div></div></div> <div class="tm-user-card__info tm-user-card__info_variant-article"><div class="tm-user-card__title tm-user-card__title_variant-article"><span class="tm-user-card__name tm-user-card__name_variant-article">Roman</span> <a href="/ru/users/behmaroman/" class="tm-user-card__nickname tm-user-card__nickname_variant-article">
+          @behmaroman
+        </a> <!----></div> <p class="tm-user-card__short-info tm-user-card__short-info_variant-article">Пользователь</p></div></div> <div class="tm-user-card__buttons tm-user-card__buttons_variant-article"><!----> <!----> <!----> <!----> <!----></div></div> <!----></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----></section> <div class="tm-article-blocks__comments"><div class="tm-article-page-comments"><div class="tm-article-comments-counter-link tm-article-comments-counter-button"><a href="/ru/post/451848/comments/" class="tm-article-comments-counter-link__link tm-article-comments-counter-link__link_button-style"><svg height="16" width="16" class="tm-svg-img tm-article-comments-counter-link__icon tm-article-comments-counter-link__icon_contrasted"><title>Комментарии</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-comments"></use></svg> <span class="tm-article-comments-counter-link__value tm-article-comments-counter-link__value_contrasted">
+       Комментарии 11 
+    </span></a> <!----></div></div></div> <div class="tm-ad-banner__container tm-page-article__banner"><!----> <div id="articleBottomBanner" class="tm-ad-banner"></div></div> <!----> <!----> <!----> <!----> </div></div></div></div></div> <div class="tm-page__sidebar"><div class="tm-layout-sidebar"><div class="tm-layout-sidebar__ads tm-layout-sidebar__ads_initial"><div class="tm-ad-banner__container tm-layout-sidebar__banner"><!----> <div id="sidebarBanner" class="tm-ad-banner"></div></div></div> <div class="tm-sexy-sidebar tm-sexy-sidebar_initial" style="margin-top:0px;"><!----> <section data-async-called="true" class="tm-block tm-block_spacing-bottom"><header class="tm-block__header"><h2 class="tm-block__title">Работа</h2> <!----></header> <div class="tm-block__body"><div class="tm-vacancies-block__item"><a href="https://career.habr.com/vacancies/go_razrabotchik" target="_blank" class="tm-vacancies-block__vacancy-title">
+        Go разработчик
+      </a> <div class="tm-vacancies-block__vacancies-count">
+        113
+    вакансий
+      </div></div></div> <footer class="tm-block__footer"><a href="https://career.habr.com/vacancies" class="tm-block-extralink">
+      Все вакансии
+    </a></footer></section></div></div></div></div></div></div></main> <!----></div> <div class="tm-footer-menu"><div class="tm-page-width"><div class="tm-footer-menu__container"><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Ваш аккаунт
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr/?back=/ru/post/451848/&amp;hl=ru" rel="nofollow" target="_self">
+                Войти
+              </a></li><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr-register/?back=/ru/post/451848/&amp;hl=ru" rel="nofollow" target="_self">
+                Регистрация
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Разделы
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/" class="footer-menu__item-link router-link-active">
+                Публикации
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/news/" class="footer-menu__item-link">
+                Новости
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/hubs/" class="footer-menu__item-link">
+                Хабы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/companies/" class="footer-menu__item-link">
+                Компании
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/users/" class="footer-menu__item-link">
+                Авторы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/sandbox/" class="footer-menu__item-link">
+                Песочница
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Информация
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/docs/help/" class="footer-menu__item-link">
+                Устройство сайта
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/authors/codex/" class="footer-menu__item-link">
+                Для авторов
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/companies/corpblogs/" class="footer-menu__item-link">
+                Для компаний
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/docs/transparency/" class="footer-menu__item-link">
+                Документы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/agreement" target="_blank">
+                Соглашение
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/confidential/" target="_blank">
+                Конфиденциальность
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Услуги
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQLwRfQmXibiUlWaRg-BAc38s7oM3lJiaPju7qmdJsp8ysIvZ_G-Npem0njJLMozE2bPHMpDqiI5hhy/pub?start=false&amp;loop=false&amp;delayms=60000&amp;slide=id.g91a03369cd_4_297" target="_blank">
+                Реклама
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://habrastorage.org/storage/stuff/habr/service_price.pdf" target="_blank">
+                Тарифы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQJJds8-Di7BQSP_guHxICN7woVYoN5NP_22ra-BIo4bqnTT9FR6fB-Ku2P0AoRpX0Ds-LRkDeAoD8F/pub?start=false&amp;loop=false&amp;delayms=60000" target="_blank">
+                Контент
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://tmtm.timepad.ru/" target="_blank">
+                Семинары
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/megaprojects/" class="footer-menu__item-link">
+                Мегапроекты
+              </a></li></ul></div></div></div></div></div> <div class="tm-footer"><div class="tm-page-width"><div class="tm-footer__container"><!----> <div class="tm-footer__social"><a href="https://www.facebook.com/habrahabr.ru" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Facebook</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-facebook"></use></svg></a><a href="https://twitter.com/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Twitter</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-twitter"></use></svg></a><a href="https://vk.com/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>VK</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-vkontakte"></use></svg></a><a href="https://telegram.me/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Telegram</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-telegram"></use></svg></a><a href="https://www.youtube.com/channel/UCd_sTwKqVrweTt4oAKY5y4w" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Youtube</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-youtube"></use></svg></a><a href="https://zen.yandex.ru/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Яндекс Дзен</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-zen"></use></svg></a></div> <DIV class="v-portal" style="display:none;"></DIV> <button class="tm-footer__link"><!---->
+        Настройка языка
+      </button> <a href="/ru/about" class="tm-footer__link">
+        О сайте
+      </a> <a href="/ru/feedback/" class="tm-footer__link">
+        Техническая поддержка
+      </a> <!----> <a href="/berserk-mode-nope" class="tm-footer__link">
+        Вернуться на старую версию
+      </a> <div class="tm-footer-copyright"><span class="tm-copyright"><span class="tm-copyright__years">© 2006–2021 </span> <span class="tm-copyright__name">«<a href="https://company.habr.com/" rel="noopener" target="_blank" class="tm-copyright__link">Habr</a>»</span></span></div></div></div></div> <!----> <!----></div> <div class="vue-portal-target"></div></div>
+<script>window.__INITIAL_STATE__={"adblock":{"hasAcceptableAdsFilter":false,"hasAdblock":false},"articlesList":{"articlesList":{"451848":{"id":"451848","timePublished":"2019-05-14T18:10:12+00:00","isCorporative":false,"lang":"ru","titleHtml":"Автоматизация управления Let's Encrypt SSL сертификатами используя DNS-01 challenge и AWS","leadData":{"textHtml":"\u003Cp\u003EПост описывает шаги для автоматизации управления SSL сертификатами от \u003Cstrong\u003E\u003Ca href=\"https:\u002F\u002Fletsencrypt.org\u002F\"\u003ELet's Encrypt CA\u003C\u002Fa\u003E\u003C\u002Fstrong\u003E используя \u003Cem\u003E\u003Ca href=\"https:\u002F\u002Fletsencrypt.org\u002Fdocs\u002Fchallenge-types\u002F\"\u003EDNS-01 challenge\u003C\u002Fa\u003E\u003C\u002Fem\u003E и \u003Cem\u003EAWS\u003C\u002Fem\u003E.\u003C\u002Fp\u003E\u003Cbr\u003E\r\n\u003Cp\u003E\u003Cstrong\u003E\u003Ca href=\"https:\u002F\u002Fgithub.com\u002Fbegmaroman\u002Facme-dns-route53\"\u003Eacme-dns-route53\u003C\u002Fa\u003E\u003C\u002Fstrong\u003E — это инструмент, который позволит нам реализовать данную фичу. Он умеет работать с SSL сертификатами от Let's Encrypt, сохранять их в Amazon Certificate Manager, использовать Route53 API для реализации DNS-01 challenge, и, в конце, пушить уведомления в SNS. В \u003Cem\u003Eacme-dns-route53\u003C\u002Fem\u003E так же присутствует built-in функционал для использования внутри AWS Lambda, и это то, что нам нужно. \u003C\u002Fp\u003E","imageUrl":null,"buttonTextHtml":"Читать дальше →","image":null},"editorVersion":"1.0","postType":"article","postLabels":[{"type":"tutorial","data":null}],"author":{"scoreStats":{"score":6,"votesCount":6},"rating":0,"relatedData":null,"contacts":[],"authorContacts":[],"paymentDetails":{"paymentYandexMoney":null,"paymentPayPalMe":null,"paymentWebmoney":null},"id":"2014327","alias":"behmaroman","fullname":"Roman","avatarUrl":"\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Favatars\u002F555\u002Fd3f\u002F1d4\u002F555d3f1d43962fea3744507c0888f3b7.jpg","speciality":"Пользователь"},"statistics":{"commentsCount":11,"favoritesCount":37,"readingCount":3461,"score":8,"votesCount":8},"hubs":[{"relatedData":null,"id":"17682","alias":"aws","type":"collective","title":"Amazon Web Services","titleHtml":"Amazon Web Services","isProfiled":true},{"relatedData":null,"id":"17708","alias":"dns","type":"collective","title":"DNS","titleHtml":"DNS","isProfiled":true},{"relatedData":null,"id":"17748","alias":"go","type":"collective","title":"Go","titleHtml":"Go","isProfiled":true}],"flows":[{"id":"1","alias":"develop","title":"Разработка"},{"id":"6","alias":"admin","title":"Администрирование"}],"relatedData":null,"textHtml":"\u003Cdiv xmlns=\"http:\u002F\u002Fwww.w3.org\u002F1999\u002Fxhtml\"\u003E\u003Cp\u003EПост описывает шаги для автоматизации управления SSL сертификатами от \u003Cstrong\u003E\u003Ca href=\"https:\u002F\u002Fletsencrypt.org\u002F\"\u003ELet's Encrypt CA\u003C\u002Fa\u003E\u003C\u002Fstrong\u003E используя \u003Cem\u003E\u003Ca href=\"https:\u002F\u002Fletsencrypt.org\u002Fdocs\u002Fchallenge-types\u002F\"\u003EDNS-01 challenge\u003C\u002Fa\u003E\u003C\u002Fem\u003E и \u003Cem\u003EAWS\u003C\u002Fem\u003E.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003E\u003Cstrong\u003E\u003Ca href=\"https:\u002F\u002Fgithub.com\u002Fbegmaroman\u002Facme-dns-route53\"\u003Eacme-dns-route53\u003C\u002Fa\u003E\u003C\u002Fstrong\u003E — это инструмент, который позволит нам реализовать данную фичу. Он умеет работать с SSL сертификатами от Let's Encrypt, сохранять их в Amazon Certificate Manager, использовать Route53 API для реализации DNS-01 challenge, и, в конце, пушить уведомления в SNS. В \u003Cem\u003Eacme-dns-route53\u003C\u002Fem\u003E так же присутствует built-in функционал для использования внутри AWS Lambda, и это то, что нам нужно. \u003C\u002Fp\u003E\u003Ca name=\"habracut\"\u003E\u003C\u002Fa\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EДанная статья разбита на 4 раздела:\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003Eсоздание zip файла;\u003C\u002Fli\u003E\r\n\u003Cli\u003Eсоздание IAM роли;\u003C\u002Fli\u003E\r\n\u003Cli\u003Eсоздание лямбда функции которая запускает \u003Cem\u003Eacme-dns-route53\u003C\u002Fem\u003E;\u003C\u002Fli\u003E\r\n\u003Cli\u003Eсоздание CloudWatch таймера который триггерит функцию 2 раза в день;\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003E\u003Cem\u003E\u003Cstrong\u003ENote:\u003C\u002Fstrong\u003E перед началом необходимо установить \u003Ca href=\"https:\u002F\u002Fgolang.org\u002Fdoc\u002Finstall\"\u003EGoLang 1.9+\u003C\u002Fa\u003E и \u003Ca href=\"https:\u002F\u002Fdocs.aws.amazon.com\u002Fcli\u002Flatest\u002Fuserguide\u002Fcli-chap-install.html\"\u003EAWS CLI\u003C\u002Fa\u003E\u003C\u002Fem\u003E\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Ch3 id=\"sozdanie-zip-fayla\"\u003EСоздание zip файла\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003E\u003Cem\u003Eacme-dns-route53 написан на GoLang и поддерживает версию не ниже 1.9.\u003C\u002Fem\u003E\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EНам нужно создать zip файл с бинарником \u003Ccode\u003Eacme-dns-route53\u003C\u002Fcode\u003E внутри. Для этого необходимо установить \u003Ccode\u003Eacme-dns-route53\u003C\u002Fcode\u003E из GitHub репозитория используя команду \u003Ccode\u003Ego install\u003C\u002Fcode\u003E:\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"bash\"\u003E$ env GOOS=linux GOARCH=amd64 go install github.com\u002Fbegmaroman\u002Facme-dns-route53\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EБинарник установлен в \u003Ccode\u003E$GOPATH\u002Fbin\u003C\u002Fcode\u003E директорию. Обратите внимание на то, что при установке мы указали две переенные окружениея: \u003Ccode\u003EGOOS=linux\u003C\u002Fcode\u003E и \u003Ccode\u003EGOARCH=amd64\u003C\u002Fcode\u003E. Они дают понять Go компилятору об необходимости создания бинарника подходящего для Linux OS и amd64 архитектуры — это то, что запускается в AWS.\u003Cbr\u002F\u003E\r\nAWS пердполагает деплой нашей программы в zip файле, так что давайте создадим \u003Ccode\u003Eacme-dns-route53.zip\u003C\u002Fcode\u003E архив который будет содержать только что установленный бинарник:\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"bash\"\u003E$ zip -j ~\u002Facme-dns-route53.zip $GOPATH\u002Fbin\u002Facme-dns-route53\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003E\u003Cem\u003E\u003Cstrong\u003ENote:\u003C\u002Fstrong\u003E бинарник должен быть в корне zip архива. Для этого мы используем \u003Ccode\u003E-j\u003C\u002Fcode\u003E флаг.\u003C\u002Fem\u003E\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EТеперь наш zip-ник готов к деплою, осталось только создать роль с необходимыми правами.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Ch3 id=\"sozdanie-iam-roli\"\u003EСоздание IAM роли\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EНам нужно засетапить IAM роль с правами, необходимыми нашей лямбде во время ее выполнения.\u003Cbr\u002F\u003E\r\nДавайте назовем эту policy \u003Ccode\u003Elambda-acme-dns-route53-executor\u003C\u002Fcode\u003E и сразу дадим ей базовую роль \u003Ccode\u003EAWSLambdaBasicExecutionRole\u003C\u002Fcode\u003E. Это позволит нашей лямбде запуститься и писать логи в AWS CloudWatch сервис.\u003Cbr\u002F\u003E\r\nДля начала создаем JSON файл в котором описаны наши права. Это, по сути, разрешит лямбда-сервисам использовать роль \u003Ccode\u003Elambda-acme-dns-route53-executor\u003C\u002Fcode\u003E:\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"bash\"\u003E$ touch ~\u002Flambda-acme-dns-route53-executor-policy.json\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EСодержимое нашего файла следующее:\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"json\"\u003E{\n    \"Version\": \"2012-10-17\",\n    \"Statement\": [\n        {\n            \"Effect\": \"Allow\",\n            \"Action\": [\n                \"logs:CreateLogGroup\"\n            ],\n            \"Resource\": \"arn:aws:logs:&lt;AWS_REGION\u003E:&lt;AWS_ACCOUNT_ID\u003E:*\"\n        },\n        {\n            \"Effect\": \"Allow\",\n            \"Action\": [\n                \"logs:PutLogEvents\",\n                \"logs:CreateLogStream\"\n            ],\n            \"Resource\": \"arn:aws:logs:&lt;AWS_REGION\u003E:&lt;AWS_ACCOUNT_ID\u003E:log-group:\u002Faws\u002Flambda\u002Facme-dns-route53:*\"\n        },\n        {\n            \"Sid\": \"\",\n            \"Effect\": \"Allow\",\n            \"Action\": [\n                \"route53:ListHostedZones\",\n                \"cloudwatch:PutMetricData\",\n                \"acm:ImportCertificate\",\n                \"acm:ListCertificates\"\n            ],\n            \"Resource\": \"*\"\n        },\n        {\n            \"Sid\": \"\",\n            \"Effect\": \"Allow\",\n            \"Action\": [\n                \"sns:Publish\",\n                \"route53:GetChange\",\n                \"route53:ChangeResourceRecordSets\",\n                \"acm:ImportCertificate\",\n                \"acm:DescribeCertificate\"\n            ],\n            \"Resource\": [\n                \"arn:aws:sns:&lt;AWS_REGION\u003E:&lt;AWS_ACCOUNT_ID\u003E:&lt;TOPIC_NAME\u003E\",\n                \"arn:aws:route53:::hostedzone\u002F*\",\n                \"arn:aws:route53:::change\u002F*\",\n                \"arn:aws:acm:&lt;AWS_REGION\u003E:&lt;AWS_ACCOUNT_ID\u003E:certificate\u002F*\"\n            ]\n        }\n    ]\n}\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EТеперь выполним команду \u003Ccode\u003Eaws iam create-role\u003C\u002Fcode\u003E для создания роли:\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"bash\"\u003E$ aws iam create-role --role-name lambda-acme-dns-route53-executor \\\n --assume-role-policy-document ~\u002Flambda-acme-dns-route53-executor-policy.json\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003E\u003Cem\u003E\u003Cstrong\u003ENote:\u003C\u002Fstrong\u003E запомните policy ARN (Amazon Resource Name) — он нам понадобится на следующих этапах.\u003C\u002Fem\u003E\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EРоль \u003Ccode\u003Elambda-acme-dns-route53-executor\u003C\u002Fcode\u003E создана, теперь нам нужно указать разрешения для нее. Самый простой способ сделать это — использовать команду \u003Ccode\u003Eaws iam attach-role-policy\u003C\u002Fcode\u003E, передав policy ARN \u003Ccode\u003EAWSLambdaBasicExecutionRole\u003C\u002Fcode\u003E следующим образом:\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"bash\"\u003E$ aws iam attach-role-policy --role-name lambda-acme-dns-route53-executor \\\n--policy-arn arn:aws:iam::aws:policy\u002Fservice-role\u002FAWSLambdaBasicExecutionRole\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003E\u003Cem\u003E\u003Cstrong\u003ENote:\u003C\u002Fstrong\u003E список с остальными политиками можно найти \u003Ca href=\"https:\u002F\u002Fdocs.aws.amazon.com\u002Flambda\u002Flatest\u002Fdg\u002Flambda-permissions.html#lambda-intro-execution-role\"\u003Eздесь\u003C\u002Fa\u003E.\u003C\u002Fem\u003E\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Ch3 id=\"sozdanie-lyambda-funkcii-kotoraya-zapuskaet-acme-dns-route53\"\u003EСоздание лямбда функции которая запускает \u003Cem\u003Eacme-dns-route53\u003C\u002Fem\u003E\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EУра! Теперь можно и задеплоить нашу функцию на AWS с помощью команды \u003Ccode\u003Eaws lambda create-function\u003C\u002Fcode\u003E. Лямбда должна быть сконфигурированна используя следующие переменные окружения:\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003E\u003Ccode\u003EAWS_LAMBDA\u003C\u002Fcode\u003E — дает понять \u003Cem\u003Eacme-dns-route53\u003C\u002Fem\u003E о том, что выполнение происходить внутри AWS Lambda.\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Ccode\u003EDOMAINS\u003C\u002Fcode\u003E — список доменов, разделенных запятыми.\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Ccode\u003ELETSENCRYPT_EMAIL\u003C\u002Fcode\u003E — содержит \u003Ca href=\"https:\u002F\u002Fletsencrypt.org\u002Fdocs\u002Fexpiration-emails\u002F\"\u003ELet’s Encrypt Email\u003C\u002Fa\u003E.\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Ccode\u003ENOTIFICATION_TOPIC\u003C\u002Fcode\u003E — название SNS Notification Topic (опционально).\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Ccode\u003ESTAGING\u003C\u002Fcode\u003E — при значении \u003Ccode\u003E1\u003C\u002Fcode\u003E используется staging environment.\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Ccode\u003ERENEW_BEFORE\u003C\u002Fcode\u003E — количество дней, определяющих период до истечения срока, в течение которого сертификат должен быть продлен.\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Ccode\u003E1024\u003C\u002Fcode\u003E MB — лимит памяти, может быть изменен. \u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Ccode\u003E900\u003C\u002Fcode\u003E secs (15 min) — таймаут.\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Ccode\u003Eacme-dns-route53\u003C\u002Fcode\u003E — название нашего бинарника, который лежит в архиве.\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Ccode\u003Efileb:\u002F\u002F~\u002Facme-dns-route53.zip\u003C\u002Fcode\u003E — путь к архиву, который мы создали.\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EТеперь деплоим:\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"bash\"\u003E$ aws lambda create-function \\\n --function-name acme-dns-route53 \\\n --runtime go1.x \\\n --role arn:aws:iam::&lt;AWS_ACCOUNT_ID\u003E:role\u002Flambda-acme-dns-route53-executor \\\n --environment Variables=\"{AWS_LAMBDA=1,DOMAINS=\\\"example1.com,example2.com\\\",LETSENCRYPT_EMAIL=begmaroman@gmail.com,STAGING=0,NOTIFICATION_TOPIC=acme-dns-route53-obtained,RENEW_BEFORE=7}\" \\\n --memory-size 1024 \\\n --timeout 900 \\\n --handler acme-dns-route53 \\\n --zip-file fileb:\u002F\u002F~\u002Facme-dns-route53.zip\n\n {\n     \"FunctionName\": \"acme-dns-route53\", \n     \"LastModified\": \"2019-05-03T19:07:09.325+0000\", \n     \"RevisionId\": \"e3fadec9-2180-4bff-bb9a-999b1b71a558\", \n     \"MemorySize\": 1024, \n     \"Environment\": {\n         \"Variables\": {\n            \"DOMAINS\": \"example1.com,example2.com\", \n            \"STAGING\": \"1\", \n            \"LETSENCRYPT_EMAIL\": \"your@email.com\", \n            \"NOTIFICATION_TOPIC\": \"acme-dns-route53-obtained\", \n            \"RENEW_BEFORE\": \"7\",\n            \"AWS_LAMBDA\": \"1\"\n         }\n     }, \n     \"Version\": \"$LATEST\", \n     \"Role\": \"arn:aws:iam::&lt;AWS_ACCOUNT_ID\u003E:role\u002Flambda-acme-dns-route53-executor\", \n     \"Timeout\": 900, \n     \"Runtime\": \"go1.x\", \n     \"TracingConfig\": {\n         \"Mode\": \"PassThrough\"\n     }, \n     \"CodeSha256\": \"+2KgE5mh5LGaOsni36pdmPP9O35wgZ6TbddspyaIXXw=\", \n     \"Description\": \"\", \n     \"CodeSize\": 8456317,\n\"FunctionArn\": \"arn:aws:lambda:us-east-1:&lt;AWS_ACCOUNT_ID\u003E:function:acme-dns-route53\", \n     \"Handler\": \"acme-dns-route53\"\n }\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Ch3 id=\"sozdanie-cloudwatch-taymera-kotoryy-triggerit-funkciyu-2-raza-v-den\"\u003EСоздание CloudWatch таймера который триггерит функцию 2 раза в день\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EПоследний шаг — это настроить крон, который вызывает нашу функцию дважды в день:\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003Eсоздать правило CloudWatch со значением \u003Ccode\u003Eschedule_expression\u003C\u002Fcode\u003E.\u003C\u002Fli\u003E\r\n\u003Cli\u003Eсоздать цель правила (что должно выполняться), указав ARN лямбда-функции.\u003C\u002Fli\u003E\r\n\u003Cli\u003Eдать разрешение правилу вызов лямбда-функции.\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EНиже я прикрепил свой Terraform конфиг, но на самом деле это делается очень просто с помощью AWS консоль или AWS CLI.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E# Cloudwatch event rule that runs acme-dns-route53 lambda every 12 hours\nresource \"aws_cloudwatch_event_rule\" \"acme_dns_route53_sheduler\" {\n  name                = \"acme-dns-route53-issuer-scheduler\"\n  schedule_expression = \"cron(0 *\u002F12 * * ? *)\"\n}\n\n# Specify the lambda function to run\nresource \"aws_cloudwatch_event_target\" \"acme_dns_route53_sheduler_target\" {\n  rule = \"${aws_cloudwatch_event_rule.acme_dns_route53_sheduler.name}\"\n  arn  = \"${aws_lambda_function.acme_dns_route53.arn}\"\n}\n\n# Give CloudWatch permission to invoke the function\nresource \"aws_lambda_permission\" \"permission\" {\n  action        = \"lambda:InvokeFunction\"\n  function_name = \"${aws_lambda_function.acme_dns_route53.function_name}\"\n  principal     = \"events.amazonaws.com\"\n  source_arn    = \"${aws_cloudwatch_event_rule.acme_dns_route53_sheduler.arn}\"\n}\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EТеперь и у вас настроено автоматическое создание и обновление SSL сертификатов\u003C\u002Fp\u003E\u003C\u002Fdiv\u003E","tags":[{"titleHtml":"aws"},{"titleHtml":"route53"},{"titleHtml":"amazon certificate manager"},{"titleHtml":"acm"},{"titleHtml":"acme"},{"titleHtml":"letsencrypt"},{"titleHtml":"dns"},{"titleHtml":"cloudwatch"},{"titleHtml":"ssl certificate"},{"titleHtml":"certificate authorities"}],"metadata":{"stylesUrls":[],"scriptUrls":[],"shareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F451848\u002F21cfa18c87a24c8fa75e64b160adeffe\u002F","shareImageWidth":1200,"shareImageHeight":630,"vkShareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F451848\u002F21cfa18c87a24c8fa75e64b160adeffe\u002F?format=vk","schemaJsonLd":"{\"@context\":\"http:\\\u002F\\\u002Fschema.org\",\"@type\":\"Article\",\"mainEntityOfPage\":{\"@type\":\"WebPage\",\"@id\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fru\\\u002Fpost\\\u002F451848\\\u002F\"},\"headline\":\"Автоматизация управления Let's Encrypt SSL сертификатами используя DNS-01 challenge и AWS\",\"datePublished\":\"2019-05-14T21:10:12+03:00\",\"dateModified\":\"2019-05-20T10:23:46+03:00\",\"author\":{\"@type\":\"Person\",\"name\":\"Roman\"},\"publisher\":{\"@type\":\"Organization\",\"name\":\"Habr\",\"logo\":{\"@type\":\"ImageObject\",\"url\":\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fa_\\\u002Flk\\\u002F9m\\\u002Fa_lk9mjkccjox-zccjrpfolmkmq.png\"}},\"description\":\"Пост описывает шаги для автоматизации управления SSL сертификатами от Let's Encrypt CA используя DNS-01 challenge и AWS. acme-dns-route53 &mdash; это инструмент, котор...\",\"url\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fru\\\u002Fpost\\\u002F451848\\\u002F#post-content-body\",\"about\":[\"h_aws\",\"h_dns\",\"h_go\",\"f_develop\",\"f_admin\"],\"image\":[\"https:\\\u002F\\\u002Fhabr.com\\\u002Fshare\\\u002Fpublication\\\u002F451848\\\u002F21cfa18c87a24c8fa75e64b160adeffe\\\u002F\"]}","metaDescription":"Пост описывает шаги для автоматизации управления SSL сертификатами от Let&#039;s Encrypt CA используя DNS-01 challenge и AWS.\r\nacme-dns-route53 — это инструмент, который позволит нам реализовать данную...","mainImageUrl":null,"amp":false},"polls":[],"commentsEnabled":true,"rulesRemindEnabled":false,"votesEnabled":true,"status":"published","plannedPublishTime":null,"checked":null,"isEditorial":false}},"articlesIds":{},"isLoading":false,"pagesCount":{},"route":{},"reasonsList":null,"view":"cards","lastVisitedRoute":{},"ssrCommentsArticleIds":[""],"karma":{}},"authorContribution":{"authors":{}},"betaTest":{"currentAnnouncement":null,"announcements":{},"announcementCards":null,"announcementComments":{},"announcementCommentThreads":{},"announcementCommentingStatuses":{},"archivedList":[]},"authorStatistics":{"articleRefs":{},"articleIds":{},"pagesCount":{},"route":{},"viewsCount":[],"maxStatsCount":{}},"career":{"seoLandings":[{"title":"Go разработчик","vacanciesCount":113,"itemUrl":"https:\u002F\u002Fcareer.habr.com\u002Fvacancies\u002Fgo_razrabotchik","itemHubs":["go"]}],"hubs":"aws,dns,go"},"comments":{"articleComments":{},"searchCommentsResults":null,"previewComment":null,"pagesCount":null,"commentAccess":{},"scrollParents":{},"pageArticleComments":{"lastViewedComment":0,"postId":null,"lastCommentTimestamp":"","moderated":[],"moderatedIds":[],"commentRoute":""}},"companies":{"companyRefs":{},"companyIds":{},"companyTopIds":{},"pagesCount":{},"companyProfiles":{},"companiesCategories":[],"companiesCategoriesTotalCount":0,"companiesWidgets":{},"companiesWorkers":{},"companiesFans":{},"route":{},"isLoading":false,"companyWorkersLoading":false,"companyFansLoading":false,"vacancies":{}},"companiesContribution":{"hubs":{},"flows":{},"companyRefs":{}},"companyHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"conversation":{"messages":[],"respondent":null,"isLoadMore":false},"conversations":{"conversations":[],"unreadCount":0,"pagesCount":0,"isLoadMore":false},"desktopState":{"desktopFl":null,"desktopHl":null,"isChecked":false,"isLoginDemanded":false},"dfp":{"slotsDict":{}},"docs":{"menu":{},"articles":{},"mainMenu":[],"loading":{"main":false,"dropdown":false,"article":false}},"feature":{"isProbablyVisible":"true"},"flows":{"flows":[{"alias":"develop","id":1,"route":{"name":"FLOW_PAGE","params":{"flowName":"develop"}}},{"alias":"admin","id":6,"route":{"name":"FLOW_PAGE","params":{"flowName":"admin"}}},{"alias":"design","id":2,"route":{"name":"FLOW_PAGE","params":{"flowName":"design"}}},{"alias":"management","id":3,"route":{"name":"FLOW_PAGE","params":{"flowName":"management"}}},{"alias":"marketing","id":4,"route":{"name":"FLOW_PAGE","params":{"flowName":"marketing"}}},{"alias":"popsci","id":7,"route":{"name":"FLOW_PAGE","params":{"flowName":"popsci"}}}]},"global":{"isPwa":false,"device":"desktop","isHabrCom":true},"hubs":{"hubRefs":{},"hubIds":{},"pagesCount":{},"isLoading":false,"route":{}},"hubsBlock":{"hubRefs":{},"hubIds":{}},"i18n":{"fl":"ru","hl":"ru"},"info":{"infoPage":{},"isLoading":true},"location":{"urlStruct":{"protocol":null,"slashes":null,"auth":null,"host":null,"port":null,"hostname":null,"hash":null,"search":null,"query":{},"pathname":null,"path":null,"href":""},"searchQuery":null},"me":{"user":null,"ppgDemanded":false,"karmaResetInfo":{"canReincarnate":null,"wasReincarnated":null,"currentScore":null},"notes":null},"mostReadingList":{"mostReadingListIds":[],"mostReadingListRefs":null,"promoPost":null},"pinnedPost":{"pinnedPost":null},"ppa":{"articles":{},"card":null,"transactions":null,"totalTransactions":null,"isAccessible":null},"projectsBlocks":{"activeBlocks":{}},"pullRefresh":{"shouldRefresh":false},"sandbox":{"articleIds":[],"articleRefs":{},"pagesCount":null,"route":{},"lastVisitedRoute":{},"isLoading":false},"settingsOther":{"inputs":{"uiLang":{"errors":[],"ref":null,"value":""},"articlesLangEnglish":{"errors":[],"ref":null,"value":false},"articlesLangRussian":{"errors":[],"ref":null,"value":false},"agreement":{"errors":[],"ref":null,"value":false},"email":{"errors":[],"ref":null,"value":true},"digest":{"errors":[],"ref":null,"value":true}}},"similarList":{"similarListIds":[],"similarListRefs":null},"ssr":{"error":null,"isDataLoaded":false,"isDataLoading":false,"isHydrationFailed":false,"isServer":false},"userHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"userInvites":{"availableInvites":0,"usedInvitesIds":[],"usedInvitesRefs":{},"usedInvitesPagesCount":0,"unusedInvitesIds":[],"unusedInvitesRefs":{},"unusedInvitesPagesCount":0},"users":{"authorRefs":{},"authorIds":{},"pagesCount":{},"authorProfiles":{},"userHubs":{},"userInvitations":{},"authorFollowers":{},"authorFollowed":{},"karmaStats":[],"statistics":null,"isLoading":false,"authorFollowersLoading":false,"authorFollowedLoading":false,"userHubsLoading":false,"userInvitationsLoading":false,"route":{}},"viewport":{"prevScrollY":{},"scrollY":0,"width":0},"tracker":{"items":{},"pagesCache":{},"markedViewedSilently":{},"markedRead":{},"unreadCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null},"unviewedCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null}}};(function(){var s;(s=document.currentScript||document.scripts[document.scripts.length-1]).parentNode.removeChild(s);}());</script>
+<script src="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" defer></script><script src="https://assets.habr.com/habr-web/js/app.c0af73e7.js" defer></script>
+
+
+
+    <script>
+      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+        (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+        m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+      })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+    </script>
+  
+  <script type="text/javascript" >
+    (function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+    m[i].l=1*new Date();k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})
+    (window, document, "script", "https://mc.yandex.ru/metrika/tag.js", "ym");
+
+    ym(24049213, "init", {
+      defer:true,
+      trackLinks:true,
+      accurateTrackBounce:true,
+      webvisor:false,
+    });
+  </script>
+  <noscript>
+    <div>
+      <img src="https://mc.yandex.ru/watch/24049213" style="position:absolute; left:-9999px;" alt="" />
+    </div>
+  </noscript>
+  
+    <script type="text/javascript">
+      window.addEventListener('load', function () {
+        setTimeout(() => {
+          const img = new Image();
+          img.src = 'https://vk.com/rtrg?p=VK-RTRG-421343-57vKE';
+        }, 0);
+      });
+    </script>
+  
+</body>
+</html>

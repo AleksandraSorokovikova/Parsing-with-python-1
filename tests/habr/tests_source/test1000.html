@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html lang="ru" data-vue-meta="%7B%22lang%22:%7B%22ssr%22:%22ru%22%7D%7D">
+<head >
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
+  <title>Оптимизация сборки мусора в высоконагруженном .NET сервисе / Хабр</title>
+  <style>
+    /* cyrillic-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSxf6TF0.woff2) format('woff2');
+      unicode-range: U+0460-052F, U+1C80-1C88, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+    }
+
+    /* cyrillic */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveQhf6TF0.woff2) format('woff2');
+      unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+    }
+
+    /* latin-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSBf6TF0.woff2) format('woff2');
+      unicode-range: U+0100-024F, U+0259, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20CF, U+2113, U+2C60-2C7F, U+A720-A7FF;
+    }
+
+    /* latin */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveRhf6.woff2) format('woff2');
+      unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+    }
+  </style>
+  <link rel="preload" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" as="script"><link rel="preload" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/app.c0af73e7.js" as="script">
+  <link rel="stylesheet" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css"><link rel="stylesheet" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css">
+  <script>window.i18nFetch = new Promise((res, rej) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open('GET', '/js/i18n/ru-compiled.85eb77f0b17c8235e7b64b9f81ea5ec2.json');
+          xhr.responseType = 'json';
+          xhr.onload = function(e) {
+            if (this.status === 200) {
+              res({ru: xhr.response});
+            } else {
+              rej(e);
+            }
+          };
+          xhr.send();
+        });</script>
+  
+  <script data-vue-meta="ssr" src="/js/ads.js" onload="window['zhY4i4nJ9K'] = true" data-vmid="checkad"></script><script data-vue-meta="ssr" type="application/ld+json" data-vmid="ldjson-schema">{"@context":"http:\/\/schema.org","@type":"Article","mainEntityOfPage":{"@type":"WebPage","@id":"https:\/\/habr.com\/ru\/post\/452298\/"},"headline":"Оптимизация сборки мусора в высоконагруженном .NET сервисе","datePublished":"2019-05-17T22:07:07+03:00","dateModified":"2019-05-17T22:53:42+03:00","author":{"@type":"Person","name":"Pyrus"},"publisher":{"@type":"Organization","name":"Habr","logo":{"@type":"ImageObject","url":"https:\/\/habrastorage.org\/webt\/a_\/lk\/9m\/a_lk9mjkccjox-zccjrpfolmkmq.png"}},"description":"Ежедневно в сервисе Pyrus работают десятки тысяч сотрудников из нескольких тысяч организаций по всему миру. Отзывчивость сервиса (скорость обработки запросов) мы...","url":"https:\/\/habr.com\/ru\/post\/452298\/#post-content-body","about":["h_hi","h_programming","h_net","h_asp","h_csharp","f_develop"],"image":["https:\/\/habrastorage.org\/webt\/fu\/1s\/j9\/fu1sj9ixpj4nc633ikhwblbhlfs.jpeg","https:\/\/habrastorage.org\/webt\/v4\/ia\/cd\/v4iacdyso10-0toycwyijfm0zbm.png","https:\/\/habrastorage.org\/webt\/m5\/7y\/je\/m57yjedgbkwfpbiwmjkvnbhgl4o.png","https:\/\/habrastorage.org\/webt\/gg\/lc\/ce\/gglcce4tssnhzgcjfhesec9rcja.png","https:\/\/habrastorage.org\/webt\/h7\/r2\/d0\/h7r2d0htyxsnaqrr_ekn_ybilti.png","https:\/\/habrastorage.org\/webt\/la\/up\/6v\/laup6v0mho5e1tbwjfkfmsgdhog.png","https:\/\/habrastorage.org\/webt\/dx\/et\/jy\/dxetjyvj2ande72qrod6leza6i8.png","https:\/\/habrastorage.org\/webt\/v6\/k6\/r-\/v6k6r-wq0qeof0edb6h5jvct-he.png","https:\/\/habrastorage.org\/webt\/sy\/kr\/lk\/sykrlkgbmvl9jyny5hl1_ftg4ee.png","https:\/\/habrastorage.org\/webt\/f9\/6q\/mp\/f96qmplnj4devma1buedg6fpo8q.png","https:\/\/habrastorage.org\/webt\/72\/zj\/js\/72zjjs9q6lcfud-l7nq8cy5prdi.png","https:\/\/habrastorage.org\/webt\/ye\/j0\/qg\/yej0qglbieyx_tg05hdgutajhmc.png","https:\/\/habrastorage.org\/webt\/8b\/l3\/fn\/8bl3fnxpuymka28coyzbo0r5ak4.png","https:\/\/habrastorage.org\/webt\/mx\/oy\/tv\/mxoytvprkypunnhwtao6o6fboai.png","https:\/\/habrastorage.org\/webt\/qp\/04\/hp\/qp04hpcq35buinfnfjn5uuudnyg.png"]}</script>
+  <script src="//www.googletagservices.com/tag/js/gpt.js" async></script>
+  <style>.grecaptcha-badge{visibility: hidden;}</style>
+  <meta name="habr-version" content="2.49.0">
+  
+  <meta data-vue-meta="ssr" property="fb:app_id" content="444736788986613"><meta data-vue-meta="ssr" property="fb:pages" content="472597926099084"><meta data-vue-meta="ssr" name="twitter:card" content="summary_large_image"><meta data-vue-meta="ssr" name="twitter:site" content="@habr_eng"><meta data-vue-meta="ssr" property="og:title" content="Оптимизация сборки мусора в высоконагруженном .NET сервисе" data-vmid="og:title"><meta data-vue-meta="ssr" name="twitter:title" content="Оптимизация сборки мусора в высоконагруженном .NET сервисе" data-vmid="twitter:title"><meta data-vue-meta="ssr" name="aiturec:title" content="Оптимизация сборки мусора в высоконагруженном .NET сервисе" data-vmid="aiturec:title"><meta data-vue-meta="ssr" name="description" content="Ежедневно в сервисе Pyrus работают десятки тысяч сотрудников из нескольких тысяч организаций по всему миру. Отзывчивость сервиса (скорость обработки запросов) мы считаем важным конкурентным..." data-vmid="description"><meta data-vue-meta="ssr" itemprop="description" content="Ежедневно в сервисе Pyrus работают десятки тысяч сотрудников из нескольких тысяч организаций по всему миру. Отзывчивость сервиса (скорость обработки запросов) мы считаем важным конкурентным..." data-vmid="description:itemprop"><meta data-vue-meta="ssr" property="og:description" content="Ежедневно в сервисе Pyrus работают десятки тысяч сотрудников из нескольких тысяч организаций по всему миру. Отзывчивость сервиса (скорость обработки запросов) мы считаем важным конкурентным..." data-vmid="og:description"><meta data-vue-meta="ssr" name="twitter:description" content="Ежедневно в сервисе Pyrus работают десятки тысяч сотрудников из нескольких тысяч организаций по всему миру. Отзывчивость сервиса (скорость обработки запросов) мы считаем важным конкурентным..." data-vmid="twitter:description"><meta data-vue-meta="ssr" property="aiturec:description" content="Ежедневно в сервисе Pyrus работают десятки тысяч сотрудников из нескольких тысяч организаций по всему миру. Отзывчивость сервиса (скорость обработки запросов) мы считаем важным конкурентным..." data-vmid="aiturec:description"><meta data-vue-meta="ssr" itemprop="image" content="https://habr.com/share/publication/452298/c91c3bfe18e83f6822b4cfd9ad87651a/" data-vmid="image:itemprop"><meta data-vue-meta="ssr" property="og:image" content="https://habr.com/share/publication/452298/c91c3bfe18e83f6822b4cfd9ad87651a/" data-vmid="og:image"><meta data-vue-meta="ssr" property="aiturec:image" content="https://habr.com/share/publication/452298/c91c3bfe18e83f6822b4cfd9ad87651a/" data-vmid="aiturec:image"><meta data-vue-meta="ssr" name="twitter:image" content="https://habr.com/share/publication/452298/c91c3bfe18e83f6822b4cfd9ad87651a/" data-vmid="twitter:image"><meta data-vue-meta="ssr" property="vk:image" content="https://habr.com/share/publication/452298/c91c3bfe18e83f6822b4cfd9ad87651a/" data-vmid="vk:image"><meta data-vue-meta="ssr" property="aiturec:item_id" content="452298" data-vmid="aiturec:item_id"><meta data-vue-meta="ssr" property="aiturec:datetime" content="2019-05-17T19:07:07.000Z" data-vmid="aiturec:datetime"><meta data-vue-meta="ssr" property="og:type" content="article" data-vmid="og:type"><meta data-vue-meta="ssr" property="og:locale" content="ru_RU" data-vmid="og:locale"><meta data-vue-meta="ssr" property="og:image:width" content="1200" data-vmid="og:image:width"><meta data-vue-meta="ssr" property="og:image:height" content="630" data-vmid="og:image:height">
+  <link data-vue-meta="ssr" href="https://habr.com/ru/rss/post/452298/?fl=ru" type="application/rss+xml" title="" rel="alternate" name="rss"><link data-vue-meta="ssr" href="https://habr.com/ru/post/452298/" rel="canonical" data-vmid="canonical"><link data-vue-meta="ssr" data-vmid="hreflang"><link data-vue-meta="ssr" image_src="image" href="https://habr.com/share/publication/452298/c91c3bfe18e83f6822b4cfd9ad87651a/" data-vmid="image:href">
+  <meta name="apple-mobile-web-app-status-bar-style" content="#303b44">
+  <meta name="msapplication-TileColor" content="#629FBC">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="16x16"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-16.png"
+  >
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="32x32"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-32.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="76x76"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-76.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="120x120"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="152x152"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-152.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="180x180"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-180.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="256x256"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-256.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1136x640.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2436x1125.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1792x828.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_828x1792.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1334x750.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2208x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1125x2436.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2208.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2732x2048.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2688x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2224x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_750x1334.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x2732.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2388x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2224.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_640x1136.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2388.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x1536.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1536x2048.png"
+  >
+  <link
+    rel="mask-icon"
+    color="#77a2b6"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.svg"
+  >
+  <link
+    crossorigin="use-credentials"
+    href="/manifest.webmanifest"
+    rel="manifest"
+  >
+</head>
+<body>
+
+
+<div id="app" data-server-rendered="true" data-async-called="true"><div class="tm-layout__wrapper"><!----> <div></div> <!----> <header class="tm-header"><div class="tm-page-width"><div class="tm-header__container"><!----> <span class="tm-header__logo-wrap"><a href="/ru/" class="tm-header__logo tm-header__logo_ru"><svg height="16" width="16" class="tm-svg-img tm-header__icon"><title>Хабр</title> <use xlink:href="/img/habr-logo-ru.svg#logo"></use></svg></a> <span class="tm-header__beta-sign" style="display:none;">β</span></span> <div class="tm-dropdown tm-header__projects"><div class="tm-dropdown__head"><button class="tm-header__dropdown-toggle"><svg height="16" width="16" class="tm-svg-img tm-header__icon tm-header__icon_dropdown"><title>Открыть список</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#arrow-down"></use></svg></button></div> <!----></div> <a href="/ru/sandbox/start/" class="tm-header__become-author-btn">
+            Как стать автором
+          </a> <div class="tm-feature tm-header__feature tm-feature_variant-inline"><!----></div> <!----> <!----></div></div></header> <div class="tm-layout"><div class="tm-page-progress-bar"></div> <div data-menu-sticky="true" class="tm-base-layout__header tm-base-layout__header_is-sticky"><div class="tm-page-width"><div class="tm-base-layout__header-wrapper"><div class="tm-main-menu"><div class="tm-main-menu__section"><nav class="tm-main-menu__section-content"><!----> <a href="/ru/all/" class="tm-main-menu__item">
+        Все потоки
+      </a> <a href="/ru/flows/develop/" class="tm-main-menu__item">
+          Разработка
+        </a><a href="/ru/flows/admin/" class="tm-main-menu__item">
+          Администрирование
+        </a><a href="/ru/flows/design/" class="tm-main-menu__item">
+          Дизайн
+        </a><a href="/ru/flows/management/" class="tm-main-menu__item">
+          Менеджмент
+        </a><a href="/ru/flows/marketing/" class="tm-main-menu__item">
+          Маркетинг
+        </a><a href="/ru/flows/popsci/" class="tm-main-menu__item">
+          Научпоп
+        </a></nav></div></div> <div class="tm-header-user-menu tm-base-layout__user-menu"><a href="/ru/search/" class="tm-header-user-menu__item tm-header-user-menu__search"><svg height="24" width="24" class="tm-svg-img tm-header-user-menu__icon tm-header-user-menu__icon_search tm-header-user-menu__icon_dark"><title>Поиск</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#search"></use></svg></a> <!----> <!----> <!----> <div class="tm-header-user-menu__item tm-header-user-menu__user_desktop"><div class="tm-dropdown"><div class="tm-dropdown__head"><svg height="24" width="24" data-test-id="menu-toggle-guest" class="tm-svg-img tm-header-user-menu__icon"><title>Профиль</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#header-user"></use></svg> <!----></div> <!----></div> <!----></div> <!----></div></div></div></div> <!----> <div class="tm-page-width"></div> <main class="tm-layout__container"><div hl="ru" data-async-called="true" class="tm-page"><div class="tm-page-width"><!----> <div class="tm-page__wrapper"><div class="tm-page__main tm-page__main_has-sidebar"><div class="pull-down"><div class="pull-down__header" style="height:0px;"><div class="pull-down__content" style="bottom:10px;"><svg height="24" width="24" class="tm-svg-img pull-down__arrow"><title>Обновить</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#pull-arrow"></use></svg></div></div> <div class="tm-article-presenter"> <div class="tm-article-presenter__body"><div class="tm-misprint-area"><div class="tm-misprint-area__wrapper"><article class="tm-article-presenter__content tm-article-presenter__content_narrow"><div class="tm-article-presenter__header"> <div class="tm-article-snippet tm-article-presenter__snippet"><div class="tm-article-snippet__meta-container"><div class="tm-article-snippet__meta"><span class="tm-user-info tm-article-snippet__author"><a href="/ru/users/Pyrus/" title="Pyrus" class="tm-user-info__userpic"><div class="tm-entity-image"><img alt="" height="24" loading="lazy" src="//habrastorage.org/r/w32/getpro/habr/avatars/c0a/2eb/97d/c0a2eb97d97c8a8f2699bd33b620dfa0.png" width="24" class="tm-entity-image__pic"></div></a> <span class="tm-user-info__user"><a href="/ru/users/Pyrus/" class="tm-user-info__username">
+      Pyrus
+    </a> </span></span> <span class="tm-article-snippet__datetime-published"><time datetime="2019-05-17T19:07:07.000Z" title="2019-05-17, 22:07">17  мая  2019 в 22:07</time></span></div> <!----></div> <h1 lang="ru" class="tm-article-snippet__title tm-article-snippet__title_h1"><span>Оптимизация сборки мусора в высоконагруженном .NET сервисе</span></h1> <div class="tm-article-snippet__hubs"><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/hi/" class="tm-article-snippet__hubs-item-link"><span>Высокая производительность</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/programming/" class="tm-article-snippet__hubs-item-link"><span>Программирование</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/net/" class="tm-article-snippet__hubs-item-link"><span>.NET</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/asp/" class="tm-article-snippet__hubs-item-link"><span>ASP</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/csharp/" class="tm-article-snippet__hubs-item-link"><span>C#</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span></div> <!----> <!----> <!----></div></div> <!----> <div data-gallery-root="" lang="ru" class="tm-article-body"><div id="post-content-body" class="article-formatted-body article-formatted-body_version-1"><div xmlns="http://www.w3.org/1999/xhtml">Ежедневно в сервисе Pyrus работают десятки тысяч сотрудников из нескольких тысяч организаций по всему миру. Отзывчивость сервиса (скорость обработки запросов) мы считаем важным конкурентным преимуществом, так как она напрямую влияет на впечатление пользователей. Ключевой метрикой для нас является «процент медленных запросов». Изучая ее поведение, мы заметили, что раз в минуту на серверах приложений возникают паузы длиной около 1000 мс. В эти промежутки сервер не отвечает и возникает очередь из нескольких десятков запросов. О поиске причин и устранении узких мест, вызванных сборкой мусора в приложении, пойдет речь в этой статье.<br/>
+<br/>
+<img src="https://habrastorage.org/r/w780q1/webt/fu/1s/j9/fu1sj9ixpj4nc633ikhwblbhlfs.jpeg" data-src="https://habrastorage.org/webt/fu/1s/j9/fu1sj9ixpj4nc633ikhwblbhlfs.jpeg" data-blurred="true"/><br/>
+<a name="habracut"></a><br/>
+Современные языки программирования можно разделить на две группы. В языках типа C/C++ или Rust используется ручное управление памятью, поэтому программисты тратят больше времени на написание кода, управление временем жизни объектов, а затем на отладку. При этом баги из-за неправильного использования памяти — одни из самых сложных в отладке, поэтому большинство современной разработки ведется на языках с автоматическим управлением памятью. К ним относятся, например, Java, C#, Python, Ruby, Go, PHP, JavaScript, и.т.д. Программисты экономят время разработки, но за это приходится платить дополнительным временем выполнения, которое программа регулярно тратит на сборку мусора — освобождение памяти, занятой объектами, на которые в программе не осталось ссылок. В небольших программах это время ничтожно, однако по мере роста числа объектов и интенсивности их создания сборка мусора начинает давать заметный вклад в общее время выполнения программы.<br/>
+<br/>
+Веб-серверы Pyrus работают на платформе .NET, где используется автоматическое управление памятью. Большинство сборок мусора — блокирующие ('stop the world'), т.е. на время своей работы останавливают все потоки (threads) приложения. Неблокирующие (фоновые) сборки на самом деле тоже останавливают все потоки, но на очень короткий период времени. Во время блокировки потоков сервер не обрабатывает запросы, имеющиеся запросы подвисают, новые складываются в очередь. В результате напрямую замедляются запросы, которые обрабатывались в момент сборки мусора, также медленнее выполняются запросы сразу по окончании сборки мусора из-за накопившихся очередей. Это ухудшает метрику «процент медленных запросов».<br/>
+<br/>
+Вооружившись недавно вышедшей книгой <a href="https://www.amazon.com/Pro-NET-Memory-Management-Performance/dp/148424026X">Konrad Kokosa: Pro .NET Memory Management</a> (о том, как мы за 2 дня привезли в Россию ее первый экземпляр, можно написать отдельный пост), целиком посвященной теме управления памятью в .NET, мы начали исследование проблемы.<br/>
+<br/>
+<h2>Измерение</h2><br/>
+Для профилирования веб-сервера Pyrus мы воспользовались утилитой PerfView (<a href="https://github.com/Microsoft/perfview">https://github.com/Microsoft/perfview</a>), заточенной под профилирование .NET приложений. Утилита основана на механизме Event Tracing for Windows (ETW) и имеет минимальное влияние на производительность профилируемого приложения, что позволяет использовать ее на боевом сервере. Кроме того, влияние на производительность зависит от того, какие виды событий и какую информацию мы собираем. Не собираем ничего — приложение работает как обычно. Также PerfView не требует ни перекомпиляции, ни перезапуска приложения.<br/>
+<br/>
+Запустим трассировку PerfView с параметром /GCCollectOnly (время трассировки 1.5 часа). В этом режиме он собирает только события сборок мусора и оказывает минимальное влияние на производительность. Посмотрим на отчет трассировки Memory Group / GCStats, а в нем на сводку событий сборщика мусора:<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/v4/ia/cd/v4iacdyso10-0toycwyijfm0zbm.png"/><br/>
+<br/>
+Тут мы видим сразу несколько интересных показателей:<br/>
+<ul>
+<li>Среднее время паузы сборки во 2-м поколении — 700 миллисекунд, а максимальная пауза около секунды. Данная цифра показывает время, на которое останавливаются все потоки в .NET приложении, в частности во все обрабатываемые запросы добавится эта пауза.<br/>
+</li>
+<li>Количество сборок 2-го поколения сравнимо с 1-м поколением и ненамного меньше количества сборок 0-го поколения.<br/>
+</li>
+<li>В столбце Induced указано 53 сборки во 2-м поколении. Induced-сборка — это результат явного вызова GC.Collect(). В нашем коде мы не нашли ни одного вызова этого метода, значит, виновата какая-то из используемых нашим приложением библиотек.<br/>
+</li>
+</ul><br/>
+Поясним наблюдение про количество сборок мусора. Идея разделить объекты по времени их жизни основана на гипотезе о поколениях (<a href="https://www.quora.com/What-is-the-generational-hypothesis-in-the-context-of-garbage-collection">generational hypothesis</a>): значительная часть создаваемых объектов умирает быстро, а большинство остальных живут долго (другими словами, мало объектов, имеющих «среднее» время жизни). Именно под этот режим и заточен сборщик мусора .NET, и в этом режиме сборок второго поколения должно быть гораздо меньше, чем 0-го поколения. То есть, для оптимальной работы сборщика мусора мы должны подгонять работу нашего приложения под гипотезу о поколениях. Сформулируем правило так: объекты должны либо умирать быстро, не доживая до старшего поколения, либо доживать до него и жить там вечно. Это правило применяется и для других платформ, где используется автоматическое управление памятью с разделением по поколениям, например, таким как Java.<br/>
+<br/>
+Интересные для нас данные можно извлечь из другой таблицы в отчете GCStats:<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/m5/7y/je/m57yjedgbkwfpbiwmjkvnbhgl4o.png"/><br/>
+<br/>
+Здесь перечислены случаи, когда приложение пытается создать большой объект (в .NET Framework объекты размером > 85000 байт создаются в LOH — Large Object Heap), и ему приходится ждать окончания сборки 2-го поколения, которая происходит параллельно в фоне. Эти паузы аллокатора не настолько критичны, как паузы сборщика мусора, так как они влияют только на один поток. До этого мы использовали версию .NET Framework 4.6.1, а в версии 4.7.1 Microsoft доработали сборщик мусора, теперь он позволяет выделять память в Large Object Heap во время фоновой сборки 2-го поколения: <a href="https://docs.microsoft.com/ru-ru/dotnet/framework/whats-new/#common-language-runtime-clr">https://docs.microsoft.com/ru-ru/dotnet/framework/whats-new/#common-language-runtime-clr</a><br/>
+Поэтому мы обновились до последней на тот момент версии 4.7.2.<br/>
+<br/>
+<h2>Сборки 2-го поколения</h2><br/>
+Почему же у нас так много сборок старшего поколения? Первое предположение — мы имеем утечку памяти. Для проверки этой гипотезы посмотрим на размер второго поколения (мы настроили в Zabbix мониторинг соответствующих счетчиков производительности). Из графиков размера 2-го поколения для 2-х серверов Pyrus видно, что его размер сначала растет (в основном из-за заполнения кэшей), но затем стабилизируется (большие провалы на графике — штатный перезапуск веб-сервиса для обновления версии):<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/gg/lc/ce/gglcce4tssnhzgcjfhesec9rcja.png"/><br/>
+<br/>
+Это означает, что нет заметных утечек памяти, то есть, большое количество сборок 2-го поколения возникает по другой причине. Следующая гипотеза — большой трафик памяти, т.е., во 2-е поколение попадает много объектов, и много объектов там умирает. Для нахождения таких объектов в PerfView имеется режим /GCOnly. Из отчетов трассировки обратим внимание на 'Gen 2 Object Deaths (Coarse Sampling) Stacks', который содержит выборку объектов, умирающих во 2-м поколении, вместе со стеками вызовов мест, где эти объекты были созданы. Тут мы видим следующие результаты:<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/h7/r2/d0/h7r2d0htyxsnaqrr_ekn_ybilti.png"/><br/>
+<br/>
+Раскрыв строку, внутри мы видим стек вызовов тех мест в коде, которые создают объекты, доживающие до 2-го поколения. Среди них:<br/>
+<ul>
+<li>System.Byte[] Если заглянуть внутрь, то мы увидими, что больше половины — это буферы для сериализации в JSON:<br/>
+</li>
+</ul><br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/la/up/6v/laup6v0mho5e1tbwjfkfmsgdhog.png"/><br/>
+<br/>
+<ul>
+<li>Slot[System.Int32][] (это часть реализации HashSet), System.Int32[], и т.д. Это наш код, который вычисляет клиентские кэши — те справочники, формы, списки, друзей и т.п., которых видит данный пользователь, и которые кэшируются у него в браузере или в мобильном приложении:<br/>
+</li>
+</ul><br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/dx/et/jy/dxetjyvj2ande72qrod6leza6i8.png"/><br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/v6/k6/r-/v6k6r-wq0qeof0edb6h5jvct-he.png"/><br/>
+<br/>
+Интересно, что буферы для JSON и для вычисления клиентских кэшей — это всё временные объекты, которые живут в течение одного запроса. Почему же они доживают до 2-го поколения? Обратим внимание, что все эти объекты — массивы достаточно большого размера. А при размере > 85000 байт память под них выделяется в Large Object Heap, которая собирается только вместе со 2-ым поколением.<br/>
+<br/>
+Для проверки откроем в результатах perfview /GCOnly раздел 'GC Heap Alloc Ignore Free (Coarse Sampling) stacks'. Там мы видим строку LargeObject, в которой PerfView группирует создание больших объектов, а внутри мы увидим все те же самые массивы, которые мы видели в предшествующем анализе. Мы подтверждаем основную причину проблем со сборщиком мусора: мы создаем много временных больших объектов.<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/sy/kr/lk/sykrlkgbmvl9jyny5hl1_ftg4ee.png"/><br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/f9/6q/mp/f96qmplnj4devma1buedg6fpo8q.png"/><br/>
+<br/>
+<h2>Изменения в системе Pyrus</h2><br/>
+По результатам измерений мы выделили основные направления дальнейшей работы: борьба с большими объектами при вычислении клиентских кэшей и сериализации в JSON. Есть несколько вариантов решения этой проблемы:<br/>
+<ul>
+<li>Самое простое — не создавать больших объектов. Например, если большой буфер B используется в последовательных преобразованиях данных A->B->C, то иногда эти преобразования можно объединить, превратив в A->C, и избавившись от создания объекта B. Этот вариант не всегда применим, но при этом он самый простой и эффективный.<br/>
+</li>
+<li>Пул объектов. Вместо того, чтобы постоянно создавать новые объекты и выкидывать, нагружая сборщик мусора, мы можем хранить коллекцию свободных объектов. В простейшем случае, когда нам нужен новый объект, то мы берем его из пула, или создаем новый, если пул пустой. Когда объект нам больше не нужен, мы возвращаем его в пул. Хороший пример — ArrayPool в .NET Core, который также доступен в .NET Framework в составе Nuget-пакета System.Buffers.<br/>
+</li>
+<li>Использовать вместо больших объектов маленькие.<br/>
+</li>
+</ul><br/>
+Рассмотрим по отдельности оба случая больших объектов — вычисление клиентских кэшей и сериализацию в JSON.<br/>
+<br/>
+<h2>Вычисление клиентских кэшей</h2><br/>
+Web-клиент и мобильные приложения Pyrus кэшируют данные, доступные пользователю (проекты, формы, пользователи, и т.п.) Кэширование используется для ускорения работы, также оно необходимо для работы в оффлайн-режиме. Кэши вычисляются на сервере и передаются на клиент. Они индивидуальны для каждого пользователя, так как зависят от его прав доступа, и достаточно часто обновляются, например, при изменении справочников, к которым он имеет доступ.<br/>
+<br/>
+Таким образом, на сервере регулярно происходит много вычислений клиентских кэшей, при этом создается много временных короткоживущих объектов. Если пользователь состоит в большой организации, то он может получить доступ к многим объектам, соответственно клиентские кэши для него будут большими. Именно поэтому мы видели выделение памяти под большие временные массивы в Large Object Heap.<br/>
+<br/>
+Проанализируем предложенные варианты избавления от создания больших объектов:<br/>
+<ul>
+<li>Полное избавление от больших объектов. Этот подход неприменим, так как в алгоритмах подготовки данных используются среди прочего сортировка и объединение множеств, а для них требуются временные буферы.<br/>
+</li>
+<li>Использование пула объектов. У этого подхода есть сложности:<br/>
+<ul>
+<li>Разнообразие используемых коллекций и типов элементов в них: используются HashSet, List и Array (2 последних можно объединить). В коллекциях хранятся Int32, Int64, а также всевозможные классы данных. Для каждого используемого типа понадобится свой пул, который к тому же будет хранить коллекции разных размеров.<br/>
+</li>
+<li>Сложное время жизни коллекций. Чтобы получить преимущества от пула, объекты в него придется возвращать после использования. Это можно сделать, если объект используется в одном методе. Но в нашем случае ситуация сложнее, так как многие большие объекты путешествуют между методами, кладутся в структуры данных, перекладываются в другие структуры, и т.д.<br/>
+</li>
+<li>Реализация. Есть ArrayPool от Microsoft, но нам нужны еще List и HashSet. Мы не нашли какой-нибудь подходящей библиотеки, поэтому классы пришлось бы реализовывать самим.</li>
+</ul></li>
+<li>Использование маленьких объектов. Большой массив можно разбить на несколько маленьких кусочков, которые не буду нагружать Large Object Heap, а будут создаваться в 0-м поколении, а дальше идти стандартным путем в 1-е и 2-е. Мы надеемся, что они не доживут до 2-го, а будут собраны сборщиком мусора в 0-м, или в крайнем случае в 1-м поколении. Плюс этого подхода в том, что изменения имеющегося кода минимальные. Сложности:<br/>
+<ul>
+<li>Реализация. Мы не нашли подходящих библиотек, поэтому классы пришлось бы писать самим. Отсутствие библиотек объяснимо, так как сценарий «коллекции, не нагружающие Large Object Heap» — это очень узкая область применения.</li>
+</ul></li>
+</ul><br/>
+Мы решили пойти по 3-му пути и <strike>изобрести свой велосипед</strike> написать List и HashSet, не нагружающие Large Object Heap.<br/>
+<br/>
+<h2>Кусочный список</h2><br/>
+Наш ChunkedList&lt;T> реализует стандартные интерфейсы, включая IList&lt;T>, благодаря этому требуются минимальные изменения имеющегося кода. Да и используемая нами библиотека Newtonsoft.Json автоматически умеет его сериализовывать, так как он реализует IEnumerable &lt;T>:<br/>
+<br/>
+<pre><code class="cs">public sealed class ChunkedList&lt;T> : IList&lt;T>, ICollection&lt;T>, IEnumerable&lt;T>, IEnumerable, IList, ICollection, IReadOnlyList&lt;T>, IReadOnlyCollection&lt;T>
+{</code></pre><br/>
+У стандартного списка List&lt;T> имеются следующие поля: массив для элементов и количество заполненных элементов. В ChunkedList&lt;T> имеется массив массивов элементов, количество полностью заполненных массивов, количество элементов в последнем массиве. Каждый из массивов элементов при этом которых меньше 85000 байт:<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/72/zj/js/72zjjs9q6lcfud-l7nq8cy5prdi.png"/><br/>
+<pre><code class="cs">private T[][] chunks;
+private int currentChunk;
+private int currentChunkSize;</code></pre><br/>
+Так как ChunkedList&lt;T> устроен довольно сложно, то на него мы написали подробные тесты. Любую операцию нужно тестировать как минимум в 2-х режимах: в «маленьком», когда весь список умещается в один кусок размером до 85000 байт, и «большом», когда он состоит более, чем из одного куска. При этом для методов, изменяющих размер (например, Add), сценариев еще больше: «маленький» -> «маленький», «маленький» -> «большой», «большой» -> «большой», «большой» -> «маленький». Тут возникает довольно много запутанных граничных случаев, с которыми хорошо справляются юнит-тесты.<br/>
+<br/>
+Ситуация упрощается тем, что часть методов из интерфейса IList не используются, и их можно не реализовывать (такие, как Insert, Remove). Их реализация и тестирование были бы довольно накладными. Кроме того, написание юнит-тестов упрощается тем, что нам не нужно придумывать новый функционал, ChunkedList&lt;T> должен вести себя так же, как и List&lt;T>. То есть все тесты устроены так: создаем List&lt;T> и ChunkedList&lt;T>, проводим над ними одинаковые операции и сравниваем результаты.<br/>
+<br/>
+Мы провели замер производительности с помощью библиотеки BenchmarkDotNet, чтобы убедиться, что мы не сильно замедлим наш код при переходе с List&lt;T> на ChunkedList&lt;T>. Протестируем, например, добавление элементов в список:<br/>
+<br/>
+<pre><code class="cs">[Benchmark]
+public ChunkedList&lt;int> ChunkedList()
+{
+	var list = new ChunkedList&lt;int>();
+	for (int i = 0; i &lt; N; i++)
+		list.Add(i);
+	return list;
+}</code></pre><br/>
+И такой же тест с использованием List&lt;T> для сравнения. Результаты при добавлении 500 элементов (все помещается в один массив):<br/>
+<div class="scrollable-table"><table>
+<tr>
+<td>Method</td>
+<td>Mean</td>
+<td>Error</td>
+<td>StdDev</td>
+<td>Gen 0/1k Op</td>
+<td>Gen 1/1k Op</td>
+<td>Gen 2/1k Op</td>
+<td>Allocated Memory/Op</td>
+</tr>
+<tr>
+<td>StandardList</td>
+<td>1.415 us</td>
+<td>0.0149 us</td>
+<td>0.0140 us</td>
+<td>0.6847</td>
+<td>0.0095</td>
+<td>-</td>
+<td>4.21 KB</td>
+</tr>
+<tr>
+<td>ChunkedList</td>
+<td>3.728 us</td>
+<td>0.0238 us</td>
+<td>0.0222 us</td>
+<td>0.6943</td>
+<td>0.0076</td>
+<td>-</td>
+<td>4.28 KB</td>
+</tr>
+</table></div><br/>
+Результаты при добавлении 50000 элементов (разбивается на несколько массивов):<br/>
+<div class="scrollable-table"><table>
+<tr>
+<td>Method</td>
+<td>Mean</td>
+<td>Error</td>
+<td>StdDev</td>
+<td>Gen 0/1k Op</td>
+<td>Gen 1/1k Op</td>
+<td>Gen 2/1k Op</td>
+<td>Allocated Memory/Op</td>
+</tr>
+<tr>
+<td>StandardList</td>
+<td>146.273 us</td>
+<td>3.1466 us</td>
+<td>4.8053 us</td>
+<td>124.7559</td>
+<td>124.7559</td>
+<td>124.7559</td>
+<td>513.23 KB</td>
+</tr>
+<tr>
+<td>ChunkedList</td>
+<td>287.687 us</td>
+<td>1.4630 us</td>
+<td>1.2969 us</td>
+<td>41.5039</td>
+<td>20.5078</td>
+<td>-</td>
+<td>256.75 KB</td>
+</tr>
+</table></div><br/>
+<div class="spoiler"><b class="spoiler_title">Подробное описание колонок в результатах</b><div class="spoiler_text"><pre><code class="cs">BenchmarkDotNet=v0.11.4, OS=Windows 10.0.17763.379 (1809/October2018Update/Redstone5)
+Intel Core i7-8700K CPU 3.70GHz (Coffee Lake), 1 CPU, 12 logical and 6 physical cores
+  [Host]     : .NET Framework 4.7.2 (CLR 4.0.30319.42000), 64bit RyuJIT-v4.7.3324.0
+  DefaultJob : .NET Framework 4.7.2 (CLR 4.0.30319.42000), 64bit RyuJIT-v4.7.3324.0
+
+// * Hints *
+Outliers
+  ListAdd.StandardList: Default -> 2 outliers were removed
+  ListAdd.ChunkedList: Default  -> 1 outlier  was  removed
+
+// * Legends *
+  Mean                : Arithmetic mean of all measurements
+  Error               : Half of 99.9% confidence interval
+  StdDev              : Standard deviation of all measurements
+  Gen 0/1k Op         : GC Generation 0 collects per 1k Operations
+  Gen 1/1k Op         : GC Generation 1 collects per 1k Operations
+  Gen 2/1k Op         : GC Generation 2 collects per 1k Operations
+  Allocated Memory/Op : Allocated memory per single operation (managed only, inclusive, 1KB = 1024B)
+  1 us                : 1 Microsecond (0.000001 sec)</code></pre><br/>
+</div></div><br/>
+Если посмотреть на столбец 'Mean', в котором отображено среднее время выполнения теста, видно, что наша реализация медленнее стандартной всего в 2-2.5 раза. С учетом того, что в реальном коде операции со списками — лишь малая часть всех выполняемых действий, эта разница становится несущественной. Зато столбец 'Gen 2/1k op' (количество сборок 2-го поколения за 1000 выполнений теста) показывает, что мы добились цели: при большом количестве элементов ChunkedList не создает мусора во 2-м поколении, что и было нашей задачей.<br/>
+<br/>
+<h2>Кусочное множество</h2><br/>
+Аналогично ChunkedHashSet&lt;T> реализует интерфейс ISet&lt;T>. При написании ChunkedHashSet&lt;T> мы повторно использовали логику разбиения на небольшие куски, уже реализованную в ChunkedList. Для этого мы взяли готовую реализацию HashSet&lt;T> из .NET Reference Source, доступного по лицензии MIT, и заменили в ней массивы на ChunkedList-ы.<br/>
+<br/>
+В юнит тестах тоже воспользуемся тем же трюком, что и для списков: будем сравнивать поведение ChunkedHashSet&lt;T> с эталонным HashSet&lt;T>.<br/>
+<br/>
+Наконец, тесты производительности. Основная операция, которую мы используем — объединение множеств, поэтому именно ее мы и протестируем:<br/>
+<br/>
+<pre><code class="cs">public ChunkedHashSet&lt;int> ChunkedHashSet(int[][] source)
+{
+	var set = new ChunkedHashSet&lt;int>();
+	foreach (var arr in source)
+		set.UnionWith(arr);
+	return set;
+}</code></pre><br/>
+И точно такой же тест для стандартного HashSet. Первый тест для небольших множеств:<br/>
+<br/>
+<pre><code class="cs">var source = new int[][] {
+	Enumerable.Range(0, 300).ToArray(),
+	Enumerable.Range(100, 600).ToArray(),
+	Enumerable.Range(300, 1000).ToArray(),
+}</code></pre><br/>
+<div class="scrollable-table"><table>
+<tr>
+<td>Method</td>
+<td>Mean</td>
+<td>Error</td>
+<td>StdDev</td>
+<td>Gen 0/1k Op</td>
+<td>Gen 1/1k Op</td>
+<td>Gen 2/1k Op</td>
+<td>Allocated Memory/Op</td>
+</tr>
+<tr>
+<td>StandardHashSet</td>
+<td>30.16 us</td>
+<td>0.1046 us</td>
+<td>0.0979 us</td>
+<td>9.3079</td>
+<td>1.6785</td>
+<td>-</td>
+<td>57.41 KB</td>
+</tr>
+<tr>
+<td>ChunkedHashSet</td>
+<td>73.54 us</td>
+<td>0.5919 us</td>
+<td>0.5247 us</td>
+<td>9.5215</td>
+<td>1.5869</td>
+<td>-</td>
+<td>58.84 KB</td>
+</tr>
+</table></div><br/>
+Второй тест для больших множеств, которые вызывали проблему с кучей больших объектов:<br/>
+<br/>
+<pre><code class="cs">var source = new int[][] {
+	Enumerable.Range(0, 30000).ToArray(),
+	Enumerable.Range(10000, 60000).ToArray(),
+	Enumerable.Range(30000, 100000).ToArray(),
+}</code></pre><br/>
+<div class="scrollable-table"><table>
+<tr>
+<td>Method</td>
+<td>Mean</td>
+<td>Error</td>
+<td>StdDev</td>
+<td>Gen 0/1k Op</td>
+<td>Gen 1/1k Op</td>
+<td>Gen 2/1k Op</td>
+<td>Allocated Memory/Op</td>
+</tr>
+<tr>
+<td>StandardHashSet</td>
+<td>3,031.30 us</td>
+<td>32.0797 us</td>
+<td>28.4378 us</td>
+<td>699.2188</td>
+<td>667.9688</td>
+<td>664.0625</td>
+<td>4718.23 KB</td>
+</tr>
+<tr>
+<td>ChunkedHashSet</td>
+<td>7,189.66 us</td>
+<td>25.6319 us</td>
+<td>23.9761 us</td>
+<td>539.0625</td>
+<td>265.6250</td>
+<td>7.8125</td>
+<td>3280.71 KB</td>
+</tr>
+</table></div><br/>
+Результаты схожи со списками. ChunkedHashSet медленнее в 2-2.5 раза, но при этом на больших множествах нагружает 2-е поколение на 2 порядка меньше.<br/>
+<br/>
+<h2>Сериализация в JSON</h2><br/>
+Веб-сервер Pyrus предоставляет несколько API, в которых используется разная сериализация. Мы обнаружили создание больших объектов в API, используемом ботами и утилитой синхронизации (далее Public API). Заметим, что в основном API используется собственная сериализация, которая не подвержена данной проблеме. Мы об этом писали в статье <a href="https://habr.com/ru/post/227595/">https://habr.com/ru/post/227595/</a>, в разделе «2. Вы не знаете, где узкое место вашего приложения». То есть, основной API уже работает хорошо, а проблема проявилась в Public API по мере роста количества запросов и объемов данных в ответах.<br/>
+<br/>
+Займемся оптимизацией Public API. На примере основного API мы знаем, что можно возвращать ответ пользователю в потоковом режиме. То есть, нужно не создавать промежуточные буферы, содержащие ответ целиком, а писать сразу ответ в поток (stream).<br/>
+<br/>
+При ближайшем рассмотрении мы выяснили, что в процессе сериализации ответа мы создаем временный буфер для промежуточного результата ('content' — массив байтов, содержащий JSON в кодировке UTF-8):<br/>
+<br/>
+<pre><code class="cs">var serializer = Newtonsoft.Json.JsonSerializer.Create(...);
+
+byte[] content;
+var sw = new StreamWriter(new MemoryStream(), new UTF8Encoding(false));
+using (var writer = new Newtonsoft.Json.JsonTextWriter(sw))
+{
+	serializer.Serialize(writer, result);
+	writer.Flush();				
+	content = ms.ToArray();
+}</code></pre><br/>
+Проследим, где используется content. По историческим причинам Public API основан на WCF, для которого стандартным форматом запросов и ответов является XML. В нашем случае в XML-ответе имеется единственный элемент 'Binary', внутри которого записан JSON, закодированный в Base64:<br/>
+<br/>
+<pre><code class="cs">public class RawBodyWriter : BodyWriter
+{
+	private readonly byte[] _content;
+
+	public RawBodyWriter(byte[] content)
+		: base(true)
+	{
+		_content = content;
+	}
+
+	protected override void OnWriteBodyContents(XmlDictionaryWriter writer)
+	{
+		writer.WriteStartElement("Binary");
+		writer.WriteBase64(_content, 0, _content.Length);
+		writer.WriteEndElement();
+	}
+}</code></pre><br/>
+Заметим, что временный буфер здесь не нужен. JSON можно писать сразу в буфер XmlWriter, который нам предоставляет WCF, на лету кодируя его в Base64. Таким образом, мы пойдем по первому пути, избавившись от выделения памяти:<br/>
+<br/>
+<pre><code class="cs">protected override void OnWriteBodyContents(XmlDictionaryWriter writer)
+{
+	var serializer = Newtonsoft.Json.JsonSerializer.Create(...);
+
+	writer.WriteStartElement("Binary");
+	Stream stream = new Base64Writer(writer);
+	Var sw = new StreamWriter(stream, new UTF8Encoding(false));
+	using (var jsonWriter = new Newtonsoft.Json.JsonTextWriter(sw))
+	{
+		serializer.Serialize(jsonWriter, _result);
+		jsonWriter.Flush();
+	}
+	writer.WriteEndElement();
+}</code></pre><br/>
+Здесь Base64Writer — это простая обертка над XmlWriter, реализующая интерфейс Stream, которая пишет в XmlWriter в виде Base64. При этом из всего интерфейса достаточно реализовать только один метод Write, который вызывается в StreamWriter:<br/>
+<br/>
+<pre><code class="cs">public class Base64Writer : Stream
+{
+	private readonly XmlWriter _writer;
+
+	public Base64Writer(XmlWriter writer)
+	{
+		_writer = writer;
+	}
+
+	public override void Write(byte[] buffer, int offset, int count)
+	{
+		_writer.WriteBase64(buffer, offset, count);
+	}
+	
+	&lt;...>
+}</code></pre><br/>
+<h2>Induced GC</h2><br/>
+Попробуем разобраться с загадочными индуцированными сборками мусора. Мы 10 раз перепроверили наш код на наличие вызовов GC.Collect, но это не дало результатов. Удалось поймать эти события в PerfView, но стек вызовов не особо показателен (событие DotNETRuntime/GC/Triggered):<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/ye/j0/qg/yej0qglbieyx_tg05hdgutajhmc.png"/><br/>
+<br/>
+Есть маленькая зацепка — вызов RecycleLimitMonitor.RaiseRecycleLimitEvent перед индуцированной сборкой мусора. Проследим стек вызовов метода RaiseRecycleLimitEvent:<br/>
+<br/>
+<pre><code class="cs">RecycleLimitMonitor.RaiseRecycleLimitEvent(...)
+RecycleLimitMonitor.RecycleLimitMonitorSingleton.AlertProxyMonitors(...)
+RecycleLimitMonitor.RecycleLimitMonitorSingleton.CollectInfrequently(...)
+RecycleLimitMonitor.RecycleLimitMonitorSingleton.PBytesMonitorThread(...)</code></pre><br/>
+Названия методов вполне соответствуют их функциям:<br/>
+<ul>
+<li>В конструкторе RecycleLimitMonitor.RecycleLimitMonitorSingleton создается таймер, с определенным интервалом вызывающий PBytesMonitorThread.<br/>
+</li>
+<li>PBytesMonitorThread собирает статистику по использованию памяти и при каких-то условиях вызывает CollectInfrequently.<br/>
+</li>
+<li>CollectInfrequently вызывает AlertProxyMonitors, получает в результате bool, и вызывает GC.Collect(), если получает true. Также он следит за временем, прошедшим с прошлого вызова сборщика мусора, и не вызывает его слишком часто.<br/>
+</li>
+<li>AlertProxyMonitors проходит по списку запущенных IIS веб-приложений, для каждого поднимает соответствующий объект RecycleLimitMonitor, и вызывает RaiseRecycleLimitEvent.<br/>
+</li>
+<li>RaiseRecycleLimitEvent поднимает список IObserver&lt;RecycleLimitInfo>. Обработчики получают в качестве параметра RecycleLimitInfo, в котором они могут установить флаг RequestGC, который и возвращается в CollectInfrequently, вызывая индуцированную сборку мусора.<br/>
+</li>
+</ul><br/>
+<br/>
+Дальнейшее расследование показывает, обработчики IObserver&lt;RecycleLimitInfo> добавляются в методе RecycleLimitMonitor.Subscribe(), который вызывается в методе AspNetMemoryMonitor.Subscribe(). Также в классе AspNetMemoryMonitor вешается обработчик IObserver&lt;RecycleLimitInfo> по умолчанию (класс RecycleLimitObserver), который чистит кэши ASP.NET, и иногда запрашивает сборку мусора.<br/>
+<br/>
+Загадка Induced GC почти разгадана. Осталось выяснить вопрос, для чего вызывается эта сборка мусора. RecycleLimitMonitor следит за использованием памяти IIS (точнее, за цифрой private bytes), и когда ее использование приближается к определенному пределу, начинает по довольно запутанному алгоритму вызывать событие RaiseRecycleLimitEvent. В качестве предела памяти используется значение AspNetMemoryMonitor.ProcessPrivateBytesLimit, а в нем в свою очередь находится следующая логика:<br/>
+<ul>
+<li>Если для Application Pool в IIS настроено значение 'Private Memory Limit (KB)', то значение в килобайтах берется оттуда<br/>
+</li>
+<li>Иначе для 64-битных систем берется 60% физической памяти (для 32-битных логика сложнее).<br/>
+</li>
+</ul><br/>
+Вывод расследования такой: ASP.NET по использованию памяти приближается к своему пределу и начинает регулярно вызывать сборку мусора. Для 'Private Memory Limit (KB)' не было установлено значение, поэтому ASP.NET ограничивался 60% от физической памяти. Проблема маскировалась тем, что на сервере Task Manager показывал много свободной памяти и казалось, что ее хватает. Мы повысили значение 'Private Memory Limit (KB)' в настройках Application Pool в IIS до 80% от физической памяти. Это стимулирует ASP.NET использовать больше имеющейся памяти. Также мы добавили мониторинг счетчика производительности '.NET CLR Memory / # Induced GC', чтобы не пропустить, когда в следующий раз ASP.NET решит, что он приближается к пределу использования памяти.<br/>
+<br/>
+<h2>Повторные измерения</h2><br/>
+Посмотрим, что же произошло со сборками мусора после всех этих изменений. Начнем с perfview /GCCollectOnly (время трассировки — 1 час), отчет GCStats:<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/8b/l3/fn/8bl3fnxpuymka28coyzbo0r5ak4.png"/><br/>
+<br/>
+Видно, что сборок 2-го поколения теперь на 2 порядка меньше, чем 0-го и 1-го. Также, время этих сборок уменьшились. Индуцированных сборок больше не наблюдается. Посмотрим на список сборок 2-го поколения:<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/mx/oy/tv/mxoytvprkypunnhwtao6o6fboai.png"/><br/>
+<br/>
+Из столбца Gen видно, что все сборки 2-го поколения стали фоновыми ('2B' означает 2-е поколение, Background). То есть, большая часть работы выполняется параллельно с выполнением приложения, а все потоки блокируются ненадолго (столбец 'Pause MSec'). Посмотрим на паузы при создании больших объектов:<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/qp/04/hp/qp04hpcq35buinfnfjn5uuudnyg.png"/><br/>
+<br/>
+Видно, что количество таких пауз при создании больших объектов упало в разы.<br/>
+<br/>
+<h2>Итоги</h2><br/>
+Благодаря описанным в статье изменениям удалось значительно снизить количество и продолжительность сборок 2-го поколения. Удалось найти причину индуцированных сборок, и избавиться от них. Увеличилось количество сборок 0-го и 1-го поколения, но при этом уменьшилась их средняя продолжительность (с ~200 мсек до ~60 мсек). Максимальная продолжительность сборок 0-го и 1-го поколений уменьшилась, но не так заметно. Сборки 2-го поколения стали быстрее, длинные паузы до 1000мс полностью ушли.<br/>
+<br/>
+Что касается ключевой метрики — «процент медленных запросов», она уменьшилась на 40% после всех изменений.<br/>
+<br/>
+Благодаря проведенной работе мы поняли, какие счетчики производительности нужны для оценки ситуации с памятью и сборкой мусора, добавив их в Zabbix для постоянного мониторинга. Вот список самых важных, на которые мы обращаем внимание, и выясняем причину (например, повышенный поток запросов, большой объем передаваемых данных, баг в приложении):<br/>
+<div class="scrollable-table"><table>
+<tr>
+<td>Счетчик производительности</td>
+<td>Описание</td>
+<td>Когда стоит обратить внимание</td>
+</tr>
+<tr>
+<td>\Process(*)\Private Bytes</td>
+<td>Количество памяти, выделенной для приложения</td>
+<td rowspan="3">Значения сильно превышают порог. В качестве порога можно взять медиану за 2 недели от максимальных дневных показателей.</td>
+</tr>
+<tr>
+<td>\.NET CLR Memory(*)\# Gen 2 Collections</td>
+<td>Объем памяти в старшем поколении</td>
+</tr>
+<tr>
+<td>\.NET CLR Memory(*)\Large Object Heap size</td>
+<td>Объем памяти для больших объектов</td>
+</tr>
+<tr>
+<td>\.NET CLR Memory(*)\% Time in GC</td>
+<td>Процент времени, потраченный на сборку мусора</td>
+<td>Значение больше 5%.</td>
+</tr>
+<tr>
+<td>\.NET CLR Memory(*)\# Induced GC</td>
+<td>Количество индуцированных сборок</td>
+<td>Значение больше 0.</td>
+</tr>
+</table></div></div></div> <!----> <!----></div> <div class="tm-article-presenter__meta"><div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Теги:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5B.net%5D" class="tm-tags-list__link">.net</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bpyrus%5D" class="tm-tags-list__link">pyrus</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bc%23%5D" class="tm-tags-list__link">c#</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bc%23.net%5D" class="tm-tags-list__link">c#.net</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Basp.net%5D" class="tm-tags-list__link">asp.net</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bgarbage%20collector%5D" class="tm-tags-list__link">garbage collector</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bgarbage%20collection%5D" class="tm-tags-list__link">garbage collection</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bgc%5D" class="tm-tags-list__link">gc</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5B%D1%81%D0%B1%D0%BE%D1%80%D0%BA%D0%B0%20%D0%BC%D1%83%D1%81%D0%BE%D1%80%D0%B0%5D" class="tm-tags-list__link">сборка мусора</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bmemory%20management%5D" class="tm-tags-list__link">memory management</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bperformance%5D" class="tm-tags-list__link">performance</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bperfview%5D" class="tm-tags-list__link">perfview</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Betw%5D" class="tm-tags-list__link">etw</a></li></ul></div> <div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Хабы:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/hub/hi/" class="tm-hubs-list__link">
+    Высокая производительность
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/programming/" class="tm-hubs-list__link">
+    Программирование
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/net/" class="tm-hubs-list__link">
+    .NET
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/asp/" class="tm-hubs-list__link">
+    ASP
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/csharp/" class="tm-hubs-list__link">
+    C#
+  </a></li></ul></div></div></article></div> <!----></div> <div class="tm-article-sticky-panel"><div class="tm-data-icons tm-article-sticky-panel__icons"><div class="tm-article-rating tm-data-icons__item"><div class="tm-votes-meter tm-article-rating__votes-switcher"><svg height="16" width="16" class="tm-svg-img tm-votes-meter__icon tm-votes-meter__icon_medium"><title>Всего голосов 54: ↑54 и ↓0</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-rating"></use></svg> <span title="Всего голосов 54: ↑54 и ↓0" class="tm-votes-meter__value tm-votes-meter__value_positive tm-votes-meter__value_medium">+54</span></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----> <span title="Количество просмотров" class="tm-icon-counter tm-data-icons__item"><svg height="16" width="16" class="tm-svg-img tm-icon-counter__icon"><title>Просмотры</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-views"></use></svg> <span class="tm-icon-counter__value">20K</span></span> <button title="Добавить в закладки" type="button" class="bookmarks-button tm-data-icons__item"><span title="Добавить в закладки" class="tm-svg-icon__wrapper bookmarks-button__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Добавить в закладки</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-favorite"></use></svg></span> <span title="Количество пользователей, добавивших публикацию в закладки" class="bookmarks-button__counter">
+    172
+  </span></button> <!----> <div title="Поделиться" class="tm-sharing tm-data-icons__item"><button type="button" class="tm-sharing__button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="tm-sharing__icon"><path fill="currentColor" d="M10.33.275l9.047 7.572a.2.2 0 010 .306l-9.048 7.572a.2.2 0 01-.328-.153V11c-8 0-9.94 6-9.94 6S-1 5 10 5V.428a.2.2 0 01.328-.153z"></path></svg></button> <!----></div> <DIV class="v-portal" style="display:none;"></DIV></div> </div></div> <!----> <!----> <div class="tm-article-presenter__footer"><div class="tm-article-blocks"><!----> <section class="tm-block tm-block_spacing-bottom"><!----> <div class="tm-block__body tm-block__body_variant-balanced"><div class="tm-article-author"> <div class="tm-user-card tm-article-author__user-card tm-user-card_variant-article"><div class="tm-user-card__info-container"><div class="tm-user-card__header"><div class="tm-user-card__header-data"><a href="/ru/users/Pyrus/" class="tm-user-card__userpic tm-user-card__userpic_size-40"><div class="tm-entity-image"><img alt="" src="//habrastorage.org/getpro/habr/avatars/c0a/2eb/97d/c0a2eb97d97c8a8f2699bd33b620dfa0.png" class="tm-entity-image__pic"></div></a> <div class="tm-user-card__meta"><div title=" 54 голоса " class="tm-karma tm-user-card__karma"><div class="tm-karma__votes tm-karma__votes_positive">
+    30
+  </div> <div class="tm-karma__text">
+    Карма
+  </div></div> <div title="Рейтинг пользователя" class="tm-rating tm-user-card__rating"><div class="tm-rating__header"> <div class="tm-rating__counter">0</div></div> <div class="tm-rating__text">
+    Рейтинг
+  </div></div></div></div></div> <div class="tm-user-card__info tm-user-card__info_variant-article"><div class="tm-user-card__title tm-user-card__title_variant-article"><!----> <a href="/ru/users/Pyrus/" class="tm-user-card__nickname tm-user-card__nickname_variant-article">
+          @Pyrus
+        </a> <!----></div> <p class="tm-user-card__short-info tm-user-card__short-info_variant-article">Пользователь</p></div></div> <div class="tm-user-card__buttons tm-user-card__buttons_variant-article"><!----> <!----> <!----> <!----> <!----></div></div> <!----></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----></section> <div class="tm-article-blocks__comments"><div class="tm-article-page-comments"><div class="tm-article-comments-counter-link tm-article-comments-counter-button"><a href="/ru/post/452298/comments/" class="tm-article-comments-counter-link__link tm-article-comments-counter-link__link_button-style"><svg height="16" width="16" class="tm-svg-img tm-article-comments-counter-link__icon tm-article-comments-counter-link__icon_contrasted"><title>Комментарии</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-comments"></use></svg> <span class="tm-article-comments-counter-link__value tm-article-comments-counter-link__value_contrasted">
+       Комментарии 28 
+    </span></a> <!----></div></div></div> <div class="tm-ad-banner__container tm-page-article__banner"><!----> <div id="articleBottomBanner" class="tm-ad-banner"></div></div> <!----> <!----> <!----> <!----> </div></div></div></div></div> <div class="tm-page__sidebar"><div class="tm-layout-sidebar"><div class="tm-layout-sidebar__ads tm-layout-sidebar__ads_initial"><div class="tm-ad-banner__container tm-layout-sidebar__banner"><!----> <div id="sidebarBanner" class="tm-ad-banner"></div></div></div> <div class="tm-sexy-sidebar tm-sexy-sidebar_initial" style="margin-top:0px;"><!----> <!----></div></div></div></div></div></div></main> <!----></div> <div class="tm-footer-menu"><div class="tm-page-width"><div class="tm-footer-menu__container"><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Ваш аккаунт
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr/?back=/ru/post/452298/&amp;hl=ru" rel="nofollow" target="_self">
+                Войти
+              </a></li><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr-register/?back=/ru/post/452298/&amp;hl=ru" rel="nofollow" target="_self">
+                Регистрация
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Разделы
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/" class="footer-menu__item-link router-link-active">
+                Публикации
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/news/" class="footer-menu__item-link">
+                Новости
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/hubs/" class="footer-menu__item-link">
+                Хабы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/companies/" class="footer-menu__item-link">
+                Компании
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/users/" class="footer-menu__item-link">
+                Авторы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/sandbox/" class="footer-menu__item-link">
+                Песочница
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Информация
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/docs/help/" class="footer-menu__item-link">
+                Устройство сайта
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/authors/codex/" class="footer-menu__item-link">
+                Для авторов
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/companies/corpblogs/" class="footer-menu__item-link">
+                Для компаний
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/docs/transparency/" class="footer-menu__item-link">
+                Документы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/agreement" target="_blank">
+                Соглашение
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/confidential/" target="_blank">
+                Конфиденциальность
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Услуги
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQLwRfQmXibiUlWaRg-BAc38s7oM3lJiaPju7qmdJsp8ysIvZ_G-Npem0njJLMozE2bPHMpDqiI5hhy/pub?start=false&amp;loop=false&amp;delayms=60000&amp;slide=id.g91a03369cd_4_297" target="_blank">
+                Реклама
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://habrastorage.org/storage/stuff/habr/service_price.pdf" target="_blank">
+                Тарифы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQJJds8-Di7BQSP_guHxICN7woVYoN5NP_22ra-BIo4bqnTT9FR6fB-Ku2P0AoRpX0Ds-LRkDeAoD8F/pub?start=false&amp;loop=false&amp;delayms=60000" target="_blank">
+                Контент
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://tmtm.timepad.ru/" target="_blank">
+                Семинары
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/megaprojects/" class="footer-menu__item-link">
+                Мегапроекты
+              </a></li></ul></div></div></div></div></div> <div class="tm-footer"><div class="tm-page-width"><div class="tm-footer__container"><!----> <div class="tm-footer__social"><a href="https://www.facebook.com/habrahabr.ru" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Facebook</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-facebook"></use></svg></a><a href="https://twitter.com/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Twitter</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-twitter"></use></svg></a><a href="https://vk.com/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>VK</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-vkontakte"></use></svg></a><a href="https://telegram.me/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Telegram</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-telegram"></use></svg></a><a href="https://www.youtube.com/channel/UCd_sTwKqVrweTt4oAKY5y4w" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Youtube</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-youtube"></use></svg></a><a href="https://zen.yandex.ru/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Яндекс Дзен</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-zen"></use></svg></a></div> <DIV class="v-portal" style="display:none;"></DIV> <button class="tm-footer__link"><!---->
+        Настройка языка
+      </button> <a href="/ru/about" class="tm-footer__link">
+        О сайте
+      </a> <a href="/ru/feedback/" class="tm-footer__link">
+        Техническая поддержка
+      </a> <!----> <a href="/berserk-mode-nope" class="tm-footer__link">
+        Вернуться на старую версию
+      </a> <div class="tm-footer-copyright"><span class="tm-copyright"><span class="tm-copyright__years">© 2006–2021 </span> <span class="tm-copyright__name">«<a href="https://company.habr.com/" rel="noopener" target="_blank" class="tm-copyright__link">Habr</a>»</span></span></div></div></div></div> <!----> <!----></div> <div class="vue-portal-target"></div></div>
+<script>window.__INITIAL_STATE__={"adblock":{"hasAcceptableAdsFilter":false,"hasAdblock":false},"articlesList":{"articlesList":{"452298":{"id":"452298","timePublished":"2019-05-17T19:07:07+00:00","isCorporative":false,"lang":"ru","titleHtml":"Оптимизация сборки мусора в высоконагруженном .NET сервисе","leadData":{"textHtml":"Ежедневно в сервисе Pyrus работают десятки тысяч сотрудников из нескольких тысяч организаций по всему миру. Отзывчивость сервиса (скорость обработки запросов) мы считаем важным конкурентным преимуществом, так как она напрямую влияет на впечатление пользователей. Ключевой метрикой для нас является «процент медленных запросов». Изучая ее поведение, мы заметили, что раз в минуту на серверах приложений возникают паузы длиной около 1000 мс. В эти промежутки сервер не отвечает и возникает очередь из нескольких десятков запросов. О поиске причин и устранении узких мест, вызванных сборкой мусора в приложении, пойдет речь в этой статье.\u003Cbr\u003E\r\n\u003Cbr\u003E\r\n\u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Ffu\u002F1s\u002Fj9\u002Ffu1sj9ixpj4nc633ikhwblbhlfs.jpeg\"\u003E\u003Cbr\u003E","imageUrl":null,"buttonTextHtml":"Читать дальше →","image":null},"editorVersion":"1.0","postType":"article","postLabels":[],"author":{"scoreStats":{"score":30,"votesCount":54},"rating":0,"relatedData":null,"contacts":[],"authorContacts":[],"paymentDetails":{"paymentYandexMoney":null,"paymentPayPalMe":null,"paymentWebmoney":null},"id":"698487","alias":"Pyrus","fullname":null,"avatarUrl":"\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Favatars\u002Fc0a\u002F2eb\u002F97d\u002Fc0a2eb97d97c8a8f2699bd33b620dfa0.png","speciality":"Пользователь"},"statistics":{"commentsCount":28,"favoritesCount":172,"readingCount":20474,"score":54,"votesCount":54},"hubs":[{"relatedData":null,"id":"4","alias":"hi","type":"collective","title":"Высокая производительность","titleHtml":"Высокая производительность","isProfiled":true},{"relatedData":null,"id":"359","alias":"programming","type":"collective","title":"Программирование","titleHtml":"Программирование","isProfiled":true},{"relatedData":null,"id":"546","alias":"net","type":"collective","title":".NET","titleHtml":".NET","isProfiled":true},{"relatedData":null,"id":"7149","alias":"asp","type":"collective","title":"ASP","titleHtml":"ASP","isProfiled":true},{"relatedData":null,"id":"17718","alias":"csharp","type":"collective","title":"C#","titleHtml":"C#","isProfiled":true}],"flows":[{"id":"1","alias":"develop","title":"Разработка"}],"relatedData":null,"textHtml":"\u003Cdiv xmlns=\"http:\u002F\u002Fwww.w3.org\u002F1999\u002Fxhtml\"\u003EЕжедневно в сервисе Pyrus работают десятки тысяч сотрудников из нескольких тысяч организаций по всему миру. Отзывчивость сервиса (скорость обработки запросов) мы считаем важным конкурентным преимуществом, так как она напрямую влияет на впечатление пользователей. Ключевой метрикой для нас является «процент медленных запросов». Изучая ее поведение, мы заметили, что раз в минуту на серверах приложений возникают паузы длиной около 1000 мс. В эти промежутки сервер не отвечает и возникает очередь из нескольких десятков запросов. О поиске причин и устранении узких мест, вызванных сборкой мусора в приложении, пойдет речь в этой статье.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fr\u002Fw780q1\u002Fwebt\u002Ffu\u002F1s\u002Fj9\u002Ffu1sj9ixpj4nc633ikhwblbhlfs.jpeg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Ffu\u002F1s\u002Fj9\u002Ffu1sj9ixpj4nc633ikhwblbhlfs.jpeg\" data-blurred=\"true\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Ca name=\"habracut\"\u003E\u003C\u002Fa\u003E\u003Cbr\u002F\u003E\r\nСовременные языки программирования можно разделить на две группы. В языках типа C\u002FC++ или Rust используется ручное управление памятью, поэтому программисты тратят больше времени на написание кода, управление временем жизни объектов, а затем на отладку. При этом баги из-за неправильного использования памяти — одни из самых сложных в отладке, поэтому большинство современной разработки ведется на языках с автоматическим управлением памятью. К ним относятся, например, Java, C#, Python, Ruby, Go, PHP, JavaScript, и.т.д. Программисты экономят время разработки, но за это приходится платить дополнительным временем выполнения, которое программа регулярно тратит на сборку мусора — освобождение памяти, занятой объектами, на которые в программе не осталось ссылок. В небольших программах это время ничтожно, однако по мере роста числа объектов и интенсивности их создания сборка мусора начинает давать заметный вклад в общее время выполнения программы.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВеб-серверы Pyrus работают на платформе .NET, где используется автоматическое управление памятью. Большинство сборок мусора — блокирующие ('stop the world'), т.е. на время своей работы останавливают все потоки (threads) приложения. Неблокирующие (фоновые) сборки на самом деле тоже останавливают все потоки, но на очень короткий период времени. Во время блокировки потоков сервер не обрабатывает запросы, имеющиеся запросы подвисают, новые складываются в очередь. В результате напрямую замедляются запросы, которые обрабатывались в момент сборки мусора, также медленнее выполняются запросы сразу по окончании сборки мусора из-за накопившихся очередей. Это ухудшает метрику «процент медленных запросов».\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВооружившись недавно вышедшей книгой \u003Ca href=\"https:\u002F\u002Fwww.amazon.com\u002FPro-NET-Memory-Management-Performance\u002Fdp\u002F148424026X\"\u003EKonrad Kokosa: Pro .NET Memory Management\u003C\u002Fa\u003E (о том, как мы за 2 дня привезли в Россию ее первый экземпляр, можно написать отдельный пост), целиком посвященной теме управления памятью в .NET, мы начали исследование проблемы.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EИзмерение\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nДля профилирования веб-сервера Pyrus мы воспользовались утилитой PerfView (\u003Ca href=\"https:\u002F\u002Fgithub.com\u002FMicrosoft\u002Fperfview\"\u003Ehttps:\u002F\u002Fgithub.com\u002FMicrosoft\u002Fperfview\u003C\u002Fa\u003E), заточенной под профилирование .NET приложений. Утилита основана на механизме Event Tracing for Windows (ETW) и имеет минимальное влияние на производительность профилируемого приложения, что позволяет использовать ее на боевом сервере. Кроме того, влияние на производительность зависит от того, какие виды событий и какую информацию мы собираем. Не собираем ничего — приложение работает как обычно. Также PerfView не требует ни перекомпиляции, ни перезапуска приложения.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЗапустим трассировку PerfView с параметром \u002FGCCollectOnly (время трассировки 1.5 часа). В этом режиме он собирает только события сборок мусора и оказывает минимальное влияние на производительность. Посмотрим на отчет трассировки Memory Group \u002F GCStats, а в нем на сводку событий сборщика мусора:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fv4\u002Fia\u002Fcd\u002Fv4iacdyso10-0toycwyijfm0zbm.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nТут мы видим сразу несколько интересных показателей:\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003EСреднее время паузы сборки во 2-м поколении — 700 миллисекунд, а максимальная пауза около секунды. Данная цифра показывает время, на которое останавливаются все потоки в .NET приложении, в частности во все обрабатываемые запросы добавится эта пауза.\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003Cli\u003EКоличество сборок 2-го поколения сравнимо с 1-м поколением и ненамного меньше количества сборок 0-го поколения.\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003Cli\u003EВ столбце Induced указано 53 сборки во 2-м поколении. Induced-сборка — это результат явного вызова GC.Collect(). В нашем коде мы не нашли ни одного вызова этого метода, значит, виновата какая-то из используемых нашим приложением библиотек.\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\nПоясним наблюдение про количество сборок мусора. Идея разделить объекты по времени их жизни основана на гипотезе о поколениях (\u003Ca href=\"https:\u002F\u002Fwww.quora.com\u002FWhat-is-the-generational-hypothesis-in-the-context-of-garbage-collection\"\u003Egenerational hypothesis\u003C\u002Fa\u003E): значительная часть создаваемых объектов умирает быстро, а большинство остальных живут долго (другими словами, мало объектов, имеющих «среднее» время жизни). Именно под этот режим и заточен сборщик мусора .NET, и в этом режиме сборок второго поколения должно быть гораздо меньше, чем 0-го поколения. То есть, для оптимальной работы сборщика мусора мы должны подгонять работу нашего приложения под гипотезу о поколениях. Сформулируем правило так: объекты должны либо умирать быстро, не доживая до старшего поколения, либо доживать до него и жить там вечно. Это правило применяется и для других платформ, где используется автоматическое управление памятью с разделением по поколениям, например, таким как Java.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nИнтересные для нас данные можно извлечь из другой таблицы в отчете GCStats:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fm5\u002F7y\u002Fje\u002Fm57yjedgbkwfpbiwmjkvnbhgl4o.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЗдесь перечислены случаи, когда приложение пытается создать большой объект (в .NET Framework объекты размером \u003E 85000 байт создаются в LOH — Large Object Heap), и ему приходится ждать окончания сборки 2-го поколения, которая происходит параллельно в фоне. Эти паузы аллокатора не настолько критичны, как паузы сборщика мусора, так как они влияют только на один поток. До этого мы использовали версию .NET Framework 4.6.1, а в версии 4.7.1 Microsoft доработали сборщик мусора, теперь он позволяет выделять память в Large Object Heap во время фоновой сборки 2-го поколения: \u003Ca href=\"https:\u002F\u002Fdocs.microsoft.com\u002Fru-ru\u002Fdotnet\u002Fframework\u002Fwhats-new\u002F#common-language-runtime-clr\"\u003Ehttps:\u002F\u002Fdocs.microsoft.com\u002Fru-ru\u002Fdotnet\u002Fframework\u002Fwhats-new\u002F#common-language-runtime-clr\u003C\u002Fa\u003E\u003Cbr\u002F\u003E\r\nПоэтому мы обновились до последней на тот момент версии 4.7.2.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EСборки 2-го поколения\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nПочему же у нас так много сборок старшего поколения? Первое предположение — мы имеем утечку памяти. Для проверки этой гипотезы посмотрим на размер второго поколения (мы настроили в Zabbix мониторинг соответствующих счетчиков производительности). Из графиков размера 2-го поколения для 2-х серверов Pyrus видно, что его размер сначала растет (в основном из-за заполнения кэшей), но затем стабилизируется (большие провалы на графике — штатный перезапуск веб-сервиса для обновления версии):\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fgg\u002Flc\u002Fce\u002Fgglcce4tssnhzgcjfhesec9rcja.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЭто означает, что нет заметных утечек памяти, то есть, большое количество сборок 2-го поколения возникает по другой причине. Следующая гипотеза — большой трафик памяти, т.е., во 2-е поколение попадает много объектов, и много объектов там умирает. Для нахождения таких объектов в PerfView имеется режим \u002FGCOnly. Из отчетов трассировки обратим внимание на 'Gen 2 Object Deaths (Coarse Sampling) Stacks', который содержит выборку объектов, умирающих во 2-м поколении, вместе со стеками вызовов мест, где эти объекты были созданы. Тут мы видим следующие результаты:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fh7\u002Fr2\u002Fd0\u002Fh7r2d0htyxsnaqrr_ekn_ybilti.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nРаскрыв строку, внутри мы видим стек вызовов тех мест в коде, которые создают объекты, доживающие до 2-го поколения. Среди них:\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003ESystem.Byte[] Если заглянуть внутрь, то мы увидими, что больше половины — это буферы для сериализации в JSON:\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fla\u002Fup\u002F6v\u002Flaup6v0mho5e1tbwjfkfmsgdhog.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003ESlot[System.Int32][] (это часть реализации HashSet), System.Int32[], и т.д. Это наш код, который вычисляет клиентские кэши — те справочники, формы, списки, друзей и т.п., которых видит данный пользователь, и которые кэшируются у него в браузере или в мобильном приложении:\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fdx\u002Fet\u002Fjy\u002Fdxetjyvj2ande72qrod6leza6i8.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fv6\u002Fk6\u002Fr-\u002Fv6k6r-wq0qeof0edb6h5jvct-he.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nИнтересно, что буферы для JSON и для вычисления клиентских кэшей — это всё временные объекты, которые живут в течение одного запроса. Почему же они доживают до 2-го поколения? Обратим внимание, что все эти объекты — массивы достаточно большого размера. А при размере \u003E 85000 байт память под них выделяется в Large Object Heap, которая собирается только вместе со 2-ым поколением.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nДля проверки откроем в результатах perfview \u002FGCOnly раздел 'GC Heap Alloc Ignore Free (Coarse Sampling) stacks'. Там мы видим строку LargeObject, в которой PerfView группирует создание больших объектов, а внутри мы увидим все те же самые массивы, которые мы видели в предшествующем анализе. Мы подтверждаем основную причину проблем со сборщиком мусора: мы создаем много временных больших объектов.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fsy\u002Fkr\u002Flk\u002Fsykrlkgbmvl9jyny5hl1_ftg4ee.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Ff9\u002F6q\u002Fmp\u002Ff96qmplnj4devma1buedg6fpo8q.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EИзменения в системе Pyrus\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nПо результатам измерений мы выделили основные направления дальнейшей работы: борьба с большими объектами при вычислении клиентских кэшей и сериализации в JSON. Есть несколько вариантов решения этой проблемы:\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003EСамое простое — не создавать больших объектов. Например, если большой буфер B используется в последовательных преобразованиях данных A-\u003EB-\u003EC, то иногда эти преобразования можно объединить, превратив в A-\u003EC, и избавившись от создания объекта B. Этот вариант не всегда применим, но при этом он самый простой и эффективный.\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003Cli\u003EПул объектов. Вместо того, чтобы постоянно создавать новые объекты и выкидывать, нагружая сборщик мусора, мы можем хранить коллекцию свободных объектов. В простейшем случае, когда нам нужен новый объект, то мы берем его из пула, или создаем новый, если пул пустой. Когда объект нам больше не нужен, мы возвращаем его в пул. Хороший пример — ArrayPool в .NET Core, который также доступен в .NET Framework в составе Nuget-пакета System.Buffers.\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003Cli\u003EИспользовать вместо больших объектов маленькие.\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\nРассмотрим по отдельности оба случая больших объектов — вычисление клиентских кэшей и сериализацию в JSON.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EВычисление клиентских кэшей\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nWeb-клиент и мобильные приложения Pyrus кэшируют данные, доступные пользователю (проекты, формы, пользователи, и т.п.) Кэширование используется для ускорения работы, также оно необходимо для работы в оффлайн-режиме. Кэши вычисляются на сервере и передаются на клиент. Они индивидуальны для каждого пользователя, так как зависят от его прав доступа, и достаточно часто обновляются, например, при изменении справочников, к которым он имеет доступ.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nТаким образом, на сервере регулярно происходит много вычислений клиентских кэшей, при этом создается много временных короткоживущих объектов. Если пользователь состоит в большой организации, то он может получить доступ к многим объектам, соответственно клиентские кэши для него будут большими. Именно поэтому мы видели выделение памяти под большие временные массивы в Large Object Heap.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПроанализируем предложенные варианты избавления от создания больших объектов:\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003EПолное избавление от больших объектов. Этот подход неприменим, так как в алгоритмах подготовки данных используются среди прочего сортировка и объединение множеств, а для них требуются временные буферы.\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003Cli\u003EИспользование пула объектов. У этого подхода есть сложности:\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003EРазнообразие используемых коллекций и типов элементов в них: используются HashSet, List и Array (2 последних можно объединить). В коллекциях хранятся Int32, Int64, а также всевозможные классы данных. Для каждого используемого типа понадобится свой пул, который к тому же будет хранить коллекции разных размеров.\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003Cli\u003EСложное время жизни коллекций. Чтобы получить преимущества от пула, объекты в него придется возвращать после использования. Это можно сделать, если объект используется в одном методе. Но в нашем случае ситуация сложнее, так как многие большие объекты путешествуют между методами, кладутся в структуры данных, перекладываются в другие структуры, и т.д.\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003Cli\u003EРеализация. Есть ArrayPool от Microsoft, но нам нужны еще List и HashSet. Мы не нашли какой-нибудь подходящей библиотеки, поэтому классы пришлось бы реализовывать самим.\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003C\u002Fli\u003E\r\n\u003Cli\u003EИспользование маленьких объектов. Большой массив можно разбить на несколько маленьких кусочков, которые не буду нагружать Large Object Heap, а будут создаваться в 0-м поколении, а дальше идти стандартным путем в 1-е и 2-е. Мы надеемся, что они не доживут до 2-го, а будут собраны сборщиком мусора в 0-м, или в крайнем случае в 1-м поколении. Плюс этого подхода в том, что изменения имеющегося кода минимальные. Сложности:\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003EРеализация. Мы не нашли подходящих библиотек, поэтому классы пришлось бы писать самим. Отсутствие библиотек объяснимо, так как сценарий «коллекции, не нагружающие Large Object Heap» — это очень узкая область применения.\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\nМы решили пойти по 3-му пути и \u003Cstrike\u003Eизобрести свой велосипед\u003C\u002Fstrike\u003E написать List и HashSet, не нагружающие Large Object Heap.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EКусочный список\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nНаш ChunkedList&lt;T\u003E реализует стандартные интерфейсы, включая IList&lt;T\u003E, благодаря этому требуются минимальные изменения имеющегося кода. Да и используемая нами библиотека Newtonsoft.Json автоматически умеет его сериализовывать, так как он реализует IEnumerable &lt;T\u003E:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"cs\"\u003Epublic sealed class ChunkedList&lt;T\u003E : IList&lt;T\u003E, ICollection&lt;T\u003E, IEnumerable&lt;T\u003E, IEnumerable, IList, ICollection, IReadOnlyList&lt;T\u003E, IReadOnlyCollection&lt;T\u003E\n{\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nУ стандартного списка List&lt;T\u003E имеются следующие поля: массив для элементов и количество заполненных элементов. В ChunkedList&lt;T\u003E имеется массив массивов элементов, количество полностью заполненных массивов, количество элементов в последнем массиве. Каждый из массивов элементов при этом которых меньше 85000 байт:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002F72\u002Fzj\u002Fjs\u002F72zjjs9q6lcfud-l7nq8cy5prdi.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"cs\"\u003Eprivate T[][] chunks;\nprivate int currentChunk;\nprivate int currentChunkSize;\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nТак как ChunkedList&lt;T\u003E устроен довольно сложно, то на него мы написали подробные тесты. Любую операцию нужно тестировать как минимум в 2-х режимах: в «маленьком», когда весь список умещается в один кусок размером до 85000 байт, и «большом», когда он состоит более, чем из одного куска. При этом для методов, изменяющих размер (например, Add), сценариев еще больше: «маленький» -\u003E «маленький», «маленький» -\u003E «большой», «большой» -\u003E «большой», «большой» -\u003E «маленький». Тут возникает довольно много запутанных граничных случаев, с которыми хорошо справляются юнит-тесты.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nСитуация упрощается тем, что часть методов из интерфейса IList не используются, и их можно не реализовывать (такие, как Insert, Remove). Их реализация и тестирование были бы довольно накладными. Кроме того, написание юнит-тестов упрощается тем, что нам не нужно придумывать новый функционал, ChunkedList&lt;T\u003E должен вести себя так же, как и List&lt;T\u003E. То есть все тесты устроены так: создаем List&lt;T\u003E и ChunkedList&lt;T\u003E, проводим над ними одинаковые операции и сравниваем результаты.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nМы провели замер производительности с помощью библиотеки BenchmarkDotNet, чтобы убедиться, что мы не сильно замедлим наш код при переходе с List&lt;T\u003E на ChunkedList&lt;T\u003E. Протестируем, например, добавление элементов в список:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"cs\"\u003E[Benchmark]\npublic ChunkedList&lt;int\u003E ChunkedList()\n{\n\tvar list = new ChunkedList&lt;int\u003E();\n\tfor (int i = 0; i &lt; N; i++)\n\t\tlist.Add(i);\n\treturn list;\n}\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nИ такой же тест с использованием List&lt;T\u003E для сравнения. Результаты при добавлении 500 элементов (все помещается в один массив):\u003Cbr\u002F\u003E\r\n\u003Cdiv class=\"scrollable-table\"\u003E\u003Ctable\u003E\r\n\u003Ctr\u003E\r\n\u003Ctd\u003EMethod\u003C\u002Ftd\u003E\r\n\u003Ctd\u003EMean\u003C\u002Ftd\u003E\r\n\u003Ctd\u003EError\u003C\u002Ftd\u003E\r\n\u003Ctd\u003EStdDev\u003C\u002Ftd\u003E\r\n\u003Ctd\u003EGen 0\u002F1k Op\u003C\u002Ftd\u003E\r\n\u003Ctd\u003EGen 1\u002F1k Op\u003C\u002Ftd\u003E\r\n\u003Ctd\u003EGen 2\u002F1k Op\u003C\u002Ftd\u003E\r\n\u003Ctd\u003EAllocated Memory\u002FOp\u003C\u002Ftd\u003E\r\n\u003C\u002Ftr\u003E\r\n\u003Ctr\u003E\r\n\u003Ctd\u003EStandardList\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E1.415 us\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E0.0149 us\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E0.0140 us\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E0.6847\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E0.0095\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E-\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E4.21 KB\u003C\u002Ftd\u003E\r\n\u003C\u002Ftr\u003E\r\n\u003Ctr\u003E\r\n\u003Ctd\u003EChunkedList\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E3.728 us\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E0.0238 us\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E0.0222 us\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E0.6943\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E0.0076\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E-\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E4.28 KB\u003C\u002Ftd\u003E\r\n\u003C\u002Ftr\u003E\r\n\u003C\u002Ftable\u003E\u003C\u002Fdiv\u003E\u003Cbr\u002F\u003E\r\nРезультаты при добавлении 50000 элементов (разбивается на несколько массивов):\u003Cbr\u002F\u003E\r\n\u003Cdiv class=\"scrollable-table\"\u003E\u003Ctable\u003E\r\n\u003Ctr\u003E\r\n\u003Ctd\u003EMethod\u003C\u002Ftd\u003E\r\n\u003Ctd\u003EMean\u003C\u002Ftd\u003E\r\n\u003Ctd\u003EError\u003C\u002Ftd\u003E\r\n\u003Ctd\u003EStdDev\u003C\u002Ftd\u003E\r\n\u003Ctd\u003EGen 0\u002F1k Op\u003C\u002Ftd\u003E\r\n\u003Ctd\u003EGen 1\u002F1k Op\u003C\u002Ftd\u003E\r\n\u003Ctd\u003EGen 2\u002F1k Op\u003C\u002Ftd\u003E\r\n\u003Ctd\u003EAllocated Memory\u002FOp\u003C\u002Ftd\u003E\r\n\u003C\u002Ftr\u003E\r\n\u003Ctr\u003E\r\n\u003Ctd\u003EStandardList\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E146.273 us\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E3.1466 us\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E4.8053 us\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E124.7559\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E124.7559\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E124.7559\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E513.23 KB\u003C\u002Ftd\u003E\r\n\u003C\u002Ftr\u003E\r\n\u003Ctr\u003E\r\n\u003Ctd\u003EChunkedList\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E287.687 us\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E1.4630 us\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E1.2969 us\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E41.5039\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E20.5078\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E-\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E256.75 KB\u003C\u002Ftd\u003E\r\n\u003C\u002Ftr\u003E\r\n\u003C\u002Ftable\u003E\u003C\u002Fdiv\u003E\u003Cbr\u002F\u003E\r\n\u003Cdiv class=\"spoiler\"\u003E\u003Cb class=\"spoiler_title\"\u003EПодробное описание колонок в результатах\u003C\u002Fb\u003E\u003Cdiv class=\"spoiler_text\"\u003E\u003Cpre\u003E\u003Ccode class=\"cs\"\u003EBenchmarkDotNet=v0.11.4, OS=Windows 10.0.17763.379 (1809\u002FOctober2018Update\u002FRedstone5)\nIntel Core i7-8700K CPU 3.70GHz (Coffee Lake), 1 CPU, 12 logical and 6 physical cores\n  [Host]     : .NET Framework 4.7.2 (CLR 4.0.30319.42000), 64bit RyuJIT-v4.7.3324.0\n  DefaultJob : .NET Framework 4.7.2 (CLR 4.0.30319.42000), 64bit RyuJIT-v4.7.3324.0\n\n\u002F\u002F * Hints *\nOutliers\n  ListAdd.StandardList: Default -\u003E 2 outliers were removed\n  ListAdd.ChunkedList: Default  -\u003E 1 outlier  was  removed\n\n\u002F\u002F * Legends *\n  Mean                : Arithmetic mean of all measurements\n  Error               : Half of 99.9% confidence interval\n  StdDev              : Standard deviation of all measurements\n  Gen 0\u002F1k Op         : GC Generation 0 collects per 1k Operations\n  Gen 1\u002F1k Op         : GC Generation 1 collects per 1k Operations\n  Gen 2\u002F1k Op         : GC Generation 2 collects per 1k Operations\n  Allocated Memory\u002FOp : Allocated memory per single operation (managed only, inclusive, 1KB = 1024B)\n  1 us                : 1 Microsecond (0.000001 sec)\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003C\u002Fdiv\u003E\u003C\u002Fdiv\u003E\u003Cbr\u002F\u003E\r\nЕсли посмотреть на столбец 'Mean', в котором отображено среднее время выполнения теста, видно, что наша реализация медленнее стандартной всего в 2-2.5 раза. С учетом того, что в реальном коде операции со списками — лишь малая часть всех выполняемых действий, эта разница становится несущественной. Зато столбец 'Gen 2\u002F1k op' (количество сборок 2-го поколения за 1000 выполнений теста) показывает, что мы добились цели: при большом количестве элементов ChunkedList не создает мусора во 2-м поколении, что и было нашей задачей.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EКусочное множество\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nАналогично ChunkedHashSet&lt;T\u003E реализует интерфейс ISet&lt;T\u003E. При написании ChunkedHashSet&lt;T\u003E мы повторно использовали логику разбиения на небольшие куски, уже реализованную в ChunkedList. Для этого мы взяли готовую реализацию HashSet&lt;T\u003E из .NET Reference Source, доступного по лицензии MIT, и заменили в ней массивы на ChunkedList-ы.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВ юнит тестах тоже воспользуемся тем же трюком, что и для списков: будем сравнивать поведение ChunkedHashSet&lt;T\u003E с эталонным HashSet&lt;T\u003E.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nНаконец, тесты производительности. Основная операция, которую мы используем — объединение множеств, поэтому именно ее мы и протестируем:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"cs\"\u003Epublic ChunkedHashSet&lt;int\u003E ChunkedHashSet(int[][] source)\n{\n\tvar set = new ChunkedHashSet&lt;int\u003E();\n\tforeach (var arr in source)\n\t\tset.UnionWith(arr);\n\treturn set;\n}\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nИ точно такой же тест для стандартного HashSet. Первый тест для небольших множеств:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"cs\"\u003Evar source = new int[][] {\n\tEnumerable.Range(0, 300).ToArray(),\n\tEnumerable.Range(100, 600).ToArray(),\n\tEnumerable.Range(300, 1000).ToArray(),\n}\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cdiv class=\"scrollable-table\"\u003E\u003Ctable\u003E\r\n\u003Ctr\u003E\r\n\u003Ctd\u003EMethod\u003C\u002Ftd\u003E\r\n\u003Ctd\u003EMean\u003C\u002Ftd\u003E\r\n\u003Ctd\u003EError\u003C\u002Ftd\u003E\r\n\u003Ctd\u003EStdDev\u003C\u002Ftd\u003E\r\n\u003Ctd\u003EGen 0\u002F1k Op\u003C\u002Ftd\u003E\r\n\u003Ctd\u003EGen 1\u002F1k Op\u003C\u002Ftd\u003E\r\n\u003Ctd\u003EGen 2\u002F1k Op\u003C\u002Ftd\u003E\r\n\u003Ctd\u003EAllocated Memory\u002FOp\u003C\u002Ftd\u003E\r\n\u003C\u002Ftr\u003E\r\n\u003Ctr\u003E\r\n\u003Ctd\u003EStandardHashSet\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E30.16 us\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E0.1046 us\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E0.0979 us\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E9.3079\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E1.6785\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E-\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E57.41 KB\u003C\u002Ftd\u003E\r\n\u003C\u002Ftr\u003E\r\n\u003Ctr\u003E\r\n\u003Ctd\u003EChunkedHashSet\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E73.54 us\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E0.5919 us\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E0.5247 us\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E9.5215\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E1.5869\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E-\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E58.84 KB\u003C\u002Ftd\u003E\r\n\u003C\u002Ftr\u003E\r\n\u003C\u002Ftable\u003E\u003C\u002Fdiv\u003E\u003Cbr\u002F\u003E\r\nВторой тест для больших множеств, которые вызывали проблему с кучей больших объектов:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"cs\"\u003Evar source = new int[][] {\n\tEnumerable.Range(0, 30000).ToArray(),\n\tEnumerable.Range(10000, 60000).ToArray(),\n\tEnumerable.Range(30000, 100000).ToArray(),\n}\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cdiv class=\"scrollable-table\"\u003E\u003Ctable\u003E\r\n\u003Ctr\u003E\r\n\u003Ctd\u003EMethod\u003C\u002Ftd\u003E\r\n\u003Ctd\u003EMean\u003C\u002Ftd\u003E\r\n\u003Ctd\u003EError\u003C\u002Ftd\u003E\r\n\u003Ctd\u003EStdDev\u003C\u002Ftd\u003E\r\n\u003Ctd\u003EGen 0\u002F1k Op\u003C\u002Ftd\u003E\r\n\u003Ctd\u003EGen 1\u002F1k Op\u003C\u002Ftd\u003E\r\n\u003Ctd\u003EGen 2\u002F1k Op\u003C\u002Ftd\u003E\r\n\u003Ctd\u003EAllocated Memory\u002FOp\u003C\u002Ftd\u003E\r\n\u003C\u002Ftr\u003E\r\n\u003Ctr\u003E\r\n\u003Ctd\u003EStandardHashSet\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E3,031.30 us\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E32.0797 us\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E28.4378 us\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E699.2188\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E667.9688\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E664.0625\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E4718.23 KB\u003C\u002Ftd\u003E\r\n\u003C\u002Ftr\u003E\r\n\u003Ctr\u003E\r\n\u003Ctd\u003EChunkedHashSet\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E7,189.66 us\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E25.6319 us\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E23.9761 us\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E539.0625\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E265.6250\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E7.8125\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E3280.71 KB\u003C\u002Ftd\u003E\r\n\u003C\u002Ftr\u003E\r\n\u003C\u002Ftable\u003E\u003C\u002Fdiv\u003E\u003Cbr\u002F\u003E\r\nРезультаты схожи со списками. ChunkedHashSet медленнее в 2-2.5 раза, но при этом на больших множествах нагружает 2-е поколение на 2 порядка меньше.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EСериализация в JSON\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nВеб-сервер Pyrus предоставляет несколько API, в которых используется разная сериализация. Мы обнаружили создание больших объектов в API, используемом ботами и утилитой синхронизации (далее Public API). Заметим, что в основном API используется собственная сериализация, которая не подвержена данной проблеме. Мы об этом писали в статье \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fpost\u002F227595\u002F\"\u003Ehttps:\u002F\u002Fhabr.com\u002Fru\u002Fpost\u002F227595\u002F\u003C\u002Fa\u003E, в разделе «2. Вы не знаете, где узкое место вашего приложения». То есть, основной API уже работает хорошо, а проблема проявилась в Public API по мере роста количества запросов и объемов данных в ответах.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЗаймемся оптимизацией Public API. На примере основного API мы знаем, что можно возвращать ответ пользователю в потоковом режиме. То есть, нужно не создавать промежуточные буферы, содержащие ответ целиком, а писать сразу ответ в поток (stream).\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПри ближайшем рассмотрении мы выяснили, что в процессе сериализации ответа мы создаем временный буфер для промежуточного результата ('content' — массив байтов, содержащий JSON в кодировке UTF-8):\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"cs\"\u003Evar serializer = Newtonsoft.Json.JsonSerializer.Create(...);\n\nbyte[] content;\nvar sw = new StreamWriter(new MemoryStream(), new UTF8Encoding(false));\nusing (var writer = new Newtonsoft.Json.JsonTextWriter(sw))\n{\n\tserializer.Serialize(writer, result);\n\twriter.Flush();\t\t\t\t\n\tcontent = ms.ToArray();\n}\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nПроследим, где используется content. По историческим причинам Public API основан на WCF, для которого стандартным форматом запросов и ответов является XML. В нашем случае в XML-ответе имеется единственный элемент 'Binary', внутри которого записан JSON, закодированный в Base64:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"cs\"\u003Epublic class RawBodyWriter : BodyWriter\n{\n\tprivate readonly byte[] _content;\n\n\tpublic RawBodyWriter(byte[] content)\n\t\t: base(true)\n\t{\n\t\t_content = content;\n\t}\n\n\tprotected override void OnWriteBodyContents(XmlDictionaryWriter writer)\n\t{\n\t\twriter.WriteStartElement(\"Binary\");\n\t\twriter.WriteBase64(_content, 0, _content.Length);\n\t\twriter.WriteEndElement();\n\t}\n}\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nЗаметим, что временный буфер здесь не нужен. JSON можно писать сразу в буфер XmlWriter, который нам предоставляет WCF, на лету кодируя его в Base64. Таким образом, мы пойдем по первому пути, избавившись от выделения памяти:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"cs\"\u003Eprotected override void OnWriteBodyContents(XmlDictionaryWriter writer)\n{\n\tvar serializer = Newtonsoft.Json.JsonSerializer.Create(...);\n\n\twriter.WriteStartElement(\"Binary\");\n\tStream stream = new Base64Writer(writer);\n\tVar sw = new StreamWriter(stream, new UTF8Encoding(false));\n\tusing (var jsonWriter = new Newtonsoft.Json.JsonTextWriter(sw))\n\t{\n\t\tserializer.Serialize(jsonWriter, _result);\n\t\tjsonWriter.Flush();\n\t}\n\twriter.WriteEndElement();\n}\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nЗдесь Base64Writer — это простая обертка над XmlWriter, реализующая интерфейс Stream, которая пишет в XmlWriter в виде Base64. При этом из всего интерфейса достаточно реализовать только один метод Write, который вызывается в StreamWriter:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"cs\"\u003Epublic class Base64Writer : Stream\n{\n\tprivate readonly XmlWriter _writer;\n\n\tpublic Base64Writer(XmlWriter writer)\n\t{\n\t\t_writer = writer;\n\t}\n\n\tpublic override void Write(byte[] buffer, int offset, int count)\n\t{\n\t\t_writer.WriteBase64(buffer, offset, count);\n\t}\n\t\n\t&lt;...\u003E\n}\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EInduced GC\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nПопробуем разобраться с загадочными индуцированными сборками мусора. Мы 10 раз перепроверили наш код на наличие вызовов GC.Collect, но это не дало результатов. Удалось поймать эти события в PerfView, но стек вызовов не особо показателен (событие DotNETRuntime\u002FGC\u002FTriggered):\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fye\u002Fj0\u002Fqg\u002Fyej0qglbieyx_tg05hdgutajhmc.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЕсть маленькая зацепка — вызов RecycleLimitMonitor.RaiseRecycleLimitEvent перед индуцированной сборкой мусора. Проследим стек вызовов метода RaiseRecycleLimitEvent:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"cs\"\u003ERecycleLimitMonitor.RaiseRecycleLimitEvent(...)\nRecycleLimitMonitor.RecycleLimitMonitorSingleton.AlertProxyMonitors(...)\nRecycleLimitMonitor.RecycleLimitMonitorSingleton.CollectInfrequently(...)\nRecycleLimitMonitor.RecycleLimitMonitorSingleton.PBytesMonitorThread(...)\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nНазвания методов вполне соответствуют их функциям:\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003EВ конструкторе RecycleLimitMonitor.RecycleLimitMonitorSingleton создается таймер, с определенным интервалом вызывающий PBytesMonitorThread.\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003Cli\u003EPBytesMonitorThread собирает статистику по использованию памяти и при каких-то условиях вызывает CollectInfrequently.\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003Cli\u003ECollectInfrequently вызывает AlertProxyMonitors, получает в результате bool, и вызывает GC.Collect(), если получает true. Также он следит за временем, прошедшим с прошлого вызова сборщика мусора, и не вызывает его слишком часто.\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003Cli\u003EAlertProxyMonitors проходит по списку запущенных IIS веб-приложений, для каждого поднимает соответствующий объект RecycleLimitMonitor, и вызывает RaiseRecycleLimitEvent.\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003Cli\u003ERaiseRecycleLimitEvent поднимает список IObserver&lt;RecycleLimitInfo\u003E. Обработчики получают в качестве параметра RecycleLimitInfo, в котором они могут установить флаг RequestGC, который и возвращается в CollectInfrequently, вызывая индуцированную сборку мусора.\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nДальнейшее расследование показывает, обработчики IObserver&lt;RecycleLimitInfo\u003E добавляются в методе RecycleLimitMonitor.Subscribe(), который вызывается в методе AspNetMemoryMonitor.Subscribe(). Также в классе AspNetMemoryMonitor вешается обработчик IObserver&lt;RecycleLimitInfo\u003E по умолчанию (класс RecycleLimitObserver), который чистит кэши ASP.NET, и иногда запрашивает сборку мусора.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЗагадка Induced GC почти разгадана. Осталось выяснить вопрос, для чего вызывается эта сборка мусора. RecycleLimitMonitor следит за использованием памяти IIS (точнее, за цифрой private bytes), и когда ее использование приближается к определенному пределу, начинает по довольно запутанному алгоритму вызывать событие RaiseRecycleLimitEvent. В качестве предела памяти используется значение AspNetMemoryMonitor.ProcessPrivateBytesLimit, а в нем в свою очередь находится следующая логика:\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003EЕсли для Application Pool в IIS настроено значение 'Private Memory Limit (KB)', то значение в килобайтах берется оттуда\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003Cli\u003EИначе для 64-битных систем берется 60% физической памяти (для 32-битных логика сложнее).\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\nВывод расследования такой: ASP.NET по использованию памяти приближается к своему пределу и начинает регулярно вызывать сборку мусора. Для 'Private Memory Limit (KB)' не было установлено значение, поэтому ASP.NET ограничивался 60% от физической памяти. Проблема маскировалась тем, что на сервере Task Manager показывал много свободной памяти и казалось, что ее хватает. Мы повысили значение 'Private Memory Limit (KB)' в настройках Application Pool в IIS до 80% от физической памяти. Это стимулирует ASP.NET использовать больше имеющейся памяти. Также мы добавили мониторинг счетчика производительности '.NET CLR Memory \u002F # Induced GC', чтобы не пропустить, когда в следующий раз ASP.NET решит, что он приближается к пределу использования памяти.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EПовторные измерения\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nПосмотрим, что же произошло со сборками мусора после всех этих изменений. Начнем с perfview \u002FGCCollectOnly (время трассировки — 1 час), отчет GCStats:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002F8b\u002Fl3\u002Ffn\u002F8bl3fnxpuymka28coyzbo0r5ak4.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВидно, что сборок 2-го поколения теперь на 2 порядка меньше, чем 0-го и 1-го. Также, время этих сборок уменьшились. Индуцированных сборок больше не наблюдается. Посмотрим на список сборок 2-го поколения:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fmx\u002Foy\u002Ftv\u002Fmxoytvprkypunnhwtao6o6fboai.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nИз столбца Gen видно, что все сборки 2-го поколения стали фоновыми ('2B' означает 2-е поколение, Background). То есть, большая часть работы выполняется параллельно с выполнением приложения, а все потоки блокируются ненадолго (столбец 'Pause MSec'). Посмотрим на паузы при создании больших объектов:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fqp\u002F04\u002Fhp\u002Fqp04hpcq35buinfnfjn5uuudnyg.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВидно, что количество таких пауз при создании больших объектов упало в разы.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EИтоги\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nБлагодаря описанным в статье изменениям удалось значительно снизить количество и продолжительность сборок 2-го поколения. Удалось найти причину индуцированных сборок, и избавиться от них. Увеличилось количество сборок 0-го и 1-го поколения, но при этом уменьшилась их средняя продолжительность (с ~200 мсек до ~60 мсек). Максимальная продолжительность сборок 0-го и 1-го поколений уменьшилась, но не так заметно. Сборки 2-го поколения стали быстрее, длинные паузы до 1000мс полностью ушли.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЧто касается ключевой метрики — «процент медленных запросов», она уменьшилась на 40% после всех изменений.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nБлагодаря проведенной работе мы поняли, какие счетчики производительности нужны для оценки ситуации с памятью и сборкой мусора, добавив их в Zabbix для постоянного мониторинга. Вот список самых важных, на которые мы обращаем внимание, и выясняем причину (например, повышенный поток запросов, большой объем передаваемых данных, баг в приложении):\u003Cbr\u002F\u003E\r\n\u003Cdiv class=\"scrollable-table\"\u003E\u003Ctable\u003E\r\n\u003Ctr\u003E\r\n\u003Ctd\u003EСчетчик производительности\u003C\u002Ftd\u003E\r\n\u003Ctd\u003EОписание\u003C\u002Ftd\u003E\r\n\u003Ctd\u003EКогда стоит обратить внимание\u003C\u002Ftd\u003E\r\n\u003C\u002Ftr\u003E\r\n\u003Ctr\u003E\r\n\u003Ctd\u003E\\Process(*)\\Private Bytes\u003C\u002Ftd\u003E\r\n\u003Ctd\u003EКоличество памяти, выделенной для приложения\u003C\u002Ftd\u003E\r\n\u003Ctd rowspan=\"3\"\u003EЗначения сильно превышают порог. В качестве порога можно взять медиану за 2 недели от максимальных дневных показателей.\u003C\u002Ftd\u003E\r\n\u003C\u002Ftr\u003E\r\n\u003Ctr\u003E\r\n\u003Ctd\u003E\\.NET CLR Memory(*)\\# Gen 2 Collections\u003C\u002Ftd\u003E\r\n\u003Ctd\u003EОбъем памяти в старшем поколении\u003C\u002Ftd\u003E\r\n\u003C\u002Ftr\u003E\r\n\u003Ctr\u003E\r\n\u003Ctd\u003E\\.NET CLR Memory(*)\\Large Object Heap size\u003C\u002Ftd\u003E\r\n\u003Ctd\u003EОбъем памяти для больших объектов\u003C\u002Ftd\u003E\r\n\u003C\u002Ftr\u003E\r\n\u003Ctr\u003E\r\n\u003Ctd\u003E\\.NET CLR Memory(*)\\% Time in GC\u003C\u002Ftd\u003E\r\n\u003Ctd\u003EПроцент времени, потраченный на сборку мусора\u003C\u002Ftd\u003E\r\n\u003Ctd\u003EЗначение больше 5%.\u003C\u002Ftd\u003E\r\n\u003C\u002Ftr\u003E\r\n\u003Ctr\u003E\r\n\u003Ctd\u003E\\.NET CLR Memory(*)\\# Induced GC\u003C\u002Ftd\u003E\r\n\u003Ctd\u003EКоличество индуцированных сборок\u003C\u002Ftd\u003E\r\n\u003Ctd\u003EЗначение больше 0.\u003C\u002Ftd\u003E\r\n\u003C\u002Ftr\u003E\r\n\u003C\u002Ftable\u003E\u003C\u002Fdiv\u003E\u003C\u002Fdiv\u003E","tags":[{"titleHtml":".net"},{"titleHtml":"pyrus"},{"titleHtml":"c#"},{"titleHtml":"c#.net"},{"titleHtml":"asp.net"},{"titleHtml":"garbage collector"},{"titleHtml":"garbage collection"},{"titleHtml":"gc"},{"titleHtml":"сборка мусора"},{"titleHtml":"memory management"},{"titleHtml":"performance"},{"titleHtml":"perfview"},{"titleHtml":"etw"}],"metadata":{"stylesUrls":[],"scriptUrls":[],"shareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F452298\u002Fc91c3bfe18e83f6822b4cfd9ad87651a\u002F","shareImageWidth":1200,"shareImageHeight":630,"vkShareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F452298\u002Fc91c3bfe18e83f6822b4cfd9ad87651a\u002F?format=vk","schemaJsonLd":"{\"@context\":\"http:\\\u002F\\\u002Fschema.org\",\"@type\":\"Article\",\"mainEntityOfPage\":{\"@type\":\"WebPage\",\"@id\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fru\\\u002Fpost\\\u002F452298\\\u002F\"},\"headline\":\"Оптимизация сборки мусора в высоконагруженном .NET сервисе\",\"datePublished\":\"2019-05-17T22:07:07+03:00\",\"dateModified\":\"2019-05-17T22:53:42+03:00\",\"author\":{\"@type\":\"Person\",\"name\":\"Pyrus\"},\"publisher\":{\"@type\":\"Organization\",\"name\":\"Habr\",\"logo\":{\"@type\":\"ImageObject\",\"url\":\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fa_\\\u002Flk\\\u002F9m\\\u002Fa_lk9mjkccjox-zccjrpfolmkmq.png\"}},\"description\":\"Ежедневно в сервисе Pyrus работают десятки тысяч сотрудников из нескольких тысяч организаций по всему миру. Отзывчивость сервиса (скорость обработки запросов) мы...\",\"url\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fru\\\u002Fpost\\\u002F452298\\\u002F#post-content-body\",\"about\":[\"h_hi\",\"h_programming\",\"h_net\",\"h_asp\",\"h_csharp\",\"f_develop\"],\"image\":[\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Ffu\\\u002F1s\\\u002Fj9\\\u002Ffu1sj9ixpj4nc633ikhwblbhlfs.jpeg\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fv4\\\u002Fia\\\u002Fcd\\\u002Fv4iacdyso10-0toycwyijfm0zbm.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fm5\\\u002F7y\\\u002Fje\\\u002Fm57yjedgbkwfpbiwmjkvnbhgl4o.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fgg\\\u002Flc\\\u002Fce\\\u002Fgglcce4tssnhzgcjfhesec9rcja.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fh7\\\u002Fr2\\\u002Fd0\\\u002Fh7r2d0htyxsnaqrr_ekn_ybilti.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fla\\\u002Fup\\\u002F6v\\\u002Flaup6v0mho5e1tbwjfkfmsgdhog.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fdx\\\u002Fet\\\u002Fjy\\\u002Fdxetjyvj2ande72qrod6leza6i8.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fv6\\\u002Fk6\\\u002Fr-\\\u002Fv6k6r-wq0qeof0edb6h5jvct-he.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fsy\\\u002Fkr\\\u002Flk\\\u002Fsykrlkgbmvl9jyny5hl1_ftg4ee.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Ff9\\\u002F6q\\\u002Fmp\\\u002Ff96qmplnj4devma1buedg6fpo8q.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002F72\\\u002Fzj\\\u002Fjs\\\u002F72zjjs9q6lcfud-l7nq8cy5prdi.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fye\\\u002Fj0\\\u002Fqg\\\u002Fyej0qglbieyx_tg05hdgutajhmc.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002F8b\\\u002Fl3\\\u002Ffn\\\u002F8bl3fnxpuymka28coyzbo0r5ak4.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fmx\\\u002Foy\\\u002Ftv\\\u002Fmxoytvprkypunnhwtao6o6fboai.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fqp\\\u002F04\\\u002Fhp\\\u002Fqp04hpcq35buinfnfjn5uuudnyg.png\"]}","metaDescription":"Ежедневно в сервисе Pyrus работают десятки тысяч сотрудников из нескольких тысяч организаций по всему миру. Отзывчивость сервиса (скорость обработки запросов) мы считаем важным конкурентным...","mainImageUrl":null,"amp":false},"polls":[],"commentsEnabled":true,"rulesRemindEnabled":false,"votesEnabled":true,"status":"published","plannedPublishTime":null,"checked":null,"isEditorial":false}},"articlesIds":{},"isLoading":false,"pagesCount":{},"route":{},"reasonsList":null,"view":"cards","lastVisitedRoute":{},"ssrCommentsArticleIds":[""],"karma":{}},"authorContribution":{"authors":{}},"betaTest":{"currentAnnouncement":null,"announcements":{},"announcementCards":null,"announcementComments":{},"announcementCommentThreads":{},"announcementCommentingStatuses":{},"archivedList":[]},"authorStatistics":{"articleRefs":{},"articleIds":{},"pagesCount":{},"route":{},"viewsCount":[],"maxStatsCount":{}},"career":{"seoLandings":[],"hubs":"hi,programming,net,asp,csharp"},"comments":{"articleComments":{},"searchCommentsResults":null,"previewComment":null,"pagesCount":null,"commentAccess":{},"scrollParents":{},"pageArticleComments":{"lastViewedComment":0,"postId":null,"lastCommentTimestamp":"","moderated":[],"moderatedIds":[],"commentRoute":""}},"companies":{"companyRefs":{},"companyIds":{},"companyTopIds":{},"pagesCount":{},"companyProfiles":{},"companiesCategories":[],"companiesCategoriesTotalCount":0,"companiesWidgets":{},"companiesWorkers":{},"companiesFans":{},"route":{},"isLoading":false,"companyWorkersLoading":false,"companyFansLoading":false,"vacancies":{}},"companiesContribution":{"hubs":{},"flows":{},"companyRefs":{}},"companyHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"conversation":{"messages":[],"respondent":null,"isLoadMore":false},"conversations":{"conversations":[],"unreadCount":0,"pagesCount":0,"isLoadMore":false},"desktopState":{"desktopFl":null,"desktopHl":null,"isChecked":false,"isLoginDemanded":false},"dfp":{"slotsDict":{}},"docs":{"menu":{},"articles":{},"mainMenu":[],"loading":{"main":false,"dropdown":false,"article":false}},"feature":{"isProbablyVisible":"true"},"flows":{"flows":[{"alias":"develop","id":1,"route":{"name":"FLOW_PAGE","params":{"flowName":"develop"}}},{"alias":"admin","id":6,"route":{"name":"FLOW_PAGE","params":{"flowName":"admin"}}},{"alias":"design","id":2,"route":{"name":"FLOW_PAGE","params":{"flowName":"design"}}},{"alias":"management","id":3,"route":{"name":"FLOW_PAGE","params":{"flowName":"management"}}},{"alias":"marketing","id":4,"route":{"name":"FLOW_PAGE","params":{"flowName":"marketing"}}},{"alias":"popsci","id":7,"route":{"name":"FLOW_PAGE","params":{"flowName":"popsci"}}}]},"global":{"isPwa":false,"device":"desktop","isHabrCom":true},"hubs":{"hubRefs":{},"hubIds":{},"pagesCount":{},"isLoading":false,"route":{}},"hubsBlock":{"hubRefs":{},"hubIds":{}},"i18n":{"fl":"ru","hl":"ru"},"info":{"infoPage":{},"isLoading":true},"location":{"urlStruct":{"protocol":null,"slashes":null,"auth":null,"host":null,"port":null,"hostname":null,"hash":null,"search":null,"query":{},"pathname":null,"path":null,"href":""},"searchQuery":null},"me":{"user":null,"ppgDemanded":false,"karmaResetInfo":{"canReincarnate":null,"wasReincarnated":null,"currentScore":null},"notes":null},"mostReadingList":{"mostReadingListIds":[],"mostReadingListRefs":null,"promoPost":null},"pinnedPost":{"pinnedPost":null},"ppa":{"articles":{},"card":null,"transactions":null,"totalTransactions":null,"isAccessible":null},"projectsBlocks":{"activeBlocks":{}},"pullRefresh":{"shouldRefresh":false},"sandbox":{"articleIds":[],"articleRefs":{},"pagesCount":null,"route":{},"lastVisitedRoute":{},"isLoading":false},"settingsOther":{"inputs":{"uiLang":{"errors":[],"ref":null,"value":""},"articlesLangEnglish":{"errors":[],"ref":null,"value":false},"articlesLangRussian":{"errors":[],"ref":null,"value":false},"agreement":{"errors":[],"ref":null,"value":false},"email":{"errors":[],"ref":null,"value":true},"digest":{"errors":[],"ref":null,"value":true}}},"similarList":{"similarListIds":[],"similarListRefs":null},"ssr":{"error":null,"isDataLoaded":false,"isDataLoading":false,"isHydrationFailed":false,"isServer":false},"userHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"userInvites":{"availableInvites":0,"usedInvitesIds":[],"usedInvitesRefs":{},"usedInvitesPagesCount":0,"unusedInvitesIds":[],"unusedInvitesRefs":{},"unusedInvitesPagesCount":0},"users":{"authorRefs":{},"authorIds":{},"pagesCount":{},"authorProfiles":{},"userHubs":{},"userInvitations":{},"authorFollowers":{},"authorFollowed":{},"karmaStats":[],"statistics":null,"isLoading":false,"authorFollowersLoading":false,"authorFollowedLoading":false,"userHubsLoading":false,"userInvitationsLoading":false,"route":{}},"viewport":{"prevScrollY":{},"scrollY":0,"width":0},"tracker":{"items":{},"pagesCache":{},"markedViewedSilently":{},"markedRead":{},"unreadCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null},"unviewedCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null}}};(function(){var s;(s=document.currentScript||document.scripts[document.scripts.length-1]).parentNode.removeChild(s);}());</script>
+<script src="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" defer></script><script src="https://assets.habr.com/habr-web/js/app.c0af73e7.js" defer></script>
+
+
+
+    <script>
+      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+        (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+        m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+      })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+    </script>
+  
+  <script type="text/javascript" >
+    (function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+    m[i].l=1*new Date();k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})
+    (window, document, "script", "https://mc.yandex.ru/metrika/tag.js", "ym");
+
+    ym(24049213, "init", {
+      defer:true,
+      trackLinks:true,
+      accurateTrackBounce:true,
+      webvisor:false,
+    });
+  </script>
+  <noscript>
+    <div>
+      <img src="https://mc.yandex.ru/watch/24049213" style="position:absolute; left:-9999px;" alt="" />
+    </div>
+  </noscript>
+  
+    <script type="text/javascript">
+      window.addEventListener('load', function () {
+        setTimeout(() => {
+          const img = new Image();
+          img.src = 'https://vk.com/rtrg?p=VK-RTRG-421343-57vKE';
+        }, 0);
+      });
+    </script>
+  
+</body>
+</html>

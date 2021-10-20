@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="ru" data-vue-meta="%7B%22lang%22:%7B%22ssr%22:%22ru%22%7D%7D">
+<head >
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
+  <title>Принципы разработки современных приложений от NGINX. Часть 1 / Хабр</title>
+  <style>
+    /* cyrillic-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSxf6TF0.woff2) format('woff2');
+      unicode-range: U+0460-052F, U+1C80-1C88, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+    }
+
+    /* cyrillic */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveQhf6TF0.woff2) format('woff2');
+      unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+    }
+
+    /* latin-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSBf6TF0.woff2) format('woff2');
+      unicode-range: U+0100-024F, U+0259, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20CF, U+2113, U+2C60-2C7F, U+A720-A7FF;
+    }
+
+    /* latin */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveRhf6.woff2) format('woff2');
+      unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+    }
+  </style>
+  <link rel="preload" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" as="script"><link rel="preload" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/app.c0af73e7.js" as="script">
+  <link rel="stylesheet" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css"><link rel="stylesheet" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css">
+  <script>window.i18nFetch = new Promise((res, rej) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open('GET', '/js/i18n/ru-compiled.85eb77f0b17c8235e7b64b9f81ea5ec2.json');
+          xhr.responseType = 'json';
+          xhr.onload = function(e) {
+            if (this.status === 200) {
+              res({ru: xhr.response});
+            } else {
+              rej(e);
+            }
+          };
+          xhr.send();
+        });</script>
+  
+  <script data-vue-meta="ssr" src="/js/ads.js" onload="window['zhY4i4nJ9K'] = true" data-vmid="checkad"></script><script data-vue-meta="ssr" type="application/ld+json" data-vmid="ldjson-schema">{"@context":"http:\/\/schema.org","@type":"Article","mainEntityOfPage":{"@type":"WebPage","@id":"https:\/\/habr.com\/ru\/company\/otus\/blog\/452748\/"},"headline":"Принципы разработки современных приложений от NGINX. Часть 1","datePublished":"2019-05-21T11:56:43+03:00","dateModified":"2019-05-21T13:20:56+03:00","author":{"@type":"Person","name":"OTUS"},"publisher":{"@type":"Organization","name":"Habr","logo":{"@type":"ImageObject","url":"https:\/\/habrastorage.org\/webt\/a_\/lk\/9m\/a_lk9mjkccjox-zccjrpfolmkmq.png"}},"description":"Привет, друзья. В преддверии запуска курса &laquo;Backend разработчик на PHP&raquo;, традиционно делимся с вами переводом полезного материала.  Программное обеспечение решае...","url":"https:\/\/habr.com\/ru\/company\/otus\/blog\/452748\/#post-content-body","about":["c_otus","h_php","h_nginx","f_develop","f_admin"],"image":["https:\/\/habrastorage.org\/webt\/kz\/of\/0b\/kzof0bmbw2zx-qqhez30skxeghs.png","https:\/\/habrastorage.org\/webt\/wo\/ov\/m5\/woovm515u8lwotr5cviillue_wq.png","https:\/\/habrastorage.org\/webt\/ai\/-p\/hf\/ai-phfat7leeptmtxhoh0gy_ndi.png"]}</script>
+  <script src="//www.googletagservices.com/tag/js/gpt.js" async></script>
+  <style>.grecaptcha-badge{visibility: hidden;}</style>
+  <meta name="habr-version" content="2.49.0">
+  
+  <meta data-vue-meta="ssr" property="fb:app_id" content="444736788986613"><meta data-vue-meta="ssr" property="fb:pages" content="472597926099084"><meta data-vue-meta="ssr" name="twitter:card" content="summary_large_image"><meta data-vue-meta="ssr" name="twitter:site" content="@habr_eng"><meta data-vue-meta="ssr" property="og:title" content="Принципы разработки современных приложений от NGINX. Часть 1" data-vmid="og:title"><meta data-vue-meta="ssr" name="twitter:title" content="Принципы разработки современных приложений от NGINX. Часть 1" data-vmid="twitter:title"><meta data-vue-meta="ssr" name="aiturec:title" content="Принципы разработки современных приложений от NGINX. Часть 1" data-vmid="aiturec:title"><meta data-vue-meta="ssr" name="description" content="Привет, друзья. В преддверии запуска курса «Backend разработчик на PHP», традиционно делимся с вами переводом полезного материала.
+
+Программное обеспечение решает все больше и больше повседневных..." data-vmid="description"><meta data-vue-meta="ssr" itemprop="description" content="Привет, друзья. В преддверии запуска курса «Backend разработчик на PHP», традиционно делимся с вами переводом полезного материала.
+
+Программное обеспечение решает все больше и больше повседневных..." data-vmid="description:itemprop"><meta data-vue-meta="ssr" property="og:description" content="Привет, друзья. В преддверии запуска курса «Backend разработчик на PHP», традиционно делимся с вами переводом полезного материала.
+
+Программное обеспечение решает все больше и больше повседневных..." data-vmid="og:description"><meta data-vue-meta="ssr" name="twitter:description" content="Привет, друзья. В преддверии запуска курса «Backend разработчик на PHP», традиционно делимся с вами переводом полезного материала.
+
+Программное обеспечение решает все больше и больше повседневных..." data-vmid="twitter:description"><meta data-vue-meta="ssr" property="aiturec:description" content="Привет, друзья. В преддверии запуска курса «Backend разработчик на PHP», традиционно делимся с вами переводом полезного материала.
+
+Программное обеспечение решает все больше и больше повседневных..." data-vmid="aiturec:description"><meta data-vue-meta="ssr" itemprop="image" content="https://habr.com/share/publication/452748/21a9a918bbdea0e7565298d752249b5d/" data-vmid="image:itemprop"><meta data-vue-meta="ssr" property="og:image" content="https://habr.com/share/publication/452748/21a9a918bbdea0e7565298d752249b5d/" data-vmid="og:image"><meta data-vue-meta="ssr" property="aiturec:image" content="https://habr.com/share/publication/452748/21a9a918bbdea0e7565298d752249b5d/" data-vmid="aiturec:image"><meta data-vue-meta="ssr" name="twitter:image" content="https://habr.com/share/publication/452748/21a9a918bbdea0e7565298d752249b5d/" data-vmid="twitter:image"><meta data-vue-meta="ssr" property="vk:image" content="https://habr.com/share/publication/452748/21a9a918bbdea0e7565298d752249b5d/" data-vmid="vk:image"><meta data-vue-meta="ssr" property="aiturec:item_id" content="452748" data-vmid="aiturec:item_id"><meta data-vue-meta="ssr" property="aiturec:datetime" content="2019-05-21T08:56:43.000Z" data-vmid="aiturec:datetime"><meta data-vue-meta="ssr" property="og:type" content="article" data-vmid="og:type"><meta data-vue-meta="ssr" property="og:locale" content="ru_RU" data-vmid="og:locale"><meta data-vue-meta="ssr" property="og:image:width" content="1200" data-vmid="og:image:width"><meta data-vue-meta="ssr" property="og:image:height" content="630" data-vmid="og:image:height">
+  <link data-vue-meta="ssr" href="https://habr.com/ru/rss/post/452748/?fl=ru" type="application/rss+xml" title="" rel="alternate" name="rss"><link data-vue-meta="ssr" href="https://habr.com/ru/company/otus/blog/452748/" rel="canonical" data-vmid="canonical"><link data-vue-meta="ssr" data-vmid="hreflang"><link data-vue-meta="ssr" image_src="image" href="https://habr.com/share/publication/452748/21a9a918bbdea0e7565298d752249b5d/" data-vmid="image:href">
+  <meta name="apple-mobile-web-app-status-bar-style" content="#303b44">
+  <meta name="msapplication-TileColor" content="#629FBC">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="16x16"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-16.png"
+  >
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="32x32"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-32.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="76x76"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-76.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="120x120"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="152x152"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-152.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="180x180"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-180.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="256x256"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-256.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1136x640.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2436x1125.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1792x828.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_828x1792.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1334x750.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2208x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1125x2436.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2208.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2732x2048.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2688x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2224x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_750x1334.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x2732.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2388x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2224.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_640x1136.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2388.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x1536.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1536x2048.png"
+  >
+  <link
+    rel="mask-icon"
+    color="#77a2b6"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.svg"
+  >
+  <link
+    crossorigin="use-credentials"
+    href="/manifest.webmanifest"
+    rel="manifest"
+  >
+</head>
+<body>
+
+
+<div id="app" data-server-rendered="true" data-async-called="true"><div class="tm-layout__wrapper"><!----> <div></div> <!----> <header class="tm-header"><div class="tm-page-width"><div class="tm-header__container"><!----> <span class="tm-header__logo-wrap"><a href="/ru/" class="tm-header__logo tm-header__logo_ru"><svg height="16" width="16" class="tm-svg-img tm-header__icon"><title>Хабр</title> <use xlink:href="/img/habr-logo-ru.svg#logo"></use></svg></a> <span class="tm-header__beta-sign" style="display:none;">β</span></span> <div class="tm-dropdown tm-header__projects"><div class="tm-dropdown__head"><button class="tm-header__dropdown-toggle"><svg height="16" width="16" class="tm-svg-img tm-header__icon tm-header__icon_dropdown"><title>Открыть список</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#arrow-down"></use></svg></button></div> <!----></div> <a href="/ru/sandbox/start/" class="tm-header__become-author-btn">
+            Как стать автором
+          </a> <div class="tm-feature tm-header__feature tm-feature_variant-inline"><!----></div> <!----> <!----></div></div></header> <div class="tm-layout"><div class="tm-page-progress-bar"></div> <div data-menu-sticky="true" class="tm-base-layout__header tm-base-layout__header_is-sticky"><div class="tm-page-width"><div class="tm-base-layout__header-wrapper"><div class="tm-main-menu"><div class="tm-main-menu__section"><nav class="tm-main-menu__section-content"><!----> <a href="/ru/all/" class="tm-main-menu__item">
+        Все потоки
+      </a> <a href="/ru/flows/develop/" class="tm-main-menu__item">
+          Разработка
+        </a><a href="/ru/flows/admin/" class="tm-main-menu__item">
+          Администрирование
+        </a><a href="/ru/flows/design/" class="tm-main-menu__item">
+          Дизайн
+        </a><a href="/ru/flows/management/" class="tm-main-menu__item">
+          Менеджмент
+        </a><a href="/ru/flows/marketing/" class="tm-main-menu__item">
+          Маркетинг
+        </a><a href="/ru/flows/popsci/" class="tm-main-menu__item">
+          Научпоп
+        </a></nav></div></div> <div class="tm-header-user-menu tm-base-layout__user-menu"><a href="/ru/search/" class="tm-header-user-menu__item tm-header-user-menu__search"><svg height="24" width="24" class="tm-svg-img tm-header-user-menu__icon tm-header-user-menu__icon_search tm-header-user-menu__icon_dark"><title>Поиск</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#search"></use></svg></a> <!----> <!----> <!----> <div class="tm-header-user-menu__item tm-header-user-menu__user_desktop"><div class="tm-dropdown"><div class="tm-dropdown__head"><svg height="24" width="24" data-test-id="menu-toggle-guest" class="tm-svg-img tm-header-user-menu__icon"><title>Профиль</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#header-user"></use></svg> <!----></div> <!----></div> <!----></div> <!----></div></div></div></div> <!----> <div class="tm-page-width"></div> <main class="tm-layout__container"><div hl="ru" companyName="otus" data-async-called="true" class="tm-page"><div class="tm-page-width"><div class="tm-page__header"><!----></div> <div class="tm-page__wrapper"><div class="tm-page__main tm-page__main_has-sidebar"><div class="pull-down"><div class="pull-down__header" style="height:0px;"><div class="pull-down__content" style="bottom:10px;"><svg height="24" width="24" class="tm-svg-img pull-down__arrow"><title>Обновить</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#pull-arrow"></use></svg></div></div> <div class="tm-article-presenter"><div class="tm-company-card tm-company-article__company-card"><div class="tm-company-card__info"><div class="tm-company-card__header"><a href="/ru/company/otus/profile/" class="tm-company-card__avatar"><div class="tm-entity-image"><img alt="" height="48" src="//habrastorage.org/getpro/habr/company/968/422/761/968422761136a38a89fc391fd927f903.jpg" width="48" class="tm-entity-image__pic"></div></a> <!----> <div class="tm-rating tm-company-card__rating"><div class="tm-rating__header"> <div class="tm-rating__counter">418.61</div></div> <div class="tm-rating__text">
+    Рейтинг
+  </div></div></div> <div class="tm-company-card__info"><a href="/ru/company/otus/profile/" class="tm-company-card__name">
+        OTUS
+      </a> <div class="tm-company-card__description">Цифровые навыки от ведущих экспертов</div></div></div> <div class="tm-company-card__buttons"><!----> <!----></div></div> <div class="tm-article-presenter__body"><div class="tm-misprint-area"><div class="tm-misprint-area__wrapper"><article class="tm-article-presenter__content tm-article-presenter__content_narrow"><div class="tm-article-presenter__header"> <div class="tm-article-snippet tm-article-presenter__snippet"><div class="tm-article-snippet__meta-container"><div class="tm-article-snippet__meta"><span class="tm-user-info tm-article-snippet__author"><a href="/ru/users/MaxRokatansky/" title="MaxRokatansky" class="tm-user-info__userpic"><div class="tm-entity-image"><img alt="" height="24" loading="lazy" src="//habrastorage.org/r/w32/getpro/habr/avatars/b9f/baf/5f9/b9fbaf5f96ae52973706a0716bd9216e.jpg" width="24" class="tm-entity-image__pic"></div></a> <span class="tm-user-info__user"><a href="/ru/users/MaxRokatansky/" class="tm-user-info__username">
+      MaxRokatansky
+    </a> </span></span> <span class="tm-article-snippet__datetime-published"><time datetime="2019-05-21T08:56:43.000Z" title="2019-05-21, 11:56">21  мая  2019 в 11:56</time></span></div> <!----></div> <h1 lang="ru" class="tm-article-snippet__title tm-article-snippet__title_h1"><span>Принципы разработки современных приложений от NGINX. Часть 1</span></h1> <div class="tm-article-snippet__hubs"><span class="tm-article-snippet__hubs-item"><a href="/ru/company/otus/blog/" class="tm-article-snippet__hubs-item-link router-link-active"><span>Блог компании OTUS</span> <!----></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/php/" class="tm-article-snippet__hubs-item-link"><span>PHP</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/nginx/" class="tm-article-snippet__hubs-item-link"><span>Nginx</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span></div> <div class="tm-article-snippet__labels"><div class="tm-article-snippet__label"><span>
+        Перевод
+      </span></div></div> <!----> <!----></div></div> <div class="tm-article-presenter__origin"><a href="https://www.nginx.com/blog/principles-of-modern-application-development/" target="_blank" class="tm-article-presenter__origin-link">
+                Автор оригинала:
+                <span>
+                  Chris Stetson
+                </span></a></div> <div data-gallery-root="" lang="ru" class="tm-article-body"><div id="post-content-body" class="article-formatted-body article-formatted-body_version-1"><div xmlns="http://www.w3.org/1999/xhtml">Привет, друзья. В преддверии запуска курса <a href="https://otus.pw/h4Ez/">«Backend разработчик на PHP»</a>, традиционно делимся с вами переводом полезного материала.<br/>
+<br/>
+Программное обеспечение решает все больше и больше повседневных задач, при этом становясь все сложнее и сложнее. Как однажды сказал Марк Андрессен, оно поглощает мир. <br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/kz/of/0b/kzof0bmbw2zx-qqhez30skxeghs.png"/><br/>
+<br/>
+В результате в течение последних нескольких лет подходы к разработке и поставке приложений серьезно изменились. Это были сдвиги тектонического масштаба, которые в результате привели к появлению набора принципов. Эти принципы оказались полезными в формировании команды, проектировании, разработке и доставке вашего приложения конечным пользователям. <a name="habracut"></a><br/>
+<br/>
+Принципы могут быть обобщены в следующем виде: <i>приложение должно быть маленьким, сетевым и иметь архитектуру, ориентированную на разработчика</i>. Опираясь на эти три принципа вы можете создать надежное, комплексное приложение, которое может быть быстро и безопасно доставлено конечному пользователю, а также легко масштабируется и расширяется.<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/wo/ov/m5/woovm515u8lwotr5cviillue_wq.png"/><br/>
+<br/>
+Каждый из предложенных принципов имеет ряд аспектов, которые мы обсудим, чтобы показать, как каждый принцип способствует достижению конечной цели, которая заключается в быстрой доставке надежных приложений простых в обслуживании и использовании. Мы будем рассматривать принципы в сравнении с их противоположностями, дабы прояснить, что значит, допустим, «Убедитесь, что вы используете <i>принцип малости</i>».<br/>
+<br/>
+Мы надеемся, что эта статья побудит вас использовать предложенные принципы построения современных приложений, которые обеспечат единый подход к проектированию в контексте непрерывно растущего стека технологий. <br/>
+<br/>
+Применив эти принципы, вы обнаружите, что пользуетесь последними тенденциями в разработке программного обеспечения, включая подход <a href="https://www.nginx.com/blog/tag/devops/">DevOps</a> к разработке и доставке приложений, использование контейнеров (например, <a href="https://www.nginx.com/blog/tag/docker/">Docker</a>) и фреймворков для оркестрации контейнеров (например, <a href="https://www.nginx.com/blog/tag/kubernetes/">Kubernetes</a>), использование микросервисов (включая Микросервисную Архитектуру <a href="https://www.nginx.com/blog/introducing-the-nginx-microservices-reference-architecture/)">NGINX</a> и <a href="https://www.nginx.com/blog/what-is-a-service-mesh/">архитектура сетевой связи</a> для микросервисных приложений.<br/>
+<br/>
+<b>Что такое современное приложение?</b><br/>
+<br/>
+Современные приложения? Современный стек? Что именно означает «современный»? <br/>
+<br/>
+Большинство разработчиков имеют лишь общее представление о том, из чего состоит современное приложение, поэтому необходимо дать четкое определение этому понятию.<br/>
+<br/>
+Современное приложение поддерживает несколько клиентов, будь то пользовательский интерфейс на библиотеке JavaScript React, мобильное приложение под Android или iOS, или приложение, которое соединяется с другим по API. Современное приложение подразумевает наличие неопределенного количества клиентов, для которых оно предоставляет данные или сервисы.<br/>
+<br/>
+Современное приложение предоставляет API для доступа к запрашиваемым данным и сервисам. API должно быть неизменным и постоянным, а не написанным конкретно под специфический запрос с какого-то конкретного клиента. API доступен по HTTP(S) и обеспечивает доступ ко всему функционалу, который есть в GUI или CLI. <br/>
+<br/>
+Данные должны быть доступны в общепринятом, совместимом формате, таком как JSON. API предоставляет объекты и службы в понятной, организованной форме, к примеру, RESTful API или GraphQL обеспечивают достойный интерфейс.<br/>
+<br/>
+Современные приложения строятся на современном стеке, а современный стек – это тот стек, который поддерживает такие приложения, соответственно. Такой стек позволяет разработчику с легкостью создавать приложение с HTTP интерфейсом и четкими конечными точками API. Выбранный подход позволит вашему приложению легко принимать и отправлять данные в формате JSON. Другими словами, современный стек соответствует элементам Двенадцати-Факторного приложения для <a href="https://www.nginx.com/blog/microservices-reference-architecture-nginx-twelve-factor-app/">микросервисов</a>. <br/>
+<br/>
+Популярные версии этого типа стека основаны на <a href="https://github.com/nginxinc/mra-photoresizer">Java</a>, <a href="https://github.com/nginxinc/mra-user-manager">Python</a>, <a href="https://github.com/nginxinc/mra-photouploader">Node</a>, <a href="https://github.com/nginxinc/mra-album-manager">Ruby</a>, <a href="https://github.com/nginxinc/mra-pages">PHP</a> и <a href="https://github.com/nginxinc/mra-content-service">Go</a>. Микросервисная Архитектура <a href="https://github.com/nginxinc/mra-ingenious">NGINX</a> олицетворяет пример современного стека, реализованного на каждом из упомянутых языков.<br/>
+<br/>
+Обратите внимание, что мы не пропагандируем исключительно микросервисный подход. Многие из вас работают с монолитами, которые должны развиваться, в то время как другие имеют дело с SOA приложениями, которые расширяются и развиваются, чтобы стать микросервисными приложениями. Третьи движутся в направлении применения безсерверных (serverless) приложений, а некоторые внедряют комбинации из вышеперечисленного. Принципы, изложенные в статье применимы к каждой из этих систем лишь с некоторыми незначительными изменениями. <br/>
+<br/>
+<b>Принципы</b><br/>
+<br/>
+Теперь, когда мы добились общего понимания о том, что же такое современное приложения и современный стек, настало время погрузиться в принципы архитектуры и разработки, которые сослужат вам неплохую службу в разработке, реализации и поддержке современного приложения.<br/>
+<br/>
+Один из принципов звучит как «создавайте маленькие приложения», давайте просто назовем его <i>принципом малости</i>. Существуют невероятно сложные приложения, которые состоят из большого количества подвижных компонентов. В свою очередь построение приложения из маленьких дискретных компонентов упрощает его проектирование, обслуживание и работу с ним в целом. (Заметьте, мы сказали «упрощает», а не «делает простым»).<br/>
+<br/>
+Второй принцип заключается в том, что мы можем увеличить продуктивность разработчиков, помогая им сосредоточиться на тех функциях, которые они разрабатывают, при этом освобождая их от забот об инфраструктуре и CI/CD во время реализации. Итак, в двух словах, наш подход <i>ориентирован на разработчиков</i>.<br/>
+<br/>
+Наконец, все, что касается вашего приложения, должно быть подключено к сети. За последние 20 лет мы сильно продвинулись к сетевому будущему, поскольку сети стали быстрее, а приложения сложнее. Как мы уже выяснили, современное приложение должно использоваться по сети множеством различных клиентов. Применение сетевого мышления в архитектуре имеет значительные преимущества, которые хорошо сочетаются с <i>принципом малости</i> и концепцией подхода, <i>ориентированного на разработчиков</i>.<br/>
+<br/>
+Если при разработке и внедрении приложения вы будете помнить об указанных принципах, у вас будет неоспоримое преимущество в развитии и поставке своего продукта.<br/>
+<br/>
+Давайте рассмотрим эти три принципа более детально.<br/>
+<br/>
+<b>Принцип малости</b><br/>
+<br/>
+Человеческому мозгу сложно воспринимать одновременно большое количество информации. В психологии термин когнитивная нагрузка означает общее количество умственных усилий, необходимых для сохранения информации в памяти. Снижение когнитивной нагрузки на разработчиков является приоритетным, поскольку в таком случае они могут сосредоточиться на решении проблемы, вместо того, чтобы удерживать в голове текущую комплексную модель всего приложения и разрабатываемые функции. <br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/ai/-p/hf/ai-phfat7leeptmtxhoh0gy_ndi.png"/><br/>
+<br/>
+<i>Приложения декомпозируются по следующим причинам:<br/>
+<br/>
+<ul>
+<li>Понижение когнитивной нагрузки на разработчиков;</li>
+<li>Ускорение и упрощение тестирования;</li>
+<li>Быстрая доставка изменений в приложении.</li>
+</ul></i><br/>
+Есть несколько способов снизить когнитивную нагрузку на разработчиков, и именно здесь вступает в игру принцип малости.<br/>
+<br/>
+Итак, три способа понизить когнитивную нагрузку:<br/>
+<br/>
+<ol>
+<li>Уменьшить временные рамки, которые они должны учитывать при разработке новой функции – чем короче таймфрейм, тем ниже когнитивная нагрузка.</li>
+<li>Уменьшить количество кода над которым ведется единовременная работа – меньше кода – меньше нагрузка.</li>
+<li>Упростить процесс внесения инкрементальных изменений в приложение.</li>
+</ol><br/>
+<b>Уменьшение временных рамок разработки</b><br/>
+<br/>
+Вернемся в те времена, когда методология <code>waterfall</code> был стандартом для процесса разработки, и временные рамки от шести месяцев до двух лет для разработки или обновления приложения были общей практикой. Как правило, сначала инженеры читали соответствующие документы, такие как требования к продукту (PRD), справочный документ системы (SRD), план архитектуры и начинали объединять все эти вещи вместе в одну когнитивную модель, в соответствии с которой они писали код. По мере того, как требования и, соответственно, архитектура менялись, приходилось прилагать серьезные усилия для информирования всей команды об обновлениях когнитивной модели. Такой подход в худшем случае мог просто парализовать работу.<br/>
+<br/>
+Самой большой переменой в процессе разработке приложений стало внедрение методологии agile. Одна из основных особенностей методологии <code>agile</code> – это итеративная разработка. В свою очередь, это приводит к снижению когнитивной нагрузки на инженеров. Вместо того, чтобы требовать от команды разработчиков реализации приложения за один долгий цикл, <code>agile</code> подход позволяет сосредоточиться на маленьких объемах кода, которые можно быстро протестировать и развернуть, при этом получив еще и обратную связь. Когнитивная нагрузка приложения сместилась с таймфрейма от шести месяцев до двух лет с учетом огромного количества спецификаций на двухнедельное добавление или изменений функции, ориентированное на более размытое понимание о крупном приложении.<br/>
+<br/>
+Смещение фокуса с массивного приложения на конкретные маленькие функции, которые могут быть завершены за двухнедельный спринт, с заглядыванием вперед не более чем на одну функцию из следующего спринта в голове, является значительным изменением. Это позволило повысить продуктивность разработки при этом уменьшив когнитивную нагрузку, которая постоянно колебалась.<br/>
+<br/>
+В методологии <code>agile</code> предполагается, что конечное приложение будет несколько измененной версией первоначальной концепции, поэтому окончательная точка разработки обязательно является неоднозначной. Ясными и четкими могут быть только результаты каждого конкретного спринта.<br/>
+<br/>
+<b>Небольшие кодовые базы</b><br/>
+<br/>
+Следующий шаг в уменьшении когнитивной нагрузки – это уменьшение кодовой базы. Как правило, современные приложения массивные – надежное, корпоративное приложение может состоять из тысяч файлов и сотен тысяч строк кода. В зависимости от организации файлов связи и зависимости кода и файлов могут быть очевидными или наоборот. Даже отладка самого выполнения кода может вызывать проблемы, в зависимости от используемых библиотек и того, насколько хорошо средства отладки разграничивают библиотеки/пакеты/модули и пользовательский код.<br/>
+<br/>
+Построение рабочей ментальной модели кода приложения может занять внушительное количество времени, и вновь возложить на разработчика большую когнитивную нагрузку. Это особенно характерно для монолитных баз кода, где имеется большое количество кода, взаимодействие между функциональными компонентами которого четко не определено, а разделение объектов внимания часто размыто, поскольку не соблюдаются функциональные границы. <br/>
+<br/>
+Одним из эффективных способов снижения когнитивной нагрузки на инженеров является переход к микросервисной архитектуре. В микросервисном подходе каждый сервис фокусируется на одном наборе функций; при этом смысл сервиса обычно определен и понятен. Границы сервиса также ясны – помните, о том, что коммуникация с сервисом осуществляется с помощью API, поэтому данные сгенерированные одним сервисом могут легко быть переданы в другой.<br/>
+<br/>
+Взаимодействие с другими сервисами обычно ограничено несколькими пользовательскими сервисами и несколькими сервисами провайдера, которые используют простые и чистые API вызовы, например при помощи REST. Значит, когнитивная нагрузка на инженера серьезно снижается. Самой сложной задачей остается понимание модели взаимодействия сервисов и того, как такие вещи как транзакции происходят в нескольких сервисах. По итогу, использование микросервисов снижает когнитивную нагрузку, уменьшая количество кода, обозначая четкие границы сервиса и обеспечивая понимание отношений пользователей и провайдеров.<br/>
+<br/>
+<b>Маленькие инкрементальные изменения</b><br/>
+<br/>
+Последний элемент принципа <i>малости</i> – это управление изменениями. Особым искушением для разработчиков считается посмотреть на базу кода (даже, возможно, на свой собственный, более старый код) и заявить: «Это дерьмо, нам нужно это все переписать.» Иногда это правильное решение, а иногда нет. Оно возлагает на команду разработчиков бремя глобального изменения модели, что, в свою очередь, приводит к масштабной когнитивной нагрузке. Лучше, чтобы инженеры сосредотачивались на изменениях, которые они могут внести в течение спринта, чтобы потом своевременно выкатить необходимый функционал, пусть и постепенно. Конечный продукт должен напоминать предварительно запланированный, но с некоторыми изменениями и тестированием, чтобы соответствовать потребностям клиента.<br/>
+<br/>
+При переписывании больших частей кода иногда быстро осуществить доставку изменения оказывается невозможным, поскольку здесь вступают в игру другие зависимости системы. Для того, чтобы контролировать поток изменений, можно использовать отключение функционала (feature hiding). В принципе, это значит функционал есть на продакшне, но он недоступен при помощи настроек переменных среды (env-var) или какого-либо другого механизма конфигурации. Если код прошел все процессы проверки качества, то он может оказаться в продакшене в скрытом состоянии. Однако, эта стратегия работает только если функция в конечном итоге будет включена. В противном случае она будет лишь захламлять код и добавит когнитивной нагрузки, с которой придется справиться разработчику для продуктивной работы. Управление изменениями и инкрементальные изменения сами по себе помогают поддерживать когнитивную нагрузку разработчиков на доступном уровне. <br/>
+<br/>
+Инженерам приходится преодолевать много сложностей даже при простом внедрении дополнительного функционала. Со стороны руководства разумным будет уменьшить лишнюю нагрузку на команду, чтобы она могла сосредоточиться на ключевых элементах функционала. Есть три вещи, которые вы можете предпринять, чтобы помочь своей команде разработчиков:<br/>
+<br/>
+<ol>
+<li>Использовать методологию <code>agile</code>, чтобы ограничить временные рамки, в которые команда должна сосредоточиться на ключевых функциях.</li>
+<li>Реализовать свое приложение в качестве нескольких микросервисов. Это ограничит количество внедряемых функций и укрепит границы, которые удерживают когнитивную нагрузку во время работы.</li>
+<li>Предпочтите инкрементальные изменения крупным и громоздким, изменяйте небольшие кусочки кода. Применяйте сокрытие функций, чтобы реализовывать изменения, даже если они не будут видны сразу после добавления.</li>
+</ol><br/>
+Если вы в своей работе примените принцип малости, ваша команда станет куда счастливее, лучше сфокусируется на реализации необходимых функций и с большей вероятностью будет быстрее выкатывать качественные изменения. Но это не говорит о том, что работа не может усложниться, иногда наоборот, внедрение нового функционала требует модификации нескольких сервисов и этот процесс может быть сложнее, чем аналогичный в монолитной архитектуре. В любом случае, преимущества от применения подхода малости того стоят.<br/>
+<br/>
+Конец первой части.<br/>
+<br/>
+В скором времени опубликуем вторую часть перевода, а сейчас ждем ваши комментарии и приглашаем на <a href="https://otus.pw/mJ6e/">день открытых дверей</a>, который пройдет уже сегодня в 20.00.</div></div> <!----> <!----></div> <div class="tm-article-presenter__meta"><div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Теги:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bapplication%20development%5D" class="tm-tags-list__link">application development</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bapplication%20architecture%5D" class="tm-tags-list__link">application architecture</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bnginx%5D" class="tm-tags-list__link">nginx</a></li></ul></div> <div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Хабы:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/company/otus/blog/" class="tm-hubs-list__link router-link-active">
+    Блог компании OTUS
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/php/" class="tm-hubs-list__link">
+    PHP
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/nginx/" class="tm-hubs-list__link">
+    Nginx
+  </a></li></ul></div></div></article></div> <!----></div> <div class="tm-article-sticky-panel"><div class="tm-data-icons tm-article-sticky-panel__icons"><div class="tm-article-rating tm-data-icons__item"><div class="tm-votes-meter tm-article-rating__votes-switcher"><svg height="16" width="16" class="tm-svg-img tm-votes-meter__icon tm-votes-meter__icon_medium"><title>Всего голосов 15: ↑9 и ↓6</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-rating"></use></svg> <span title="Всего голосов 15: ↑9 и ↓6" class="tm-votes-meter__value tm-votes-meter__value_positive tm-votes-meter__value_medium">+3</span></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----> <span title="Количество просмотров" class="tm-icon-counter tm-data-icons__item"><svg height="16" width="16" class="tm-svg-img tm-icon-counter__icon"><title>Просмотры</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-views"></use></svg> <span class="tm-icon-counter__value">5.7K</span></span> <button title="Добавить в закладки" type="button" class="bookmarks-button tm-data-icons__item"><span title="Добавить в закладки" class="tm-svg-icon__wrapper bookmarks-button__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Добавить в закладки</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-favorite"></use></svg></span> <span title="Количество пользователей, добавивших публикацию в закладки" class="bookmarks-button__counter">
+    39
+  </span></button> <!----> <div title="Поделиться" class="tm-sharing tm-data-icons__item"><button type="button" class="tm-sharing__button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="tm-sharing__icon"><path fill="currentColor" d="M10.33.275l9.047 7.572a.2.2 0 010 .306l-9.048 7.572a.2.2 0 01-.328-.153V11c-8 0-9.94 6-9.94 6S-1 5 10 5V.428a.2.2 0 01.328-.153z"></path></svg></button> <!----></div> <DIV class="v-portal" style="display:none;"></DIV></div> </div></div> <!----> <!----> <div class="tm-article-presenter__footer"><div class="tm-article-blocks"><!----> <section class="tm-block tm-block_spacing-bottom"><!----> <div class="tm-block__body tm-block__body_variant-balanced"><div class="tm-article-author"><div class="tm-article-author__company"><div class="tm-article-author__company-card"><div class="tm-company-snippet"><a href="/ru/company/otus/profile/" class="tm-company-snippet__logo-link"><div class="tm-entity-image"><img alt="" height="40" src="//habrastorage.org/getpro/habr/company/968/422/761/968422761136a38a89fc391fd927f903.jpg" width="40" class="tm-entity-image__pic"></div></a> <div class="tm-company-snippet__info"><a href="/ru/company/otus/profile/" class="tm-company-snippet__title">OTUS</a> <div class="tm-company-snippet__description">Цифровые навыки от ведущих экспертов</div></div></div> <div class="tm-article-author__buttons"><!----> <!----></div></div> <div class="tm-article-author__company-contacts"><a href="https://otus.ru" rel="noopener" target="_blank" class="tm-article-author__contact">
+      Сайт
+    </a><a href="https://facebook.com/otus.ru" rel="noopener" target="_blank" class="tm-article-author__contact">
+      Facebook
+    </a><a href="https://vk.com/club145052891" rel="noopener" target="_blank" class="tm-article-author__contact">
+      ВКонтакте
+    </a><a href="https://telegram.me/Otusjava" rel="noopener" target="_blank" class="tm-article-author__contact">
+      Telegram
+    </a></div> <div class="tm-article-author__separator"></div></div> <div class="tm-user-card tm-article-author__user-card tm-user-card_variant-article"><div class="tm-user-card__info-container"><div class="tm-user-card__header"><div class="tm-user-card__header-data"><a href="/ru/users/MaxRokatansky/" class="tm-user-card__userpic tm-user-card__userpic_size-40"><div class="tm-entity-image"><img alt="" src="//habrastorage.org/getpro/habr/avatars/b9f/baf/5f9/b9fbaf5f96ae52973706a0716bd9216e.jpg" class="tm-entity-image__pic"></div></a> <div class="tm-user-card__meta"><div title=" 659 голосов " class="tm-karma tm-user-card__karma"><div class="tm-karma__votes tm-karma__votes_positive">
+    26.7
+  </div> <div class="tm-karma__text">
+    Карма
+  </div></div> <div title="Рейтинг пользователя" class="tm-rating tm-user-card__rating"><div class="tm-rating__header"> <div class="tm-rating__counter">-29.4</div></div> <div class="tm-rating__text">
+    Рейтинг
+  </div></div></div></div></div> <div class="tm-user-card__info tm-user-card__info_variant-article"><div class="tm-user-card__title tm-user-card__title_variant-article"><span class="tm-user-card__name tm-user-card__name_variant-article">OTUS</span> <a href="/ru/users/MaxRokatansky/" class="tm-user-card__nickname tm-user-card__nickname_variant-article">
+          @MaxRokatansky
+        </a> <!----></div> <p class="tm-user-card__short-info tm-user-card__short-info_variant-article">Редактор</p></div></div> <div class="tm-user-card__buttons tm-user-card__buttons_variant-article"><!----> <!----> <!----> <!----> <!----></div></div> <!----></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----></section> <div class="tm-article-blocks__comments"><div class="tm-article-page-comments"><div class="tm-article-comments-counter-link tm-article-comments-counter-button"><a href="/ru/company/otus/blog/452748/comments/" class="tm-article-comments-counter-link__link tm-article-comments-counter-link__link_button-style"><svg height="16" width="16" class="tm-svg-img tm-article-comments-counter-link__icon tm-article-comments-counter-link__icon_contrasted"><title>Комментарии</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-comments"></use></svg> <span class="tm-article-comments-counter-link__value tm-article-comments-counter-link__value_contrasted">
+       Комментарии 2 
+    </span></a> <!----></div></div></div>  <!---->  <!----> <!----></div></div></div></div></div> <div class="tm-page__sidebar"><div class="tm-layout-sidebar"><div class="tm-layout-sidebar__placeholder_initial"></div> <div class="tm-sexy-sidebar tm-sexy-sidebar_initial" style="margin-top:0px;"><!----> <section class="tm-block tm-block_spacing-bottom"><header class="tm-block__header"><h2 class="tm-block__title">Информация</h2> <!----></header> <div class="tm-block__body"><div class="tm-company-basic-info"><dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Дата основания</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><time datetime="2017-03-31T21:00:00.000Z" title="2017-04-01, 00:00">1  апреля  2017</time></dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Местоположение</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap">
+    Россия
+  </dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Сайт</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><a href="https://otus.ru" target="_blank" class="tm-company-basic-info__link">
+      otus.ru
+    </a></dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Численность</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap">
+    51–100 человек
+  </dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Дата регистрации</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><time datetime="2017-03-22T08:17:26.000Z" title="2017-03-22, 11:17">22  марта  2017</time></dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Представитель</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><a href="/ru/users/MaxRokatansky/" class="tm-company-basic-info__link">
+      OTUS
+    </a></dd></dl></div></div> <!----></section> <div class="tm-company-widgets"></div> <!----></div></div></div></div></div></div></main> <!----></div> <div class="tm-footer-menu"><div class="tm-page-width"><div class="tm-footer-menu__container"><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Ваш аккаунт
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr/?back=/ru/company/otus/blog/452748/&amp;hl=ru" rel="nofollow" target="_self">
+                Войти
+              </a></li><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr-register/?back=/ru/company/otus/blog/452748/&amp;hl=ru" rel="nofollow" target="_self">
+                Регистрация
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Разделы
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/" class="footer-menu__item-link router-link-active">
+                Публикации
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/news/" class="footer-menu__item-link">
+                Новости
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/hubs/" class="footer-menu__item-link">
+                Хабы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/companies/" class="footer-menu__item-link">
+                Компании
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/users/" class="footer-menu__item-link">
+                Авторы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/sandbox/" class="footer-menu__item-link">
+                Песочница
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Информация
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/docs/help/" class="footer-menu__item-link">
+                Устройство сайта
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/authors/codex/" class="footer-menu__item-link">
+                Для авторов
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/companies/corpblogs/" class="footer-menu__item-link">
+                Для компаний
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/docs/transparency/" class="footer-menu__item-link">
+                Документы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/agreement" target="_blank">
+                Соглашение
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/confidential/" target="_blank">
+                Конфиденциальность
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Услуги
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQLwRfQmXibiUlWaRg-BAc38s7oM3lJiaPju7qmdJsp8ysIvZ_G-Npem0njJLMozE2bPHMpDqiI5hhy/pub?start=false&amp;loop=false&amp;delayms=60000&amp;slide=id.g91a03369cd_4_297" target="_blank">
+                Реклама
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://habrastorage.org/storage/stuff/habr/service_price.pdf" target="_blank">
+                Тарифы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQJJds8-Di7BQSP_guHxICN7woVYoN5NP_22ra-BIo4bqnTT9FR6fB-Ku2P0AoRpX0Ds-LRkDeAoD8F/pub?start=false&amp;loop=false&amp;delayms=60000" target="_blank">
+                Контент
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://tmtm.timepad.ru/" target="_blank">
+                Семинары
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/megaprojects/" class="footer-menu__item-link">
+                Мегапроекты
+              </a></li></ul></div></div></div></div></div> <div class="tm-footer"><div class="tm-page-width"><div class="tm-footer__container"><!----> <div class="tm-footer__social"><a href="https://www.facebook.com/habrahabr.ru" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Facebook</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-facebook"></use></svg></a><a href="https://twitter.com/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Twitter</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-twitter"></use></svg></a><a href="https://vk.com/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>VK</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-vkontakte"></use></svg></a><a href="https://telegram.me/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Telegram</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-telegram"></use></svg></a><a href="https://www.youtube.com/channel/UCd_sTwKqVrweTt4oAKY5y4w" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Youtube</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-youtube"></use></svg></a><a href="https://zen.yandex.ru/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Яндекс Дзен</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-zen"></use></svg></a></div> <DIV class="v-portal" style="display:none;"></DIV> <button class="tm-footer__link"><!---->
+        Настройка языка
+      </button> <a href="/ru/about" class="tm-footer__link">
+        О сайте
+      </a> <a href="/ru/feedback/" class="tm-footer__link">
+        Техническая поддержка
+      </a> <!----> <a href="/berserk-mode-nope" class="tm-footer__link">
+        Вернуться на старую версию
+      </a> <div class="tm-footer-copyright"><span class="tm-copyright"><span class="tm-copyright__years">© 2006–2021 </span> <span class="tm-copyright__name">«<a href="https://company.habr.com/" rel="noopener" target="_blank" class="tm-copyright__link">Habr</a>»</span></span></div></div></div></div> <!----> <!----></div> <div class="vue-portal-target"></div></div>
+<script>window.__INITIAL_STATE__={"adblock":{"hasAcceptableAdsFilter":false,"hasAdblock":false},"articlesList":{"articlesList":{"452748":{"id":"452748","timePublished":"2019-05-21T08:56:43+00:00","isCorporative":true,"lang":"ru","titleHtml":"Принципы разработки современных приложений от NGINX. Часть 1","leadData":{"textHtml":"Привет, друзья. В преддверии запуска курса \u003Ca href=\"https:\u002F\u002Fotus.pw\u002Fh4Ez\u002F\"\u003E«Backend разработчик на PHP»\u003C\u002Fa\u003E, традиционно делимся с вами переводом полезного материала.\u003Cbr\u003E\r\n\u003Cbr\u003E\r\nПрограммное обеспечение решает все больше и больше повседневных задач, при этом становясь все сложнее и сложнее. Как однажды сказал Марк Андрессен, оно поглощает мир. \u003Cbr\u003E\r\n\u003Cbr\u003E\r\n\u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fkz\u002Fof\u002F0b\u002Fkzof0bmbw2zx-qqhez30skxeghs.png\"\u003E\u003Cbr\u003E\r\n\u003Cbr\u003E\r\nВ результате в течение последних нескольких лет подходы к разработке и поставке приложений серьезно изменились. Это были сдвиги тектонического масштаба, которые в результате привели к появлению набора принципов. Эти принципы оказались полезными в формировании команды, проектировании, разработке и доставке вашего приложения конечным пользователям.","imageUrl":null,"buttonTextHtml":"Читать дальше →","image":null},"editorVersion":"1.0","postType":"article","postLabels":[{"type":"translation","data":{"originalAuthorName":"Chris Stetson","originalUrl":"https:\u002F\u002Fwww.nginx.com\u002Fblog\u002Fprinciples-of-modern-application-development\u002F"}}],"author":{"scoreStats":{"score":26.7,"votesCount":659},"rating":-29.4,"relatedData":null,"contacts":[],"authorContacts":[],"paymentDetails":{"paymentYandexMoney":null,"paymentPayPalMe":null,"paymentWebmoney":null},"id":"1547287","alias":"MaxRokatansky","fullname":"OTUS","avatarUrl":"\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Favatars\u002Fb9f\u002Fbaf\u002F5f9\u002Fb9fbaf5f96ae52973706a0716bd9216e.jpg","speciality":"Редактор"},"statistics":{"commentsCount":2,"favoritesCount":39,"readingCount":5690,"score":3,"votesCount":15},"hubs":[{"relatedData":null,"id":"21052","alias":"otus","type":"corporative","title":"Блог компании OTUS","titleHtml":"Блог компании OTUS","isProfiled":false},{"relatedData":null,"id":"260","alias":"php","type":"collective","title":"PHP","titleHtml":"PHP","isProfiled":true},{"relatedData":null,"id":"6659","alias":"nginx","type":"collective","title":"Nginx","titleHtml":"Nginx","isProfiled":true}],"flows":[{"id":"1","alias":"develop","title":"Разработка"},{"id":"6","alias":"admin","title":"Администрирование"}],"relatedData":null,"textHtml":"\u003Cdiv xmlns=\"http:\u002F\u002Fwww.w3.org\u002F1999\u002Fxhtml\"\u003EПривет, друзья. В преддверии запуска курса \u003Ca href=\"https:\u002F\u002Fotus.pw\u002Fh4Ez\u002F\"\u003E«Backend разработчик на PHP»\u003C\u002Fa\u003E, традиционно делимся с вами переводом полезного материала.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПрограммное обеспечение решает все больше и больше повседневных задач, при этом становясь все сложнее и сложнее. Как однажды сказал Марк Андрессен, оно поглощает мир. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fkz\u002Fof\u002F0b\u002Fkzof0bmbw2zx-qqhez30skxeghs.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВ результате в течение последних нескольких лет подходы к разработке и поставке приложений серьезно изменились. Это были сдвиги тектонического масштаба, которые в результате привели к появлению набора принципов. Эти принципы оказались полезными в формировании команды, проектировании, разработке и доставке вашего приложения конечным пользователям. \u003Ca name=\"habracut\"\u003E\u003C\u002Fa\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПринципы могут быть обобщены в следующем виде: \u003Ci\u003Eприложение должно быть маленьким, сетевым и иметь архитектуру, ориентированную на разработчика\u003C\u002Fi\u003E. Опираясь на эти три принципа вы можете создать надежное, комплексное приложение, которое может быть быстро и безопасно доставлено конечному пользователю, а также легко масштабируется и расширяется.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fwo\u002Fov\u002Fm5\u002Fwoovm515u8lwotr5cviillue_wq.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nКаждый из предложенных принципов имеет ряд аспектов, которые мы обсудим, чтобы показать, как каждый принцип способствует достижению конечной цели, которая заключается в быстрой доставке надежных приложений простых в обслуживании и использовании. Мы будем рассматривать принципы в сравнении с их противоположностями, дабы прояснить, что значит, допустим, «Убедитесь, что вы используете \u003Ci\u003Eпринцип малости\u003C\u002Fi\u003E».\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nМы надеемся, что эта статья побудит вас использовать предложенные принципы построения современных приложений, которые обеспечат единый подход к проектированию в контексте непрерывно растущего стека технологий. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПрименив эти принципы, вы обнаружите, что пользуетесь последними тенденциями в разработке программного обеспечения, включая подход \u003Ca href=\"https:\u002F\u002Fwww.nginx.com\u002Fblog\u002Ftag\u002Fdevops\u002F\"\u003EDevOps\u003C\u002Fa\u003E к разработке и доставке приложений, использование контейнеров (например, \u003Ca href=\"https:\u002F\u002Fwww.nginx.com\u002Fblog\u002Ftag\u002Fdocker\u002F\"\u003EDocker\u003C\u002Fa\u003E) и фреймворков для оркестрации контейнеров (например, \u003Ca href=\"https:\u002F\u002Fwww.nginx.com\u002Fblog\u002Ftag\u002Fkubernetes\u002F\"\u003EKubernetes\u003C\u002Fa\u003E), использование микросервисов (включая Микросервисную Архитектуру \u003Ca href=\"https:\u002F\u002Fwww.nginx.com\u002Fblog\u002Fintroducing-the-nginx-microservices-reference-architecture\u002F)\"\u003ENGINX\u003C\u002Fa\u003E и \u003Ca href=\"https:\u002F\u002Fwww.nginx.com\u002Fblog\u002Fwhat-is-a-service-mesh\u002F\"\u003Eархитектура сетевой связи\u003C\u002Fa\u003E для микросервисных приложений.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cb\u003EЧто такое современное приложение?\u003C\u002Fb\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nСовременные приложения? Современный стек? Что именно означает «современный»? \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nБольшинство разработчиков имеют лишь общее представление о том, из чего состоит современное приложение, поэтому необходимо дать четкое определение этому понятию.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nСовременное приложение поддерживает несколько клиентов, будь то пользовательский интерфейс на библиотеке JavaScript React, мобильное приложение под Android или iOS, или приложение, которое соединяется с другим по API. Современное приложение подразумевает наличие неопределенного количества клиентов, для которых оно предоставляет данные или сервисы.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nСовременное приложение предоставляет API для доступа к запрашиваемым данным и сервисам. API должно быть неизменным и постоянным, а не написанным конкретно под специфический запрос с какого-то конкретного клиента. API доступен по HTTP(S) и обеспечивает доступ ко всему функционалу, который есть в GUI или CLI. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nДанные должны быть доступны в общепринятом, совместимом формате, таком как JSON. API предоставляет объекты и службы в понятной, организованной форме, к примеру, RESTful API или GraphQL обеспечивают достойный интерфейс.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nСовременные приложения строятся на современном стеке, а современный стек – это тот стек, который поддерживает такие приложения, соответственно. Такой стек позволяет разработчику с легкостью создавать приложение с HTTP интерфейсом и четкими конечными точками API. Выбранный подход позволит вашему приложению легко принимать и отправлять данные в формате JSON. Другими словами, современный стек соответствует элементам Двенадцати-Факторного приложения для \u003Ca href=\"https:\u002F\u002Fwww.nginx.com\u002Fblog\u002Fmicroservices-reference-architecture-nginx-twelve-factor-app\u002F\"\u003Eмикросервисов\u003C\u002Fa\u003E. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПопулярные версии этого типа стека основаны на \u003Ca href=\"https:\u002F\u002Fgithub.com\u002Fnginxinc\u002Fmra-photoresizer\"\u003EJava\u003C\u002Fa\u003E, \u003Ca href=\"https:\u002F\u002Fgithub.com\u002Fnginxinc\u002Fmra-user-manager\"\u003EPython\u003C\u002Fa\u003E, \u003Ca href=\"https:\u002F\u002Fgithub.com\u002Fnginxinc\u002Fmra-photouploader\"\u003ENode\u003C\u002Fa\u003E, \u003Ca href=\"https:\u002F\u002Fgithub.com\u002Fnginxinc\u002Fmra-album-manager\"\u003ERuby\u003C\u002Fa\u003E, \u003Ca href=\"https:\u002F\u002Fgithub.com\u002Fnginxinc\u002Fmra-pages\"\u003EPHP\u003C\u002Fa\u003E и \u003Ca href=\"https:\u002F\u002Fgithub.com\u002Fnginxinc\u002Fmra-content-service\"\u003EGo\u003C\u002Fa\u003E. Микросервисная Архитектура \u003Ca href=\"https:\u002F\u002Fgithub.com\u002Fnginxinc\u002Fmra-ingenious\"\u003ENGINX\u003C\u002Fa\u003E олицетворяет пример современного стека, реализованного на каждом из упомянутых языков.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nОбратите внимание, что мы не пропагандируем исключительно микросервисный подход. Многие из вас работают с монолитами, которые должны развиваться, в то время как другие имеют дело с SOA приложениями, которые расширяются и развиваются, чтобы стать микросервисными приложениями. Третьи движутся в направлении применения безсерверных (serverless) приложений, а некоторые внедряют комбинации из вышеперечисленного. Принципы, изложенные в статье применимы к каждой из этих систем лишь с некоторыми незначительными изменениями. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cb\u003EПринципы\u003C\u002Fb\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nТеперь, когда мы добились общего понимания о том, что же такое современное приложения и современный стек, настало время погрузиться в принципы архитектуры и разработки, которые сослужат вам неплохую службу в разработке, реализации и поддержке современного приложения.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nОдин из принципов звучит как «создавайте маленькие приложения», давайте просто назовем его \u003Ci\u003Eпринципом малости\u003C\u002Fi\u003E. Существуют невероятно сложные приложения, которые состоят из большого количества подвижных компонентов. В свою очередь построение приложения из маленьких дискретных компонентов упрощает его проектирование, обслуживание и работу с ним в целом. (Заметьте, мы сказали «упрощает», а не «делает простым»).\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВторой принцип заключается в том, что мы можем увеличить продуктивность разработчиков, помогая им сосредоточиться на тех функциях, которые они разрабатывают, при этом освобождая их от забот об инфраструктуре и CI\u002FCD во время реализации. Итак, в двух словах, наш подход \u003Ci\u003Eориентирован на разработчиков\u003C\u002Fi\u003E.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nНаконец, все, что касается вашего приложения, должно быть подключено к сети. За последние 20 лет мы сильно продвинулись к сетевому будущему, поскольку сети стали быстрее, а приложения сложнее. Как мы уже выяснили, современное приложение должно использоваться по сети множеством различных клиентов. Применение сетевого мышления в архитектуре имеет значительные преимущества, которые хорошо сочетаются с \u003Ci\u003Eпринципом малости\u003C\u002Fi\u003E и концепцией подхода, \u003Ci\u003Eориентированного на разработчиков\u003C\u002Fi\u003E.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЕсли при разработке и внедрении приложения вы будете помнить об указанных принципах, у вас будет неоспоримое преимущество в развитии и поставке своего продукта.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nДавайте рассмотрим эти три принципа более детально.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cb\u003EПринцип малости\u003C\u002Fb\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЧеловеческому мозгу сложно воспринимать одновременно большое количество информации. В психологии термин когнитивная нагрузка означает общее количество умственных усилий, необходимых для сохранения информации в памяти. Снижение когнитивной нагрузки на разработчиков является приоритетным, поскольку в таком случае они могут сосредоточиться на решении проблемы, вместо того, чтобы удерживать в голове текущую комплексную модель всего приложения и разрабатываемые функции. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fai\u002F-p\u002Fhf\u002Fai-phfat7leeptmtxhoh0gy_ndi.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ci\u003EПриложения декомпозируются по следующим причинам:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003EПонижение когнитивной нагрузки на разработчиков;\u003C\u002Fli\u003E\r\n\u003Cli\u003EУскорение и упрощение тестирования;\u003C\u002Fli\u003E\r\n\u003Cli\u003EБыстрая доставка изменений в приложении.\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003C\u002Fi\u003E\u003Cbr\u002F\u003E\r\nЕсть несколько способов снизить когнитивную нагрузку на разработчиков, и именно здесь вступает в игру принцип малости.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nИтак, три способа понизить когнитивную нагрузку:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Col\u003E\r\n\u003Cli\u003EУменьшить временные рамки, которые они должны учитывать при разработке новой функции – чем короче таймфрейм, тем ниже когнитивная нагрузка.\u003C\u002Fli\u003E\r\n\u003Cli\u003EУменьшить количество кода над которым ведется единовременная работа – меньше кода – меньше нагрузка.\u003C\u002Fli\u003E\r\n\u003Cli\u003EУпростить процесс внесения инкрементальных изменений в приложение.\u003C\u002Fli\u003E\r\n\u003C\u002Fol\u003E\u003Cbr\u002F\u003E\r\n\u003Cb\u003EУменьшение временных рамок разработки\u003C\u002Fb\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВернемся в те времена, когда методология \u003Ccode\u003Ewaterfall\u003C\u002Fcode\u003E был стандартом для процесса разработки, и временные рамки от шести месяцев до двух лет для разработки или обновления приложения были общей практикой. Как правило, сначала инженеры читали соответствующие документы, такие как требования к продукту (PRD), справочный документ системы (SRD), план архитектуры и начинали объединять все эти вещи вместе в одну когнитивную модель, в соответствии с которой они писали код. По мере того, как требования и, соответственно, архитектура менялись, приходилось прилагать серьезные усилия для информирования всей команды об обновлениях когнитивной модели. Такой подход в худшем случае мог просто парализовать работу.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nСамой большой переменой в процессе разработке приложений стало внедрение методологии agile. Одна из основных особенностей методологии \u003Ccode\u003Eagile\u003C\u002Fcode\u003E – это итеративная разработка. В свою очередь, это приводит к снижению когнитивной нагрузки на инженеров. Вместо того, чтобы требовать от команды разработчиков реализации приложения за один долгий цикл, \u003Ccode\u003Eagile\u003C\u002Fcode\u003E подход позволяет сосредоточиться на маленьких объемах кода, которые можно быстро протестировать и развернуть, при этом получив еще и обратную связь. Когнитивная нагрузка приложения сместилась с таймфрейма от шести месяцев до двух лет с учетом огромного количества спецификаций на двухнедельное добавление или изменений функции, ориентированное на более размытое понимание о крупном приложении.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nСмещение фокуса с массивного приложения на конкретные маленькие функции, которые могут быть завершены за двухнедельный спринт, с заглядыванием вперед не более чем на одну функцию из следующего спринта в голове, является значительным изменением. Это позволило повысить продуктивность разработки при этом уменьшив когнитивную нагрузку, которая постоянно колебалась.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВ методологии \u003Ccode\u003Eagile\u003C\u002Fcode\u003E предполагается, что конечное приложение будет несколько измененной версией первоначальной концепции, поэтому окончательная точка разработки обязательно является неоднозначной. Ясными и четкими могут быть только результаты каждого конкретного спринта.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cb\u003EНебольшие кодовые базы\u003C\u002Fb\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nСледующий шаг в уменьшении когнитивной нагрузки – это уменьшение кодовой базы. Как правило, современные приложения массивные – надежное, корпоративное приложение может состоять из тысяч файлов и сотен тысяч строк кода. В зависимости от организации файлов связи и зависимости кода и файлов могут быть очевидными или наоборот. Даже отладка самого выполнения кода может вызывать проблемы, в зависимости от используемых библиотек и того, насколько хорошо средства отладки разграничивают библиотеки\u002Fпакеты\u002Fмодули и пользовательский код.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПостроение рабочей ментальной модели кода приложения может занять внушительное количество времени, и вновь возложить на разработчика большую когнитивную нагрузку. Это особенно характерно для монолитных баз кода, где имеется большое количество кода, взаимодействие между функциональными компонентами которого четко не определено, а разделение объектов внимания часто размыто, поскольку не соблюдаются функциональные границы. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nОдним из эффективных способов снижения когнитивной нагрузки на инженеров является переход к микросервисной архитектуре. В микросервисном подходе каждый сервис фокусируется на одном наборе функций; при этом смысл сервиса обычно определен и понятен. Границы сервиса также ясны – помните, о том, что коммуникация с сервисом осуществляется с помощью API, поэтому данные сгенерированные одним сервисом могут легко быть переданы в другой.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВзаимодействие с другими сервисами обычно ограничено несколькими пользовательскими сервисами и несколькими сервисами провайдера, которые используют простые и чистые API вызовы, например при помощи REST. Значит, когнитивная нагрузка на инженера серьезно снижается. Самой сложной задачей остается понимание модели взаимодействия сервисов и того, как такие вещи как транзакции происходят в нескольких сервисах. По итогу, использование микросервисов снижает когнитивную нагрузку, уменьшая количество кода, обозначая четкие границы сервиса и обеспечивая понимание отношений пользователей и провайдеров.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cb\u003EМаленькие инкрементальные изменения\u003C\u002Fb\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПоследний элемент принципа \u003Ci\u003Eмалости\u003C\u002Fi\u003E – это управление изменениями. Особым искушением для разработчиков считается посмотреть на базу кода (даже, возможно, на свой собственный, более старый код) и заявить: «Это дерьмо, нам нужно это все переписать.» Иногда это правильное решение, а иногда нет. Оно возлагает на команду разработчиков бремя глобального изменения модели, что, в свою очередь, приводит к масштабной когнитивной нагрузке. Лучше, чтобы инженеры сосредотачивались на изменениях, которые они могут внести в течение спринта, чтобы потом своевременно выкатить необходимый функционал, пусть и постепенно. Конечный продукт должен напоминать предварительно запланированный, но с некоторыми изменениями и тестированием, чтобы соответствовать потребностям клиента.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПри переписывании больших частей кода иногда быстро осуществить доставку изменения оказывается невозможным, поскольку здесь вступают в игру другие зависимости системы. Для того, чтобы контролировать поток изменений, можно использовать отключение функционала (feature hiding). В принципе, это значит функционал есть на продакшне, но он недоступен при помощи настроек переменных среды (env-var) или какого-либо другого механизма конфигурации. Если код прошел все процессы проверки качества, то он может оказаться в продакшене в скрытом состоянии. Однако, эта стратегия работает только если функция в конечном итоге будет включена. В противном случае она будет лишь захламлять код и добавит когнитивной нагрузки, с которой придется справиться разработчику для продуктивной работы. Управление изменениями и инкрементальные изменения сами по себе помогают поддерживать когнитивную нагрузку разработчиков на доступном уровне. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nИнженерам приходится преодолевать много сложностей даже при простом внедрении дополнительного функционала. Со стороны руководства разумным будет уменьшить лишнюю нагрузку на команду, чтобы она могла сосредоточиться на ключевых элементах функционала. Есть три вещи, которые вы можете предпринять, чтобы помочь своей команде разработчиков:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Col\u003E\r\n\u003Cli\u003EИспользовать методологию \u003Ccode\u003Eagile\u003C\u002Fcode\u003E, чтобы ограничить временные рамки, в которые команда должна сосредоточиться на ключевых функциях.\u003C\u002Fli\u003E\r\n\u003Cli\u003EРеализовать свое приложение в качестве нескольких микросервисов. Это ограничит количество внедряемых функций и укрепит границы, которые удерживают когнитивную нагрузку во время работы.\u003C\u002Fli\u003E\r\n\u003Cli\u003EПредпочтите инкрементальные изменения крупным и громоздким, изменяйте небольшие кусочки кода. Применяйте сокрытие функций, чтобы реализовывать изменения, даже если они не будут видны сразу после добавления.\u003C\u002Fli\u003E\r\n\u003C\u002Fol\u003E\u003Cbr\u002F\u003E\r\nЕсли вы в своей работе примените принцип малости, ваша команда станет куда счастливее, лучше сфокусируется на реализации необходимых функций и с большей вероятностью будет быстрее выкатывать качественные изменения. Но это не говорит о том, что работа не может усложниться, иногда наоборот, внедрение нового функционала требует модификации нескольких сервисов и этот процесс может быть сложнее, чем аналогичный в монолитной архитектуре. В любом случае, преимущества от применения подхода малости того стоят.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nКонец первой части.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВ скором времени опубликуем вторую часть перевода, а сейчас ждем ваши комментарии и приглашаем на \u003Ca href=\"https:\u002F\u002Fotus.pw\u002FmJ6e\u002F\"\u003Eдень открытых дверей\u003C\u002Fa\u003E, который пройдет уже сегодня в 20.00.\u003C\u002Fdiv\u003E","tags":[{"titleHtml":"application development"},{"titleHtml":"application architecture"},{"titleHtml":"nginx"}],"metadata":{"stylesUrls":[],"scriptUrls":[],"shareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F452748\u002F21a9a918bbdea0e7565298d752249b5d\u002F","shareImageWidth":1200,"shareImageHeight":630,"vkShareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F452748\u002F21a9a918bbdea0e7565298d752249b5d\u002F?format=vk","schemaJsonLd":"{\"@context\":\"http:\\\u002F\\\u002Fschema.org\",\"@type\":\"Article\",\"mainEntityOfPage\":{\"@type\":\"WebPage\",\"@id\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fru\\\u002Fcompany\\\u002Fotus\\\u002Fblog\\\u002F452748\\\u002F\"},\"headline\":\"Принципы разработки современных приложений от NGINX. Часть 1\",\"datePublished\":\"2019-05-21T11:56:43+03:00\",\"dateModified\":\"2019-05-21T13:20:56+03:00\",\"author\":{\"@type\":\"Person\",\"name\":\"OTUS\"},\"publisher\":{\"@type\":\"Organization\",\"name\":\"Habr\",\"logo\":{\"@type\":\"ImageObject\",\"url\":\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fa_\\\u002Flk\\\u002F9m\\\u002Fa_lk9mjkccjox-zccjrpfolmkmq.png\"}},\"description\":\"Привет, друзья. В преддверии запуска курса &laquo;Backend разработчик на PHP&raquo;, традиционно делимся с вами переводом полезного материала.  Программное обеспечение решае...\",\"url\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fru\\\u002Fcompany\\\u002Fotus\\\u002Fblog\\\u002F452748\\\u002F#post-content-body\",\"about\":[\"c_otus\",\"h_php\",\"h_nginx\",\"f_develop\",\"f_admin\"],\"image\":[\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fkz\\\u002Fof\\\u002F0b\\\u002Fkzof0bmbw2zx-qqhez30skxeghs.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fwo\\\u002Fov\\\u002Fm5\\\u002Fwoovm515u8lwotr5cviillue_wq.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fai\\\u002F-p\\\u002Fhf\\\u002Fai-phfat7leeptmtxhoh0gy_ndi.png\"]}","metaDescription":"Привет, друзья. В преддверии запуска курса «Backend разработчик на PHP», традиционно делимся с вами переводом полезного материала.\r\n\r\nПрограммное обеспечение решает все больше и больше повседневных...","mainImageUrl":null,"amp":false},"polls":[],"commentsEnabled":true,"rulesRemindEnabled":false,"votesEnabled":true,"status":"published","plannedPublishTime":null,"checked":null,"isEditorial":false}},"articlesIds":{},"isLoading":false,"pagesCount":{},"route":{},"reasonsList":null,"view":"cards","lastVisitedRoute":{},"ssrCommentsArticleIds":[""],"karma":{}},"authorContribution":{"authors":{}},"betaTest":{"currentAnnouncement":null,"announcements":{},"announcementCards":null,"announcementComments":{},"announcementCommentThreads":{},"announcementCommentingStatuses":{},"archivedList":[]},"authorStatistics":{"articleRefs":{},"articleIds":{},"pagesCount":{},"route":{},"viewsCount":[],"maxStatsCount":{}},"career":{"seoLandings":[],"hubs":""},"comments":{"articleComments":{},"searchCommentsResults":null,"previewComment":null,"pagesCount":null,"commentAccess":{},"scrollParents":{},"pageArticleComments":{"lastViewedComment":0,"postId":null,"lastCommentTimestamp":"","moderated":[],"moderatedIds":[],"commentRoute":""}},"companies":{"companyRefs":{"otus":{"alias":"otus","imageUrl":"\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fcompany\u002F968\u002F422\u002F761\u002F968422761136a38a89fc391fd927f903.jpg","titleHtml":"OTUS","descriptionHtml":"Цифровые навыки от ведущих экспертов","relatedData":null,"statistics":{"postsCount":1478,"newsCount":2,"vacanciesCount":1,"employeesCount":46,"careerRating":null,"subscribersCount":66497,"rating":418.61,"invest":null},"foundationDate":{"year":"2017","month":"04","day":"01"},"location":{"city":{"id":"447159","title":"Москва"},"region":{"id":"1885","title":"Москва и Московская обл."},"country":{"id":"168","title":"Россия"}},"siteUrl":"https:\u002F\u002Fotus.ru","staffNumber":"51–100 человек","registrationDate":"2017-03-22T08:17:26+00:00","representativeUser":{"alias":"MaxRokatansky","fullname":"OTUS"},"contacts":[{"title":"Сайт","url":"https:\u002F\u002Fotus.ru"},{"title":"Facebook","url":"https:\u002F\u002Ffacebook.com\u002Fotus.ru"},{"title":"ВКонтакте","url":"https:\u002F\u002Fvk.com\u002Fclub145052891"},{"title":"Telegram","url":"https:\u002F\u002Ftelegram.me\u002FOtusjava"}],"settings":{"analyticsSettings":[],"branding":null,"status":"active"},"metadata":{"titleHtml":"OTUS, Москва - Цифровые навыки от ведущих экспертов с 1 апреля 2017 г.","title":"OTUS, Москва - Цифровые навыки от ведущих экспертов с 1 апреля 2017 г.","keywords":["Программирование","Python","Java","Информационная безопасность","JavaScript"],"descriptionHtml":"1 478 статей от авторов компании OTUS","description":"1 478 статей от авторов компании OTUS"},"aDeskSettings":null,"careerAlias":"otus","maxCustomTrackerLinks":0}},"companyIds":{},"companyTopIds":{},"pagesCount":{},"companyProfiles":{},"companiesCategories":[],"companiesCategoriesTotalCount":0,"companiesWidgets":{},"companiesWorkers":{},"companiesFans":{},"route":{},"isLoading":false,"companyWorkersLoading":false,"companyFansLoading":false,"vacancies":{}},"companiesContribution":{"hubs":{},"flows":{},"companyRefs":{}},"companyHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"conversation":{"messages":[],"respondent":null,"isLoadMore":false},"conversations":{"conversations":[],"unreadCount":0,"pagesCount":0,"isLoadMore":false},"desktopState":{"desktopFl":null,"desktopHl":null,"isChecked":false,"isLoginDemanded":false},"dfp":{"slotsDict":{}},"docs":{"menu":{},"articles":{},"mainMenu":[],"loading":{"main":false,"dropdown":false,"article":false}},"feature":{"isProbablyVisible":"true"},"flows":{"flows":[{"alias":"develop","id":1,"route":{"name":"FLOW_PAGE","params":{"flowName":"develop"}}},{"alias":"admin","id":6,"route":{"name":"FLOW_PAGE","params":{"flowName":"admin"}}},{"alias":"design","id":2,"route":{"name":"FLOW_PAGE","params":{"flowName":"design"}}},{"alias":"management","id":3,"route":{"name":"FLOW_PAGE","params":{"flowName":"management"}}},{"alias":"marketing","id":4,"route":{"name":"FLOW_PAGE","params":{"flowName":"marketing"}}},{"alias":"popsci","id":7,"route":{"name":"FLOW_PAGE","params":{"flowName":"popsci"}}}]},"global":{"isPwa":false,"device":"desktop","isHabrCom":true},"hubs":{"hubRefs":{},"hubIds":{},"pagesCount":{},"isLoading":false,"route":{}},"hubsBlock":{"hubRefs":{},"hubIds":{}},"i18n":{"fl":"ru","hl":"ru"},"info":{"infoPage":{},"isLoading":true},"location":{"urlStruct":{"protocol":null,"slashes":null,"auth":null,"host":null,"port":null,"hostname":null,"hash":null,"search":null,"query":{},"pathname":null,"path":null,"href":""},"searchQuery":null},"me":{"user":null,"ppgDemanded":false,"karmaResetInfo":{"canReincarnate":null,"wasReincarnated":null,"currentScore":null},"notes":null},"mostReadingList":{"mostReadingListIds":[],"mostReadingListRefs":null,"promoPost":null},"pinnedPost":{"pinnedPost":null},"ppa":{"articles":{},"card":null,"transactions":null,"totalTransactions":null,"isAccessible":null},"projectsBlocks":{"activeBlocks":{}},"pullRefresh":{"shouldRefresh":false},"sandbox":{"articleIds":[],"articleRefs":{},"pagesCount":null,"route":{},"lastVisitedRoute":{},"isLoading":false},"settingsOther":{"inputs":{"uiLang":{"errors":[],"ref":null,"value":""},"articlesLangEnglish":{"errors":[],"ref":null,"value":false},"articlesLangRussian":{"errors":[],"ref":null,"value":false},"agreement":{"errors":[],"ref":null,"value":false},"email":{"errors":[],"ref":null,"value":true},"digest":{"errors":[],"ref":null,"value":true}}},"similarList":{"similarListIds":[],"similarListRefs":null},"ssr":{"error":null,"isDataLoaded":false,"isDataLoading":false,"isHydrationFailed":false,"isServer":false},"userHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"userInvites":{"availableInvites":0,"usedInvitesIds":[],"usedInvitesRefs":{},"usedInvitesPagesCount":0,"unusedInvitesIds":[],"unusedInvitesRefs":{},"unusedInvitesPagesCount":0},"users":{"authorRefs":{},"authorIds":{},"pagesCount":{},"authorProfiles":{},"userHubs":{},"userInvitations":{},"authorFollowers":{},"authorFollowed":{},"karmaStats":[],"statistics":null,"isLoading":false,"authorFollowersLoading":false,"authorFollowedLoading":false,"userHubsLoading":false,"userInvitationsLoading":false,"route":{}},"viewport":{"prevScrollY":{},"scrollY":0,"width":0},"tracker":{"items":{},"pagesCache":{},"markedViewedSilently":{},"markedRead":{},"unreadCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null},"unviewedCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null}}};(function(){var s;(s=document.currentScript||document.scripts[document.scripts.length-1]).parentNode.removeChild(s);}());</script>
+<script src="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" defer></script><script src="https://assets.habr.com/habr-web/js/app.c0af73e7.js" defer></script>
+
+
+
+    <script>
+      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+        (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+        m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+      })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+    </script>
+  
+  <script type="text/javascript" >
+    (function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+    m[i].l=1*new Date();k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})
+    (window, document, "script", "https://mc.yandex.ru/metrika/tag.js", "ym");
+
+    ym(24049213, "init", {
+      defer:true,
+      trackLinks:true,
+      accurateTrackBounce:true,
+      webvisor:false,
+    });
+  </script>
+  <noscript>
+    <div>
+      <img src="https://mc.yandex.ru/watch/24049213" style="position:absolute; left:-9999px;" alt="" />
+    </div>
+  </noscript>
+  
+    <script type="text/javascript">
+      window.addEventListener('load', function () {
+        setTimeout(() => {
+          const img = new Image();
+          img.src = 'https://vk.com/rtrg?p=VK-RTRG-421343-57vKE';
+        }, 0);
+      });
+    </script>
+  
+</body>
+</html>

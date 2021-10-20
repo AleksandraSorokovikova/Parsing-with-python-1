@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="ru" data-vue-meta="%7B%22lang%22:%7B%22ssr%22:%22ru%22%7D%7D">
+<head >
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
+  <title>Ускорение разведочного анализа данных с использованием библиотеки pandas-profiling / Хабр</title>
+  <style>
+    /* cyrillic-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSxf6TF0.woff2) format('woff2');
+      unicode-range: U+0460-052F, U+1C80-1C88, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+    }
+
+    /* cyrillic */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveQhf6TF0.woff2) format('woff2');
+      unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+    }
+
+    /* latin-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSBf6TF0.woff2) format('woff2');
+      unicode-range: U+0100-024F, U+0259, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20CF, U+2113, U+2C60-2C7F, U+A720-A7FF;
+    }
+
+    /* latin */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveRhf6.woff2) format('woff2');
+      unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+    }
+  </style>
+  <link rel="preload" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" as="script"><link rel="preload" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/app.c0af73e7.js" as="script">
+  <link rel="stylesheet" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css"><link rel="stylesheet" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css">
+  <script>window.i18nFetch = new Promise((res, rej) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open('GET', '/js/i18n/ru-compiled.85eb77f0b17c8235e7b64b9f81ea5ec2.json');
+          xhr.responseType = 'json';
+          xhr.onload = function(e) {
+            if (this.status === 200) {
+              res({ru: xhr.response});
+            } else {
+              rej(e);
+            }
+          };
+          xhr.send();
+        });</script>
+  
+  <script data-vue-meta="ssr" src="/js/ads.js" onload="window['zhY4i4nJ9K'] = true" data-vmid="checkad"></script><script data-vue-meta="ssr" type="application/ld+json" data-vmid="ldjson-schema">{"@context":"http:\/\/schema.org","@type":"Article","mainEntityOfPage":{"@type":"WebPage","@id":"https:\/\/habr.com\/ru\/company\/ruvds\/blog\/451478\/"},"headline":"Ускорение разведочного анализа данных с использованием библиотеки pandas-profiling","datePublished":"2019-05-13T12:30:02+03:00","dateModified":"2019-05-13T12:30:02+03:00","author":{"@type":"Person","name":"ru_vds"},"publisher":{"@type":"Organization","name":"Habr","logo":{"@type":"ImageObject","url":"https:\/\/habrastorage.org\/webt\/a_\/lk\/9m\/a_lk9mjkccjox-zccjrpfolmkmq.png"}},"description":"Первым делом, приступая к работе с новым набором данных, нужно понять его. Для того чтобы это сделать, нужно, например, выяснить диапазоны значений, принимаемых...","url":"https:\/\/habr.com\/ru\/company\/ruvds\/blog\/451478\/#post-content-body","about":["c_ruvds","h_programming","h_analysis_design","h_dwh","f_develop","f_admin"],"image":["https:\/\/habrastorage.org\/webt\/5w\/2h\/8c\/5w2h8ckcwdq5ukaw61r5xhdvch4.jpeg","https:\/\/habrastorage.org\/getpro\/habr\/post_images\/7f2\/aa7\/199\/7f2aa71998447a1618eb8d307594ad16.png","https:\/\/habrastorage.org\/getpro\/habr\/post_images\/174\/84c\/728\/17484c7286399fc9776298fff4f1e812.png","https:\/\/habrastorage.org\/getpro\/habr\/post_images\/323\/c12\/003\/323c12003055c61e634d0575e564842b.png","https:\/\/habrastorage.org\/getpro\/habr\/post_images\/fdf\/f91\/5c4\/fdff915c4b0fce210387ffcfeb775b9d.png","https:\/\/habrastorage.org\/getpro\/habr\/post_images\/d95\/56f\/a49\/d9556fa495d7c0f0fd337cae18e512a2.png","https:\/\/habrastorage.org\/getpro\/habr\/post_images\/d26\/9e9\/d5c\/d269e9d5c6d5f6cf18041a154034fcbc.png","https:\/\/habrastorage.org\/files\/1ba\/550\/d25\/1ba550d25e8846ce8805de564da6aa63.png"]}</script>
+  <script src="//www.googletagservices.com/tag/js/gpt.js" async></script>
+  <style>.grecaptcha-badge{visibility: hidden;}</style>
+  <meta name="habr-version" content="2.49.0">
+  
+  <meta data-vue-meta="ssr" property="fb:app_id" content="444736788986613"><meta data-vue-meta="ssr" property="fb:pages" content="472597926099084"><meta data-vue-meta="ssr" name="twitter:card" content="summary_large_image"><meta data-vue-meta="ssr" name="twitter:site" content="@habr_eng"><meta data-vue-meta="ssr" property="og:title" content="Ускорение разведочного анализа данных с использованием библиотеки pandas-profiling" data-vmid="og:title"><meta data-vue-meta="ssr" name="twitter:title" content="Ускорение разведочного анализа данных с использованием библиотеки pandas-profiling" data-vmid="twitter:title"><meta data-vue-meta="ssr" name="aiturec:title" content="Ускорение разведочного анализа данных с использованием библиотеки pandas-profiling" data-vmid="aiturec:title"><meta data-vue-meta="ssr" name="description" content="Первым делом, приступая к работе с новым набором данных, нужно понять его. Для того чтобы это сделать, нужно, например, выяснить диапазоны значений, принимаемых переменными, их типы, а также узнать о..." data-vmid="description"><meta data-vue-meta="ssr" itemprop="description" content="Первым делом, приступая к работе с новым набором данных, нужно понять его. Для того чтобы это сделать, нужно, например, выяснить диапазоны значений, принимаемых переменными, их типы, а также узнать о..." data-vmid="description:itemprop"><meta data-vue-meta="ssr" property="og:description" content="Первым делом, приступая к работе с новым набором данных, нужно понять его. Для того чтобы это сделать, нужно, например, выяснить диапазоны значений, принимаемых переменными, их типы, а также узнать о..." data-vmid="og:description"><meta data-vue-meta="ssr" name="twitter:description" content="Первым делом, приступая к работе с новым набором данных, нужно понять его. Для того чтобы это сделать, нужно, например, выяснить диапазоны значений, принимаемых переменными, их типы, а также узнать о..." data-vmid="twitter:description"><meta data-vue-meta="ssr" property="aiturec:description" content="Первым делом, приступая к работе с новым набором данных, нужно понять его. Для того чтобы это сделать, нужно, например, выяснить диапазоны значений, принимаемых переменными, их типы, а также узнать о..." data-vmid="aiturec:description"><meta data-vue-meta="ssr" itemprop="image" content="https://habr.com/share/publication/451478/0c4b5a3bf407b17a5cd4ad94566d18df/" data-vmid="image:itemprop"><meta data-vue-meta="ssr" property="og:image" content="https://habr.com/share/publication/451478/0c4b5a3bf407b17a5cd4ad94566d18df/" data-vmid="og:image"><meta data-vue-meta="ssr" property="aiturec:image" content="https://habr.com/share/publication/451478/0c4b5a3bf407b17a5cd4ad94566d18df/" data-vmid="aiturec:image"><meta data-vue-meta="ssr" name="twitter:image" content="https://habr.com/share/publication/451478/0c4b5a3bf407b17a5cd4ad94566d18df/" data-vmid="twitter:image"><meta data-vue-meta="ssr" property="vk:image" content="https://habr.com/share/publication/451478/0c4b5a3bf407b17a5cd4ad94566d18df/" data-vmid="vk:image"><meta data-vue-meta="ssr" property="aiturec:item_id" content="451478" data-vmid="aiturec:item_id"><meta data-vue-meta="ssr" property="aiturec:datetime" content="2019-05-13T09:30:02.000Z" data-vmid="aiturec:datetime"><meta data-vue-meta="ssr" property="og:type" content="article" data-vmid="og:type"><meta data-vue-meta="ssr" property="og:locale" content="ru_RU" data-vmid="og:locale"><meta data-vue-meta="ssr" property="og:image:width" content="1200" data-vmid="og:image:width"><meta data-vue-meta="ssr" property="og:image:height" content="630" data-vmid="og:image:height">
+  <link data-vue-meta="ssr" href="https://habr.com/ru/rss/post/451478/?fl=ru" type="application/rss+xml" title="" rel="alternate" name="rss"><link data-vue-meta="ssr" href="https://habr.com/ru/company/ruvds/blog/451478/" rel="canonical" data-vmid="canonical"><link data-vue-meta="ssr" data-vmid="hreflang"><link data-vue-meta="ssr" image_src="image" href="https://habr.com/share/publication/451478/0c4b5a3bf407b17a5cd4ad94566d18df/" data-vmid="image:href">
+  <meta name="apple-mobile-web-app-status-bar-style" content="#303b44">
+  <meta name="msapplication-TileColor" content="#629FBC">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="16x16"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-16.png"
+  >
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="32x32"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-32.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="76x76"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-76.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="120x120"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="152x152"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-152.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="180x180"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-180.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="256x256"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-256.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1136x640.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2436x1125.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1792x828.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_828x1792.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1334x750.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2208x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1125x2436.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2208.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2732x2048.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2688x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2224x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_750x1334.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x2732.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2388x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2224.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_640x1136.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2388.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x1536.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1536x2048.png"
+  >
+  <link
+    rel="mask-icon"
+    color="#77a2b6"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.svg"
+  >
+  <link
+    crossorigin="use-credentials"
+    href="/manifest.webmanifest"
+    rel="manifest"
+  >
+</head>
+<body>
+
+
+<div id="app" data-server-rendered="true" data-async-called="true"><div class="tm-layout__wrapper"><!----> <div></div> <!----> <header class="tm-header"><div class="tm-page-width"><div class="tm-header__container"><!----> <span class="tm-header__logo-wrap"><a href="/ru/" class="tm-header__logo tm-header__logo_ru"><svg height="16" width="16" class="tm-svg-img tm-header__icon"><title>Хабр</title> <use xlink:href="/img/habr-logo-ru.svg#logo"></use></svg></a> <span class="tm-header__beta-sign" style="display:none;">β</span></span> <div class="tm-dropdown tm-header__projects"><div class="tm-dropdown__head"><button class="tm-header__dropdown-toggle"><svg height="16" width="16" class="tm-svg-img tm-header__icon tm-header__icon_dropdown"><title>Открыть список</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#arrow-down"></use></svg></button></div> <!----></div> <a href="/ru/sandbox/start/" class="tm-header__become-author-btn">
+            Как стать автором
+          </a> <div class="tm-feature tm-header__feature tm-feature_variant-inline"><!----></div> <!----> <!----></div></div></header> <div class="tm-layout"><div class="tm-page-progress-bar"></div> <div data-menu-sticky="true" class="tm-base-layout__header tm-base-layout__header_is-sticky"><div class="tm-page-width"><div class="tm-base-layout__header-wrapper"><div class="tm-main-menu"><div class="tm-main-menu__section"><nav class="tm-main-menu__section-content"><!----> <a href="/ru/all/" class="tm-main-menu__item">
+        Все потоки
+      </a> <a href="/ru/flows/develop/" class="tm-main-menu__item">
+          Разработка
+        </a><a href="/ru/flows/admin/" class="tm-main-menu__item">
+          Администрирование
+        </a><a href="/ru/flows/design/" class="tm-main-menu__item">
+          Дизайн
+        </a><a href="/ru/flows/management/" class="tm-main-menu__item">
+          Менеджмент
+        </a><a href="/ru/flows/marketing/" class="tm-main-menu__item">
+          Маркетинг
+        </a><a href="/ru/flows/popsci/" class="tm-main-menu__item">
+          Научпоп
+        </a></nav></div></div> <div class="tm-header-user-menu tm-base-layout__user-menu"><a href="/ru/search/" class="tm-header-user-menu__item tm-header-user-menu__search"><svg height="24" width="24" class="tm-svg-img tm-header-user-menu__icon tm-header-user-menu__icon_search tm-header-user-menu__icon_dark"><title>Поиск</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#search"></use></svg></a> <!----> <!----> <!----> <div class="tm-header-user-menu__item tm-header-user-menu__user_desktop"><div class="tm-dropdown"><div class="tm-dropdown__head"><svg height="24" width="24" data-test-id="menu-toggle-guest" class="tm-svg-img tm-header-user-menu__icon"><title>Профиль</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#header-user"></use></svg> <!----></div> <!----></div> <!----></div> <!----></div></div></div></div> <!----> <div class="tm-page-width"></div> <main class="tm-layout__container"><div hl="ru" companyName="ruvds" data-async-called="true" class="tm-page"><div class="tm-page-width"><div class="tm-page__header"><div class="tm-company-card__branding tm-company-article__branding tm-company-card__branding_loading"><div class="tm-company-card__branding-placeholder"><!----></div> <a href="https://ruvds.com/ru-rub"><img src="//habrastorage.org/getpro/habr/branding/b77/8d5/a41/b778d5a41f83016379c6630262c3294c.png" width="100%" class="tm-company-card__branding-image"></a></div></div> <div class="tm-page__wrapper"><div class="tm-page__main tm-page__main_has-sidebar"><div class="pull-down"><div class="pull-down__header" style="height:0px;"><div class="pull-down__content" style="bottom:10px;"><svg height="24" width="24" class="tm-svg-img pull-down__arrow"><title>Обновить</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#pull-arrow"></use></svg></div></div> <div class="tm-article-presenter"><div class="tm-company-card tm-company-article__company-card"><div class="tm-company-card__info"><div class="tm-company-card__header"><a href="/ru/company/ruvds/profile/" class="tm-company-card__avatar"><div class="tm-entity-image"><img alt="" height="48" src="//habrastorage.org/getpro/habr/company/f27/ea8/5bd/f27ea85bd62fbd985c308110885af7e0.png" width="48" class="tm-entity-image__pic"></div></a> <!----> <div class="tm-rating tm-company-card__rating"><div class="tm-rating__header"> <div class="tm-rating__counter">3217.77</div></div> <div class="tm-rating__text">
+    Рейтинг
+  </div></div></div> <div class="tm-company-card__info"><a href="/ru/company/ruvds/profile/" class="tm-company-card__name">
+        RUVDS.com
+      </a> <div class="tm-company-card__description">VDS/VPS-хостинг. Скидка 10% по коду <b>HABR10</b></div></div></div> <div class="tm-company-card__buttons"><!----> <!----></div></div> <div class="tm-article-presenter__body"><div class="tm-misprint-area"><div class="tm-misprint-area__wrapper"><article class="tm-article-presenter__content tm-article-presenter__content_narrow"><div class="tm-article-presenter__header"> <div class="tm-article-snippet tm-article-presenter__snippet"><div class="tm-article-snippet__meta-container"><div class="tm-article-snippet__meta"><span class="tm-user-info tm-article-snippet__author"><a href="/ru/users/ru_vds/" title="ru_vds" class="tm-user-info__userpic"><div class="tm-entity-image"><img alt="" height="24" loading="lazy" src="//habrastorage.org/r/w32/getpro/habr/avatars/e36/812/d3d/e36812d3de38eb3d479d7a13228717ef.png" width="24" class="tm-entity-image__pic"></div></a> <span class="tm-user-info__user"><a href="/ru/users/ru_vds/" class="tm-user-info__username">
+      ru_vds
+    </a> </span></span> <span class="tm-article-snippet__datetime-published"><time datetime="2019-05-13T09:30:02.000Z" title="2019-05-13, 12:30">13  мая  2019 в 12:30</time></span></div> <!----></div> <h1 lang="ru" class="tm-article-snippet__title tm-article-snippet__title_h1"><span>Ускорение разведочного анализа данных с использованием библиотеки pandas-profiling</span></h1> <div class="tm-article-snippet__hubs"><span class="tm-article-snippet__hubs-item"><a href="/ru/company/ruvds/blog/" class="tm-article-snippet__hubs-item-link router-link-active"><span>Блог компании RUVDS.com</span> <!----></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/programming/" class="tm-article-snippet__hubs-item-link"><span>Программирование</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/analysis_design/" class="tm-article-snippet__hubs-item-link"><span>Анализ и проектирование систем</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/dwh/" class="tm-article-snippet__hubs-item-link"><span>Хранение данных</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span></div> <div class="tm-article-snippet__labels"><div class="tm-article-snippet__label"><span>
+        Перевод
+      </span></div></div> <!----> <!----></div></div> <div class="tm-article-presenter__origin"><a href="https://towardsdatascience.com/speed-up-your-exploratory-data-analysis-with-pandas-profiling-88b33dc53625" target="_blank" class="tm-article-presenter__origin-link">
+                Автор оригинала:
+                <span>
+                  Lukas Frei
+                </span></a></div> <div data-gallery-root="" lang="ru" class="tm-article-body"><div id="post-content-body" class="article-formatted-body article-formatted-body_version-1"><div xmlns="http://www.w3.org/1999/xhtml">Первым делом, приступая к работе с новым набором данных, нужно понять его. Для того чтобы это сделать, нужно, например, выяснить диапазоны значений, принимаемых переменными, их типы, а также узнать о количестве пропущенных значений.<br/>
+<br/>
+Библиотека pandas предоставляет нам множество полезных инструментов для выполнения разведочного анализа данных (Exploratory Data Analysis, EDA). Но, прежде чем воспользоваться ими, обычно нужно начать с функций более общего плана, таких как df.describe(). Правда, надо отметить, что возможности, предоставляемые подобными функциями, ограничены, а начальные этапы работы с любыми наборами данных при выполнении EDA очень часто сильно похожи друг на друга.<br/>
+<br/>
+<a href="https://habr.com/ru/company/ruvds/blog/451476/"><img src="https://habrastorage.org/r/w780q1/webt/5w/2h/8c/5w2h8ckcwdq5ukaw61r5xhdvch4.jpeg" data-src="https://habrastorage.org/webt/5w/2h/8c/5w2h8ckcwdq5ukaw61r5xhdvch4.jpeg" data-blurred="true"/></a><br/>
+<br/>
+Автор материала, который мы сегодня публикуем, говорит, что он — не любитель выполнения повторяющихся действий. В результате он, в поисках средств, позволяющих быстро и эффективно выполнять разведочный анализ данных, нашёл библиотеку <a href="https://github.com/pandas-profiling/pandas-profiling">pandas-profiling</a>. Результаты её работы выражаются не в виде неких отдельных показателей, а в форме довольно подробного HTML-отчёта, содержащего большую часть тех сведений об анализируемых данных, которые может понадобиться знать перед тем, как приступать к более плотной работе с ними.<br/>
+<a name="habracut"></a><br/>
+Здесь будут рассмотрены особенности использования библиотеки pandas-profiling на примере набора данных Titanic.<br/>
+<br/>
+<h2><font color="#3AC1EF">Разведочный анализ данных средствами pandas</font></h2><br/>
+Я решил поэкспериментировать с pandas-profiling на наборе данных Titanic из-за того, что в нём имеются данные разных типов и из-за наличия в нём пропущенных значений. Я полагаю, что библиотека pandas-profiling особенно интересна в тех случаях, когда данные ещё не очищены и требуют дальнейшей обработки, зависящей от их особенностей. Для того чтобы успешно выполнить подобную обработку, нужно знать о том, с чего начать, и на что обратить внимание. Здесь нам и пригодятся возможности pandas-profiling.<br/>
+<br/>
+Для начала импортируем данные и используем pandas для получения показателей описательной статистики:<br/>
+<br/>
+<pre><code class="plaintext"># импорт необходимых пакетов
+import pandas as pd
+import pandas_profiling
+import numpy as np
+
+# импорт данных
+df = pd.read_csv('/Users/lukas/Downloads/titanic/train.csv')
+
+# вычисление показателей описательной статистики
+df.describe()</code></pre><br/>
+После выполнения этого фрагмента кода получится то, что показано на следующем рисунке.<br/>
+<br/>
+<div style="text-align:center;"><img src="/img/image-loader.svg" data-src="https://habrastorage.org/getpro/habr/post_images/7f2/aa7/199/7f2aa71998447a1618eb8d307594ad16.png"/></div><br/>
+<i><font color="#999999">Показатели описательной статистики, полученные с помощью стандартных средств pandas</font></i><br/>
+<br/>
+Хотя тут содержится масса полезных сведений, здесь нет всего, что было бы интересно узнать об исследуемых данных. Например, можно предположить, что во фрейме данных, в структуре <code>DataFrame</code>, имеется 891 строка. Если это нужно проверить, то потребуется ещё одна строка кода, определяющую размер фрейма. Хотя эти вычисления и не особенно ресурсозатратны, постоянное их повторение обязательно приведёт к потерям времени, которое, вероятно, лучше будет потратить на очистку данных.<br/>
+<br/>
+<h2><font color="#3AC1EF">Разведочный анализ данных средствами pandas-profiling</font></h2><br/>
+Теперь сделаем то же самое с использованием pandas-profiling:<br/>
+<br/>
+<pre><code class="plaintext">pandas_profiling.ProfileReport(df)</code></pre><br/>
+Выполнение представленной выше строки кода позволит сформировать отчёт с показателями разведочного анализа данных. Код, показанный выше, приведёт к выводу найденных сведений о данных, но можно сделать так, чтобы в результате получился бы HTML-файл, который, например, можно кому-то показать.<br/>
+<br/>
+Первая часть отчёта будет содержать раздел Overview (Обзор), дающий основные сведения о данных (количество наблюдений, количество переменных, и так далее). Кроме того, он будет содержать список предупреждений, уведомляющий аналитика о том, на что стоит обратить особое внимание. Эти предупреждения могут послужить подсказкой о том, на чём можно сосредоточить усилия при очистке данных.<br/>
+<br/>
+<div style="text-align:center;"><img src="/img/image-loader.svg" data-src="https://habrastorage.org/getpro/habr/post_images/174/84c/728/17484c7286399fc9776298fff4f1e812.png"/></div><br/>
+<i><font color="#999999">Раздел отчёта Overview</font></i><br/>
+ <br/>
+<h2><font color="#3AC1EF">Разведочный анализ переменных</font></h2><br/>
+За разделом Overview в отчёте можно обнаружить полезные сведения о каждой переменной. В них, кроме прочего, входят небольшие диаграммы, описывающие распределение каждой переменной.<br/>
+<br/>
+<div style="text-align:center;"><img src="/img/image-loader.svg" data-src="https://habrastorage.org/getpro/habr/post_images/323/c12/003/323c12003055c61e634d0575e564842b.png"/></div><br/>
+<i><font color="#999999">Сведения о числовой переменной Age</font></i><br/>
+<br/>
+Как можно видеть из предыдущего примера, pandas-profiling даёт нам несколько полезных индикаторов, таких, как процент и количество пропущенных значений, а также показатели описательной статистики, которые мы уже видели. Так как <code>Age</code> — это числовая переменная, визуализация её распределения в виде гистограммы позволяет нам сделать вывод о том, что перед нами — скошенное вправо распределение.<br/>
+<br/>
+При рассмотрении категориальной переменной выводимые показатели немного отличаются от тех, что были найдены для числовой переменной.<br/>
+<br/>
+<div style="text-align:center;"><img src="/img/image-loader.svg" data-src="https://habrastorage.org/getpro/habr/post_images/fdf/f91/5c4/fdff915c4b0fce210387ffcfeb775b9d.png"/></div><br/>
+<i><font color="#999999">Сведения о категориальной переменной Sex</font></i><br/>
+<br/>
+А именно, вместо нахождения среднего, минимума и максимума, библиотека pandas-profiling нашла число классов. Так как <code>Sex</code> — бинарная переменная, её значения представлены двумя классами.<br/>
+<br/>
+Если вы, как и я, любите исследовать код, то вас может заинтересовать то, как именно библиотека pandas-profiling вычисляет эти показатели. Узнать об этом, учитывая то, что код библиотеки открыт и доступен на GitHub, не так уж и сложно. Так как я не большой любитель использования «чёрных ящиков» в моих проектах, я взглянул на исходный код библиотеки. Например, вот как выглядит механизм обработки числовых переменных, представленный функцией <a href="https://github.com/pandas-profiling/pandas-profiling/blob/003d236daee8b7aca39c62708b18d59bced0bc03/pandas_profiling/describe.py#L15">describe_numeric_1d</a>:<br/>
+<br/>
+<pre><code class="plaintext">def describe_numeric_1d(series, **kwargs):
+    """Compute summary statistics of a numerical (`TYPE_NUM`) variable (a Series).
+    Also create histograms (mini an full) of its distribution.
+    Parameters
+    ----------
+    series : Series
+        The variable to describe.
+    Returns
+    -------
+    Series
+        The description of the variable as a Series with index being stats keys.
+    """
+    # Format a number as a percentage. For example 0.25 will be turned to 25%.
+    _percentile_format = "{:.0%}"
+    stats = dict()
+    stats['type'] = base.TYPE_NUM
+    stats['mean'] = series.mean()
+    stats['std'] = series.std()
+    stats['variance'] = series.var()
+    stats['min'] = series.min()
+    stats['max'] = series.max()
+    stats['range'] = stats['max'] - stats['min']
+    # To avoid to compute it several times
+    _series_no_na = series.dropna()
+    for percentile in np.array([0.05, 0.25, 0.5, 0.75, 0.95]):
+        # The dropna() is a workaround for https://github.com/pydata/pandas/issues/13098
+        stats[_percentile_format.format(percentile)] = _series_no_na.quantile(percentile)
+    stats['iqr'] = stats['75%'] - stats['25%']
+    stats['kurtosis'] = series.kurt()
+    stats['skewness'] = series.skew()
+    stats['sum'] = series.sum()
+    stats['mad'] = series.mad()
+    stats['cv'] = stats['std'] / stats['mean'] if stats['mean'] else np.NaN
+    stats['n_zeros'] = (len(series) - np.count_nonzero(series))
+    stats['p_zeros'] = stats['n_zeros'] * 1.0 / len(series)
+    # Histograms
+    stats['histogram'] = histogram(series, **kwargs)
+    stats['mini_histogram'] = mini_histogram(series, **kwargs)
+    return pd.Series(stats, name=series.name)</code></pre><br/>
+Хотя этот фрагмент кода и может показаться довольно большим и сложным, на самом деле, понять его очень просто. Речь идёт о том, что в исходном коде библиотеки имеется функция, которая определяет типы переменных. Если оказалось, что библиотека встретила числовую переменную, вышеприведённая функция найдёт показатели, которые мы рассматривали. В этой функции используются стандартные операции pandas по работе с объектами типа <code>Series</code>, наподобие <code>series.mean()</code>. Результаты вычислений сохраняются в словаре <code>stats</code>. Гистограммы формируются с использованием адаптированной версии функции <code>matplotlib.pyplot.hist</code>. Адаптация направлена на то, чтобы функция могла бы работать с различными типами наборов данных.<br/>
+<br/>
+<h2><font color="#3AC1EF">Показатели корреляции и образец исследуемых данных</font></h2><br/>
+После результатов анализа переменных pandas-profiling, в разделе Correlations, выведет корреляционные матрицы Пирсона и Спирмена.<br/>
+<br/>
+<div style="text-align:center;"><img src="/img/image-loader.svg" data-src="https://habrastorage.org/getpro/habr/post_images/d95/56f/a49/d9556fa495d7c0f0fd337cae18e512a2.png"/></div><br/>
+<i><font color="#999999">Корреляционная матрица Пирсона</font></i><br/>
+<br/>
+Если нужно, то можно, в той строке кода, которая запускает формирование отчёта, задать показатели пороговых значений, применяемых при расчёте корреляции. Делая это, вы можете указать то, какая сила корреляции считается важной для вашего анализа.<br/>
+<br/>
+И наконец, в отчёте pandas-profiling, в разделе Sample, выводится, в качестве примера, фрагмент данных, взятый из начала набора данных. Такой подход может привести к неприятным неожиданностям, так как первые несколько наблюдений могут представлять собой выборку, которая не отражает особенностей всего набора данных.<br/>
+<br/>
+<div style="text-align:center;"><img src="/img/image-loader.svg" data-src="https://habrastorage.org/getpro/habr/post_images/d26/9e9/d5c/d269e9d5c6d5f6cf18041a154034fcbc.png"/></div><br/>
+<i><font color="#999999">Раздел, содержащий образец исследуемых данных</font></i><br/>
+<br/>
+В результате я не рекомендую обращать внимание на этот последний раздел. Вместо этого лучше воспользоваться командой <code>df.sample(5)</code>, которая, случайным образом, выберет 5 наблюдений из набора данных.<br/>
+<br/>
+<h2><font color="#3AC1EF">Итоги</font></h2><br/>
+Подводя итог вышеизложенному, можно отметить, что библиотека pandas-profiling даёт в распоряжение аналитика некоторые полезные возможности, которые придутся кстати в тех случаях, когда нужно быстро получить общее приблизительное представление о данных или передать кому-нибудь отчёт о разведывательном анализе данных. При этом настоящая работа с данными, учитывающая их особенности, выполняется, как и без использования pandas-profiling, вручную.<br/>
+<br/>
+Если вы хотите взглянуть на то, как выглядит весь разведывательный анализ данных в одном Jupyter-блокноте — взгляните на <a href="https://nbviewer.jupyter.org/github/lksfr/TowardsDataScience/blob/master/pandas-profiling.ipynb">этот</a> мой проект, созданный с помощью nbviewer. А в <a href="https://github.com/lksfr/TowardsDataScience/blob/master/pandas-profiling.ipynb">этом</a> GitHub-репозитории можно найти соответствующий код.<br/>
+<br/>
+<b>Уважаемые читатели!</b> С чего вы начинаете анализ новых наборов данных?<br/>
+<br/>
+<a href="https://ruvds.com/ru-rub/#order"><div style="text-align:center;"><img src="/img/image-loader.svg" data-src="https://habrastorage.org/files/1ba/550/d25/1ba550d25e8846ce8805de564da6aa63.png"/></div></a></div></div> <!----> <!----></div> <div class="tm-article-presenter__meta"><div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Теги:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5BPandas%5D" class="tm-tags-list__link">Pandas</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5BPython%5D" class="tm-tags-list__link">Python</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bpandas-profiling%5D" class="tm-tags-list__link">pandas-profiling</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5B%D0%B0%D0%BD%D0%B0%D0%BB%D0%B8%D0%B7%20%D0%B4%D0%B0%D0%BD%D0%BD%D1%8B%D1%85%5D" class="tm-tags-list__link">анализ данных</a></li></ul></div> <div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Хабы:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/company/ruvds/blog/" class="tm-hubs-list__link router-link-active">
+    Блог компании RUVDS.com
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/programming/" class="tm-hubs-list__link">
+    Программирование
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/analysis_design/" class="tm-hubs-list__link">
+    Анализ и проектирование систем
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/dwh/" class="tm-hubs-list__link">
+    Хранение данных
+  </a></li></ul></div></div></article></div> <!----></div> <div class="tm-article-sticky-panel"><div class="tm-data-icons tm-article-sticky-panel__icons"><div class="tm-article-rating tm-data-icons__item"><div class="tm-votes-meter tm-article-rating__votes-switcher"><svg height="16" width="16" class="tm-svg-img tm-votes-meter__icon tm-votes-meter__icon_medium"><title>Всего голосов 30: ↑28 и ↓2</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-rating"></use></svg> <span title="Всего голосов 30: ↑28 и ↓2" class="tm-votes-meter__value tm-votes-meter__value_positive tm-votes-meter__value_medium">+26</span></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----> <span title="Количество просмотров" class="tm-icon-counter tm-data-icons__item"><svg height="16" width="16" class="tm-svg-img tm-icon-counter__icon"><title>Просмотры</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-views"></use></svg> <span class="tm-icon-counter__value">16K</span></span> <button title="Добавить в закладки" type="button" class="bookmarks-button tm-data-icons__item"><span title="Добавить в закладки" class="tm-svg-icon__wrapper bookmarks-button__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Добавить в закладки</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-favorite"></use></svg></span> <span title="Количество пользователей, добавивших публикацию в закладки" class="bookmarks-button__counter">
+    89
+  </span></button> <!----> <div title="Поделиться" class="tm-sharing tm-data-icons__item"><button type="button" class="tm-sharing__button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="tm-sharing__icon"><path fill="currentColor" d="M10.33.275l9.047 7.572a.2.2 0 010 .306l-9.048 7.572a.2.2 0 01-.328-.153V11c-8 0-9.94 6-9.94 6S-1 5 10 5V.428a.2.2 0 01.328-.153z"></path></svg></button> <!----></div> <DIV class="v-portal" style="display:none;"></DIV></div> </div></div> <!----> <!----> <div class="tm-article-presenter__footer"><div class="tm-article-blocks"><!----> <section class="tm-block tm-block_spacing-bottom"><!----> <div class="tm-block__body tm-block__body_variant-balanced"><div class="tm-article-author"><div class="tm-article-author__company"><div class="tm-article-author__company-card"><div class="tm-company-snippet"><a href="/ru/company/ruvds/profile/" class="tm-company-snippet__logo-link"><div class="tm-entity-image"><img alt="" height="40" src="//habrastorage.org/getpro/habr/company/f27/ea8/5bd/f27ea85bd62fbd985c308110885af7e0.png" width="40" class="tm-entity-image__pic"></div></a> <div class="tm-company-snippet__info"><a href="/ru/company/ruvds/profile/" class="tm-company-snippet__title">RUVDS.com</a> <div class="tm-company-snippet__description">VDS/VPS-хостинг. Скидка 10% по коду <b>HABR10</b></div></div></div> <div class="tm-article-author__buttons"><!----> <!----></div></div> <div class="tm-article-author__company-contacts"><a href="https://facebook.com/ruvds" rel="noopener" target="_blank" class="tm-article-author__contact">
+      Facebook
+    </a><a href="https://twitter.com/ru_vds" rel="noopener" target="_blank" class="tm-article-author__contact">
+      Twitter
+    </a><a href="https://vk.com/ru_vds" rel="noopener" target="_blank" class="tm-article-author__contact">
+      ВКонтакте
+    </a></div> <div class="tm-article-author__separator"></div></div> <div class="tm-user-card tm-article-author__user-card tm-user-card_variant-article"><div class="tm-user-card__info-container"><div class="tm-user-card__header"><div class="tm-user-card__header-data"><a href="/ru/users/ru_vds/" class="tm-user-card__userpic tm-user-card__userpic_size-40"><div class="tm-entity-image"><img alt="" src="//habrastorage.org/getpro/habr/avatars/e36/812/d3d/e36812d3de38eb3d479d7a13228717ef.png" class="tm-entity-image__pic"></div></a> <div class="tm-user-card__meta"><div title=" 969 голосов " class="tm-karma tm-user-card__karma"><div class="tm-karma__votes tm-karma__votes_positive">
+    214.5
+  </div> <div class="tm-karma__text">
+    Карма
+  </div></div> <div title="Рейтинг пользователя" class="tm-rating tm-user-card__rating"><div class="tm-rating__header"> <div class="tm-rating__counter">132.8</div></div> <div class="tm-rating__text">
+    Рейтинг
+  </div></div></div></div></div> <div class="tm-user-card__info tm-user-card__info_variant-article"><div class="tm-user-card__title tm-user-card__title_variant-article"><!----> <a href="/ru/users/ru_vds/" class="tm-user-card__nickname tm-user-card__nickname_variant-article">
+          @ru_vds
+        </a> <!----></div> <p class="tm-user-card__short-info tm-user-card__short-info_variant-article">Пользователь</p></div></div> <div class="tm-user-card__buttons tm-user-card__buttons_variant-article"><!----> <!----> <!----> <!----> <!----></div></div> <!----></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----></section> <div class="tm-article-blocks__comments"><div class="tm-article-page-comments"><div class="tm-article-comments-counter-link tm-article-comments-counter-button"><a href="/ru/company/ruvds/blog/451478/comments/" class="tm-article-comments-counter-link__link tm-article-comments-counter-link__link_button-style"><svg height="16" width="16" class="tm-svg-img tm-article-comments-counter-link__icon tm-article-comments-counter-link__icon_contrasted"><title>Комментарии</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-comments"></use></svg> <span class="tm-article-comments-counter-link__value tm-article-comments-counter-link__value_contrasted">
+       Комментарии 1 
+    </span></a> <!----></div></div></div>  <!---->  <!----> <!----></div></div></div></div></div> <div class="tm-page__sidebar"><div class="tm-layout-sidebar"><div class="tm-layout-sidebar__placeholder_initial"></div> <div class="tm-sexy-sidebar tm-sexy-sidebar_initial" style="margin-top:0px;"><!----> <section class="tm-block tm-block_spacing-bottom"><header class="tm-block__header"><h2 class="tm-block__title">Информация</h2> <!----></header> <div class="tm-block__body"><div class="tm-company-basic-info"><dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Дата основания</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><time datetime="2015-07-26T21:00:00.000Z" title="2015-07-27, 00:00">27  июля  2015</time></dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Местоположение</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap">
+    Россия
+  </dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Сайт</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><a href="https://ruvds.com" target="_blank" class="tm-company-basic-info__link">
+      ruvds.com
+    </a></dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Численность</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap">
+    11–30 человек
+  </dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Дата регистрации</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><time datetime="2016-03-18T05:43:01.000Z" title="2016-03-18, 08:43">18  марта  2016</time></dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Представитель</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><a href="/ru/users/ruvds/" class="tm-company-basic-info__link">
+      ruvds
+    </a></dd></dl></div></div> <!----></section> <div class="tm-company-widgets"></div> <!----></div></div></div></div></div></div></main> <!----></div> <div class="tm-footer-menu"><div class="tm-page-width"><div class="tm-footer-menu__container"><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Ваш аккаунт
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr/?back=/ru/company/ruvds/blog/451478/&amp;hl=ru" rel="nofollow" target="_self">
+                Войти
+              </a></li><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr-register/?back=/ru/company/ruvds/blog/451478/&amp;hl=ru" rel="nofollow" target="_self">
+                Регистрация
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Разделы
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/" class="footer-menu__item-link router-link-active">
+                Публикации
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/news/" class="footer-menu__item-link">
+                Новости
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/hubs/" class="footer-menu__item-link">
+                Хабы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/companies/" class="footer-menu__item-link">
+                Компании
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/users/" class="footer-menu__item-link">
+                Авторы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/sandbox/" class="footer-menu__item-link">
+                Песочница
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Информация
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/docs/help/" class="footer-menu__item-link">
+                Устройство сайта
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/authors/codex/" class="footer-menu__item-link">
+                Для авторов
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/companies/corpblogs/" class="footer-menu__item-link">
+                Для компаний
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/docs/transparency/" class="footer-menu__item-link">
+                Документы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/agreement" target="_blank">
+                Соглашение
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/confidential/" target="_blank">
+                Конфиденциальность
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Услуги
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQLwRfQmXibiUlWaRg-BAc38s7oM3lJiaPju7qmdJsp8ysIvZ_G-Npem0njJLMozE2bPHMpDqiI5hhy/pub?start=false&amp;loop=false&amp;delayms=60000&amp;slide=id.g91a03369cd_4_297" target="_blank">
+                Реклама
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://habrastorage.org/storage/stuff/habr/service_price.pdf" target="_blank">
+                Тарифы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQJJds8-Di7BQSP_guHxICN7woVYoN5NP_22ra-BIo4bqnTT9FR6fB-Ku2P0AoRpX0Ds-LRkDeAoD8F/pub?start=false&amp;loop=false&amp;delayms=60000" target="_blank">
+                Контент
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://tmtm.timepad.ru/" target="_blank">
+                Семинары
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/megaprojects/" class="footer-menu__item-link">
+                Мегапроекты
+              </a></li></ul></div></div></div></div></div> <div class="tm-footer"><div class="tm-page-width"><div class="tm-footer__container"><!----> <div class="tm-footer__social"><a href="https://www.facebook.com/habrahabr.ru" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Facebook</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-facebook"></use></svg></a><a href="https://twitter.com/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Twitter</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-twitter"></use></svg></a><a href="https://vk.com/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>VK</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-vkontakte"></use></svg></a><a href="https://telegram.me/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Telegram</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-telegram"></use></svg></a><a href="https://www.youtube.com/channel/UCd_sTwKqVrweTt4oAKY5y4w" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Youtube</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-youtube"></use></svg></a><a href="https://zen.yandex.ru/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Яндекс Дзен</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-zen"></use></svg></a></div> <DIV class="v-portal" style="display:none;"></DIV> <button class="tm-footer__link"><!---->
+        Настройка языка
+      </button> <a href="/ru/about" class="tm-footer__link">
+        О сайте
+      </a> <a href="/ru/feedback/" class="tm-footer__link">
+        Техническая поддержка
+      </a> <!----> <a href="/berserk-mode-nope" class="tm-footer__link">
+        Вернуться на старую версию
+      </a> <div class="tm-footer-copyright"><span class="tm-copyright"><span class="tm-copyright__years">© 2006–2021 </span> <span class="tm-copyright__name">«<a href="https://company.habr.com/" rel="noopener" target="_blank" class="tm-copyright__link">Habr</a>»</span></span></div></div></div></div> <!----> <!----></div> <div class="vue-portal-target"></div></div>
+<script>window.__INITIAL_STATE__={"adblock":{"hasAcceptableAdsFilter":false,"hasAdblock":false},"articlesList":{"articlesList":{"451478":{"id":"451478","timePublished":"2019-05-13T09:30:02+00:00","isCorporative":true,"lang":"ru","titleHtml":"Ускорение разведочного анализа данных с использованием библиотеки pandas-profiling","leadData":{"textHtml":"Первым делом, приступая к работе с новым набором данных, нужно понять его. Для того чтобы это сделать, нужно, например, выяснить диапазоны значений, принимаемых переменными, их типы, а также узнать о количестве пропущенных значений.\u003Cbr\u003E\r\n\u003Cbr\u003E\r\nБиблиотека pandas предоставляет нам множество полезных инструментов для выполнения разведочного анализа данных (Exploratory Data Analysis, EDA). Но, прежде чем воспользоваться ими, обычно нужно начать с функций более общего плана, таких как df.describe(). Правда, надо отметить, что возможности, предоставляемые подобными функциями, ограничены, а начальные этапы работы с любыми наборами данных при выполнении EDA очень часто сильно похожи друг на друга.\u003Cbr\u003E\r\n\u003Cbr\u003E\r\n\u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fruvds\u002Fblog\u002F451476\u002F\"\u003E\u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002F5w\u002F2h\u002F8c\u002F5w2h8ckcwdq5ukaw61r5xhdvch4.jpeg\"\u003E\u003C\u002Fa\u003E\u003Cbr\u003E\r\n\u003Cbr\u003E\r\nАвтор материала, который мы сегодня публикуем, говорит, что он — не любитель выполнения повторяющихся действий. В результате он, в поисках средств, позволяющих быстро и эффективно выполнять разведочный анализ данных, нашёл библиотеку \u003Ca href=\"https:\u002F\u002Fgithub.com\u002Fpandas-profiling\u002Fpandas-profiling\"\u003Epandas-profiling\u003C\u002Fa\u003E. Результаты её работы выражаются не в виде неких отдельных показателей, а в форме довольно подробного HTML-отчёта, содержащего большую часть тех сведений об анализируемых данных, которые может понадобиться знать перед тем, как приступать к более плотной работе с ними.\u003Cbr\u003E","imageUrl":null,"buttonTextHtml":"Читать дальше →","image":null},"editorVersion":"1.0","postType":"article","postLabels":[{"type":"translation","data":{"originalAuthorName":"Lukas Frei","originalUrl":"https:\u002F\u002Ftowardsdatascience.com\u002Fspeed-up-your-exploratory-data-analysis-with-pandas-profiling-88b33dc53625"}}],"author":{"scoreStats":{"score":214.5,"votesCount":969},"rating":132.8,"relatedData":null,"contacts":[],"authorContacts":[],"paymentDetails":{"paymentYandexMoney":null,"paymentPayPalMe":null,"paymentWebmoney":null},"id":"1220775","alias":"ru_vds","fullname":null,"avatarUrl":"\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Favatars\u002Fe36\u002F812\u002Fd3d\u002Fe36812d3de38eb3d479d7a13228717ef.png","speciality":"Пользователь"},"statistics":{"commentsCount":1,"favoritesCount":89,"readingCount":15532,"score":26,"votesCount":30},"hubs":[{"relatedData":null,"id":"19791","alias":"ruvds","type":"corporative","title":"Блог компании RUVDS.com","titleHtml":"Блог компании RUVDS.com","isProfiled":false},{"relatedData":null,"id":"359","alias":"programming","type":"collective","title":"Программирование","titleHtml":"Программирование","isProfiled":true},{"relatedData":null,"id":"397","alias":"analysis_design","type":"collective","title":"Анализ и проектирование систем","titleHtml":"Анализ и проектирование систем","isProfiled":true},{"relatedData":null,"id":"19197","alias":"dwh","type":"collective","title":"Хранение данных","titleHtml":"Хранение данных","isProfiled":true}],"flows":[{"id":"1","alias":"develop","title":"Разработка"},{"id":"6","alias":"admin","title":"Администрирование"}],"relatedData":null,"textHtml":"\u003Cdiv xmlns=\"http:\u002F\u002Fwww.w3.org\u002F1999\u002Fxhtml\"\u003EПервым делом, приступая к работе с новым набором данных, нужно понять его. Для того чтобы это сделать, нужно, например, выяснить диапазоны значений, принимаемых переменными, их типы, а также узнать о количестве пропущенных значений.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nБиблиотека pandas предоставляет нам множество полезных инструментов для выполнения разведочного анализа данных (Exploratory Data Analysis, EDA). Но, прежде чем воспользоваться ими, обычно нужно начать с функций более общего плана, таких как df.describe(). Правда, надо отметить, что возможности, предоставляемые подобными функциями, ограничены, а начальные этапы работы с любыми наборами данных при выполнении EDA очень часто сильно похожи друг на друга.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fruvds\u002Fblog\u002F451476\u002F\"\u003E\u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fr\u002Fw780q1\u002Fwebt\u002F5w\u002F2h\u002F8c\u002F5w2h8ckcwdq5ukaw61r5xhdvch4.jpeg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002F5w\u002F2h\u002F8c\u002F5w2h8ckcwdq5ukaw61r5xhdvch4.jpeg\" data-blurred=\"true\"\u002F\u003E\u003C\u002Fa\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nАвтор материала, который мы сегодня публикуем, говорит, что он — не любитель выполнения повторяющихся действий. В результате он, в поисках средств, позволяющих быстро и эффективно выполнять разведочный анализ данных, нашёл библиотеку \u003Ca href=\"https:\u002F\u002Fgithub.com\u002Fpandas-profiling\u002Fpandas-profiling\"\u003Epandas-profiling\u003C\u002Fa\u003E. Результаты её работы выражаются не в виде неких отдельных показателей, а в форме довольно подробного HTML-отчёта, содержащего большую часть тех сведений об анализируемых данных, которые может понадобиться знать перед тем, как приступать к более плотной работе с ними.\u003Cbr\u002F\u003E\r\n\u003Ca name=\"habracut\"\u003E\u003C\u002Fa\u003E\u003Cbr\u002F\u003E\r\nЗдесь будут рассмотрены особенности использования библиотеки pandas-profiling на примере набора данных Titanic.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003E\u003Cfont color=\"#3AC1EF\"\u003EРазведочный анализ данных средствами pandas\u003C\u002Ffont\u003E\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nЯ решил поэкспериментировать с pandas-profiling на наборе данных Titanic из-за того, что в нём имеются данные разных типов и из-за наличия в нём пропущенных значений. Я полагаю, что библиотека pandas-profiling особенно интересна в тех случаях, когда данные ещё не очищены и требуют дальнейшей обработки, зависящей от их особенностей. Для того чтобы успешно выполнить подобную обработку, нужно знать о том, с чего начать, и на что обратить внимание. Здесь нам и пригодятся возможности pandas-profiling.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nДля начала импортируем данные и используем pandas для получения показателей описательной статистики:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E# импорт необходимых пакетов\nimport pandas as pd\nimport pandas_profiling\nimport numpy as np\n\n# импорт данных\ndf = pd.read_csv('\u002FUsers\u002Flukas\u002FDownloads\u002Ftitanic\u002Ftrain.csv')\n\n# вычисление показателей описательной статистики\ndf.describe()\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nПосле выполнения этого фрагмента кода получится то, что показано на следующем рисунке.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cdiv style=\"text-align:center;\"\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fpost_images\u002F7f2\u002Faa7\u002F199\u002F7f2aa71998447a1618eb8d307594ad16.png\"\u002F\u003E\u003C\u002Fdiv\u003E\u003Cbr\u002F\u003E\r\n\u003Ci\u003E\u003Cfont color=\"#999999\"\u003EПоказатели описательной статистики, полученные с помощью стандартных средств pandas\u003C\u002Ffont\u003E\u003C\u002Fi\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nХотя тут содержится масса полезных сведений, здесь нет всего, что было бы интересно узнать об исследуемых данных. Например, можно предположить, что во фрейме данных, в структуре \u003Ccode\u003EDataFrame\u003C\u002Fcode\u003E, имеется 891 строка. Если это нужно проверить, то потребуется ещё одна строка кода, определяющую размер фрейма. Хотя эти вычисления и не особенно ресурсозатратны, постоянное их повторение обязательно приведёт к потерям времени, которое, вероятно, лучше будет потратить на очистку данных.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003E\u003Cfont color=\"#3AC1EF\"\u003EРазведочный анализ данных средствами pandas-profiling\u003C\u002Ffont\u003E\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nТеперь сделаем то же самое с использованием pandas-profiling:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003Epandas_profiling.ProfileReport(df)\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nВыполнение представленной выше строки кода позволит сформировать отчёт с показателями разведочного анализа данных. Код, показанный выше, приведёт к выводу найденных сведений о данных, но можно сделать так, чтобы в результате получился бы HTML-файл, который, например, можно кому-то показать.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПервая часть отчёта будет содержать раздел Overview (Обзор), дающий основные сведения о данных (количество наблюдений, количество переменных, и так далее). Кроме того, он будет содержать список предупреждений, уведомляющий аналитика о том, на что стоит обратить особое внимание. Эти предупреждения могут послужить подсказкой о том, на чём можно сосредоточить усилия при очистке данных.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cdiv style=\"text-align:center;\"\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fpost_images\u002F174\u002F84c\u002F728\u002F17484c7286399fc9776298fff4f1e812.png\"\u002F\u003E\u003C\u002Fdiv\u003E\u003Cbr\u002F\u003E\r\n\u003Ci\u003E\u003Cfont color=\"#999999\"\u003EРаздел отчёта Overview\u003C\u002Ffont\u003E\u003C\u002Fi\u003E\u003Cbr\u002F\u003E\r\n \u003Cbr\u002F\u003E\r\n\u003Ch2\u003E\u003Cfont color=\"#3AC1EF\"\u003EРазведочный анализ переменных\u003C\u002Ffont\u003E\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nЗа разделом Overview в отчёте можно обнаружить полезные сведения о каждой переменной. В них, кроме прочего, входят небольшие диаграммы, описывающие распределение каждой переменной.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cdiv style=\"text-align:center;\"\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fpost_images\u002F323\u002Fc12\u002F003\u002F323c12003055c61e634d0575e564842b.png\"\u002F\u003E\u003C\u002Fdiv\u003E\u003Cbr\u002F\u003E\r\n\u003Ci\u003E\u003Cfont color=\"#999999\"\u003EСведения о числовой переменной Age\u003C\u002Ffont\u003E\u003C\u002Fi\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nКак можно видеть из предыдущего примера, pandas-profiling даёт нам несколько полезных индикаторов, таких, как процент и количество пропущенных значений, а также показатели описательной статистики, которые мы уже видели. Так как \u003Ccode\u003EAge\u003C\u002Fcode\u003E — это числовая переменная, визуализация её распределения в виде гистограммы позволяет нам сделать вывод о том, что перед нами — скошенное вправо распределение.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПри рассмотрении категориальной переменной выводимые показатели немного отличаются от тех, что были найдены для числовой переменной.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cdiv style=\"text-align:center;\"\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fpost_images\u002Ffdf\u002Ff91\u002F5c4\u002Ffdff915c4b0fce210387ffcfeb775b9d.png\"\u002F\u003E\u003C\u002Fdiv\u003E\u003Cbr\u002F\u003E\r\n\u003Ci\u003E\u003Cfont color=\"#999999\"\u003EСведения о категориальной переменной Sex\u003C\u002Ffont\u003E\u003C\u002Fi\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nА именно, вместо нахождения среднего, минимума и максимума, библиотека pandas-profiling нашла число классов. Так как \u003Ccode\u003ESex\u003C\u002Fcode\u003E — бинарная переменная, её значения представлены двумя классами.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЕсли вы, как и я, любите исследовать код, то вас может заинтересовать то, как именно библиотека pandas-profiling вычисляет эти показатели. Узнать об этом, учитывая то, что код библиотеки открыт и доступен на GitHub, не так уж и сложно. Так как я не большой любитель использования «чёрных ящиков» в моих проектах, я взглянул на исходный код библиотеки. Например, вот как выглядит механизм обработки числовых переменных, представленный функцией \u003Ca href=\"https:\u002F\u002Fgithub.com\u002Fpandas-profiling\u002Fpandas-profiling\u002Fblob\u002F003d236daee8b7aca39c62708b18d59bced0bc03\u002Fpandas_profiling\u002Fdescribe.py#L15\"\u003Edescribe_numeric_1d\u003C\u002Fa\u003E:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003Edef describe_numeric_1d(series, **kwargs):\n    \"\"\"Compute summary statistics of a numerical (`TYPE_NUM`) variable (a Series).\n    Also create histograms (mini an full) of its distribution.\n    Parameters\n    ----------\n    series : Series\n        The variable to describe.\n    Returns\n    -------\n    Series\n        The description of the variable as a Series with index being stats keys.\n    \"\"\"\n    # Format a number as a percentage. For example 0.25 will be turned to 25%.\n    _percentile_format = \"{:.0%}\"\n    stats = dict()\n    stats['type'] = base.TYPE_NUM\n    stats['mean'] = series.mean()\n    stats['std'] = series.std()\n    stats['variance'] = series.var()\n    stats['min'] = series.min()\n    stats['max'] = series.max()\n    stats['range'] = stats['max'] - stats['min']\n    # To avoid to compute it several times\n    _series_no_na = series.dropna()\n    for percentile in np.array([0.05, 0.25, 0.5, 0.75, 0.95]):\n        # The dropna() is a workaround for https:\u002F\u002Fgithub.com\u002Fpydata\u002Fpandas\u002Fissues\u002F13098\n        stats[_percentile_format.format(percentile)] = _series_no_na.quantile(percentile)\n    stats['iqr'] = stats['75%'] - stats['25%']\n    stats['kurtosis'] = series.kurt()\n    stats['skewness'] = series.skew()\n    stats['sum'] = series.sum()\n    stats['mad'] = series.mad()\n    stats['cv'] = stats['std'] \u002F stats['mean'] if stats['mean'] else np.NaN\n    stats['n_zeros'] = (len(series) - np.count_nonzero(series))\n    stats['p_zeros'] = stats['n_zeros'] * 1.0 \u002F len(series)\n    # Histograms\n    stats['histogram'] = histogram(series, **kwargs)\n    stats['mini_histogram'] = mini_histogram(series, **kwargs)\n    return pd.Series(stats, name=series.name)\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nХотя этот фрагмент кода и может показаться довольно большим и сложным, на самом деле, понять его очень просто. Речь идёт о том, что в исходном коде библиотеки имеется функция, которая определяет типы переменных. Если оказалось, что библиотека встретила числовую переменную, вышеприведённая функция найдёт показатели, которые мы рассматривали. В этой функции используются стандартные операции pandas по работе с объектами типа \u003Ccode\u003ESeries\u003C\u002Fcode\u003E, наподобие \u003Ccode\u003Eseries.mean()\u003C\u002Fcode\u003E. Результаты вычислений сохраняются в словаре \u003Ccode\u003Estats\u003C\u002Fcode\u003E. Гистограммы формируются с использованием адаптированной версии функции \u003Ccode\u003Ematplotlib.pyplot.hist\u003C\u002Fcode\u003E. Адаптация направлена на то, чтобы функция могла бы работать с различными типами наборов данных.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003E\u003Cfont color=\"#3AC1EF\"\u003EПоказатели корреляции и образец исследуемых данных\u003C\u002Ffont\u003E\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nПосле результатов анализа переменных pandas-profiling, в разделе Correlations, выведет корреляционные матрицы Пирсона и Спирмена.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cdiv style=\"text-align:center;\"\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fpost_images\u002Fd95\u002F56f\u002Fa49\u002Fd9556fa495d7c0f0fd337cae18e512a2.png\"\u002F\u003E\u003C\u002Fdiv\u003E\u003Cbr\u002F\u003E\r\n\u003Ci\u003E\u003Cfont color=\"#999999\"\u003EКорреляционная матрица Пирсона\u003C\u002Ffont\u003E\u003C\u002Fi\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЕсли нужно, то можно, в той строке кода, которая запускает формирование отчёта, задать показатели пороговых значений, применяемых при расчёте корреляции. Делая это, вы можете указать то, какая сила корреляции считается важной для вашего анализа.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nИ наконец, в отчёте pandas-profiling, в разделе Sample, выводится, в качестве примера, фрагмент данных, взятый из начала набора данных. Такой подход может привести к неприятным неожиданностям, так как первые несколько наблюдений могут представлять собой выборку, которая не отражает особенностей всего набора данных.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cdiv style=\"text-align:center;\"\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fpost_images\u002Fd26\u002F9e9\u002Fd5c\u002Fd269e9d5c6d5f6cf18041a154034fcbc.png\"\u002F\u003E\u003C\u002Fdiv\u003E\u003Cbr\u002F\u003E\r\n\u003Ci\u003E\u003Cfont color=\"#999999\"\u003EРаздел, содержащий образец исследуемых данных\u003C\u002Ffont\u003E\u003C\u002Fi\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВ результате я не рекомендую обращать внимание на этот последний раздел. Вместо этого лучше воспользоваться командой \u003Ccode\u003Edf.sample(5)\u003C\u002Fcode\u003E, которая, случайным образом, выберет 5 наблюдений из набора данных.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003E\u003Cfont color=\"#3AC1EF\"\u003EИтоги\u003C\u002Ffont\u003E\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nПодводя итог вышеизложенному, можно отметить, что библиотека pandas-profiling даёт в распоряжение аналитика некоторые полезные возможности, которые придутся кстати в тех случаях, когда нужно быстро получить общее приблизительное представление о данных или передать кому-нибудь отчёт о разведывательном анализе данных. При этом настоящая работа с данными, учитывающая их особенности, выполняется, как и без использования pandas-profiling, вручную.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЕсли вы хотите взглянуть на то, как выглядит весь разведывательный анализ данных в одном Jupyter-блокноте — взгляните на \u003Ca href=\"https:\u002F\u002Fnbviewer.jupyter.org\u002Fgithub\u002Flksfr\u002FTowardsDataScience\u002Fblob\u002Fmaster\u002Fpandas-profiling.ipynb\"\u003Eэтот\u003C\u002Fa\u003E мой проект, созданный с помощью nbviewer. А в \u003Ca href=\"https:\u002F\u002Fgithub.com\u002Flksfr\u002FTowardsDataScience\u002Fblob\u002Fmaster\u002Fpandas-profiling.ipynb\"\u003Eэтом\u003C\u002Fa\u003E GitHub-репозитории можно найти соответствующий код.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cb\u003EУважаемые читатели!\u003C\u002Fb\u003E С чего вы начинаете анализ новых наборов данных?\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ca href=\"https:\u002F\u002Fruvds.com\u002Fru-rub\u002F#order\"\u003E\u003Cdiv style=\"text-align:center;\"\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Ffiles\u002F1ba\u002F550\u002Fd25\u002F1ba550d25e8846ce8805de564da6aa63.png\"\u002F\u003E\u003C\u002Fdiv\u003E\u003C\u002Fa\u003E\u003C\u002Fdiv\u003E","tags":[{"titleHtml":"Pandas"},{"titleHtml":"Python"},{"titleHtml":"pandas-profiling"},{"titleHtml":"анализ данных"}],"metadata":{"stylesUrls":[],"scriptUrls":[],"shareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F451478\u002F0c4b5a3bf407b17a5cd4ad94566d18df\u002F","shareImageWidth":1200,"shareImageHeight":630,"vkShareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F451478\u002F0c4b5a3bf407b17a5cd4ad94566d18df\u002F?format=vk","schemaJsonLd":"{\"@context\":\"http:\\\u002F\\\u002Fschema.org\",\"@type\":\"Article\",\"mainEntityOfPage\":{\"@type\":\"WebPage\",\"@id\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fru\\\u002Fcompany\\\u002Fruvds\\\u002Fblog\\\u002F451478\\\u002F\"},\"headline\":\"Ускорение разведочного анализа данных с использованием библиотеки pandas-profiling\",\"datePublished\":\"2019-05-13T12:30:02+03:00\",\"dateModified\":\"2019-05-13T12:30:02+03:00\",\"author\":{\"@type\":\"Person\",\"name\":\"ru_vds\"},\"publisher\":{\"@type\":\"Organization\",\"name\":\"Habr\",\"logo\":{\"@type\":\"ImageObject\",\"url\":\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fa_\\\u002Flk\\\u002F9m\\\u002Fa_lk9mjkccjox-zccjrpfolmkmq.png\"}},\"description\":\"Первым делом, приступая к работе с новым набором данных, нужно понять его. Для того чтобы это сделать, нужно, например, выяснить диапазоны значений, принимаемых...\",\"url\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fru\\\u002Fcompany\\\u002Fruvds\\\u002Fblog\\\u002F451478\\\u002F#post-content-body\",\"about\":[\"c_ruvds\",\"h_programming\",\"h_analysis_design\",\"h_dwh\",\"f_develop\",\"f_admin\"],\"image\":[\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002F5w\\\u002F2h\\\u002F8c\\\u002F5w2h8ckcwdq5ukaw61r5xhdvch4.jpeg\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fgetpro\\\u002Fhabr\\\u002Fpost_images\\\u002F7f2\\\u002Faa7\\\u002F199\\\u002F7f2aa71998447a1618eb8d307594ad16.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fgetpro\\\u002Fhabr\\\u002Fpost_images\\\u002F174\\\u002F84c\\\u002F728\\\u002F17484c7286399fc9776298fff4f1e812.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fgetpro\\\u002Fhabr\\\u002Fpost_images\\\u002F323\\\u002Fc12\\\u002F003\\\u002F323c12003055c61e634d0575e564842b.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fgetpro\\\u002Fhabr\\\u002Fpost_images\\\u002Ffdf\\\u002Ff91\\\u002F5c4\\\u002Ffdff915c4b0fce210387ffcfeb775b9d.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fgetpro\\\u002Fhabr\\\u002Fpost_images\\\u002Fd95\\\u002F56f\\\u002Fa49\\\u002Fd9556fa495d7c0f0fd337cae18e512a2.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fgetpro\\\u002Fhabr\\\u002Fpost_images\\\u002Fd26\\\u002F9e9\\\u002Fd5c\\\u002Fd269e9d5c6d5f6cf18041a154034fcbc.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Ffiles\\\u002F1ba\\\u002F550\\\u002Fd25\\\u002F1ba550d25e8846ce8805de564da6aa63.png\"]}","metaDescription":"Первым делом, приступая к работе с новым набором данных, нужно понять его. Для того чтобы это сделать, нужно, например, выяснить диапазоны значений, принимаемых переменными, их типы, а также узнать о...","mainImageUrl":null,"amp":false},"polls":[],"commentsEnabled":true,"rulesRemindEnabled":false,"votesEnabled":true,"status":"published","plannedPublishTime":null,"checked":null,"isEditorial":false}},"articlesIds":{},"isLoading":false,"pagesCount":{},"route":{},"reasonsList":null,"view":"cards","lastVisitedRoute":{},"ssrCommentsArticleIds":[""],"karma":{}},"authorContribution":{"authors":{}},"betaTest":{"currentAnnouncement":null,"announcements":{},"announcementCards":null,"announcementComments":{},"announcementCommentThreads":{},"announcementCommentingStatuses":{},"archivedList":[]},"authorStatistics":{"articleRefs":{},"articleIds":{},"pagesCount":{},"route":{},"viewsCount":[],"maxStatsCount":{}},"career":{"seoLandings":[],"hubs":""},"comments":{"articleComments":{},"searchCommentsResults":null,"previewComment":null,"pagesCount":null,"commentAccess":{},"scrollParents":{},"pageArticleComments":{"lastViewedComment":0,"postId":null,"lastCommentTimestamp":"","moderated":[],"moderatedIds":[],"commentRoute":""}},"companies":{"companyRefs":{"ruvds":{"alias":"ruvds","imageUrl":"\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fcompany\u002Ff27\u002Fea8\u002F5bd\u002Ff27ea85bd62fbd985c308110885af7e0.png","titleHtml":"RUVDS.com","descriptionHtml":"VDS\u002FVPS-хостинг. Скидка 10% по коду \u003Cb\u003EHABR10\u003C\u002Fb\u003E","relatedData":null,"statistics":{"postsCount":2019,"newsCount":59,"vacanciesCount":0,"employeesCount":57,"careerRating":null,"subscribersCount":36450,"rating":3217.77,"invest":null},"foundationDate":{"year":"2015","month":"07","day":"27"},"location":{"city":{"id":"447159","title":"Москва"},"region":{"id":"1885","title":"Москва и Московская обл."},"country":{"id":"168","title":"Россия"}},"siteUrl":"https:\u002F\u002Fruvds.com","staffNumber":"11–30 человек","registrationDate":"2016-03-18T05:43:01+00:00","representativeUser":{"alias":"ruvds","fullname":null},"contacts":[{"title":"Facebook","url":"https:\u002F\u002Ffacebook.com\u002Fruvds"},{"title":"Twitter","url":"https:\u002F\u002Ftwitter.com\u002Fru_vds"},{"title":"ВКонтакте","url":"https:\u002F\u002Fvk.com\u002Fru_vds"}],"settings":{"analyticsSettings":[{"type":"ym","trackingId":"33905479"}],"branding":{"imageUrl":"\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fbranding\u002Fb77\u002F8d5\u002Fa41\u002Fb778d5a41f83016379c6630262c3294c.png","linkUrl":"https:\u002F\u002Fruvds.com\u002Fru-rub","pixelUrl":""},"status":"active"},"metadata":{"titleHtml":"RUVDS.com, Москва - VDS\u002FVPS-хостинг. Скидка 10% по коду \u003Cb\u003EHABR10\u003C\u002Fb\u003E с 27 июля 2015 г.","title":"RUVDS.com, Москва - VDS\u002FVPS-хостинг. Скидка 10% по коду HABR10 с 27 июля 2015 г.","keywords":["DIY или Сделай сам","Научно-популярное","Системное администрирование","Разработка веб-сайтов","Читальный зал"],"descriptionHtml":"2 019 статей от авторов компании RUVDS.com","description":"2 019 статей от авторов компании RUVDS.com"},"aDeskSettings":null,"careerAlias":"ruvds","maxCustomTrackerLinks":3}},"companyIds":{},"companyTopIds":{},"pagesCount":{},"companyProfiles":{},"companiesCategories":[],"companiesCategoriesTotalCount":0,"companiesWidgets":{},"companiesWorkers":{},"companiesFans":{},"route":{},"isLoading":false,"companyWorkersLoading":false,"companyFansLoading":false,"vacancies":{}},"companiesContribution":{"hubs":{},"flows":{},"companyRefs":{}},"companyHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"conversation":{"messages":[],"respondent":null,"isLoadMore":false},"conversations":{"conversations":[],"unreadCount":0,"pagesCount":0,"isLoadMore":false},"desktopState":{"desktopFl":null,"desktopHl":null,"isChecked":false,"isLoginDemanded":false},"dfp":{"slotsDict":{}},"docs":{"menu":{},"articles":{},"mainMenu":[],"loading":{"main":false,"dropdown":false,"article":false}},"feature":{"isProbablyVisible":"true"},"flows":{"flows":[{"alias":"develop","id":1,"route":{"name":"FLOW_PAGE","params":{"flowName":"develop"}}},{"alias":"admin","id":6,"route":{"name":"FLOW_PAGE","params":{"flowName":"admin"}}},{"alias":"design","id":2,"route":{"name":"FLOW_PAGE","params":{"flowName":"design"}}},{"alias":"management","id":3,"route":{"name":"FLOW_PAGE","params":{"flowName":"management"}}},{"alias":"marketing","id":4,"route":{"name":"FLOW_PAGE","params":{"flowName":"marketing"}}},{"alias":"popsci","id":7,"route":{"name":"FLOW_PAGE","params":{"flowName":"popsci"}}}]},"global":{"isPwa":false,"device":"desktop","isHabrCom":true},"hubs":{"hubRefs":{},"hubIds":{},"pagesCount":{},"isLoading":false,"route":{}},"hubsBlock":{"hubRefs":{},"hubIds":{}},"i18n":{"fl":"ru","hl":"ru"},"info":{"infoPage":{},"isLoading":true},"location":{"urlStruct":{"protocol":null,"slashes":null,"auth":null,"host":null,"port":null,"hostname":null,"hash":null,"search":null,"query":{},"pathname":null,"path":null,"href":""},"searchQuery":null},"me":{"user":null,"ppgDemanded":false,"karmaResetInfo":{"canReincarnate":null,"wasReincarnated":null,"currentScore":null},"notes":null},"mostReadingList":{"mostReadingListIds":[],"mostReadingListRefs":null,"promoPost":null},"pinnedPost":{"pinnedPost":null},"ppa":{"articles":{},"card":null,"transactions":null,"totalTransactions":null,"isAccessible":null},"projectsBlocks":{"activeBlocks":{}},"pullRefresh":{"shouldRefresh":false},"sandbox":{"articleIds":[],"articleRefs":{},"pagesCount":null,"route":{},"lastVisitedRoute":{},"isLoading":false},"settingsOther":{"inputs":{"uiLang":{"errors":[],"ref":null,"value":""},"articlesLangEnglish":{"errors":[],"ref":null,"value":false},"articlesLangRussian":{"errors":[],"ref":null,"value":false},"agreement":{"errors":[],"ref":null,"value":false},"email":{"errors":[],"ref":null,"value":true},"digest":{"errors":[],"ref":null,"value":true}}},"similarList":{"similarListIds":[],"similarListRefs":null},"ssr":{"error":null,"isDataLoaded":false,"isDataLoading":false,"isHydrationFailed":false,"isServer":false},"userHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"userInvites":{"availableInvites":0,"usedInvitesIds":[],"usedInvitesRefs":{},"usedInvitesPagesCount":0,"unusedInvitesIds":[],"unusedInvitesRefs":{},"unusedInvitesPagesCount":0},"users":{"authorRefs":{},"authorIds":{},"pagesCount":{},"authorProfiles":{},"userHubs":{},"userInvitations":{},"authorFollowers":{},"authorFollowed":{},"karmaStats":[],"statistics":null,"isLoading":false,"authorFollowersLoading":false,"authorFollowedLoading":false,"userHubsLoading":false,"userInvitationsLoading":false,"route":{}},"viewport":{"prevScrollY":{},"scrollY":0,"width":0},"tracker":{"items":{},"pagesCache":{},"markedViewedSilently":{},"markedRead":{},"unreadCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null},"unviewedCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null}}};(function(){var s;(s=document.currentScript||document.scripts[document.scripts.length-1]).parentNode.removeChild(s);}());</script>
+<script src="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" defer></script><script src="https://assets.habr.com/habr-web/js/app.c0af73e7.js" defer></script>
+
+
+
+    <script>
+      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+        (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+        m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+      })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+    </script>
+  
+  <script type="text/javascript" >
+    (function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+    m[i].l=1*new Date();k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})
+    (window, document, "script", "https://mc.yandex.ru/metrika/tag.js", "ym");
+
+    ym(24049213, "init", {
+      defer:true,
+      trackLinks:true,
+      accurateTrackBounce:true,
+      webvisor:false,
+    });
+  </script>
+  <noscript>
+    <div>
+      <img src="https://mc.yandex.ru/watch/24049213" style="position:absolute; left:-9999px;" alt="" />
+    </div>
+  </noscript>
+  
+    <script type="text/javascript">
+      window.addEventListener('load', function () {
+        setTimeout(() => {
+          const img = new Image();
+          img.src = 'https://vk.com/rtrg?p=VK-RTRG-421343-57vKE';
+        }, 0);
+      });
+    </script>
+  
+</body>
+</html>

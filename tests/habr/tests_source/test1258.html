@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="ru" data-vue-meta="%7B%22lang%22:%7B%22ssr%22:%22ru%22%7D%7D">
+<head >
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
+  <title>Как общаются машины — протокол MQTT / Хабр</title>
+  <style>
+    /* cyrillic-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSxf6TF0.woff2) format('woff2');
+      unicode-range: U+0460-052F, U+1C80-1C88, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+    }
+
+    /* cyrillic */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveQhf6TF0.woff2) format('woff2');
+      unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+    }
+
+    /* latin-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSBf6TF0.woff2) format('woff2');
+      unicode-range: U+0100-024F, U+0259, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20CF, U+2113, U+2C60-2C7F, U+A720-A7FF;
+    }
+
+    /* latin */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveRhf6.woff2) format('woff2');
+      unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+    }
+  </style>
+  <link rel="preload" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" as="script"><link rel="preload" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/app.c0af73e7.js" as="script">
+  <link rel="stylesheet" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css"><link rel="stylesheet" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css">
+  <script>window.i18nFetch = new Promise((res, rej) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open('GET', '/js/i18n/ru-compiled.85eb77f0b17c8235e7b64b9f81ea5ec2.json');
+          xhr.responseType = 'json';
+          xhr.onload = function(e) {
+            if (this.status === 200) {
+              res({ru: xhr.response});
+            } else {
+              rej(e);
+            }
+          };
+          xhr.send();
+        });</script>
+  
+  <script data-vue-meta="ssr" src="/js/ads.js" onload="window['zhY4i4nJ9K'] = true" data-vmid="checkad"></script><script data-vue-meta="ssr" type="application/ld+json" data-vmid="ldjson-schema">{"@context":"http:\/\/schema.org","@type":"Article","mainEntityOfPage":{"@type":"WebPage","@id":"https:\/\/habr.com\/ru\/company\/advantech\/blog\/452904\/"},"headline":"Как общаются машины — протокол MQTT","datePublished":"2019-05-24T09:21:49+03:00","dateModified":"2019-06-06T16:01:32+03:00","author":{"@type":"Person","name":"Advantech Россия"},"publisher":{"@type":"Organization","name":"Habr","logo":{"@type":"ImageObject","url":"https:\/\/habrastorage.org\/webt\/a_\/lk\/9m\/a_lk9mjkccjox-zccjrpfolmkmq.png"}},"description":"В предыдущей статье мы разбирали протокол Modbus, являющийся стандартом де-факто в промышленности для M2M-взаимодействия. Разработанный в далеком 1979 году, он...","url":"https:\/\/habr.com\/ru\/company\/advantech\/blog\/452904\/#post-content-body","about":["c_advantech","h_industrial_control_system","f_develop"],"image":["https:\/\/habrastorage.org\/webt\/nb\/fv\/om\/nbfvom_zwqoyqg4e4bcxwl1ax7a.png","https:\/\/habrastorage.org\/webt\/ia\/6q\/cw\/ia6qcwyvn9p6yi_10xrdgkwbcqu.png","https:\/\/habrastorage.org\/webt\/ex\/ri\/7r\/exri7rw8067vln4jiqq5ma9dine.png","https:\/\/habrastorage.org\/webt\/xc\/pb\/t8\/xcpbt8th_jxzdzfglqwxt4wnpwo.png","https:\/\/habrastorage.org\/webt\/ep\/0t\/hv\/ep0thv6e3zsvyzgizw89gpxgytg.png","https:\/\/habrastorage.org\/webt\/v9\/m9\/2k\/v9m92kvqrkibu8zt9pfsdjkngg8.png","https:\/\/habrastorage.org\/webt\/gh\/rq\/t5\/ghrqt5ady8x8twccmfrtngm-htu.png"]}</script>
+  <script src="//www.googletagservices.com/tag/js/gpt.js" async></script>
+  <style>.grecaptcha-badge{visibility: hidden;}</style>
+  <meta name="habr-version" content="2.49.0">
+  
+  <meta data-vue-meta="ssr" property="fb:app_id" content="444736788986613"><meta data-vue-meta="ssr" property="fb:pages" content="472597926099084"><meta data-vue-meta="ssr" name="twitter:card" content="summary_large_image"><meta data-vue-meta="ssr" name="twitter:site" content="@habr_eng"><meta data-vue-meta="ssr" property="og:title" content="Как общаются машины — протокол MQTT" data-vmid="og:title"><meta data-vue-meta="ssr" name="twitter:title" content="Как общаются машины — протокол MQTT" data-vmid="twitter:title"><meta data-vue-meta="ssr" name="aiturec:title" content="Как общаются машины — протокол MQTT" data-vmid="aiturec:title"><meta data-vue-meta="ssr" name="description" content="В предыдущей статье мы разбирали протокол Modbus, являющийся стандартом де-факто в промышленности для M2M-взаимодействия. Разработанный в далеком 1979 году, он имеет ряд существенных недостатков,..." data-vmid="description"><meta data-vue-meta="ssr" itemprop="description" content="В предыдущей статье мы разбирали протокол Modbus, являющийся стандартом де-факто в промышленности для M2M-взаимодействия. Разработанный в далеком 1979 году, он имеет ряд существенных недостатков,..." data-vmid="description:itemprop"><meta data-vue-meta="ssr" property="og:description" content="В предыдущей статье мы разбирали протокол Modbus, являющийся стандартом де-факто в промышленности для M2M-взаимодействия. Разработанный в далеком 1979 году, он имеет ряд существенных недостатков,..." data-vmid="og:description"><meta data-vue-meta="ssr" name="twitter:description" content="В предыдущей статье мы разбирали протокол Modbus, являющийся стандартом де-факто в промышленности для M2M-взаимодействия. Разработанный в далеком 1979 году, он имеет ряд существенных недостатков,..." data-vmid="twitter:description"><meta data-vue-meta="ssr" property="aiturec:description" content="В предыдущей статье мы разбирали протокол Modbus, являющийся стандартом де-факто в промышленности для M2M-взаимодействия. Разработанный в далеком 1979 году, он имеет ряд существенных недостатков,..." data-vmid="aiturec:description"><meta data-vue-meta="ssr" itemprop="image" content="https://habr.com/share/publication/452904/5601805905110c722e8fa2c74587e794/" data-vmid="image:itemprop"><meta data-vue-meta="ssr" property="og:image" content="https://habr.com/share/publication/452904/5601805905110c722e8fa2c74587e794/" data-vmid="og:image"><meta data-vue-meta="ssr" property="aiturec:image" content="https://habr.com/share/publication/452904/5601805905110c722e8fa2c74587e794/" data-vmid="aiturec:image"><meta data-vue-meta="ssr" name="twitter:image" content="https://habr.com/share/publication/452904/5601805905110c722e8fa2c74587e794/" data-vmid="twitter:image"><meta data-vue-meta="ssr" property="vk:image" content="https://habr.com/share/publication/452904/5601805905110c722e8fa2c74587e794/" data-vmid="vk:image"><meta data-vue-meta="ssr" property="aiturec:item_id" content="452904" data-vmid="aiturec:item_id"><meta data-vue-meta="ssr" property="aiturec:datetime" content="2019-05-24T06:21:49.000Z" data-vmid="aiturec:datetime"><meta data-vue-meta="ssr" property="og:type" content="article" data-vmid="og:type"><meta data-vue-meta="ssr" property="og:locale" content="ru_RU" data-vmid="og:locale"><meta data-vue-meta="ssr" property="og:image:width" content="1200" data-vmid="og:image:width"><meta data-vue-meta="ssr" property="og:image:height" content="630" data-vmid="og:image:height">
+  <link data-vue-meta="ssr" href="https://habr.com/ru/rss/post/452904/?fl=ru" type="application/rss+xml" title="" rel="alternate" name="rss"><link data-vue-meta="ssr" href="https://habr.com/ru/company/advantech/blog/452904/" rel="canonical" data-vmid="canonical"><link data-vue-meta="ssr" data-vmid="hreflang"><link data-vue-meta="ssr" image_src="image" href="https://habr.com/share/publication/452904/5601805905110c722e8fa2c74587e794/" data-vmid="image:href">
+  <meta name="apple-mobile-web-app-status-bar-style" content="#303b44">
+  <meta name="msapplication-TileColor" content="#629FBC">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="16x16"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-16.png"
+  >
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="32x32"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-32.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="76x76"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-76.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="120x120"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="152x152"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-152.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="180x180"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-180.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="256x256"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-256.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1136x640.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2436x1125.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1792x828.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_828x1792.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1334x750.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2208x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1125x2436.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2208.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2732x2048.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2688x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2224x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_750x1334.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x2732.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2388x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2224.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_640x1136.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2388.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x1536.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1536x2048.png"
+  >
+  <link
+    rel="mask-icon"
+    color="#77a2b6"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.svg"
+  >
+  <link
+    crossorigin="use-credentials"
+    href="/manifest.webmanifest"
+    rel="manifest"
+  >
+</head>
+<body>
+
+
+<div id="app" data-server-rendered="true" data-async-called="true"><div class="tm-layout__wrapper"><!----> <div></div> <!----> <header class="tm-header"><div class="tm-page-width"><div class="tm-header__container"><!----> <span class="tm-header__logo-wrap"><a href="/ru/" class="tm-header__logo tm-header__logo_ru"><svg height="16" width="16" class="tm-svg-img tm-header__icon"><title>Хабр</title> <use xlink:href="/img/habr-logo-ru.svg#logo"></use></svg></a> <span class="tm-header__beta-sign" style="display:none;">β</span></span> <div class="tm-dropdown tm-header__projects"><div class="tm-dropdown__head"><button class="tm-header__dropdown-toggle"><svg height="16" width="16" class="tm-svg-img tm-header__icon tm-header__icon_dropdown"><title>Открыть список</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#arrow-down"></use></svg></button></div> <!----></div> <a href="/ru/sandbox/start/" class="tm-header__become-author-btn">
+            Как стать автором
+          </a> <div class="tm-feature tm-header__feature tm-feature_variant-inline"><!----></div> <!----> <!----></div></div></header> <div class="tm-layout"><div class="tm-page-progress-bar"></div> <div data-menu-sticky="true" class="tm-base-layout__header tm-base-layout__header_is-sticky"><div class="tm-page-width"><div class="tm-base-layout__header-wrapper"><div class="tm-main-menu"><div class="tm-main-menu__section"><nav class="tm-main-menu__section-content"><!----> <a href="/ru/all/" class="tm-main-menu__item">
+        Все потоки
+      </a> <a href="/ru/flows/develop/" class="tm-main-menu__item">
+          Разработка
+        </a><a href="/ru/flows/admin/" class="tm-main-menu__item">
+          Администрирование
+        </a><a href="/ru/flows/design/" class="tm-main-menu__item">
+          Дизайн
+        </a><a href="/ru/flows/management/" class="tm-main-menu__item">
+          Менеджмент
+        </a><a href="/ru/flows/marketing/" class="tm-main-menu__item">
+          Маркетинг
+        </a><a href="/ru/flows/popsci/" class="tm-main-menu__item">
+          Научпоп
+        </a></nav></div></div> <div class="tm-header-user-menu tm-base-layout__user-menu"><a href="/ru/search/" class="tm-header-user-menu__item tm-header-user-menu__search"><svg height="24" width="24" class="tm-svg-img tm-header-user-menu__icon tm-header-user-menu__icon_search tm-header-user-menu__icon_dark"><title>Поиск</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#search"></use></svg></a> <!----> <!----> <!----> <div class="tm-header-user-menu__item tm-header-user-menu__user_desktop"><div class="tm-dropdown"><div class="tm-dropdown__head"><svg height="24" width="24" data-test-id="menu-toggle-guest" class="tm-svg-img tm-header-user-menu__icon"><title>Профиль</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#header-user"></use></svg> <!----></div> <!----></div> <!----></div> <!----></div></div></div></div> <!----> <div class="tm-page-width"></div> <main class="tm-layout__container"><div hl="ru" companyName="advantech" data-async-called="true" class="tm-page"><div class="tm-page-width"><div class="tm-page__header"><!----></div> <div class="tm-page__wrapper"><div class="tm-page__main tm-page__main_has-sidebar"><div class="pull-down"><div class="pull-down__header" style="height:0px;"><div class="pull-down__content" style="bottom:10px;"><svg height="24" width="24" class="tm-svg-img pull-down__arrow"><title>Обновить</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#pull-arrow"></use></svg></div></div> <div class="tm-article-presenter"><div class="tm-company-card tm-company-article__company-card"><div class="tm-company-card__info"><div class="tm-company-card__header"><a href="/ru/company/advantech/profile/" class="tm-company-card__avatar"><div class="tm-entity-image"><img alt="" height="48" src="//habrastorage.org/getpro/habr/company/cf0/d28/c86/cf0d28c8613281a420516e3d1bf66e10.jpg" width="48" class="tm-entity-image__pic"></div></a> <!----> <div class="tm-rating tm-company-card__rating"><div class="tm-rating__header"> <div class="tm-rating__counter">39.29</div></div> <div class="tm-rating__text">
+    Рейтинг
+  </div></div></div> <div class="tm-company-card__info"><a href="/ru/company/advantech/profile/" class="tm-company-card__name">
+        Advantech IIoT
+      </a> <div class="tm-company-card__description">Наша миссия — создание умной планеты.</div></div></div> <div class="tm-company-card__buttons"><!----> <!----></div></div> <div class="tm-article-presenter__body"><div class="tm-misprint-area"><div class="tm-misprint-area__wrapper"><article class="tm-article-presenter__content tm-article-presenter__content_narrow"><div class="tm-article-presenter__header"> <div class="tm-article-snippet tm-article-presenter__snippet"><div class="tm-article-snippet__meta-container"><div class="tm-article-snippet__meta"><span class="tm-user-info tm-article-snippet__author"><a href="/ru/users/Advantech/" title="Advantech" class="tm-user-info__userpic"><div class="tm-entity-image"><img alt="" height="24" loading="lazy" src="//habrastorage.org/r/w32/getpro/habr/avatars/2a4/c21/aa1/2a4c21aa1c44ff8faeaeae213f4a8508.jpg" width="24" class="tm-entity-image__pic"></div></a> <span class="tm-user-info__user"><a href="/ru/users/Advantech/" class="tm-user-info__username">
+      Advantech
+    </a> </span></span> <span class="tm-article-snippet__datetime-published"><time datetime="2019-05-24T06:21:49.000Z" title="2019-05-24, 09:21">24  мая  2019 в 09:21</time></span></div> <!----></div> <h1 lang="ru" class="tm-article-snippet__title tm-article-snippet__title_h1"><span>Как общаются машины — протокол MQTT</span></h1> <div class="tm-article-snippet__hubs"><span class="tm-article-snippet__hubs-item"><a href="/ru/company/advantech/blog/" class="tm-article-snippet__hubs-item-link router-link-active"><span>Блог компании Advantech IIoT</span> <!----></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/industrial_control_system/" class="tm-article-snippet__hubs-item-link"><span>Промышленное программирование</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span></div> <!----> <!----> <!----></div></div> <!----> <div data-gallery-root="" lang="ru" class="tm-article-body"><div id="post-content-body" class="article-formatted-body article-formatted-body_version-1"><div xmlns="http://www.w3.org/1999/xhtml"><div style="text-align:center;"><img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/nb/fv/om/nbfvom_zwqoyqg4e4bcxwl1ax7a.png" data-width="400"/></div><br/>
+В предыдущей статье мы разбирали <a href="https://habr.com/ru/company/advantech/blog/450234/">протокол Modbus</a>, являющийся стандартом де-факто в промышленности для <abbr title="Machine to Machine">M2M</abbr>-взаимодействия. Разработанный в далеком 1979 году, он имеет ряд существенных недостатков, которые решает MQTT.<br/>
+<br/>
+Протокол MQTT достаточно молод (стандартизирован только в 2016 году), но уже успел получить широкое распространение в промышленности и IoT. Он был специально разработан максимально компактным, для нестабильных интернет-каналов и маломощных устройств, и позволяет гарантированно доставлять сообщения в случае потери пакетов и обрывов связи.<br/>
+<br/>
+Главные особенности протокола MQTT:<br/>
+<br/>
+<ul>
+<li><b>Компактный и легковесный</b> — минимальные накладные расходы на пересылку данных, для экономии трафика.</li>
+<li><b>Устойчивость к потерям</b> — гарантированная доставка в условиях нестабильных сетевых подключений.</li>
+<li><b>Асинхронный</b> — позволяет обслуживать большое количество устройств, и не зависит от сетевых задержек.</li>
+<li><b>Поддержка QoS</b> — возможность управлять приоритетом сообщений и гарантировать доставку сообщения адресату.</li>
+<li><b>Динамическая конфигурация</b> — не требует предварительно согласования полей и форматов данных, может конфигурироваться «на лету».</li>
+<li><b>Работает за NAT</b> — клиенты могут находиться за NAT, только сервер (брокер) должен иметь реальный IP. Позволяет обойтись без VPN и пробрасывания портов.</li>
+<li><b>Удобная адресация</b> — поля данных имеют текстовые названия, понятные для человека. Не нужно запоминать цифровые адреса и битовые смещения.</li>
+</ul><a name="habracut"></a><br/>
+В статье мы сравним MQTT и Modbus, разберем структуру протокола, основные понятия, попробуем на примере поработать с облачным MQTT-брокером в условиях нестабильного интернет-подключения. <br/>
+<br/>
+<h2>История протокола MQTT</h2><br/>
+MQTT был разработан компанией IBM в 1999 году, и поначалу использовался внутри компании, для своих решений.<br/>
+<br/>
+В ноябре 2011 IBM совместно с компанией Eurotech объявили об участии в рабочей группе Eclipse M2M и передаче кода MQTT в проект Eclipse Paho.<br/>
+<br/>
+В 2013 году консорциум <a href="https://ru.wikipedia.org/wiki/OASIS">OASIS</a> (Organization for the Advancement of Structured Information Standards) начинает процесс стандартизации протокола MQTT. До этого момента спецификация протокола была опубликована под бесплатной лицензией, и такие компании, как Eurotech (ранее известный как Arcom), уже используют протокол в своих продуктах.<br/>
+<br/>
+В октябре 2014 г. OASIS публикует первый официальный стандарт протокола MQTT.<br/>
+<br/>
+В 2016 г. протокол был стандартизирован Международной организацией по стандартизации ISO и получил номер ISO/IEC 20922.<br/>
+<br/>
+С 2014 года интерес к протоколу начинает стремительно расти и, судя по графику Google Trends, на сегодняшний день превышает интерес к Modbus.<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/ia/6q/cw/ia6qcwyvn9p6yi_10xrdgkwbcqu.png"/><br/>
+<font color="999999">Сравнительный график Google Trends</font><br/>
+<br/>
+<h2>Основные понятия</h2><br/>
+MQTT имеет клиент-серверную архитектуру. Обмен сообщениями происходит через центральный сервер, называемый брокером. В обычных условиях клиенты не могут общаться напрямую друг с другом, и весь обмен данными происходит через брокера. <br/>
+<br/>
+Клиенты могут выступать в роли поставщиков данных (Publisher) и в роли получателей данных (Subscriber). В русском переводе эти термины часто переводят как издатель и подписчик, но, чтобы избежать путаницы, мы будем использовать только оригинальную терминологию. <br/>
+<br/>
+<div style="text-align:center;"><img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/ex/ri/7r/exri7rw8067vln4jiqq5ma9dine.png" data-width="400"/></div><br/>
+<font color="999999">В протоколе MQTT клиенты обмениваются данными друг с другом, через центральный узел</font><br/>
+<br/>
+На прикладном уровне протокол работает поверх TCP/IP и может легко связывать удаленные объекты напрямую по интернету, без необходимости использования VPN-тоннелей. Достаточно, чтобы брокер имел реальный IP-адрес и все клиенты могли к нему подключиться. При этом, клиенты могут находится за NAT. Так как в протоколе MQTT подключение инициируют клиенты, пробрасывать порты для установки соединения не требуется, в то время как в Modbus/TCP подключение инициирует сервер (master), что требует прямой сетевой доступности.<br/>
+<br/>
+Стандартный порт MQTT-брокера для входящих TCP-соединений — <b>1883</b>. При использовании защищенного SSL-подключения используется порт <b>8883</b>.<br/>
+<br/>
+<h4>Broker</h4><br/>
+Брокер — это центральный узел MQTT, обеспечивающий взаимодействие клиентов. Обмен данными между клиентами происходит только через брокера. В качестве брокера может выступать серверное ПО или контроллер. В его задачи входит получение данных от клиентов, обработка и сохранение данных, доставка данных клиентам, и контроль за доставкой сообщений.<br/>
+<br/>
+<h4>Publisher/Subscriber</h4><br/>
+Для понимания разницы между Publisher и Subscriber разберем простой пример: датчик влажности измеряет влажность в помещении, и если она опустилась ниже определенного уровня, включается увлажнитель воздуха.<br/>
+<br/>
+В данном случае датчик влажности выступает в роли <b>Publisher</b>: его задача сводится только к публикации данных в сторону брокера. Увлажнитель воздуха выступает в роли <b>Subscriber</b>: он подписывается на обновления данных о влажности и получает от брокера актуальные данные, при этом увлажнитель может сам решать, в какой момент включать увлажнение. <br/>
+<br/>
+В этой схеме MQTT-клиенты, то есть датчик и увлажнитель, не знают о существовании друг друга, и не взаимодействуют напрямую. Брокер может получать данные из разных источников, проводить над ними манипуляции, например, рассчитывать среднее значение от нескольких датчиков, и уже обработанные данные возвращать подписчику.<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/xc/pb/t8/xcpbt8th_jxzdzfglqwxt4wnpwo.png"/><br/>
+<font color="9999999">Publisher посылает данные брокеру, Subscriber подписывается на обновления этих данных</font><br/>
+<br/>
+При этом, асинхронность протокола MQTT предусматривает, что датчик и увлажнитель могут быть онлайн в разное время, терять пакеты, и быть недоступны. Брокер позаботится о том, чтобы сохранить в памяти последние данные, полученные от датчика, и обеспечить их доставку на увлажнитель. <br/>
+<br/>
+<h4>Topic</h4><br/>
+Для идентификации сущностей в MQTT используются топики, в русском переводе их еще называют каналами. Топики состоят из UTF8-символов, и имеют древовидную структуру, похожую на файловую систему в UNIX. Это удобный механизм, позволяющий называть сущности в человекопонятном виде.<br/>
+<br/>
+Пример топиков в MQTT<br/>
+<br/>
+<pre><code class="bash"># Датчик температуры на кухне
+home/kitchen/temperature
+
+# Датчик температуры в спальне
+home/sleeping-room/temperature
+
+# Датчик освещенности на улице 
+home/outdoor/light
+</code></pre> <br/>
+Такой подход позволяет наглядно видеть, какие данные передаются, и удобно разрабатывать и отлаживать код, без необходимости запоминать цифровой адрес размещения данных, как это сделано в Modbus. <br/>
+<br/>
+Топики также предусматривают wildcard-синтаксис, хорошо знакомый тем, кто работал с файловой системой UNIX. Wildcard может быть одноуровневым и многоуровневым.<br/>
+<br/>
+Одноуровневый wildcard обозначается символом "<b>+</b>".<br/>
+<br/>
+Например, чтобы получить данные с температурных датчиков во всех помещениях в доме, подписчику нужно подписаться на такой топик:<br/>
+<br/>
+<pre><code class="plaintext">home/+/temperature
+</code></pre> <br/>
+В результате он подпишется на получение данных с таких датчиков:<br/>
+<br/>
+<pre><code class="plaintext">home/kitchen/temperature
+home/sleeping-room/temperature
+home/living-room/temperature
+home/outdoor/temperature
+</code></pre> <br/>
+Многоуровневый wildcard обозначается символом "<b>#</b>". <br/>
+Пример получения данных со всех датчиков во всех комнатах в доме:<br/>
+<br/>
+<pre><code class="plaintext">home/#
+</code></pre> <br/>
+Подписка на такой топик позволит получать данные с таких датчиков:<br/>
+<br/>
+<pre><code class="plaintext">home/kitchen/temperature
+home/kitchen/humidity
+home/kitchen/light
+home/sleeping-room/temperature
+home/sleeping-room/humidity
+home/sleeping-room/light
+....
+</code></pre> <br/>
+<h3>Идентификация клиентов</h3><br/>
+Для контроля доступа в MQTT предусмотрена аутентификация клиентов, в отличие от протокола Modbus, который не имеет такой функции. Для контроля доступа используются такие поля:<br/>
+<br/>
+<b>ClientId</b> — (обязательное поле) уникальный идентификатор клиента. Должен быть уникальным для каждого клиента. Текущая версия стандарта MQTT 3.1.1 позволяет использовать пустое поле ClientId, если не требуется сохранение состояния подключения.<br/>
+<br/>
+<b>Username</b> — (опциональное поле) логин для аутентификации, в формате UTF-8. Может быть не уникальным. Например, группа клиентов может авторизовываться с одним и тем же логином/паролем.<br/>
+<br/>
+<b>Password</b> — (опциональное поле) может посылаться только вместе с полем Username, при этом Username может передаваться без поля Password. Максимум 65535 байт. Важно знать, что имя и пароль передаются в открытом виде, поэтому, если данные передаются по публичным сетям, необходимо использовать SSL для шифрования подключения.<br/>
+<br/>
+<h3>Структура пакета</h3><br/>
+Как уже говорилось выше, в протоколе MQTT подключение всегда инициируют клиенты, вне зависимости от того, являются ли они получателями (Subscriber) или поставщиками (Publisher) данных. Разберем пакет с установкой соединения, перехваченный с помощью программы Wireshark.<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/ep/0t/hv/ep0thv6e3zsvyzgizw89gpxgytg.png"/><br/>
+<font color="999999">Пакет с опцией MQTT, переданный по нешифрованному каналу</font><br/>
+<br/>
+В TCP заголовке видно, что пакет передан по порту 1883, то есть шифрование не используется, а значит в открытом виде доступны все данные, в том числе логин и пароль.<br/>
+<br/>
+<h4>Заголовок</h4><br/>
+<b>Тип сообщения</b> — Connect (команда 0x0001), установка соединения с брокером. Основные команды: Connect, Disconnect, Publish, Subscribe, Unsubscribe. Есть также команды подтверждения получения, keep alive, и т.д.<br/>
+<br/>
+<b>Флаг DUP </b> — означает, что сообщение передается повторно, используется только в типах сообщений PUBLISH, SUBSCRIBE, UNSUBSCRIBE, PUBREL, для случаев, когда брокер не получил подтверждения получения предыдущего сообщения. <br/>
+<b>Уровень QoS</b> — флаг Quality of Service. Мы разберем эту тему подробнее дальше.<br/>
+<b>Retain</b> — данные, опубликованные с флагом retain, сохраняются на брокере. При последующей подписке на этот топик, брокер сразу отправит сообщение с этим флагом. Используется только в сообщениях с типом Publish.<br/>
+<br/>
+<h2>Использование на практике</h2><br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/v9/m9/2k/v9m92kvqrkibu8zt9pfsdjkngg8.png" data-width="100"/><br/>
+<br/>
+Теперь, ознакомившись с теорией, попробуем поработать с MQTT на практике. Для этого будем использовать открытую программу <a href="https://mosquitto.org/"> Mosquitto</a>, которая может работать как в режиме клиента, так и в режиме сервера (брокера). Работает на Windows, macOS, Linux. Программа очень удобна для отладки и изучения протокола MQTT, при этом также широко используется в промышленной эксплуатации. Мы будем использовать ее как клиент для отправки и получения данных с удаленного облачного брокера.<br/>
+<br/>
+Множество облачных провайдеров предоставляют услуги MQTT-брокера, например <a href="https://azure.microsoft.com/en-us/services/iot-hub/">Microsoft Azure IoT Hub</a>, <a href="https://aws.amazon.com/iot/">Amazon AWS IoT</a>, и другие. В этом примере мы будем использовать сервис Cloudmqtt.com, так как у него самая простая регистрация, и бесплатного тарифа достаточно для обучения.<br/>
+<br/>
+После регистрации, в личном кабинете доступны реквизиты для подключения к брокеру. Так как мы подключаемся к серверу через публичные сети интернета, разумно использовать SSL-порт, для шифрования трафика.<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/gh/rq/t5/ghrqt5ady8x8twccmfrtngm-htu.png"/><br/>
+<font color="999999">Реквизиты доступа к MQTT-брокеру в личном кабинете облачного провайдера</font><br/>
+<br/>
+Гибкость протокола MQTT позволяет клиенту передавать данные, заранее не определенные на брокере. То есть нет необходимости предварительно создавать нужные топики, в которые сможет записать данные Publisher. Используя данные, полученные из личного кабинета, попробуем вручную составить запрос для публикации данных в топик <i>habr/test/random</i> и чтения из него.<br/>
+<br/>
+<b>mosquitto_sub</b> — утилита-клиент subscriber<br/>
+<b>mosquitto_pub</b> — утилита-клиент publisher<br/>
+<br/>
+Для начала подключимся к брокеру как subscriber, и подпишемся на получение данных из топика <br/>
+<i>habr/test/random</i>.<br/>
+<br/>
+<pre><code class="plaintext">mosquitto_sub -d --capath /etc/ssl/certs/ --url mqtts://hwjspxxt:7oYugN7Fa5Aa@postman.cloudmqtt.com:27529/habr/test/random
+Client mosq/zEPZz0glUiR4aEipZA sending CONNECT
+Client mosq/zEPZz0glUiR4aEipZA received CONNACK (0)
+Client mosq/zEPZz0glUiR4aEipZA sending SUBSCRIBE (Mid: 1, Topic: habr/test/random, QoS: 0, Options: 0x00)
+Client mosq/zEPZz0glUiR4aEipZA received SUBACK
+</code></pre><br/>
+Видно, что подключение прошло успешно, и мы подписались на топик <b>habr/test/random</b>, и сейчас ожидаем данных в данном топике от брокера.<br/>
+<blockquote>Так как используется SSL-подключение, для проверки сертификата необходимо указать путь, по которому программа будет искать корневые сертификаты шифрования. Так как у сервиса в нашем примере используется сертификат, выданный доверенным удостоверяющим центром, то мы указываем путь к системному хранилищу корневых сертификатов: <i><b>--capath /etc/ssl/certs/</b></i><br/>
+<br/>
+В случае с самоподписанным сертификатом, необходимо указывать путь к нужному CA. Также важно учитывать разницу в формате URI для подключения по SSL — mqtt<b>s</b>://, и подключения без шифрования — mqtt://. В случае ошибки проверки сертификата программа завершается без сообщения об ошибке. Для более подробного вывода можно использовать ключ --debug</blockquote> Теперь попробуем опубликовать данные в топик, не прерывая первую программу.<br/>
+<br/>
+<pre><code class="plaintext">mosquitto_pub -d --capath /etc/ssl/certs/  --url mqtt://hwjspxxt:7oYugN7Fa5Aa@postman.cloudmqtt.com:27529/habr/test/random -m "Привет хабр!"
+Client mosq/sWjh9gf8DRASrRZjk6 sending CONNECT
+Client mosq/sWjh9gf8DRASrRZjk6 received CONNACK (0)
+Client mosq/sWjh9gf8DRASrRZjk6 sending PUBLISH (d0, q0, r0, m1, 'habr/test/random', ... (22 bytes))
+Client mosq/sWjh9gf8DRASrRZjk6 sending DISCONNECT
+</code></pre><br/>
+Видно, что данные были успешно приняты сервером и опубликованы в нужный топик. Одновременно с этим, в первом окне, в котором запущена программа mosquitto_sub, мы видим, как сообщение было получено, при этом даже юникод работает, видно сообщение на руском языке.<br/>
+<br/>
+<pre><code class="plaintext">Client mosq/zEPZz0glUiR4aEipZA received PUBLISH (d0, q0, r0, m0, 'habr/test/random', ... (22 bytes))
+Привет хабр!
+</code></pre><br/>
+<h2>QoS и гарантия доставки</h2><br/>
+Однако пересылкой сообщения в реальном времени мало кого удивишь, ведь то же самое можно сделать даже банальной утилитой <b>nc</b>. Поэтому попробуем имитировать нестабильное соединение между подписчиком и отправителем. Представим, что оба клиента работают через GPRS, с огромной потерей пакетов, и даже успешная установка TCP-соединения происходит редко, при этом нужно, чтобы подписчик гарантированно получил сообщение отправителя. В данном случае на помощь приходят опции QoS.<br/>
+<br/>
+По умолчанию для сообщений установлен флаг <b>QoS в значение 0</b>, что значит «Fire and forget»: Publisher публикует сообщение на брокере, но при этом не требует, чтобы сообщение было гарантированно доставлено подписчику. Это подходит для данных, потеря которых не критична, например, для регулярных измерений влажности или температуры. <br/>
+<br/>
+<b>QoS 1: At least once – хотя бы один</b>. Этот флаг означает, что пока Publisher не получит подтверждения доставки подписчику, данная публикация будет посылаться брокеру, и далее подписчику. Таким образом, подписчик должен получить данное сообщение как минимум один раз. <br/>
+<br/>
+<b>QoS 2: Exactly once – гарантированно один</b>. Флаг QoS, обеспечивающий высшую гарантию доставки сообщений за счет использования дополнительных процедур подтверждения и завершения публикации (PUBREC, PUBREL, PUBCOMP). Применим для ситуаций, когда нужно исключить любые потери и дублирование данных от датчиков. Например, когда от полученного сообщения срабатывает сигнализация, вызов экстренных служб. <br/>
+<br/>
+Для симуляции плохой связи отключим оба клиента и попробуем отправить сообщение с наивысшим приоритетом QoS, а также добавим опцию Retain, чтобы отправленное сообщение сохранилось на брокере.<br/>
+<br/>
+<pre><code class="plaintext">mosquitto_pub --retain --qos 2 -d --capath /etc/ssl/certs/  --url mqtt://hwjspxxt:7oYugN7Fa5Aa@postman.cloudmqtt.com:27529/habr/test/random -m "Очень важный привет!" 
+Client mosq/Xwhua3GAyyY9mMd05V sending CONNECT
+Client mosq/Xwhua3GAyyY9mMd05V received CONNACK (0)
+Client mosq/Xwhua3GAyyY9mMd05V sending PUBLISH (d0, q2, r1, m1, 'habr/test/random', ... (37 bytes))
+Client mosq/Xwhua3GAyyY9mMd05V received PUBREC (Mid: 1)
+Client mosq/Xwhua3GAyyY9mMd05V sending PUBREL (m1)
+Client mosq/Xwhua3GAyyY9mMd05V received PUBCOMP (Mid: 1, RC:0)
+Client mosq/Xwhua3GAyyY9mMd05V sending DISCONNECT
+</code></pre><br/>
+Теперь, спустя время, наш получатель наконец смог установить соединение с интернетом и подключился к брокеру:<br/>
+<br/>
+<pre><code class="plaintext">mosquitto_sub  -d --capath /etc/ssl/certs/ -d --url mqtts://hwjspxxt:7oYugN7Fa5Aa@postman.cloudmqtt.com:27529/habr/test/random
+Client mosq/VAzcLVMB1MiWhYxoJS sending CONNECT
+Client mosq/VAzcLVMB1MiWhYxoJS received CONNACK (0)
+Client mosq/VAzcLVMB1MiWhYxoJS sending SUBSCRIBE (Mid: 1, Topic: habr/test/random, QoS: 0, Options: 0x00)
+Client mosq/VAzcLVMB1MiWhYxoJS received SUBACK
+Subscribed (mid: 1): 0
+Client mosq/r6UwPnDvx8aNInpPF6 received PUBLISH (d0, q0, r1, m0, 'habr/test/random', ... (37 bytes))
+Очень важный привет!
+</code></pre><br/>
+<h2>Заключение</h2><br/>
+MQTT — современный продвинутый протокол, лишенный множества недостатков предшественников. Его гибкость позволяет добавлять клиентские устройства без настройки на брокере, что существенно экономит время. Порог вхождения для понимания и настройки протокола достаточно низкий, а наличие библиотек под множество языков программирования позволяет выбрать любой стек технологий для разработки. Гарантия доставки сообщений существенно отличает MQTT от его предшественников, и позволяет не тратить время на лишнюю разработку собственных механизмов контроля целостности на сетевом уровне.</div></div> <!----> <!----></div> <div class="tm-article-presenter__meta"><div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Теги:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bmqqt%5D" class="tm-tags-list__link">mqqt</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bm2m%5D" class="tm-tags-list__link">m2m</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5BQoS%5D" class="tm-tags-list__link">QoS</a></li></ul></div> <div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Хабы:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/company/advantech/blog/" class="tm-hubs-list__link router-link-active">
+    Блог компании Advantech IIoT
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/industrial_control_system/" class="tm-hubs-list__link">
+    Промышленное программирование
+  </a></li></ul></div></div></article></div> <!----></div> <div class="tm-article-sticky-panel"><div class="tm-data-icons tm-article-sticky-panel__icons"><div class="tm-article-rating tm-data-icons__item"><div class="tm-votes-meter tm-article-rating__votes-switcher"><svg height="16" width="16" class="tm-svg-img tm-votes-meter__icon tm-votes-meter__icon_medium"><title>Всего голосов 30: ↑30 и ↓0</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-rating"></use></svg> <span title="Всего голосов 30: ↑30 и ↓0" class="tm-votes-meter__value tm-votes-meter__value_positive tm-votes-meter__value_medium">+30</span></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----> <span title="Количество просмотров" class="tm-icon-counter tm-data-icons__item"><svg height="16" width="16" class="tm-svg-img tm-icon-counter__icon"><title>Просмотры</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-views"></use></svg> <span class="tm-icon-counter__value">31K</span></span> <button title="Добавить в закладки" type="button" class="bookmarks-button tm-data-icons__item"><span title="Добавить в закладки" class="tm-svg-icon__wrapper bookmarks-button__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Добавить в закладки</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-favorite"></use></svg></span> <span title="Количество пользователей, добавивших публикацию в закладки" class="bookmarks-button__counter">
+    159
+  </span></button> <!----> <div title="Поделиться" class="tm-sharing tm-data-icons__item"><button type="button" class="tm-sharing__button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="tm-sharing__icon"><path fill="currentColor" d="M10.33.275l9.047 7.572a.2.2 0 010 .306l-9.048 7.572a.2.2 0 01-.328-.153V11c-8 0-9.94 6-9.94 6S-1 5 10 5V.428a.2.2 0 01.328-.153z"></path></svg></button> <!----></div> <DIV class="v-portal" style="display:none;"></DIV></div> </div></div> <!----> <!----> <div class="tm-article-presenter__footer"><div class="tm-article-blocks"><!----> <section class="tm-block tm-block_spacing-bottom"><!----> <div class="tm-block__body tm-block__body_variant-balanced"><div class="tm-article-author"><div class="tm-article-author__company"><div class="tm-article-author__company-card"><div class="tm-company-snippet"><a href="/ru/company/advantech/profile/" class="tm-company-snippet__logo-link"><div class="tm-entity-image"><img alt="" height="40" src="//habrastorage.org/getpro/habr/company/cf0/d28/c86/cf0d28c8613281a420516e3d1bf66e10.jpg" width="40" class="tm-entity-image__pic"></div></a> <div class="tm-company-snippet__info"><a href="/ru/company/advantech/profile/" class="tm-company-snippet__title">Advantech IIoT</a> <div class="tm-company-snippet__description">Наша миссия — создание умной планеты.</div></div></div> <div class="tm-article-author__buttons"><!----> <!----></div></div> <div class="tm-article-author__company-contacts"><a href="https://www.advantech.ru/" rel="noopener" target="_blank" class="tm-article-author__contact">
+      Сайт
+    </a><a href="https://facebook.com/advantech.ru" rel="noopener" target="_blank" class="tm-article-author__contact">
+      Facebook
+    </a><a href="https://vk.com/advantech.russia.news" rel="noopener" target="_blank" class="tm-article-author__contact">
+      ВКонтакте
+    </a></div> <div class="tm-article-author__separator"></div></div> <div class="tm-user-card tm-article-author__user-card tm-user-card_variant-article"><div class="tm-user-card__info-container"><div class="tm-user-card__header"><div class="tm-user-card__header-data"><a href="/ru/users/Advantech/" class="tm-user-card__userpic tm-user-card__userpic_size-40"><div class="tm-entity-image"><img alt="" src="//habrastorage.org/getpro/habr/avatars/2a4/c21/aa1/2a4c21aa1c44ff8faeaeae213f4a8508.jpg" class="tm-entity-image__pic"></div></a> <div class="tm-user-card__meta"><div title=" 32 голоса " class="tm-karma tm-user-card__karma"><div class="tm-karma__votes tm-karma__votes_positive">
+    24
+  </div> <div class="tm-karma__text">
+    Карма
+  </div></div> <div title="Рейтинг пользователя" class="tm-rating tm-user-card__rating"><div class="tm-rating__header"> <div class="tm-rating__counter">0</div></div> <div class="tm-rating__text">
+    Рейтинг
+  </div></div></div></div></div> <div class="tm-user-card__info tm-user-card__info_variant-article"><div class="tm-user-card__title tm-user-card__title_variant-article"><span class="tm-user-card__name tm-user-card__name_variant-article">Advantech Россия</span> <a href="/ru/users/Advantech/" class="tm-user-card__nickname tm-user-card__nickname_variant-article">
+          @Advantech
+        </a> <!----></div> <p class="tm-user-card__short-info tm-user-card__short-info_variant-article">Наша миссия — создание умной планеты.</p></div></div> <div class="tm-user-card__buttons tm-user-card__buttons_variant-article"><!----> <!----> <!----> <!----> <!----></div></div> <div class="tm-article-author__user-contacts"><a href="https://www.advantech.ru/" rel="noopener" target="_blank" class="tm-article-author__contact">
+      Сайт
+    </a></div></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----></section> <div class="tm-article-blocks__comments"><div class="tm-article-page-comments"><div class="tm-article-comments-counter-link tm-article-comments-counter-button"><a href="/ru/company/advantech/blog/452904/comments/" class="tm-article-comments-counter-link__link tm-article-comments-counter-link__link_button-style"><svg height="16" width="16" class="tm-svg-img tm-article-comments-counter-link__icon tm-article-comments-counter-link__icon_contrasted"><title>Комментарии</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-comments"></use></svg> <span class="tm-article-comments-counter-link__value tm-article-comments-counter-link__value_contrasted">
+       Комментарии 33 
+    </span></a> <!----></div></div></div>  <!---->  <!----> <!----></div></div></div></div></div> <div class="tm-page__sidebar"><div class="tm-layout-sidebar"><div class="tm-layout-sidebar__placeholder_initial"></div> <div class="tm-sexy-sidebar tm-sexy-sidebar_initial" style="margin-top:0px;"><!----> <section class="tm-block tm-block_spacing-bottom"><header class="tm-block__header"><h2 class="tm-block__title">Информация</h2> <!----></header> <div class="tm-block__body"><div class="tm-company-basic-info"><dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Дата основания</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><span>
+      1983
+    </span></dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Местоположение</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap">
+    Россия
+  </dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Сайт</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><a href="https://www.advantech.ru/" target="_blank" class="tm-company-basic-info__link">
+      www.advantech.ru
+    </a></dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Численность</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap">
+    5 001–10 000 человек
+  </dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Дата регистрации</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><time datetime="2019-03-29T09:07:00.000Z" title="2019-03-29, 12:07">29  марта  2019</time></dd></dl> <!----></div></div> <!----></section> <!----> <!----></div></div></div></div></div></div></main> <!----></div> <div class="tm-footer-menu"><div class="tm-page-width"><div class="tm-footer-menu__container"><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Ваш аккаунт
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr/?back=/ru/company/advantech/blog/452904/&amp;hl=ru" rel="nofollow" target="_self">
+                Войти
+              </a></li><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr-register/?back=/ru/company/advantech/blog/452904/&amp;hl=ru" rel="nofollow" target="_self">
+                Регистрация
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Разделы
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/" class="footer-menu__item-link router-link-active">
+                Публикации
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/news/" class="footer-menu__item-link">
+                Новости
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/hubs/" class="footer-menu__item-link">
+                Хабы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/companies/" class="footer-menu__item-link">
+                Компании
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/users/" class="footer-menu__item-link">
+                Авторы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/sandbox/" class="footer-menu__item-link">
+                Песочница
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Информация
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/docs/help/" class="footer-menu__item-link">
+                Устройство сайта
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/authors/codex/" class="footer-menu__item-link">
+                Для авторов
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/companies/corpblogs/" class="footer-menu__item-link">
+                Для компаний
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/docs/transparency/" class="footer-menu__item-link">
+                Документы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/agreement" target="_blank">
+                Соглашение
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/confidential/" target="_blank">
+                Конфиденциальность
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Услуги
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQLwRfQmXibiUlWaRg-BAc38s7oM3lJiaPju7qmdJsp8ysIvZ_G-Npem0njJLMozE2bPHMpDqiI5hhy/pub?start=false&amp;loop=false&amp;delayms=60000&amp;slide=id.g91a03369cd_4_297" target="_blank">
+                Реклама
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://habrastorage.org/storage/stuff/habr/service_price.pdf" target="_blank">
+                Тарифы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQJJds8-Di7BQSP_guHxICN7woVYoN5NP_22ra-BIo4bqnTT9FR6fB-Ku2P0AoRpX0Ds-LRkDeAoD8F/pub?start=false&amp;loop=false&amp;delayms=60000" target="_blank">
+                Контент
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://tmtm.timepad.ru/" target="_blank">
+                Семинары
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/megaprojects/" class="footer-menu__item-link">
+                Мегапроекты
+              </a></li></ul></div></div></div></div></div> <div class="tm-footer"><div class="tm-page-width"><div class="tm-footer__container"><!----> <div class="tm-footer__social"><a href="https://www.facebook.com/habrahabr.ru" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Facebook</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-facebook"></use></svg></a><a href="https://twitter.com/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Twitter</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-twitter"></use></svg></a><a href="https://vk.com/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>VK</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-vkontakte"></use></svg></a><a href="https://telegram.me/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Telegram</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-telegram"></use></svg></a><a href="https://www.youtube.com/channel/UCd_sTwKqVrweTt4oAKY5y4w" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Youtube</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-youtube"></use></svg></a><a href="https://zen.yandex.ru/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Яндекс Дзен</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-zen"></use></svg></a></div> <DIV class="v-portal" style="display:none;"></DIV> <button class="tm-footer__link"><!---->
+        Настройка языка
+      </button> <a href="/ru/about" class="tm-footer__link">
+        О сайте
+      </a> <a href="/ru/feedback/" class="tm-footer__link">
+        Техническая поддержка
+      </a> <!----> <a href="/berserk-mode-nope" class="tm-footer__link">
+        Вернуться на старую версию
+      </a> <div class="tm-footer-copyright"><span class="tm-copyright"><span class="tm-copyright__years">© 2006–2021 </span> <span class="tm-copyright__name">«<a href="https://company.habr.com/" rel="noopener" target="_blank" class="tm-copyright__link">Habr</a>»</span></span></div></div></div></div> <!----> <!----></div> <div class="vue-portal-target"></div></div>
+<script>window.__INITIAL_STATE__={"adblock":{"hasAcceptableAdsFilter":false,"hasAdblock":false},"articlesList":{"articlesList":{"452904":{"id":"452904","timePublished":"2019-05-24T06:21:49+00:00","isCorporative":true,"lang":"ru","titleHtml":"Как общаются машины — протокол MQTT","leadData":{"textHtml":"\u003Cdiv style=\"text-align:center;\"\u003E\u003Cimg width=\"400\" src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fnb\u002Ffv\u002Fom\u002Fnbfvom_zwqoyqg4e4bcxwl1ax7a.png\"\u003E\u003C\u002Fdiv\u003E\u003Cbr\u003E\r\nВ предыдущей статье мы разбирали \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fadvantech\u002Fblog\u002F450234\u002F\"\u003Eпротокол Modbus\u003C\u002Fa\u003E, являющийся стандартом де-факто в промышленности для \u003Cabbr title=\"Machine to Machine\"\u003EM2M\u003C\u002Fabbr\u003E-взаимодействия. Разработанный в далеком 1979 году, он имеет ряд существенных недостатков, которые решает MQTT.\u003Cbr\u003E\r\n\u003Cbr\u003E\r\nПротокол MQTT достаточно молод (стандартизирован только в 2016 году), но уже успел получить широкое распространение в промышленности и IoT. Он был специально разработан максимально компактным, для нестабильных интернет-каналов и маломощных устройств, и позволяет гарантированно доставлять сообщения в случае потери пакетов и обрывов связи.\u003Cbr\u003E\r\n\u003Cbr\u003E\r\nГлавные особенности протокола MQTT:\u003Cbr\u003E\r\n\u003Cbr\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003E\u003Cb\u003EКомпактный и легковесный\u003C\u002Fb\u003E — минимальные накладные расходы на пересылку данных, для экономии трафика.\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Cb\u003EУстойчивость к потерям\u003C\u002Fb\u003E — гарантированная доставка в условиях нестабильных сетевых подключений.\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Cb\u003EАсинхронный\u003C\u002Fb\u003E — позволяет обслуживать большое количество устройств, и не зависит от сетевых задержек.\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Cb\u003EПоддержка QoS\u003C\u002Fb\u003E — возможность управлять приоритетом сообщений и гарантировать доставку сообщения адресату.\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Cb\u003EДинамическая конфигурация\u003C\u002Fb\u003E — не требует предварительно согласования полей и форматов данных, может конфигурироваться «на лету».\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Cb\u003EРаботает за NAT\u003C\u002Fb\u003E — клиенты могут находиться за NAT, только сервер (брокер) должен иметь реальный IP. Позволяет обойтись без VPN и пробрасывания портов.\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Cb\u003EУдобная адресация\u003C\u002Fb\u003E — поля данных имеют текстовые названия, понятные для человека. Не нужно запоминать цифровые адреса и битовые смещения.\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E","imageUrl":null,"buttonTextHtml":"Читать дальше →","image":null},"editorVersion":"1.0","postType":"article","postLabels":[],"author":{"scoreStats":{"score":24,"votesCount":32},"rating":0,"relatedData":null,"contacts":[{"title":"Сайт","url":"https:\u002F\u002Fwww.advantech.ru\u002F","value":"https:\u002F\u002Fwww.advantech.ru\u002F"}],"authorContacts":[{"title":"Сайт","url":"https:\u002F\u002Fwww.advantech.ru\u002F","value":"https:\u002F\u002Fwww.advantech.ru\u002F"}],"paymentDetails":{"paymentYandexMoney":null,"paymentPayPalMe":null,"paymentWebmoney":null},"id":"2013983","alias":"Advantech","fullname":"Advantech Россия","avatarUrl":"\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Favatars\u002F2a4\u002Fc21\u002Faa1\u002F2a4c21aa1c44ff8faeaeae213f4a8508.jpg","speciality":"Наша миссия — создание умной планеты."},"statistics":{"commentsCount":33,"favoritesCount":159,"readingCount":31492,"score":30,"votesCount":30},"hubs":[{"relatedData":null,"id":"22228","alias":"advantech","type":"corporative","title":"Блог компании Advantech IIoT","titleHtml":"Блог компании Advantech IIoT","isProfiled":false},{"relatedData":null,"id":"18816","alias":"industrial_control_system","type":"collective","title":"Промышленное программирование","titleHtml":"Промышленное программирование","isProfiled":true}],"flows":[{"id":"1","alias":"develop","title":"Разработка"}],"relatedData":null,"textHtml":"\u003Cdiv xmlns=\"http:\u002F\u002Fwww.w3.org\u002F1999\u002Fxhtml\"\u003E\u003Cdiv style=\"text-align:center;\"\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fnb\u002Ffv\u002Fom\u002Fnbfvom_zwqoyqg4e4bcxwl1ax7a.png\" data-width=\"400\"\u002F\u003E\u003C\u002Fdiv\u003E\u003Cbr\u002F\u003E\r\nВ предыдущей статье мы разбирали \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fadvantech\u002Fblog\u002F450234\u002F\"\u003Eпротокол Modbus\u003C\u002Fa\u003E, являющийся стандартом де-факто в промышленности для \u003Cabbr title=\"Machine to Machine\"\u003EM2M\u003C\u002Fabbr\u003E-взаимодействия. Разработанный в далеком 1979 году, он имеет ряд существенных недостатков, которые решает MQTT.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПротокол MQTT достаточно молод (стандартизирован только в 2016 году), но уже успел получить широкое распространение в промышленности и IoT. Он был специально разработан максимально компактным, для нестабильных интернет-каналов и маломощных устройств, и позволяет гарантированно доставлять сообщения в случае потери пакетов и обрывов связи.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nГлавные особенности протокола MQTT:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003E\u003Cb\u003EКомпактный и легковесный\u003C\u002Fb\u003E — минимальные накладные расходы на пересылку данных, для экономии трафика.\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Cb\u003EУстойчивость к потерям\u003C\u002Fb\u003E — гарантированная доставка в условиях нестабильных сетевых подключений.\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Cb\u003EАсинхронный\u003C\u002Fb\u003E — позволяет обслуживать большое количество устройств, и не зависит от сетевых задержек.\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Cb\u003EПоддержка QoS\u003C\u002Fb\u003E — возможность управлять приоритетом сообщений и гарантировать доставку сообщения адресату.\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Cb\u003EДинамическая конфигурация\u003C\u002Fb\u003E — не требует предварительно согласования полей и форматов данных, может конфигурироваться «на лету».\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Cb\u003EРаботает за NAT\u003C\u002Fb\u003E — клиенты могут находиться за NAT, только сервер (брокер) должен иметь реальный IP. Позволяет обойтись без VPN и пробрасывания портов.\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Cb\u003EУдобная адресация\u003C\u002Fb\u003E — поля данных имеют текстовые названия, понятные для человека. Не нужно запоминать цифровые адреса и битовые смещения.\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Ca name=\"habracut\"\u003E\u003C\u002Fa\u003E\u003Cbr\u002F\u003E\r\nВ статье мы сравним MQTT и Modbus, разберем структуру протокола, основные понятия, попробуем на примере поработать с облачным MQTT-брокером в условиях нестабильного интернет-подключения. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EИстория протокола MQTT\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nMQTT был разработан компанией IBM в 1999 году, и поначалу использовался внутри компании, для своих решений.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВ ноябре 2011 IBM совместно с компанией Eurotech объявили об участии в рабочей группе Eclipse M2M и передаче кода MQTT в проект Eclipse Paho.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВ 2013 году консорциум \u003Ca href=\"https:\u002F\u002Fru.wikipedia.org\u002Fwiki\u002FOASIS\"\u003EOASIS\u003C\u002Fa\u003E (Organization for the Advancement of Structured Information Standards) начинает процесс стандартизации протокола MQTT. До этого момента спецификация протокола была опубликована под бесплатной лицензией, и такие компании, как Eurotech (ранее известный как Arcom), уже используют протокол в своих продуктах.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВ октябре 2014 г. OASIS публикует первый официальный стандарт протокола MQTT.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВ 2016 г. протокол был стандартизирован Международной организацией по стандартизации ISO и получил номер ISO\u002FIEC 20922.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nС 2014 года интерес к протоколу начинает стремительно расти и, судя по графику Google Trends, на сегодняшний день превышает интерес к Modbus.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fia\u002F6q\u002Fcw\u002Fia6qcwyvn9p6yi_10xrdgkwbcqu.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cfont color=\"999999\"\u003EСравнительный график Google Trends\u003C\u002Ffont\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EОсновные понятия\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nMQTT имеет клиент-серверную архитектуру. Обмен сообщениями происходит через центральный сервер, называемый брокером. В обычных условиях клиенты не могут общаться напрямую друг с другом, и весь обмен данными происходит через брокера. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nКлиенты могут выступать в роли поставщиков данных (Publisher) и в роли получателей данных (Subscriber). В русском переводе эти термины часто переводят как издатель и подписчик, но, чтобы избежать путаницы, мы будем использовать только оригинальную терминологию. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cdiv style=\"text-align:center;\"\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fex\u002Fri\u002F7r\u002Fexri7rw8067vln4jiqq5ma9dine.png\" data-width=\"400\"\u002F\u003E\u003C\u002Fdiv\u003E\u003Cbr\u002F\u003E\r\n\u003Cfont color=\"999999\"\u003EВ протоколе MQTT клиенты обмениваются данными друг с другом, через центральный узел\u003C\u002Ffont\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nНа прикладном уровне протокол работает поверх TCP\u002FIP и может легко связывать удаленные объекты напрямую по интернету, без необходимости использования VPN-тоннелей. Достаточно, чтобы брокер имел реальный IP-адрес и все клиенты могли к нему подключиться. При этом, клиенты могут находится за NAT. Так как в протоколе MQTT подключение инициируют клиенты, пробрасывать порты для установки соединения не требуется, в то время как в Modbus\u002FTCP подключение инициирует сервер (master), что требует прямой сетевой доступности.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nСтандартный порт MQTT-брокера для входящих TCP-соединений — \u003Cb\u003E1883\u003C\u002Fb\u003E. При использовании защищенного SSL-подключения используется порт \u003Cb\u003E8883\u003C\u002Fb\u003E.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch4\u003EBroker\u003C\u002Fh4\u003E\u003Cbr\u002F\u003E\r\nБрокер — это центральный узел MQTT, обеспечивающий взаимодействие клиентов. Обмен данными между клиентами происходит только через брокера. В качестве брокера может выступать серверное ПО или контроллер. В его задачи входит получение данных от клиентов, обработка и сохранение данных, доставка данных клиентам, и контроль за доставкой сообщений.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch4\u003EPublisher\u002FSubscriber\u003C\u002Fh4\u003E\u003Cbr\u002F\u003E\r\nДля понимания разницы между Publisher и Subscriber разберем простой пример: датчик влажности измеряет влажность в помещении, и если она опустилась ниже определенного уровня, включается увлажнитель воздуха.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВ данном случае датчик влажности выступает в роли \u003Cb\u003EPublisher\u003C\u002Fb\u003E: его задача сводится только к публикации данных в сторону брокера. Увлажнитель воздуха выступает в роли \u003Cb\u003ESubscriber\u003C\u002Fb\u003E: он подписывается на обновления данных о влажности и получает от брокера актуальные данные, при этом увлажнитель может сам решать, в какой момент включать увлажнение. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВ этой схеме MQTT-клиенты, то есть датчик и увлажнитель, не знают о существовании друг друга, и не взаимодействуют напрямую. Брокер может получать данные из разных источников, проводить над ними манипуляции, например, рассчитывать среднее значение от нескольких датчиков, и уже обработанные данные возвращать подписчику.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fxc\u002Fpb\u002Ft8\u002Fxcpbt8th_jxzdzfglqwxt4wnpwo.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cfont color=\"9999999\"\u003EPublisher посылает данные брокеру, Subscriber подписывается на обновления этих данных\u003C\u002Ffont\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПри этом, асинхронность протокола MQTT предусматривает, что датчик и увлажнитель могут быть онлайн в разное время, терять пакеты, и быть недоступны. Брокер позаботится о том, чтобы сохранить в памяти последние данные, полученные от датчика, и обеспечить их доставку на увлажнитель. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch4\u003ETopic\u003C\u002Fh4\u003E\u003Cbr\u002F\u003E\r\nДля идентификации сущностей в MQTT используются топики, в русском переводе их еще называют каналами. Топики состоят из UTF8-символов, и имеют древовидную структуру, похожую на файловую систему в UNIX. Это удобный механизм, позволяющий называть сущности в человекопонятном виде.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПример топиков в MQTT\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"bash\"\u003E# Датчик температуры на кухне\nhome\u002Fkitchen\u002Ftemperature\n\n# Датчик температуры в спальне\nhome\u002Fsleeping-room\u002Ftemperature\n\n# Датчик освещенности на улице \nhome\u002Foutdoor\u002Flight\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E \u003Cbr\u002F\u003E\r\nТакой подход позволяет наглядно видеть, какие данные передаются, и удобно разрабатывать и отлаживать код, без необходимости запоминать цифровой адрес размещения данных, как это сделано в Modbus. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nТопики также предусматривают wildcard-синтаксис, хорошо знакомый тем, кто работал с файловой системой UNIX. Wildcard может быть одноуровневым и многоуровневым.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nОдноуровневый wildcard обозначается символом \"\u003Cb\u003E+\u003C\u002Fb\u003E\".\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nНапример, чтобы получить данные с температурных датчиков во всех помещениях в доме, подписчику нужно подписаться на такой топик:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003Ehome\u002F+\u002Ftemperature\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E \u003Cbr\u002F\u003E\r\nВ результате он подпишется на получение данных с таких датчиков:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003Ehome\u002Fkitchen\u002Ftemperature\nhome\u002Fsleeping-room\u002Ftemperature\nhome\u002Fliving-room\u002Ftemperature\nhome\u002Foutdoor\u002Ftemperature\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E \u003Cbr\u002F\u003E\r\nМногоуровневый wildcard обозначается символом \"\u003Cb\u003E#\u003C\u002Fb\u003E\". \u003Cbr\u002F\u003E\r\nПример получения данных со всех датчиков во всех комнатах в доме:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003Ehome\u002F#\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E \u003Cbr\u002F\u003E\r\nПодписка на такой топик позволит получать данные с таких датчиков:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003Ehome\u002Fkitchen\u002Ftemperature\nhome\u002Fkitchen\u002Fhumidity\nhome\u002Fkitchen\u002Flight\nhome\u002Fsleeping-room\u002Ftemperature\nhome\u002Fsleeping-room\u002Fhumidity\nhome\u002Fsleeping-room\u002Flight\n....\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E \u003Cbr\u002F\u003E\r\n\u003Ch3\u003EИдентификация клиентов\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\nДля контроля доступа в MQTT предусмотрена аутентификация клиентов, в отличие от протокола Modbus, который не имеет такой функции. Для контроля доступа используются такие поля:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cb\u003EClientId\u003C\u002Fb\u003E — (обязательное поле) уникальный идентификатор клиента. Должен быть уникальным для каждого клиента. Текущая версия стандарта MQTT 3.1.1 позволяет использовать пустое поле ClientId, если не требуется сохранение состояния подключения.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cb\u003EUsername\u003C\u002Fb\u003E — (опциональное поле) логин для аутентификации, в формате UTF-8. Может быть не уникальным. Например, группа клиентов может авторизовываться с одним и тем же логином\u002Fпаролем.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cb\u003EPassword\u003C\u002Fb\u003E — (опциональное поле) может посылаться только вместе с полем Username, при этом Username может передаваться без поля Password. Максимум 65535 байт. Важно знать, что имя и пароль передаются в открытом виде, поэтому, если данные передаются по публичным сетям, необходимо использовать SSL для шифрования подключения.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch3\u003EСтруктура пакета\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\nКак уже говорилось выше, в протоколе MQTT подключение всегда инициируют клиенты, вне зависимости от того, являются ли они получателями (Subscriber) или поставщиками (Publisher) данных. Разберем пакет с установкой соединения, перехваченный с помощью программы Wireshark.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fep\u002F0t\u002Fhv\u002Fep0thv6e3zsvyzgizw89gpxgytg.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cfont color=\"999999\"\u003EПакет с опцией MQTT, переданный по нешифрованному каналу\u003C\u002Ffont\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВ TCP заголовке видно, что пакет передан по порту 1883, то есть шифрование не используется, а значит в открытом виде доступны все данные, в том числе логин и пароль.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch4\u003EЗаголовок\u003C\u002Fh4\u003E\u003Cbr\u002F\u003E\r\n\u003Cb\u003EТип сообщения\u003C\u002Fb\u003E — Connect (команда 0x0001), установка соединения с брокером. Основные команды: Connect, Disconnect, Publish, Subscribe, Unsubscribe. Есть также команды подтверждения получения, keep alive, и т.д.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cb\u003EФлаг DUP \u003C\u002Fb\u003E — означает, что сообщение передается повторно, используется только в типах сообщений PUBLISH, SUBSCRIBE, UNSUBSCRIBE, PUBREL, для случаев, когда брокер не получил подтверждения получения предыдущего сообщения. \u003Cbr\u002F\u003E\r\n\u003Cb\u003EУровень QoS\u003C\u002Fb\u003E — флаг Quality of Service. Мы разберем эту тему подробнее дальше.\u003Cbr\u002F\u003E\r\n\u003Cb\u003ERetain\u003C\u002Fb\u003E — данные, опубликованные с флагом retain, сохраняются на брокере. При последующей подписке на этот топик, брокер сразу отправит сообщение с этим флагом. Используется только в сообщениях с типом Publish.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EИспользование на практике\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fv9\u002Fm9\u002F2k\u002Fv9m92kvqrkibu8zt9pfsdjkngg8.png\" data-width=\"100\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nТеперь, ознакомившись с теорией, попробуем поработать с MQTT на практике. Для этого будем использовать открытую программу \u003Ca href=\"https:\u002F\u002Fmosquitto.org\u002F\"\u003E Mosquitto\u003C\u002Fa\u003E, которая может работать как в режиме клиента, так и в режиме сервера (брокера). Работает на Windows, macOS, Linux. Программа очень удобна для отладки и изучения протокола MQTT, при этом также широко используется в промышленной эксплуатации. Мы будем использовать ее как клиент для отправки и получения данных с удаленного облачного брокера.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nМножество облачных провайдеров предоставляют услуги MQTT-брокера, например \u003Ca href=\"https:\u002F\u002Fazure.microsoft.com\u002Fen-us\u002Fservices\u002Fiot-hub\u002F\"\u003EMicrosoft Azure IoT Hub\u003C\u002Fa\u003E, \u003Ca href=\"https:\u002F\u002Faws.amazon.com\u002Fiot\u002F\"\u003EAmazon AWS IoT\u003C\u002Fa\u003E, и другие. В этом примере мы будем использовать сервис Cloudmqtt.com, так как у него самая простая регистрация, и бесплатного тарифа достаточно для обучения.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПосле регистрации, в личном кабинете доступны реквизиты для подключения к брокеру. Так как мы подключаемся к серверу через публичные сети интернета, разумно использовать SSL-порт, для шифрования трафика.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fgh\u002Frq\u002Ft5\u002Fghrqt5ady8x8twccmfrtngm-htu.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cfont color=\"999999\"\u003EРеквизиты доступа к MQTT-брокеру в личном кабинете облачного провайдера\u003C\u002Ffont\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nГибкость протокола MQTT позволяет клиенту передавать данные, заранее не определенные на брокере. То есть нет необходимости предварительно создавать нужные топики, в которые сможет записать данные Publisher. Используя данные, полученные из личного кабинета, попробуем вручную составить запрос для публикации данных в топик \u003Ci\u003Ehabr\u002Ftest\u002Frandom\u003C\u002Fi\u003E и чтения из него.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cb\u003Emosquitto_sub\u003C\u002Fb\u003E — утилита-клиент subscriber\u003Cbr\u002F\u003E\r\n\u003Cb\u003Emosquitto_pub\u003C\u002Fb\u003E — утилита-клиент publisher\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nДля начала подключимся к брокеру как subscriber, и подпишемся на получение данных из топика \u003Cbr\u002F\u003E\r\n\u003Ci\u003Ehabr\u002Ftest\u002Frandom\u003C\u002Fi\u003E.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003Emosquitto_sub -d --capath \u002Fetc\u002Fssl\u002Fcerts\u002F --url mqtts:\u002F\u002Fhwjspxxt:7oYugN7Fa5Aa@postman.cloudmqtt.com:27529\u002Fhabr\u002Ftest\u002Frandom\nClient mosq\u002FzEPZz0glUiR4aEipZA sending CONNECT\nClient mosq\u002FzEPZz0glUiR4aEipZA received CONNACK (0)\nClient mosq\u002FzEPZz0glUiR4aEipZA sending SUBSCRIBE (Mid: 1, Topic: habr\u002Ftest\u002Frandom, QoS: 0, Options: 0x00)\nClient mosq\u002FzEPZz0glUiR4aEipZA received SUBACK\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nВидно, что подключение прошло успешно, и мы подписались на топик \u003Cb\u003Ehabr\u002Ftest\u002Frandom\u003C\u002Fb\u003E, и сейчас ожидаем данных в данном топике от брокера.\u003Cbr\u002F\u003E\r\n\u003Cblockquote\u003EТак как используется SSL-подключение, для проверки сертификата необходимо указать путь, по которому программа будет искать корневые сертификаты шифрования. Так как у сервиса в нашем примере используется сертификат, выданный доверенным удостоверяющим центром, то мы указываем путь к системному хранилищу корневых сертификатов: \u003Ci\u003E\u003Cb\u003E--capath \u002Fetc\u002Fssl\u002Fcerts\u002F\u003C\u002Fb\u003E\u003C\u002Fi\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВ случае с самоподписанным сертификатом, необходимо указывать путь к нужному CA. Также важно учитывать разницу в формате URI для подключения по SSL — mqtt\u003Cb\u003Es\u003C\u002Fb\u003E:\u002F\u002F, и подключения без шифрования — mqtt:\u002F\u002F. В случае ошибки проверки сертификата программа завершается без сообщения об ошибке. Для более подробного вывода можно использовать ключ --debug\u003C\u002Fblockquote\u003E Теперь попробуем опубликовать данные в топик, не прерывая первую программу.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003Emosquitto_pub -d --capath \u002Fetc\u002Fssl\u002Fcerts\u002F  --url mqtt:\u002F\u002Fhwjspxxt:7oYugN7Fa5Aa@postman.cloudmqtt.com:27529\u002Fhabr\u002Ftest\u002Frandom -m \"Привет хабр!\"\nClient mosq\u002FsWjh9gf8DRASrRZjk6 sending CONNECT\nClient mosq\u002FsWjh9gf8DRASrRZjk6 received CONNACK (0)\nClient mosq\u002FsWjh9gf8DRASrRZjk6 sending PUBLISH (d0, q0, r0, m1, 'habr\u002Ftest\u002Frandom', ... (22 bytes))\nClient mosq\u002FsWjh9gf8DRASrRZjk6 sending DISCONNECT\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nВидно, что данные были успешно приняты сервером и опубликованы в нужный топик. Одновременно с этим, в первом окне, в котором запущена программа mosquitto_sub, мы видим, как сообщение было получено, при этом даже юникод работает, видно сообщение на руском языке.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003EClient mosq\u002FzEPZz0glUiR4aEipZA received PUBLISH (d0, q0, r0, m0, 'habr\u002Ftest\u002Frandom', ... (22 bytes))\nПривет хабр!\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EQoS и гарантия доставки\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nОднако пересылкой сообщения в реальном времени мало кого удивишь, ведь то же самое можно сделать даже банальной утилитой \u003Cb\u003Enc\u003C\u002Fb\u003E. Поэтому попробуем имитировать нестабильное соединение между подписчиком и отправителем. Представим, что оба клиента работают через GPRS, с огромной потерей пакетов, и даже успешная установка TCP-соединения происходит редко, при этом нужно, чтобы подписчик гарантированно получил сообщение отправителя. В данном случае на помощь приходят опции QoS.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПо умолчанию для сообщений установлен флаг \u003Cb\u003EQoS в значение 0\u003C\u002Fb\u003E, что значит «Fire and forget»: Publisher публикует сообщение на брокере, но при этом не требует, чтобы сообщение было гарантированно доставлено подписчику. Это подходит для данных, потеря которых не критична, например, для регулярных измерений влажности или температуры. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cb\u003EQoS 1: At least once – хотя бы один\u003C\u002Fb\u003E. Этот флаг означает, что пока Publisher не получит подтверждения доставки подписчику, данная публикация будет посылаться брокеру, и далее подписчику. Таким образом, подписчик должен получить данное сообщение как минимум один раз. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cb\u003EQoS 2: Exactly once – гарантированно один\u003C\u002Fb\u003E. Флаг QoS, обеспечивающий высшую гарантию доставки сообщений за счет использования дополнительных процедур подтверждения и завершения публикации (PUBREC, PUBREL, PUBCOMP). Применим для ситуаций, когда нужно исключить любые потери и дублирование данных от датчиков. Например, когда от полученного сообщения срабатывает сигнализация, вызов экстренных служб. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nДля симуляции плохой связи отключим оба клиента и попробуем отправить сообщение с наивысшим приоритетом QoS, а также добавим опцию Retain, чтобы отправленное сообщение сохранилось на брокере.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003Emosquitto_pub --retain --qos 2 -d --capath \u002Fetc\u002Fssl\u002Fcerts\u002F  --url mqtt:\u002F\u002Fhwjspxxt:7oYugN7Fa5Aa@postman.cloudmqtt.com:27529\u002Fhabr\u002Ftest\u002Frandom -m \"Очень важный привет!\" \nClient mosq\u002FXwhua3GAyyY9mMd05V sending CONNECT\nClient mosq\u002FXwhua3GAyyY9mMd05V received CONNACK (0)\nClient mosq\u002FXwhua3GAyyY9mMd05V sending PUBLISH (d0, q2, r1, m1, 'habr\u002Ftest\u002Frandom', ... (37 bytes))\nClient mosq\u002FXwhua3GAyyY9mMd05V received PUBREC (Mid: 1)\nClient mosq\u002FXwhua3GAyyY9mMd05V sending PUBREL (m1)\nClient mosq\u002FXwhua3GAyyY9mMd05V received PUBCOMP (Mid: 1, RC:0)\nClient mosq\u002FXwhua3GAyyY9mMd05V sending DISCONNECT\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nТеперь, спустя время, наш получатель наконец смог установить соединение с интернетом и подключился к брокеру:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003Emosquitto_sub  -d --capath \u002Fetc\u002Fssl\u002Fcerts\u002F -d --url mqtts:\u002F\u002Fhwjspxxt:7oYugN7Fa5Aa@postman.cloudmqtt.com:27529\u002Fhabr\u002Ftest\u002Frandom\nClient mosq\u002FVAzcLVMB1MiWhYxoJS sending CONNECT\nClient mosq\u002FVAzcLVMB1MiWhYxoJS received CONNACK (0)\nClient mosq\u002FVAzcLVMB1MiWhYxoJS sending SUBSCRIBE (Mid: 1, Topic: habr\u002Ftest\u002Frandom, QoS: 0, Options: 0x00)\nClient mosq\u002FVAzcLVMB1MiWhYxoJS received SUBACK\nSubscribed (mid: 1): 0\nClient mosq\u002Fr6UwPnDvx8aNInpPF6 received PUBLISH (d0, q0, r1, m0, 'habr\u002Ftest\u002Frandom', ... (37 bytes))\nОчень важный привет!\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EЗаключение\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nMQTT — современный продвинутый протокол, лишенный множества недостатков предшественников. Его гибкость позволяет добавлять клиентские устройства без настройки на брокере, что существенно экономит время. Порог вхождения для понимания и настройки протокола достаточно низкий, а наличие библиотек под множество языков программирования позволяет выбрать любой стек технологий для разработки. Гарантия доставки сообщений существенно отличает MQTT от его предшественников, и позволяет не тратить время на лишнюю разработку собственных механизмов контроля целостности на сетевом уровне.\u003C\u002Fdiv\u003E","tags":[{"titleHtml":"mqqt"},{"titleHtml":"m2m"},{"titleHtml":"QoS"}],"metadata":{"stylesUrls":[],"scriptUrls":[],"shareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F452904\u002F5601805905110c722e8fa2c74587e794\u002F","shareImageWidth":1200,"shareImageHeight":630,"vkShareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F452904\u002F5601805905110c722e8fa2c74587e794\u002F?format=vk","schemaJsonLd":"{\"@context\":\"http:\\\u002F\\\u002Fschema.org\",\"@type\":\"Article\",\"mainEntityOfPage\":{\"@type\":\"WebPage\",\"@id\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fru\\\u002Fcompany\\\u002Fadvantech\\\u002Fblog\\\u002F452904\\\u002F\"},\"headline\":\"Как общаются машины — протокол MQTT\",\"datePublished\":\"2019-05-24T09:21:49+03:00\",\"dateModified\":\"2019-06-06T16:01:32+03:00\",\"author\":{\"@type\":\"Person\",\"name\":\"Advantech Россия\"},\"publisher\":{\"@type\":\"Organization\",\"name\":\"Habr\",\"logo\":{\"@type\":\"ImageObject\",\"url\":\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fa_\\\u002Flk\\\u002F9m\\\u002Fa_lk9mjkccjox-zccjrpfolmkmq.png\"}},\"description\":\"В предыдущей статье мы разбирали протокол Modbus, являющийся стандартом де-факто в промышленности для M2M-взаимодействия. Разработанный в далеком 1979 году, он...\",\"url\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fru\\\u002Fcompany\\\u002Fadvantech\\\u002Fblog\\\u002F452904\\\u002F#post-content-body\",\"about\":[\"c_advantech\",\"h_industrial_control_system\",\"f_develop\"],\"image\":[\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fnb\\\u002Ffv\\\u002Fom\\\u002Fnbfvom_zwqoyqg4e4bcxwl1ax7a.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fia\\\u002F6q\\\u002Fcw\\\u002Fia6qcwyvn9p6yi_10xrdgkwbcqu.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fex\\\u002Fri\\\u002F7r\\\u002Fexri7rw8067vln4jiqq5ma9dine.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fxc\\\u002Fpb\\\u002Ft8\\\u002Fxcpbt8th_jxzdzfglqwxt4wnpwo.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fep\\\u002F0t\\\u002Fhv\\\u002Fep0thv6e3zsvyzgizw89gpxgytg.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fv9\\\u002Fm9\\\u002F2k\\\u002Fv9m92kvqrkibu8zt9pfsdjkngg8.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fgh\\\u002Frq\\\u002Ft5\\\u002Fghrqt5ady8x8twccmfrtngm-htu.png\"]}","metaDescription":"В предыдущей статье мы разбирали протокол Modbus, являющийся стандартом де-факто в промышленности для M2M-взаимодействия. Разработанный в далеком 1979 году, он имеет ряд существенных недостатков,...","mainImageUrl":null,"amp":false},"polls":[],"commentsEnabled":true,"rulesRemindEnabled":false,"votesEnabled":true,"status":"published","plannedPublishTime":null,"checked":null,"isEditorial":false}},"articlesIds":{},"isLoading":false,"pagesCount":{},"route":{},"reasonsList":null,"view":"cards","lastVisitedRoute":{},"ssrCommentsArticleIds":[""],"karma":{}},"authorContribution":{"authors":{}},"betaTest":{"currentAnnouncement":null,"announcements":{},"announcementCards":null,"announcementComments":{},"announcementCommentThreads":{},"announcementCommentingStatuses":{},"archivedList":[]},"authorStatistics":{"articleRefs":{},"articleIds":{},"pagesCount":{},"route":{},"viewsCount":[],"maxStatsCount":{}},"career":{"seoLandings":[],"hubs":""},"comments":{"articleComments":{},"searchCommentsResults":null,"previewComment":null,"pagesCount":null,"commentAccess":{},"scrollParents":{},"pageArticleComments":{"lastViewedComment":0,"postId":null,"lastCommentTimestamp":"","moderated":[],"moderatedIds":[],"commentRoute":""}},"companies":{"companyRefs":{"advantech":{"alias":"advantech","imageUrl":"\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fcompany\u002Fcf0\u002Fd28\u002Fc86\u002Fcf0d28c8613281a420516e3d1bf66e10.jpg","titleHtml":"Advantech IIoT","descriptionHtml":"Наша миссия — создание умной планеты.","relatedData":null,"statistics":{"postsCount":32,"newsCount":3,"vacanciesCount":0,"employeesCount":5,"careerRating":null,"subscribersCount":106,"rating":39.29,"invest":null},"foundationDate":{"year":"1983","month":null,"day":null},"location":{"city":{"id":"447159","title":"Москва"},"region":{"id":"1885","title":"Москва и Московская обл."},"country":{"id":"168","title":"Россия"}},"siteUrl":"https:\u002F\u002Fwww.advantech.ru\u002F","staffNumber":"5 001–10 000 человек","registrationDate":"2019-03-29T09:07:00+00:00","representativeUser":null,"contacts":[{"title":"Сайт","url":"https:\u002F\u002Fwww.advantech.ru\u002F"},{"title":"Facebook","url":"https:\u002F\u002Ffacebook.com\u002Fadvantech.ru"},{"title":"ВКонтакте","url":"https:\u002F\u002Fvk.com\u002Fadvantech.russia.news"}],"settings":{"analyticsSettings":[],"branding":null,"status":"expired"},"metadata":{"titleHtml":"Advantech IIoT, Москва - Наша миссия — создание умной планеты. с 1983 год","title":"Advantech IIoT, Москва - Наша миссия — создание умной планеты. с 1983 год","keywords":["Искусственный интеллект"],"descriptionHtml":"32 статьи от авторов компании Advantech IIoT","description":"32 статьи от авторов компании Advantech IIoT"},"aDeskSettings":null,"careerAlias":null,"maxCustomTrackerLinks":0}},"companyIds":{},"companyTopIds":{},"pagesCount":{},"companyProfiles":{},"companiesCategories":[],"companiesCategoriesTotalCount":0,"companiesWidgets":{},"companiesWorkers":{},"companiesFans":{},"route":{},"isLoading":false,"companyWorkersLoading":false,"companyFansLoading":false,"vacancies":{}},"companiesContribution":{"hubs":{},"flows":{},"companyRefs":{}},"companyHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"conversation":{"messages":[],"respondent":null,"isLoadMore":false},"conversations":{"conversations":[],"unreadCount":0,"pagesCount":0,"isLoadMore":false},"desktopState":{"desktopFl":null,"desktopHl":null,"isChecked":false,"isLoginDemanded":false},"dfp":{"slotsDict":{}},"docs":{"menu":{},"articles":{},"mainMenu":[],"loading":{"main":false,"dropdown":false,"article":false}},"feature":{"isProbablyVisible":"true"},"flows":{"flows":[{"alias":"develop","id":1,"route":{"name":"FLOW_PAGE","params":{"flowName":"develop"}}},{"alias":"admin","id":6,"route":{"name":"FLOW_PAGE","params":{"flowName":"admin"}}},{"alias":"design","id":2,"route":{"name":"FLOW_PAGE","params":{"flowName":"design"}}},{"alias":"management","id":3,"route":{"name":"FLOW_PAGE","params":{"flowName":"management"}}},{"alias":"marketing","id":4,"route":{"name":"FLOW_PAGE","params":{"flowName":"marketing"}}},{"alias":"popsci","id":7,"route":{"name":"FLOW_PAGE","params":{"flowName":"popsci"}}}]},"global":{"isPwa":false,"device":"desktop","isHabrCom":true},"hubs":{"hubRefs":{},"hubIds":{},"pagesCount":{},"isLoading":false,"route":{}},"hubsBlock":{"hubRefs":{},"hubIds":{}},"i18n":{"fl":"ru","hl":"ru"},"info":{"infoPage":{},"isLoading":true},"location":{"urlStruct":{"protocol":null,"slashes":null,"auth":null,"host":null,"port":null,"hostname":null,"hash":null,"search":null,"query":{},"pathname":null,"path":null,"href":""},"searchQuery":null},"me":{"user":null,"ppgDemanded":false,"karmaResetInfo":{"canReincarnate":null,"wasReincarnated":null,"currentScore":null},"notes":null},"mostReadingList":{"mostReadingListIds":[],"mostReadingListRefs":null,"promoPost":null},"pinnedPost":{"pinnedPost":null},"ppa":{"articles":{},"card":null,"transactions":null,"totalTransactions":null,"isAccessible":null},"projectsBlocks":{"activeBlocks":{}},"pullRefresh":{"shouldRefresh":false},"sandbox":{"articleIds":[],"articleRefs":{},"pagesCount":null,"route":{},"lastVisitedRoute":{},"isLoading":false},"settingsOther":{"inputs":{"uiLang":{"errors":[],"ref":null,"value":""},"articlesLangEnglish":{"errors":[],"ref":null,"value":false},"articlesLangRussian":{"errors":[],"ref":null,"value":false},"agreement":{"errors":[],"ref":null,"value":false},"email":{"errors":[],"ref":null,"value":true},"digest":{"errors":[],"ref":null,"value":true}}},"similarList":{"similarListIds":[],"similarListRefs":null},"ssr":{"error":null,"isDataLoaded":false,"isDataLoading":false,"isHydrationFailed":false,"isServer":false},"userHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"userInvites":{"availableInvites":0,"usedInvitesIds":[],"usedInvitesRefs":{},"usedInvitesPagesCount":0,"unusedInvitesIds":[],"unusedInvitesRefs":{},"unusedInvitesPagesCount":0},"users":{"authorRefs":{},"authorIds":{},"pagesCount":{},"authorProfiles":{},"userHubs":{},"userInvitations":{},"authorFollowers":{},"authorFollowed":{},"karmaStats":[],"statistics":null,"isLoading":false,"authorFollowersLoading":false,"authorFollowedLoading":false,"userHubsLoading":false,"userInvitationsLoading":false,"route":{}},"viewport":{"prevScrollY":{},"scrollY":0,"width":0},"tracker":{"items":{},"pagesCache":{},"markedViewedSilently":{},"markedRead":{},"unreadCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null},"unviewedCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null}}};(function(){var s;(s=document.currentScript||document.scripts[document.scripts.length-1]).parentNode.removeChild(s);}());</script>
+<script src="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" defer></script><script src="https://assets.habr.com/habr-web/js/app.c0af73e7.js" defer></script>
+
+
+
+    <script>
+      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+        (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+        m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+      })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+    </script>
+  
+  <script type="text/javascript" >
+    (function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+    m[i].l=1*new Date();k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})
+    (window, document, "script", "https://mc.yandex.ru/metrika/tag.js", "ym");
+
+    ym(24049213, "init", {
+      defer:true,
+      trackLinks:true,
+      accurateTrackBounce:true,
+      webvisor:false,
+    });
+  </script>
+  <noscript>
+    <div>
+      <img src="https://mc.yandex.ru/watch/24049213" style="position:absolute; left:-9999px;" alt="" />
+    </div>
+  </noscript>
+  
+    <script type="text/javascript">
+      window.addEventListener('load', function () {
+        setTimeout(() => {
+          const img = new Image();
+          img.src = 'https://vk.com/rtrg?p=VK-RTRG-421343-57vKE';
+        }, 0);
+      });
+    </script>
+  
+</body>
+</html>

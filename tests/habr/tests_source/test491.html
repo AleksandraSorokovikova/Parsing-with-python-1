@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="ru" data-vue-meta="%7B%22lang%22:%7B%22ssr%22:%22ru%22%7D%7D">
+<head >
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
+  <title>Как я боролся с Shared Element Transition и написал свою первую opensource библиотeку / Хабр</title>
+  <style>
+    /* cyrillic-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSxf6TF0.woff2) format('woff2');
+      unicode-range: U+0460-052F, U+1C80-1C88, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+    }
+
+    /* cyrillic */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveQhf6TF0.woff2) format('woff2');
+      unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+    }
+
+    /* latin-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSBf6TF0.woff2) format('woff2');
+      unicode-range: U+0100-024F, U+0259, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20CF, U+2113, U+2C60-2C7F, U+A720-A7FF;
+    }
+
+    /* latin */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveRhf6.woff2) format('woff2');
+      unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+    }
+  </style>
+  <link rel="preload" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" as="script"><link rel="preload" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/app.c0af73e7.js" as="script">
+  <link rel="stylesheet" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css"><link rel="stylesheet" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css">
+  <script>window.i18nFetch = new Promise((res, rej) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open('GET', '/js/i18n/ru-compiled.85eb77f0b17c8235e7b64b9f81ea5ec2.json');
+          xhr.responseType = 'json';
+          xhr.onload = function(e) {
+            if (this.status === 200) {
+              res({ru: xhr.response});
+            } else {
+              rej(e);
+            }
+          };
+          xhr.send();
+        });</script>
+  
+  <script data-vue-meta="ssr" src="/js/ads.js" onload="window['zhY4i4nJ9K'] = true" data-vmid="checkad"></script><script data-vue-meta="ssr" type="application/ld+json" data-vmid="ldjson-schema">{"@context":"http:\/\/schema.org","@type":"Article","mainEntityOfPage":{"@type":"WebPage","@id":"https:\/\/habr.com\/ru\/post\/451116\/"},"headline":"Как я боролся с Shared Element Transition и написал свою первую opensource библиотeку","datePublished":"2019-05-09T14:29:38+03:00","dateModified":"2019-05-09T14:29:38+03:00","author":{"@type":"Person","name":"KirillGerasimov"},"publisher":{"@type":"Organization","name":"Habr","logo":{"@type":"ImageObject","url":"https:\/\/habrastorage.org\/webt\/a_\/lk\/9m\/a_lk9mjkccjox-zccjrpfolmkmq.png"}},"description":"Нет повести печальнее на свете,  чем повесть о ViewPager&rsquo;e и  SET&rsquo;e    Хочется предупредить, что автор ‒ новичок андроид, поэтому статья содержит столько техниче...","url":"https:\/\/habr.com\/ru\/post\/451116\/#post-content-body","about":["h_android_dev","f_develop"],"image":["https:\/\/habrastorage.org\/webt\/xy\/9_\/-m\/xy9_-mwralsvfgpectslixhktbw.jpeg","https:\/\/habrastorage.org\/webt\/7l\/qu\/r_\/7lqur_jrf31n12aqmqefruovwbo.png","https:\/\/habrastorage.org\/webt\/tu\/qa\/ss\/tuqasspx-ir0-tuk-fo4qk3m9fa.jpeg","https:\/\/habrastorage.org\/webt\/kc\/cz\/vy\/kcczvylf6a4kekytbyrtbyzk7w4.gif","https:\/\/habrastorage.org\/webt\/lo\/p2\/3h\/lop23hzo-o-cglifsb1aljyey-g.gif","https:\/\/habrastorage.org\/webt\/qe\/38\/ac\/qe38acszfutvrpyu2cru-pbwjwq.gif"]}</script>
+  <script src="//www.googletagservices.com/tag/js/gpt.js" async></script>
+  <style>.grecaptcha-badge{visibility: hidden;}</style>
+  <meta name="habr-version" content="2.49.0">
+  
+  <meta data-vue-meta="ssr" property="fb:app_id" content="444736788986613"><meta data-vue-meta="ssr" property="fb:pages" content="472597926099084"><meta data-vue-meta="ssr" name="twitter:card" content="summary_large_image"><meta data-vue-meta="ssr" name="twitter:site" content="@habr_eng"><meta data-vue-meta="ssr" property="og:title" content="Как я боролся с Shared Element Transition и написал свою первую opensource библиотeку" data-vmid="og:title"><meta data-vue-meta="ssr" name="twitter:title" content="Как я боролся с Shared Element Transition и написал свою первую opensource библиотeку" data-vmid="twitter:title"><meta data-vue-meta="ssr" name="aiturec:title" content="Как я боролся с Shared Element Transition и написал свою первую opensource библиотeку" data-vmid="aiturec:title"><meta data-vue-meta="ssr" name="description" content="Нет повести печальнее на свете, 
+чем повесть о ViewPager’e и  SET’e
+
+ 
+Хочется предупредить, что автор ‒ новичок андроид, поэтому статья содержит столько технических неточностей, что вас, скорее,..." data-vmid="description"><meta data-vue-meta="ssr" itemprop="description" content="Нет повести печальнее на свете, 
+чем повесть о ViewPager’e и  SET’e
+
+ 
+Хочется предупредить, что автор ‒ новичок андроид, поэтому статья содержит столько технических неточностей, что вас, скорее,..." data-vmid="description:itemprop"><meta data-vue-meta="ssr" property="og:description" content="Нет повести печальнее на свете, 
+чем повесть о ViewPager’e и  SET’e
+
+ 
+Хочется предупредить, что автор ‒ новичок андроид, поэтому статья содержит столько технических неточностей, что вас, скорее,..." data-vmid="og:description"><meta data-vue-meta="ssr" name="twitter:description" content="Нет повести печальнее на свете, 
+чем повесть о ViewPager’e и  SET’e
+
+ 
+Хочется предупредить, что автор ‒ новичок андроид, поэтому статья содержит столько технических неточностей, что вас, скорее,..." data-vmid="twitter:description"><meta data-vue-meta="ssr" property="aiturec:description" content="Нет повести печальнее на свете, 
+чем повесть о ViewPager’e и  SET’e
+
+ 
+Хочется предупредить, что автор ‒ новичок андроид, поэтому статья содержит столько технических неточностей, что вас, скорее,..." data-vmid="aiturec:description"><meta data-vue-meta="ssr" itemprop="image" content="https://habr.com/share/publication/451116/2fdf83c3649dd1aedcdb77cef6708a91/" data-vmid="image:itemprop"><meta data-vue-meta="ssr" property="og:image" content="https://habr.com/share/publication/451116/2fdf83c3649dd1aedcdb77cef6708a91/" data-vmid="og:image"><meta data-vue-meta="ssr" property="aiturec:image" content="https://habr.com/share/publication/451116/2fdf83c3649dd1aedcdb77cef6708a91/" data-vmid="aiturec:image"><meta data-vue-meta="ssr" name="twitter:image" content="https://habr.com/share/publication/451116/2fdf83c3649dd1aedcdb77cef6708a91/" data-vmid="twitter:image"><meta data-vue-meta="ssr" property="vk:image" content="https://habr.com/share/publication/451116/2fdf83c3649dd1aedcdb77cef6708a91/" data-vmid="vk:image"><meta data-vue-meta="ssr" property="aiturec:item_id" content="451116" data-vmid="aiturec:item_id"><meta data-vue-meta="ssr" property="aiturec:datetime" content="2019-05-09T11:29:38.000Z" data-vmid="aiturec:datetime"><meta data-vue-meta="ssr" property="og:type" content="article" data-vmid="og:type"><meta data-vue-meta="ssr" property="og:locale" content="ru_RU" data-vmid="og:locale"><meta data-vue-meta="ssr" property="og:image:width" content="1200" data-vmid="og:image:width"><meta data-vue-meta="ssr" property="og:image:height" content="630" data-vmid="og:image:height">
+  <link data-vue-meta="ssr" href="https://habr.com/ru/rss/post/451116/?fl=ru" type="application/rss+xml" title="" rel="alternate" name="rss"><link data-vue-meta="ssr" href="https://habr.com/ru/post/451116/" rel="canonical" data-vmid="canonical"><link data-vue-meta="ssr" data-vmid="hreflang"><link data-vue-meta="ssr" image_src="image" href="https://habr.com/share/publication/451116/2fdf83c3649dd1aedcdb77cef6708a91/" data-vmid="image:href">
+  <meta name="apple-mobile-web-app-status-bar-style" content="#303b44">
+  <meta name="msapplication-TileColor" content="#629FBC">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="16x16"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-16.png"
+  >
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="32x32"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-32.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="76x76"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-76.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="120x120"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="152x152"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-152.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="180x180"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-180.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="256x256"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-256.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1136x640.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2436x1125.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1792x828.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_828x1792.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1334x750.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2208x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1125x2436.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2208.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2732x2048.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2688x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2224x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_750x1334.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x2732.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2388x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2224.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_640x1136.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2388.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x1536.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1536x2048.png"
+  >
+  <link
+    rel="mask-icon"
+    color="#77a2b6"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.svg"
+  >
+  <link
+    crossorigin="use-credentials"
+    href="/manifest.webmanifest"
+    rel="manifest"
+  >
+</head>
+<body>
+
+
+<div id="app" data-server-rendered="true" data-async-called="true"><div class="tm-layout__wrapper"><!----> <div></div> <!----> <header class="tm-header"><div class="tm-page-width"><div class="tm-header__container"><!----> <span class="tm-header__logo-wrap"><a href="/ru/" class="tm-header__logo tm-header__logo_ru"><svg height="16" width="16" class="tm-svg-img tm-header__icon"><title>Хабр</title> <use xlink:href="/img/habr-logo-ru.svg#logo"></use></svg></a> <span class="tm-header__beta-sign" style="display:none;">β</span></span> <div class="tm-dropdown tm-header__projects"><div class="tm-dropdown__head"><button class="tm-header__dropdown-toggle"><svg height="16" width="16" class="tm-svg-img tm-header__icon tm-header__icon_dropdown"><title>Открыть список</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#arrow-down"></use></svg></button></div> <!----></div> <a href="/ru/sandbox/start/" class="tm-header__become-author-btn">
+            Как стать автором
+          </a> <div class="tm-feature tm-header__feature tm-feature_variant-inline"><!----></div> <!----> <!----></div></div></header> <div class="tm-layout"><div class="tm-page-progress-bar"></div> <div data-menu-sticky="true" class="tm-base-layout__header tm-base-layout__header_is-sticky"><div class="tm-page-width"><div class="tm-base-layout__header-wrapper"><div class="tm-main-menu"><div class="tm-main-menu__section"><nav class="tm-main-menu__section-content"><!----> <a href="/ru/all/" class="tm-main-menu__item">
+        Все потоки
+      </a> <a href="/ru/flows/develop/" class="tm-main-menu__item">
+          Разработка
+        </a><a href="/ru/flows/admin/" class="tm-main-menu__item">
+          Администрирование
+        </a><a href="/ru/flows/design/" class="tm-main-menu__item">
+          Дизайн
+        </a><a href="/ru/flows/management/" class="tm-main-menu__item">
+          Менеджмент
+        </a><a href="/ru/flows/marketing/" class="tm-main-menu__item">
+          Маркетинг
+        </a><a href="/ru/flows/popsci/" class="tm-main-menu__item">
+          Научпоп
+        </a></nav></div></div> <div class="tm-header-user-menu tm-base-layout__user-menu"><a href="/ru/search/" class="tm-header-user-menu__item tm-header-user-menu__search"><svg height="24" width="24" class="tm-svg-img tm-header-user-menu__icon tm-header-user-menu__icon_search tm-header-user-menu__icon_dark"><title>Поиск</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#search"></use></svg></a> <!----> <!----> <!----> <div class="tm-header-user-menu__item tm-header-user-menu__user_desktop"><div class="tm-dropdown"><div class="tm-dropdown__head"><svg height="24" width="24" data-test-id="menu-toggle-guest" class="tm-svg-img tm-header-user-menu__icon"><title>Профиль</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#header-user"></use></svg> <!----></div> <!----></div> <!----></div> <!----></div></div></div></div> <!----> <div class="tm-page-width"></div> <main class="tm-layout__container"><div hl="ru" data-async-called="true" class="tm-page"><div class="tm-page-width"><!----> <div class="tm-page__wrapper"><div class="tm-page__main tm-page__main_has-sidebar"><div class="pull-down"><div class="pull-down__header" style="height:0px;"><div class="pull-down__content" style="bottom:10px;"><svg height="24" width="24" class="tm-svg-img pull-down__arrow"><title>Обновить</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#pull-arrow"></use></svg></div></div> <div class="tm-article-presenter"> <div class="tm-article-presenter__body"><div class="tm-misprint-area"><div class="tm-misprint-area__wrapper"><article class="tm-article-presenter__content tm-article-presenter__content_narrow"><div class="tm-article-presenter__header"> <div class="tm-article-snippet tm-article-presenter__snippet"><div class="tm-article-snippet__meta-container"><div class="tm-article-snippet__meta"><span class="tm-user-info tm-article-snippet__author"><a href="/ru/users/KirillGerasimov/" title="KirillGerasimov" class="tm-user-info__userpic"><div class="tm-entity-image"><svg height="24" width="24" class="tm-svg-img tm-image-placeholder tm-image-placeholder_blue"><!----> <use xlink:href="/img/megazord-v24.ce74655c.svg#placeholder-user"></use></svg></div></a> <span class="tm-user-info__user"><a href="/ru/users/KirillGerasimov/" class="tm-user-info__username">
+      KirillGerasimov
+    </a> </span></span> <span class="tm-article-snippet__datetime-published"><time datetime="2019-05-09T11:29:38.000Z" title="2019-05-09, 14:29">9  мая  2019 в 14:29</time></span></div> <!----></div> <h1 lang="ru" class="tm-article-snippet__title tm-article-snippet__title_h1"><span>Как я боролся с Shared Element Transition и написал свою первую opensource библиотeку</span></h1> <div class="tm-article-snippet__hubs"><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/android_dev/" class="tm-article-snippet__hubs-item-link"><span>Разработка под Android</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span></div> <div class="tm-article-snippet__labels"><div class="tm-article-snippet__label"><span>
+        Из песочницы
+      </span></div></div> <!----> <!----></div></div> <!----> <div data-gallery-root="" lang="ru" class="tm-article-body"><div id="post-content-body" class="article-formatted-body article-formatted-body_version-1"><div xmlns="http://www.w3.org/1999/xhtml"><p><font color="#555555"><i>Нет повести печальнее на свете, <br/>
+чем повесть о <abbr title="книжка, которая позволяет листать экраны приложения влево и вправо свайпами">ViewPager’e</abbr> и <abbr title="Shared Element Transition - перемещение элементов между экранами на андроиде"> SET’e</abbr></i></font><br/>
+</p><br/>
+<div style="text-align:center;"><img title="Картинка для привлечения внимания. О том как трудно в opensource в первый раз или о том куда вас может завести бекенд. На фото не я" src="https://habrastorage.org/r/w780q1/webt/xy/9_/-m/xy9_-mwralsvfgpectslixhktbw.jpeg" data-src="https://habrastorage.org/webt/xy/9_/-m/xy9_-mwralsvfgpectslixhktbw.jpeg" data-blurred="true"/></div> <br/>
+<p>Хочется предупредить, что автор ‒ новичок андроид, поэтому статья содержит столько технических неточностей, что вас, скорее, нужно предупредить о том, что в статье могут встретиться технически достоверные утверждения.</p><br/>
+<h2>Куда приводит бекенд</h2><br/>
+<p>Всю жизнь я пилил бекенд. Начало 2019 года, за плечами уже один очень амбициозный, но недоделанный проект. Бесплодная поездка в Цюрих на собеседование в одну поисковую компанию. Зима, грязь, настроение никакое. Сил и желания тянуть проект дальше нету.</p><br/>
+<p>Хотелось навсегда забыть этот страшный бекенд. К счастью, судьба подкинула мне идею – это было мобильное приложение. Основной его фишкой должно было стать нестандартное использование камеры. Работа закипела. Прошло немного времени, и вот прототип готов. Релиз проекта близился и все было хорошо и стройно, пока я не решил сделать пользователю “<em>удобно</em>”. </p><a name="habracut"></a><br/>
+<h2>ViewPager и Shared Element Transition. Ищем пути примирения</h2><br/>
+<p>Никто не хочет нажимать на мелкие кнопки меню в 2019, все направо и налево хотят свайпать экраны. Сказано – сделано, сделано – сломано. Так на моем проекте появился первый <abbr title="книжка, которая позволяет листать экраны приложения влево и вправо свайпами"><code>ViewPager</code></abbr> (я расшифровал некоторые термины для таких же бекендщиков как я – просто подведите курсор). А <abbr title="технология для перемещения элементов интерфейса между экранами на андроиде">Shared Element Transition</abbr> (далее SET или transition) – сигнатурный элемент <abbr title="словосочетание, которое нужно почаще вставлять, если вы пишете статью про андроид разработку">Material Design</abbr>, наотрез отказался работать c <code>ViewPager</code>, оставив меня перед выбором: либо свайпы, либо красивые transition-анимации между экранами. Я не хотел отказываться ни от того, ни от другого. Так начались мои поиски.</p><br/>
+<p>Часы изучения: десятки тем на форумах и вопросов на StackOverflow без ответа. Что бы я ни открывал, мне предлагали совершить <a href="https://android-developers.googleblog.com/2018/02/continuous-shared-element-transitions.html">transition из <abbr title="Аналог ListView – список, отображающий несколько других элементов на экране">RecyclerView</abbr> во ViewPager</a> или “приложить подорожник <code>Fragment.postponeEnterTransition()</code>”.<br/>
+<br/>
+</p><br/>
+<div style="text-align:center;"><img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/7l/qu/r_/7lqur_jrf31n12aqmqefruovwbo.png"/></div><br/>
+<p>Народные средства не помогли, и я решил заняться примирением <code>ViewPager</code> и <code>Shared Element Transition</code> самостоятельно.</p><br/>
+<h2>ViewPager: Первая кровь</h2><br/>
+<p>Я начал размышлять: “Проблема появляется в тот момент, когда пользователь переходит с одной страницы на другую...”. И тут меня осенило: “У тебя не будет проблем с <em>SET</em> во время смены страницы, если не менять страницы”.</p><br/>
+<div style="text-align:center;"><img src="https://habrastorage.org/r/w780q1/webt/tu/qa/ss/tuqasspx-ir0-tuk-fo4qk3m9fa.jpeg" data-src="https://habrastorage.org/webt/tu/qa/ss/tuqasspx-ir0-tuk-fo4qk3m9fa.jpeg" data-blurred="true"/></div><br/>
+<p>Мы можем делать <em>transition</em> на одной и той же странице, а потом просто подменять в <code>ViewPager</code> текущую страницу на целевую. </p><br/>
+<p>Для начала создадим <abbr title="логически законченный элемент, инкапсулирующий в себе представление и логику для дальнейшего использования в интерфейсе. В данной статье - просто содержимое экрана приложения">фрагменты</abbr>, с которыми будем работать.</p><br/>
+<pre><code class="java">SmallPictureFragment small_picture_fragment = new SmallPictureFragment();
+BigPictureFragment big_picture_fragment = new BigPictureFragment();</code></pre><br/>
+<p>Попробуем поменять фрагмент в текущей странице на что-то еще.</p><br/>
+<pre><code class="java">FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
+
+// берем View в котором лежит текущий фрагмент
+int fragmentContId = previousFragment.getView().getParent().getId(); 
+
+// и меняем содержимое этого контейнера на следующий фрагмент
+fragmentTransaction.replace(fragmentContId, nextFragment); 
+fragmentTransaction.commit();</code></pre><br/>
+<p>Запускаем приложение и… плавно переходим на пустой экран. В чем причина?</p><br/>
+<p>Оказывается, контейнером каждой из страниц является сам <code>ViewPager</code>, без всяких посредников вида <code>Page1Container</code>, <code>Page2Container</code>. Поэтому просто так поменять одну страницу на другую не получится, заменится весь <code>pager</code>. </p><br/>
+<p>Хорошо, чтобы изменять контент каждой страницы в отдельности, создаем несколько фрагментов-контейнеров для каждой страницы. </p><br/>
+<pre><code class="java">RootSmallPictureFragment root_small_pic_fragment = new RootSmallPictureFragment();
+RootBigPictureFragment root_big_pic_fragment = new RootBigPictureFragment();</code></pre><br/>
+<p>Что-то опять не заводится.</p><br/>
+<blockquote>java.lang.IllegalStateException: Can't change container ID of fragment BigPictureFragment{...}: was 2131165289 now 2131165290</blockquote><p>Мы не можем прицепить фрагмент второй страницы (<code>BigPictureFragment</code>) к первой, потому что он уже прицеплен к контейнеру второй страницы.</p><br/>
+<p>Стиснув зубы добавляем еще фрагментов-дублеров.</p><br/>
+<pre><code class="plaintext">SmallPictureFragment small_picture_fragment_fake = new SmallPictureFragment();
+BigPictureFragment big_picture_fragment_fake = new BigPictureFragment();</code></pre><br/>
+<p><strong>Заработало!</strong> Код transition, который я когда-то скопировал с просторов GitHub, уже содержал анимации <em>fade in</em> и <em>fade out</em>. Поэтому перед <em>transition</em> все статические элементы с первого фрагмента исчезали, потом перемещались снимки, и только затем появлялись элементы второй страницы. Для пользователя это выглядит как настоящее перемещение между страницами.</p><br/>
+<p>Все анимации прошли, но есть одна проблема. Пользователь до сих пор на первой странице, а должен быть на второй. </p><br/>
+<p>Чтобы это исправить мы аккуратно подменяем видимую страницу <code>ViewPager</code> на вторую. А потом восстанавливаем содержимое первой страницы в начальное состояние.</p><br/>
+<pre><code class="java">    handler.postDelayed(
+                   () -> {
+
+                       // Аккуратно меняем отображаемую страницу на нужную
+                       activity.viewPager.setCurrentItem(nextPage, false);
+                       FragmentTransaction transaction = fragmentManager.beginTransaction();
+
+                       // Восстанавливаем предыдущий фрагмент. 
+                       // Он содержит контент другой страницы после 
+                       //  нашего хака с Shared Element Transition
+                       transaction.replace(fragmentContainer, previousFragment);
+                       transaction.commitAllowingStateLoss();
+                   },
+                   // Пытаемся  подобрать правильный момент для того, чтобы поменять фрагменты обратно
+                   FADE_DEFAULT_TIME + MOVE_DEFAULT_TIME + FADE_DEFAULT_TIME
+           );
+       }</code></pre><br/>
+<div class="spoiler" role="button" tabindex="0">
+                        <b class="spoiler_title">Что же получилось в итоге? (анимация ‒ 2.7 mb)</b>
+                        <div class="spoiler_text"><div style="text-align:center;"><img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/kc/cz/vy/kcczvylf6a4kekytbyrtbyzk7w4.gif"/></div></div>
+                    </div><br/>
+<div class="spoiler" role="button" tabindex="0">
+                        <b class="spoiler_title">Исходный код целиком</b>
+                        <div class="spoiler_text"><div class="oembed"><script type="text/javascript" src="https://gist.github.com/9d51e1c92585b75ec19f156c14562a5f.js"></script></div></div>
+                    </div><br/>
+<p>Проект можно посмотреть на <a href="https://github.com/kirillgerasimov/Shared-Element-Transition-in-View-Pager-Demo-Old-approach">GitHub</a>.</p><br/>
+<p><strong>Подведем итоги. </strong> Код начал выглядеть гораздо солиднее: вместо 2 изначальных фрагментов у меня получилось аж 6, в нем появились инструкции, которые управляют спектаклем, подменяя фрагменты в нужное время. И это только в демо.</p><br/>
+<p>В настоящем же проекте в коде один за другим, начали появляться подпорки в самых неожиданных местах. Они не давали приложению развалиться, когда пользователь нажимал на кнопки с “неправильных” страниц или сдерживали фоновую работу дублирующих фрагментов.</p><br/>
+<p>Оказалось, что в андроиде нет коллбеков на завершение <em>transition</em>, а время его исполнения весьма произвольное и зависит от множества факторов (например, как быстро загрузится <code>RecyclerView</code> в результирующем фрагменте). Это приводило к тому, что подмена фрагментов в <code>handler.postDelayed()</code> часто исполнялась слишком рано или слишком поздно, что только усугубляло предыдущую проблему.</p><br/>
+<p>Последним гвоздем стало то, что во время анимации пользователь мог просто свайпнуть на другую страницу и наблюдать два экрана-близнеца, после чего приложение еще и одергивало его на нужный экран.</p><br/>
+<div class="spoiler" role="button" tabindex="0">
+                        <b class="spoiler_title">Интересные артефакты этого подхода (анимация ‒ 2.7 mb)</b>
+                        <div class="spoiler_text"><div style="text-align:center;"><img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/lo/p2/3h/lop23hzo-o-cglifsb1aljyey-g.gif"/></div></div>
+                    </div><br/>
+<p>Такое положение дел меня не устроило и я, полный праведного гнева, начал поиски другого решения.</p><br/>
+<h2>Как сделать Shared Element Transition в Viewpager правильно</h2><br/>
+<h3>Пробуем PageTransformer</h3><br/>
+<p>В интернете ответов по-прежнему не было и я задумался: как же еще можно провернуть этот transition. Что-то на подкорке сознания шептало мне: “Используй <abbr title="класс, который позволяет особо упорным индивидам переопределить анимации листания страницы по умолчанию"><code>PageTransformer</code></abbr>, Люк”. Идея показалась мне многообещающей и я решил прислушаться.</p><br/>
+<p>Суть идеи в том, чтобы сделать <code>PageTransformer</code>, который, в отличии от <em>Android SET</em>, не будет требовать многократных повторений <code>setTransitionName(transitionName)</code> и <code>FragmentTransaction.addSharedElement(sharedElement,name)</code> с обеих сторон перехода. Будет перемещать элементы вслед за свайпом и иметь простой интерфейс вида:</p><br/>
+<pre><code class="java">    public void addSharedTransition(int fromViewId, int toViewId)</code></pre><br/>
+<p>Приступим к разработке. Данные из метода <code>addSharedTransition(fromId, toId)</code> я сохраню в <code>Set</code> из <code>Pair</code> и достану их в методе <code>PageTransfomer</code></p><br/>
+<pre><code class="java">/** 
+Здесь можно двигать элементы интерфейса, основываясь на том, насколько пользователь сместил экран 
+ */
+public void transformPage(@NonNull View page, float position)</code></pre><br/>
+<p>Внутри я пройду по всем сохраненным парам <code>View</code>, между которыми нужно сделать анимацию. И попытаюсь отфильтровать их, чтобы анимировались только видимые элементы.</p><br/>
+<p>Для начала проверим, успели ли создаться элементы, которые нужно анимировать. Мы не привередливые, и, если <code>View</code> не было создано до начала анимации, мы не будем ломать анимацию целиком (как <em>Shared Element Transition</em>), а подхватим ее, когда элемент будет создан. </p><br/>
+<pre><code class="java">for (Pair&lt;Integer,Integer> idPair : sharedElementIds) {
+   Integer fromViewId = idPair.first;
+   Integer toViewId = idPair.second;
+
+   View fromView = activity.findViewById(fromViewId);
+   View toView = activity.findViewById(toViewId);
+
+   if (fromView != null &amp;&amp; toView != null) {</code></pre><br/>
+<p>Нахожу страницы, между которыми происходит перемещение (как я определяю номер страницы расскажу ниже).</p><br/>
+<pre><code class="java">View fromPage = pages.get(fromPageNumber);
+View toPage = pages.get(toPageNumber);</code></pre><br/>
+<p>Если обе страницы уже созданы, то я ищу на них пару <code>View</code>, которую нужно анимировать.</p><br/>
+<pre><code class="java">If (fromPage != null &amp;&amp; toPage != null) {
+   fromView = fromPage.findViewById(fromViewId);
+   toView = toPage.findViewById(toViewId);</code></pre><br/>
+<p>На данном этапе мы выбрали View, которые лежат на страницах, между которыми скролит пользователь. </p><br/>
+<p>Настало время завести много переменных. Вычисляю опорные точки:</p><br/>
+<pre><code class="java">// Вычисляем изначальную позицию каждого элемента пары на экране
+// и разницу межу ними
+float fromX = fromView.getX() - fromView.getTranslationX();
+float fromY = fromView.getY() - fromView.getTranslationY();
+float toX = toView.getX() - toView.getTranslationX();
+float toY = toView.getY() - toView.getTranslationY();
+float deltaX = toX - fromX;
+float deltaY = toY - fromY;
+
+// Вычисляем изначальные размеры и разницу 
+float fromWidth = fromView.getWidth();
+float fromHeight = fromView.getHeight();
+float toWidth = toView.getWidth();
+float toHeight = toView.getHeight();
+float deltaWidth = toWidth - fromWidth;
+float deltaHeight = toHeight - fromHeight;
+
+// Определяем в каком направлении идет свайп
+boolean slideToTheRight = toPageNumber > fromPageNumber;</code></pre><br/>
+<p>В прошлом сниппете я задал <code>slideToTheRight</code>, и уже в этом он мне пригодится. От него зависит знак в <code>translation</code>, который определит полетит <code>View</code> на свое место или куда-то за пределы экрана.</p><br/>
+<pre><code class="java">float pageWidth = getScreenWidth();
+float sign = slideToTheRight ? 1 : -1;
+
+float translationY = (deltaY + deltaHeight / 2) * sign * (-position);
+float translationX = (deltaX + sign * pageWidth + deltaWidth / 2) * sign * (-position);</code></pre><br/>
+<p>Интересно, что формулы смещения по <code>X</code> и <code>Y</code> у обоих <code>View</code>, на стартовой и результирующей странице получились одинаковыми, несмотря на разные изначальные смещения. </p><br/>
+<p>Но с масштабом, к сожалению, такой трюк не пройдет – нужно учитывать является ли данное <code>View</code> начальной или конечной точкой анимации. </p><br/>
+<p>Для кого-то может стать неожиданностью, но <code>transformPage(@NonNull View page, float position)</code> вызывается много раз: для каждой кэшированной страницы (размер кэша настраивается). И, чтобы не перерисовывать анимированное <code>View</code> по несколько раз, на каждый вызов <code>transformPage()</code>, мы изменяем только те, которые находятся на текущей <code>page</code>.</p><br/>
+<div class="spoiler" role="button" tabindex="0">
+                        <b class="spoiler_title">Выставляем положение и масштаб у анимируемых элементов</b>
+                        <div class="spoiler_text"><pre><code class="java">// Если начальное View находится на текущей странице 
+if (page.findViewById(fromId) != null) {
+   // Выставляем его на нужную позицию
+   fromView.setTranslationX(translationX);
+   fromView.setTranslationY(translationY);
+
+   / /Вычисляем требуемое растяжение
+   float scaleX = (fromWidth == 0) ? 
+         1 :    // Если View имеет нулевую ширину, 
+    // то можно даже не пытаться растягивать его
+         (fromWidth + deltaWidth * sign * (-position)) / fromWidth;
+
+   float scaleY = (fromHeight == 0) ? 
+         1 : // Если View имеет нулевую длину, 
+              // то можно даже не пытаться растягивать его
+         (fromHeight + deltaHeight * sign * (-position)) / fromHeight;
+
+   fromView.setScaleX(scaleX);
+   fromView.setScaleY(scaleY);
+}
+// Если конечное View находится на текущей странице 
+if (page.findViewById(toId) != null) {
+
+   toView.setTranslationX(translationX);
+   toView.setTranslationY(translationY);
+   float scaleX = (toWidth == 0) ? 
+         1 : 
+         (toWidth + deltaWidth * sign * (-position)) / toWidth;
+   float scaleY = (toHeight == 0) ? 
+         1 :
+         (toHeight + deltaHeight * sign * (-position)) / toHeight;
+
+   toView.setScaleX(scaleX);
+   toView.setScaleY(scaleY);
+}</code></pre></div>
+                    </div><br/>
+<h3>Выбираем страницы для рисования анимации</h3><br/>
+<p><code>ViewPager</code> не спешит делиться сведениями между какими страницами идет скроллинг. Как я и обещал, сейчас расскажу как мы получаем эту информацию. В нашем <code>PageTransformer</code> мы реализуем еще один интерфейс <code>ViewPager.OnPageChangeListener</code>. Поизучав выход <code>onPageScrolled()</code> через <code> System.out.println()</code> я пришел к следующей формуле:</p><br/>
+<pre><code class="java">public void onPageScrolled(
+   int position, float positionOffset, int positionOffsetPixels
+) {
+   Set&lt;Integer> visiblePages = new HashSet&lt;>();
+
+   visiblePages.add(position);
+   visiblePages.add(positionOffset >= 0 ? position + 1 : position - 1);
+   visiblePages.remove(fromPageNumber);
+
+   toPageNumber = visiblePages.iterator().next();
+
+   if (pages == null || toPageNumber >= pages.size()) toPageNumber = null;
+}
+
+public void onPageSelected(int position) {   this.position = position; }
+
+public void onPageScrollStateChanged(int state) {
+   if (state == SCROLL_STATE_IDLE) {
+       // Как только все анимации перехода закончены, запоминаем текущую страницу
+       fromPageNumber = position;
+       resetViewPositions();
+   }
+}</code></pre><br/>
+<p>Вот и все. <strong>Мы сделали это!</strong> Анимация следит за жестами пользователя. Зачем выбирать между свайпами и <em>Shared Element Transition</em>, когда можно оставить все. </p><br/>
+<p>Во время написания статьи я добавил эффект исчезновения статичных элементов — он пока очень сырой, поэтому в библиотеку не добавлен.</p><br/>
+<div class="spoiler" role="button" tabindex="0">
+                        <b class="spoiler_title">Посмотреть, что же получилось в итоге (анимация ‒ 2.4 mb)</b>
+                        <div class="spoiler_text"><div style="text-align:center;"><img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/qe/38/ac/qe38acszfutvrpyu2cru-pbwjwq.gif"/></div></div>
+                    </div><br/>
+<div class="spoiler" role="button" tabindex="0">
+                        <b class="spoiler_title">Исходный код целиком</b>
+                        <div class="spoiler_text"><div class="oembed"><script type="text/javascript" src="https://gist.github.com/0bca6b1317e2827c668f0791d73cc7c8.js"></script></div></div>
+                    </div><br/>
+<h3>Как выглядит работа с библиотекой</h3><br/>
+<p>Конфигурация получилась довольно лаконичной.</p><br/>
+<div class="spoiler" role="button" tabindex="0">
+                        <b class="spoiler_title">Полная настройка для нашего примера выглядит так</b>
+                        <div class="spoiler_text"><pre><code class="java">ArrayList&lt;Fragment> fragments = new ArrayList&lt;>();
+
+fragments.add(hello_fragment);
+fragments.add(small_picture_fragment);
+fragments.add(big_picture_fragment);
+
+SharedElementPageTransformer transformer =
+       new SharedElementPageTransformer(this,  fragments);
+
+transformer.addSharedTransition(R.id.smallPic_image_cat2, R.id.bigPic_image_cat, true);
+transformer.addSharedTransition(R.id.smallPic_text_label3, R.id.bigPic_text_label, true);
+transformer.addSharedTransition(R.id.hello_text, R.id.smallPic_text_label3, true);
+
+viewPager.setPageTransformer(false, transformer);
+viewPager.addOnPageChangeListener(transformer);
+</code></pre></div>
+                    </div><br/>
+<p><code>onClick</code>, включающий все transition, может выглядеть так:</p><br/>
+<pre><code class="java">smallCatImageView.setOnClickListener(
+   v -> activity.viewPager.setCurrentItem(2)
+);</code></pre><br/>
+<p>Чтобы код не пропадал, я поместил библиотеку в репозиторий <em>JCenter</em> и на <em>GitHub</em>. Так я и соприкоснулся с миром opensource. Попробовать ее на своем проекте вы можете, просто добавив</p><br/>
+<pre><code class="java">dependencies {
+   //...    
+   implementation 'com.github.kirillgerasimov:shared-element-view-pager:0.0.2-alpha'
+}</code></pre><br/>
+<p>Все исходники доступны на <a href="https://github.com/kirillgerasimov/Shared-Element-View-Pager">GitHub</a> </p><br/>
+<h3>Заключение</h3><br/>
+<p>Даже если интернет не знает ответа, это не значит, что его нет. Ищите обходные пути, пробуйте пока не получится. Возможно, вы станете первым, кто докопается до сути и поделится этим с сообществом.</p></div></div> <!----> <!----></div> <div class="tm-article-presenter__meta"><div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Теги:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bandroid%20development%5D" class="tm-tags-list__link">android development</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bandroid%20%D1%80%D0%B0%D0%B7%D1%80%D0%B0%D0%B1%D0%BE%D1%82%D0%BA%D0%B0%5D" class="tm-tags-list__link">android разработка</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bjava%5D" class="tm-tags-list__link">java</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5B%D0%BB%D0%BE%D0%BD%D0%B3%D1%80%D0%B8%D0%B4%5D" class="tm-tags-list__link">лонгрид</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5B%D1%81%D0%B2%D0%BE%D1%91%5D" class="tm-tags-list__link">своё</a></li></ul></div> <div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Хабы:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/hub/android_dev/" class="tm-hubs-list__link">
+    Разработка под Android
+  </a></li></ul></div></div></article></div> <!----></div> <div class="tm-article-sticky-panel"><div class="tm-data-icons tm-article-sticky-panel__icons"><div class="tm-article-rating tm-data-icons__item"><div class="tm-votes-meter tm-article-rating__votes-switcher"><svg height="16" width="16" class="tm-svg-img tm-votes-meter__icon tm-votes-meter__icon_medium"><title>Всего голосов 21: ↑20 и ↓1</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-rating"></use></svg> <span title="Всего голосов 21: ↑20 и ↓1" class="tm-votes-meter__value tm-votes-meter__value_positive tm-votes-meter__value_medium">+19</span></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----> <span title="Количество просмотров" class="tm-icon-counter tm-data-icons__item"><svg height="16" width="16" class="tm-svg-img tm-icon-counter__icon"><title>Просмотры</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-views"></use></svg> <span class="tm-icon-counter__value">7.1K</span></span> <button title="Добавить в закладки" type="button" class="bookmarks-button tm-data-icons__item"><span title="Добавить в закладки" class="tm-svg-icon__wrapper bookmarks-button__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Добавить в закладки</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-favorite"></use></svg></span> <span title="Количество пользователей, добавивших публикацию в закладки" class="bookmarks-button__counter">
+    37
+  </span></button> <!----> <div title="Поделиться" class="tm-sharing tm-data-icons__item"><button type="button" class="tm-sharing__button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="tm-sharing__icon"><path fill="currentColor" d="M10.33.275l9.047 7.572a.2.2 0 010 .306l-9.048 7.572a.2.2 0 01-.328-.153V11c-8 0-9.94 6-9.94 6S-1 5 10 5V.428a.2.2 0 01.328-.153z"></path></svg></button> <!----></div> <DIV class="v-portal" style="display:none;"></DIV></div> </div></div> <!----> <!----> <div class="tm-article-presenter__footer"><div class="tm-article-blocks"><!----> <section class="tm-block tm-block_spacing-bottom"><!----> <div class="tm-block__body tm-block__body_variant-balanced"><div class="tm-article-author"> <div class="tm-user-card tm-article-author__user-card tm-user-card_variant-article"><div class="tm-user-card__info-container"><div class="tm-user-card__header"><div class="tm-user-card__header-data"><a href="/ru/users/KirillGerasimov/" class="tm-user-card__userpic tm-user-card__userpic_size-40"><div class="tm-entity-image"><svg class="tm-svg-img tm-image-placeholder tm-image-placeholder_blue"><!----> <use xlink:href="/img/megazord-v24.ce74655c.svg#placeholder-user"></use></svg></div></a> <div class="tm-user-card__meta"><div title=" 51 голос " class="tm-karma tm-user-card__karma"><div class="tm-karma__votes tm-karma__votes_positive">
+    48.2
+  </div> <div class="tm-karma__text">
+    Карма
+  </div></div> <div title="Рейтинг пользователя" class="tm-rating tm-user-card__rating"><div class="tm-rating__header"> <div class="tm-rating__counter">0</div></div> <div class="tm-rating__text">
+    Рейтинг
+  </div></div></div></div></div> <div class="tm-user-card__info tm-user-card__info_variant-article"><div class="tm-user-card__title tm-user-card__title_variant-article"><!----> <a href="/ru/users/KirillGerasimov/" class="tm-user-card__nickname tm-user-card__nickname_variant-article">
+          @KirillGerasimov
+        </a> <!----></div> <p class="tm-user-card__short-info tm-user-card__short-info_variant-article">Пользователь</p></div></div> <div class="tm-user-card__buttons tm-user-card__buttons_variant-article"><!----> <!----> <!----> <!----> <!----></div></div> <!----></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----></section> <div class="tm-article-blocks__comments"><div class="tm-article-page-comments"><div class="tm-article-comments-counter-link tm-article-comments-counter-button"><a href="/ru/post/451116/comments/" class="tm-article-comments-counter-link__link tm-article-comments-counter-link__link_button-style"><svg height="16" width="16" class="tm-svg-img tm-article-comments-counter-link__icon tm-article-comments-counter-link__icon_contrasted"><title>Комментарии</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-comments"></use></svg> <span class="tm-article-comments-counter-link__value tm-article-comments-counter-link__value_contrasted">
+       Комментарии 1 
+    </span></a> <!----></div></div></div> <div class="tm-ad-banner__container tm-page-article__banner"><!----> <div id="articleBottomBanner" class="tm-ad-banner"></div></div> <!----> <!----> <!----> <!----> </div></div></div></div></div> <div class="tm-page__sidebar"><div class="tm-layout-sidebar"><div class="tm-layout-sidebar__ads tm-layout-sidebar__ads_initial"><div class="tm-ad-banner__container tm-layout-sidebar__banner"><!----> <div id="sidebarBanner" class="tm-ad-banner"></div></div></div> <div class="tm-sexy-sidebar tm-sexy-sidebar_initial" style="margin-top:0px;"><!----> <!----></div></div></div></div></div></div></main> <!----></div> <div class="tm-footer-menu"><div class="tm-page-width"><div class="tm-footer-menu__container"><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Ваш аккаунт
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr/?back=/ru/post/451116/&amp;hl=ru" rel="nofollow" target="_self">
+                Войти
+              </a></li><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr-register/?back=/ru/post/451116/&amp;hl=ru" rel="nofollow" target="_self">
+                Регистрация
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Разделы
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/" class="footer-menu__item-link router-link-active">
+                Публикации
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/news/" class="footer-menu__item-link">
+                Новости
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/hubs/" class="footer-menu__item-link">
+                Хабы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/companies/" class="footer-menu__item-link">
+                Компании
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/users/" class="footer-menu__item-link">
+                Авторы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/sandbox/" class="footer-menu__item-link">
+                Песочница
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Информация
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/docs/help/" class="footer-menu__item-link">
+                Устройство сайта
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/authors/codex/" class="footer-menu__item-link">
+                Для авторов
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/companies/corpblogs/" class="footer-menu__item-link">
+                Для компаний
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/docs/transparency/" class="footer-menu__item-link">
+                Документы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/agreement" target="_blank">
+                Соглашение
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/confidential/" target="_blank">
+                Конфиденциальность
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Услуги
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQLwRfQmXibiUlWaRg-BAc38s7oM3lJiaPju7qmdJsp8ysIvZ_G-Npem0njJLMozE2bPHMpDqiI5hhy/pub?start=false&amp;loop=false&amp;delayms=60000&amp;slide=id.g91a03369cd_4_297" target="_blank">
+                Реклама
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://habrastorage.org/storage/stuff/habr/service_price.pdf" target="_blank">
+                Тарифы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQJJds8-Di7BQSP_guHxICN7woVYoN5NP_22ra-BIo4bqnTT9FR6fB-Ku2P0AoRpX0Ds-LRkDeAoD8F/pub?start=false&amp;loop=false&amp;delayms=60000" target="_blank">
+                Контент
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://tmtm.timepad.ru/" target="_blank">
+                Семинары
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/megaprojects/" class="footer-menu__item-link">
+                Мегапроекты
+              </a></li></ul></div></div></div></div></div> <div class="tm-footer"><div class="tm-page-width"><div class="tm-footer__container"><!----> <div class="tm-footer__social"><a href="https://www.facebook.com/habrahabr.ru" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Facebook</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-facebook"></use></svg></a><a href="https://twitter.com/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Twitter</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-twitter"></use></svg></a><a href="https://vk.com/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>VK</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-vkontakte"></use></svg></a><a href="https://telegram.me/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Telegram</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-telegram"></use></svg></a><a href="https://www.youtube.com/channel/UCd_sTwKqVrweTt4oAKY5y4w" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Youtube</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-youtube"></use></svg></a><a href="https://zen.yandex.ru/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Яндекс Дзен</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-zen"></use></svg></a></div> <DIV class="v-portal" style="display:none;"></DIV> <button class="tm-footer__link"><!---->
+        Настройка языка
+      </button> <a href="/ru/about" class="tm-footer__link">
+        О сайте
+      </a> <a href="/ru/feedback/" class="tm-footer__link">
+        Техническая поддержка
+      </a> <!----> <a href="/berserk-mode-nope" class="tm-footer__link">
+        Вернуться на старую версию
+      </a> <div class="tm-footer-copyright"><span class="tm-copyright"><span class="tm-copyright__years">© 2006–2021 </span> <span class="tm-copyright__name">«<a href="https://company.habr.com/" rel="noopener" target="_blank" class="tm-copyright__link">Habr</a>»</span></span></div></div></div></div> <!----> <!----></div> <div class="vue-portal-target"></div></div>
+<script>window.__INITIAL_STATE__={"adblock":{"hasAcceptableAdsFilter":false,"hasAdblock":false},"articlesList":{"articlesList":{"451116":{"id":"451116","timePublished":"2019-05-09T11:29:38+00:00","isCorporative":false,"lang":"ru","titleHtml":"Как я боролся с Shared Element Transition и написал свою первую opensource библиотeку","leadData":{"textHtml":"\u003Cp\u003E\u003Cfont color=\"#555555\"\u003E\u003Ci\u003EНет повести печальнее на свете, \u003Cbr\u002F\u003E\r\nчем повесть о \u003Cabbr title=\"книжка, которая позволяет листать экраны приложения влево и вправо свайпами\"\u003EViewPager’e\u003C\u002Fabbr\u003E и \u003Cabbr title=\"Shared Element Transition - перемещение элементов между экранами на андроиде\"\u003E SET’e\u003C\u002Fabbr\u003E\u003C\u002Fi\u003E\u003C\u002Ffont\u003E\u003Cbr\u002F\u003E\r\n\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cdiv style=\"text-align:center;\"\u003E\u003Cimg  title=\"Картинка для привлечения внимания. О том как трудно в opensource в первый раз или о том куда вас может завести бекенд. На фото не я\" src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fxy\u002F9_\u002F-m\u002Fxy9_-mwralsvfgpectslixhktbw.jpeg\"\u002F\u003E\u003C\u002Fdiv\u003E \u003Cbr\u002F\u003E\r\n\u003Cp\u003EХочется предупредить, что автор ‒ новичок андроид, поэтому статья содержит столько технических неточностей, что вас, скорее, нужно предупредить о том, что в статье могут встретиться технически достоверные утверждения.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EКуда приводит бекенд\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EВсю жизнь я пилил бекенд. Начало 2019 года, за плечами уже один очень амбициозный, но недоделанный проект. Бесплодная поездка в Цюрих на собеседование в одну поисковую компанию. Зима, грязь, настроение никакое. Сил и желания тянуть проект дальше нету.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EХотелось навсегда забыть этот страшный бекенд. К счастью, судьба подкинула мне идею – это было мобильное приложение. Основной его фишкой должно было стать нестандартное использование камеры. Работа закипела. Прошло немного времени, и вот прототип готов. Релиз проекта близился и все было хорошо и стройно, пока я не решил сделать пользователю “\u003Cem\u003Eудобно\u003C\u002Fem\u003E”. \u003C\u002Fp\u003E","imageUrl":null,"buttonTextHtml":null,"image":null},"editorVersion":"1.0","postType":"article","postLabels":[{"type":"sandbox","data":null}],"author":{"scoreStats":{"score":48.2,"votesCount":51},"rating":0,"relatedData":null,"contacts":[],"authorContacts":[],"paymentDetails":{"paymentYandexMoney":null,"paymentPayPalMe":null,"paymentWebmoney":null},"id":"2045657","alias":"KirillGerasimov","fullname":null,"avatarUrl":null,"speciality":"Пользователь"},"statistics":{"commentsCount":1,"favoritesCount":37,"readingCount":7116,"score":19,"votesCount":21},"hubs":[{"relatedData":null,"id":"17107","alias":"android_dev","type":"collective","title":"Разработка под Android","titleHtml":"Разработка под Android","isProfiled":true}],"flows":[{"id":"1","alias":"develop","title":"Разработка"}],"relatedData":null,"textHtml":"\u003Cdiv xmlns=\"http:\u002F\u002Fwww.w3.org\u002F1999\u002Fxhtml\"\u003E\u003Cp\u003E\u003Cfont color=\"#555555\"\u003E\u003Ci\u003EНет повести печальнее на свете, \u003Cbr\u002F\u003E\r\nчем повесть о \u003Cabbr title=\"книжка, которая позволяет листать экраны приложения влево и вправо свайпами\"\u003EViewPager’e\u003C\u002Fabbr\u003E и \u003Cabbr title=\"Shared Element Transition - перемещение элементов между экранами на андроиде\"\u003E SET’e\u003C\u002Fabbr\u003E\u003C\u002Fi\u003E\u003C\u002Ffont\u003E\u003Cbr\u002F\u003E\r\n\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cdiv style=\"text-align:center;\"\u003E\u003Cimg title=\"Картинка для привлечения внимания. О том как трудно в opensource в первый раз или о том куда вас может завести бекенд. На фото не я\" src=\"https:\u002F\u002Fhabrastorage.org\u002Fr\u002Fw780q1\u002Fwebt\u002Fxy\u002F9_\u002F-m\u002Fxy9_-mwralsvfgpectslixhktbw.jpeg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fxy\u002F9_\u002F-m\u002Fxy9_-mwralsvfgpectslixhktbw.jpeg\" data-blurred=\"true\"\u002F\u003E\u003C\u002Fdiv\u003E \u003Cbr\u002F\u003E\r\n\u003Cp\u003EХочется предупредить, что автор ‒ новичок андроид, поэтому статья содержит столько технических неточностей, что вас, скорее, нужно предупредить о том, что в статье могут встретиться технически достоверные утверждения.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EКуда приводит бекенд\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EВсю жизнь я пилил бекенд. Начало 2019 года, за плечами уже один очень амбициозный, но недоделанный проект. Бесплодная поездка в Цюрих на собеседование в одну поисковую компанию. Зима, грязь, настроение никакое. Сил и желания тянуть проект дальше нету.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EХотелось навсегда забыть этот страшный бекенд. К счастью, судьба подкинула мне идею – это было мобильное приложение. Основной его фишкой должно было стать нестандартное использование камеры. Работа закипела. Прошло немного времени, и вот прототип готов. Релиз проекта близился и все было хорошо и стройно, пока я не решил сделать пользователю “\u003Cem\u003Eудобно\u003C\u002Fem\u003E”. \u003C\u002Fp\u003E\u003Ca name=\"habracut\"\u003E\u003C\u002Fa\u003E\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EViewPager и Shared Element Transition. Ищем пути примирения\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EНикто не хочет нажимать на мелкие кнопки меню в 2019, все направо и налево хотят свайпать экраны. Сказано – сделано, сделано – сломано. Так на моем проекте появился первый \u003Cabbr title=\"книжка, которая позволяет листать экраны приложения влево и вправо свайпами\"\u003E\u003Ccode\u003EViewPager\u003C\u002Fcode\u003E\u003C\u002Fabbr\u003E (я расшифровал некоторые термины для таких же бекендщиков как я – просто подведите курсор). А \u003Cabbr title=\"технология для перемещения элементов интерфейса между экранами на андроиде\"\u003EShared Element Transition\u003C\u002Fabbr\u003E (далее SET или transition) – сигнатурный элемент \u003Cabbr title=\"словосочетание, которое нужно почаще вставлять, если вы пишете статью про андроид разработку\"\u003EMaterial Design\u003C\u002Fabbr\u003E, наотрез отказался работать c \u003Ccode\u003EViewPager\u003C\u002Fcode\u003E, оставив меня перед выбором: либо свайпы, либо красивые transition-анимации между экранами. Я не хотел отказываться ни от того, ни от другого. Так начались мои поиски.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EЧасы изучения: десятки тем на форумах и вопросов на StackOverflow без ответа. Что бы я ни открывал, мне предлагали совершить \u003Ca href=\"https:\u002F\u002Fandroid-developers.googleblog.com\u002F2018\u002F02\u002Fcontinuous-shared-element-transitions.html\"\u003Etransition из \u003Cabbr title=\"Аналог ListView – список, отображающий несколько других элементов на экране\"\u003ERecyclerView\u003C\u002Fabbr\u003E во ViewPager\u003C\u002Fa\u003E или “приложить подорожник \u003Ccode\u003EFragment.postponeEnterTransition()\u003C\u002Fcode\u003E”.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cdiv style=\"text-align:center;\"\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002F7l\u002Fqu\u002Fr_\u002F7lqur_jrf31n12aqmqefruovwbo.png\"\u002F\u003E\u003C\u002Fdiv\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EНародные средства не помогли, и я решил заняться примирением \u003Ccode\u003EViewPager\u003C\u002Fcode\u003E и \u003Ccode\u003EShared Element Transition\u003C\u002Fcode\u003E самостоятельно.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EViewPager: Первая кровь\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EЯ начал размышлять: “Проблема появляется в тот момент, когда пользователь переходит с одной страницы на другую...”. И тут меня осенило: “У тебя не будет проблем с \u003Cem\u003ESET\u003C\u002Fem\u003E во время смены страницы, если не менять страницы”.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cdiv style=\"text-align:center;\"\u003E\u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fr\u002Fw780q1\u002Fwebt\u002Ftu\u002Fqa\u002Fss\u002Ftuqasspx-ir0-tuk-fo4qk3m9fa.jpeg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Ftu\u002Fqa\u002Fss\u002Ftuqasspx-ir0-tuk-fo4qk3m9fa.jpeg\" data-blurred=\"true\"\u002F\u003E\u003C\u002Fdiv\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EМы можем делать \u003Cem\u003Etransition\u003C\u002Fem\u003E на одной и той же странице, а потом просто подменять в \u003Ccode\u003EViewPager\u003C\u002Fcode\u003E текущую страницу на целевую. \u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EДля начала создадим \u003Cabbr title=\"логически законченный элемент, инкапсулирующий в себе представление и логику для дальнейшего использования в интерфейсе. В данной статье - просто содержимое экрана приложения\"\u003Eфрагменты\u003C\u002Fabbr\u003E, с которыми будем работать.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"java\"\u003ESmallPictureFragment small_picture_fragment = new SmallPictureFragment();\nBigPictureFragment big_picture_fragment = new BigPictureFragment();\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EПопробуем поменять фрагмент в текущей странице на что-то еще.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"java\"\u003EFragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();\n\n\u002F\u002F берем View в котором лежит текущий фрагмент\nint fragmentContId = previousFragment.getView().getParent().getId(); \n\n\u002F\u002F и меняем содержимое этого контейнера на следующий фрагмент\nfragmentTransaction.replace(fragmentContId, nextFragment); \nfragmentTransaction.commit();\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EЗапускаем приложение и… плавно переходим на пустой экран. В чем причина?\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EОказывается, контейнером каждой из страниц является сам \u003Ccode\u003EViewPager\u003C\u002Fcode\u003E, без всяких посредников вида \u003Ccode\u003EPage1Container\u003C\u002Fcode\u003E, \u003Ccode\u003EPage2Container\u003C\u002Fcode\u003E. Поэтому просто так поменять одну страницу на другую не получится, заменится весь \u003Ccode\u003Epager\u003C\u002Fcode\u003E. \u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EХорошо, чтобы изменять контент каждой страницы в отдельности, создаем несколько фрагментов-контейнеров для каждой страницы. \u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"java\"\u003ERootSmallPictureFragment root_small_pic_fragment = new RootSmallPictureFragment();\nRootBigPictureFragment root_big_pic_fragment = new RootBigPictureFragment();\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EЧто-то опять не заводится.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cblockquote\u003Ejava.lang.IllegalStateException: Can't change container ID of fragment BigPictureFragment{...}: was 2131165289 now 2131165290\u003C\u002Fblockquote\u003E\u003Cp\u003EМы не можем прицепить фрагмент второй страницы (\u003Ccode\u003EBigPictureFragment\u003C\u002Fcode\u003E) к первой, потому что он уже прицеплен к контейнеру второй страницы.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EСтиснув зубы добавляем еще фрагментов-дублеров.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003ESmallPictureFragment small_picture_fragment_fake = new SmallPictureFragment();\nBigPictureFragment big_picture_fragment_fake = new BigPictureFragment();\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003E\u003Cstrong\u003EЗаработало!\u003C\u002Fstrong\u003E Код transition, который я когда-то скопировал с просторов GitHub, уже содержал анимации \u003Cem\u003Efade in\u003C\u002Fem\u003E и \u003Cem\u003Efade out\u003C\u002Fem\u003E. Поэтому перед \u003Cem\u003Etransition\u003C\u002Fem\u003E все статические элементы с первого фрагмента исчезали, потом перемещались снимки, и только затем появлялись элементы второй страницы. Для пользователя это выглядит как настоящее перемещение между страницами.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EВсе анимации прошли, но есть одна проблема. Пользователь до сих пор на первой странице, а должен быть на второй. \u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EЧтобы это исправить мы аккуратно подменяем видимую страницу \u003Ccode\u003EViewPager\u003C\u002Fcode\u003E на вторую. А потом восстанавливаем содержимое первой страницы в начальное состояние.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"java\"\u003E    handler.postDelayed(\n                   () -\u003E {\n\n                       \u002F\u002F Аккуратно меняем отображаемую страницу на нужную\n                       activity.viewPager.setCurrentItem(nextPage, false);\n                       FragmentTransaction transaction = fragmentManager.beginTransaction();\n\n                       \u002F\u002F Восстанавливаем предыдущий фрагмент. \n                       \u002F\u002F Он содержит контент другой страницы после \n                       \u002F\u002F  нашего хака с Shared Element Transition\n                       transaction.replace(fragmentContainer, previousFragment);\n                       transaction.commitAllowingStateLoss();\n                   },\n                   \u002F\u002F Пытаемся  подобрать правильный момент для того, чтобы поменять фрагменты обратно\n                   FADE_DEFAULT_TIME + MOVE_DEFAULT_TIME + FADE_DEFAULT_TIME\n           );\n       }\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cdiv class=\"spoiler\" role=\"button\" tabindex=\"0\"\u003E\n                        \u003Cb class=\"spoiler_title\"\u003EЧто же получилось в итоге? (анимация ‒ 2.7 mb)\u003C\u002Fb\u003E\n                        \u003Cdiv class=\"spoiler_text\"\u003E\u003Cdiv style=\"text-align:center;\"\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fkc\u002Fcz\u002Fvy\u002Fkcczvylf6a4kekytbyrtbyzk7w4.gif\"\u002F\u003E\u003C\u002Fdiv\u003E\u003C\u002Fdiv\u003E\n                    \u003C\u002Fdiv\u003E\u003Cbr\u002F\u003E\r\n\u003Cdiv class=\"spoiler\" role=\"button\" tabindex=\"0\"\u003E\n                        \u003Cb class=\"spoiler_title\"\u003EИсходный код целиком\u003C\u002Fb\u003E\n                        \u003Cdiv class=\"spoiler_text\"\u003E\u003Cdiv class=\"oembed\"\u003E\u003Cscript type=\"text\u002Fjavascript\" src=\"https:\u002F\u002Fgist.github.com\u002F9d51e1c92585b75ec19f156c14562a5f.js\"\u003E\u003C\u002Fscript\u003E\u003C\u002Fdiv\u003E\u003C\u002Fdiv\u003E\n                    \u003C\u002Fdiv\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EПроект можно посмотреть на \u003Ca href=\"https:\u002F\u002Fgithub.com\u002Fkirillgerasimov\u002FShared-Element-Transition-in-View-Pager-Demo-Old-approach\"\u003EGitHub\u003C\u002Fa\u003E.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003E\u003Cstrong\u003EПодведем итоги. \u003C\u002Fstrong\u003E Код начал выглядеть гораздо солиднее: вместо 2 изначальных фрагментов у меня получилось аж 6, в нем появились инструкции, которые управляют спектаклем, подменяя фрагменты в нужное время. И это только в демо.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EВ настоящем же проекте в коде один за другим, начали появляться подпорки в самых неожиданных местах. Они не давали приложению развалиться, когда пользователь нажимал на кнопки с “неправильных” страниц или сдерживали фоновую работу дублирующих фрагментов.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EОказалось, что в андроиде нет коллбеков на завершение \u003Cem\u003Etransition\u003C\u002Fem\u003E, а время его исполнения весьма произвольное и зависит от множества факторов (например, как быстро загрузится \u003Ccode\u003ERecyclerView\u003C\u002Fcode\u003E в результирующем фрагменте). Это приводило к тому, что подмена фрагментов в \u003Ccode\u003Ehandler.postDelayed()\u003C\u002Fcode\u003E часто исполнялась слишком рано или слишком поздно, что только усугубляло предыдущую проблему.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EПоследним гвоздем стало то, что во время анимации пользователь мог просто свайпнуть на другую страницу и наблюдать два экрана-близнеца, после чего приложение еще и одергивало его на нужный экран.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cdiv class=\"spoiler\" role=\"button\" tabindex=\"0\"\u003E\n                        \u003Cb class=\"spoiler_title\"\u003EИнтересные артефакты этого подхода (анимация ‒ 2.7 mb)\u003C\u002Fb\u003E\n                        \u003Cdiv class=\"spoiler_text\"\u003E\u003Cdiv style=\"text-align:center;\"\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Flo\u002Fp2\u002F3h\u002Flop23hzo-o-cglifsb1aljyey-g.gif\"\u002F\u003E\u003C\u002Fdiv\u003E\u003C\u002Fdiv\u003E\n                    \u003C\u002Fdiv\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EТакое положение дел меня не устроило и я, полный праведного гнева, начал поиски другого решения.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EКак сделать Shared Element Transition в Viewpager правильно\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\n\u003Ch3\u003EПробуем PageTransformer\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EВ интернете ответов по-прежнему не было и я задумался: как же еще можно провернуть этот transition. Что-то на подкорке сознания шептало мне: “Используй \u003Cabbr title=\"класс, который позволяет особо упорным индивидам переопределить анимации листания страницы по умолчанию\"\u003E\u003Ccode\u003EPageTransformer\u003C\u002Fcode\u003E\u003C\u002Fabbr\u003E, Люк”. Идея показалась мне многообещающей и я решил прислушаться.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EСуть идеи в том, чтобы сделать \u003Ccode\u003EPageTransformer\u003C\u002Fcode\u003E, который, в отличии от \u003Cem\u003EAndroid SET\u003C\u002Fem\u003E, не будет требовать многократных повторений \u003Ccode\u003EsetTransitionName(transitionName)\u003C\u002Fcode\u003E и \u003Ccode\u003EFragmentTransaction.addSharedElement(sharedElement,name)\u003C\u002Fcode\u003E с обеих сторон перехода. Будет перемещать элементы вслед за свайпом и иметь простой интерфейс вида:\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"java\"\u003E    public void addSharedTransition(int fromViewId, int toViewId)\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EПриступим к разработке. Данные из метода \u003Ccode\u003EaddSharedTransition(fromId, toId)\u003C\u002Fcode\u003E я сохраню в \u003Ccode\u003ESet\u003C\u002Fcode\u003E из \u003Ccode\u003EPair\u003C\u002Fcode\u003E и достану их в методе \u003Ccode\u003EPageTransfomer\u003C\u002Fcode\u003E\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"java\"\u003E\u002F** \nЗдесь можно двигать элементы интерфейса, основываясь на том, насколько пользователь сместил экран \n *\u002F\npublic void transformPage(@NonNull View page, float position)\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EВнутри я пройду по всем сохраненным парам \u003Ccode\u003EView\u003C\u002Fcode\u003E, между которыми нужно сделать анимацию. И попытаюсь отфильтровать их, чтобы анимировались только видимые элементы.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EДля начала проверим, успели ли создаться элементы, которые нужно анимировать. Мы не привередливые, и, если \u003Ccode\u003EView\u003C\u002Fcode\u003E не было создано до начала анимации, мы не будем ломать анимацию целиком (как \u003Cem\u003EShared Element Transition\u003C\u002Fem\u003E), а подхватим ее, когда элемент будет создан. \u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"java\"\u003Efor (Pair&lt;Integer,Integer\u003E idPair : sharedElementIds) {\n   Integer fromViewId = idPair.first;\n   Integer toViewId = idPair.second;\n\n   View fromView = activity.findViewById(fromViewId);\n   View toView = activity.findViewById(toViewId);\n\n   if (fromView != null &amp;&amp; toView != null) {\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EНахожу страницы, между которыми происходит перемещение (как я определяю номер страницы расскажу ниже).\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"java\"\u003EView fromPage = pages.get(fromPageNumber);\nView toPage = pages.get(toPageNumber);\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EЕсли обе страницы уже созданы, то я ищу на них пару \u003Ccode\u003EView\u003C\u002Fcode\u003E, которую нужно анимировать.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"java\"\u003EIf (fromPage != null &amp;&amp; toPage != null) {\n   fromView = fromPage.findViewById(fromViewId);\n   toView = toPage.findViewById(toViewId);\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EНа данном этапе мы выбрали View, которые лежат на страницах, между которыми скролит пользователь. \u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EНастало время завести много переменных. Вычисляю опорные точки:\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"java\"\u003E\u002F\u002F Вычисляем изначальную позицию каждого элемента пары на экране\n\u002F\u002F и разницу межу ними\nfloat fromX = fromView.getX() - fromView.getTranslationX();\nfloat fromY = fromView.getY() - fromView.getTranslationY();\nfloat toX = toView.getX() - toView.getTranslationX();\nfloat toY = toView.getY() - toView.getTranslationY();\nfloat deltaX = toX - fromX;\nfloat deltaY = toY - fromY;\n\n\u002F\u002F Вычисляем изначальные размеры и разницу \nfloat fromWidth = fromView.getWidth();\nfloat fromHeight = fromView.getHeight();\nfloat toWidth = toView.getWidth();\nfloat toHeight = toView.getHeight();\nfloat deltaWidth = toWidth - fromWidth;\nfloat deltaHeight = toHeight - fromHeight;\n\n\u002F\u002F Определяем в каком направлении идет свайп\nboolean slideToTheRight = toPageNumber \u003E fromPageNumber;\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EВ прошлом сниппете я задал \u003Ccode\u003EslideToTheRight\u003C\u002Fcode\u003E, и уже в этом он мне пригодится. От него зависит знак в \u003Ccode\u003Etranslation\u003C\u002Fcode\u003E, который определит полетит \u003Ccode\u003EView\u003C\u002Fcode\u003E на свое место или куда-то за пределы экрана.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"java\"\u003Efloat pageWidth = getScreenWidth();\nfloat sign = slideToTheRight ? 1 : -1;\n\nfloat translationY = (deltaY + deltaHeight \u002F 2) * sign * (-position);\nfloat translationX = (deltaX + sign * pageWidth + deltaWidth \u002F 2) * sign * (-position);\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EИнтересно, что формулы смещения по \u003Ccode\u003EX\u003C\u002Fcode\u003E и \u003Ccode\u003EY\u003C\u002Fcode\u003E у обоих \u003Ccode\u003EView\u003C\u002Fcode\u003E, на стартовой и результирующей странице получились одинаковыми, несмотря на разные изначальные смещения. \u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EНо с масштабом, к сожалению, такой трюк не пройдет – нужно учитывать является ли данное \u003Ccode\u003EView\u003C\u002Fcode\u003E начальной или конечной точкой анимации. \u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EДля кого-то может стать неожиданностью, но \u003Ccode\u003EtransformPage(@NonNull View page, float position)\u003C\u002Fcode\u003E вызывается много раз: для каждой кэшированной страницы (размер кэша настраивается). И, чтобы не перерисовывать анимированное \u003Ccode\u003EView\u003C\u002Fcode\u003E по несколько раз, на каждый вызов \u003Ccode\u003EtransformPage()\u003C\u002Fcode\u003E, мы изменяем только те, которые находятся на текущей \u003Ccode\u003Epage\u003C\u002Fcode\u003E.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cdiv class=\"spoiler\" role=\"button\" tabindex=\"0\"\u003E\n                        \u003Cb class=\"spoiler_title\"\u003EВыставляем положение и масштаб у анимируемых элементов\u003C\u002Fb\u003E\n                        \u003Cdiv class=\"spoiler_text\"\u003E\u003Cpre\u003E\u003Ccode class=\"java\"\u003E\u002F\u002F Если начальное View находится на текущей странице \nif (page.findViewById(fromId) != null) {\n   \u002F\u002F Выставляем его на нужную позицию\n   fromView.setTranslationX(translationX);\n   fromView.setTranslationY(translationY);\n\n   \u002F \u002FВычисляем требуемое растяжение\n   float scaleX = (fromWidth == 0) ? \n         1 :    \u002F\u002F Если View имеет нулевую ширину, \n    \u002F\u002F то можно даже не пытаться растягивать его\n         (fromWidth + deltaWidth * sign * (-position)) \u002F fromWidth;\n\n   float scaleY = (fromHeight == 0) ? \n         1 : \u002F\u002F Если View имеет нулевую длину, \n              \u002F\u002F то можно даже не пытаться растягивать его\n         (fromHeight + deltaHeight * sign * (-position)) \u002F fromHeight;\n\n   fromView.setScaleX(scaleX);\n   fromView.setScaleY(scaleY);\n}\n\u002F\u002F Если конечное View находится на текущей странице \nif (page.findViewById(toId) != null) {\n\n   toView.setTranslationX(translationX);\n   toView.setTranslationY(translationY);\n   float scaleX = (toWidth == 0) ? \n         1 : \n         (toWidth + deltaWidth * sign * (-position)) \u002F toWidth;\n   float scaleY = (toHeight == 0) ? \n         1 :\n         (toHeight + deltaHeight * sign * (-position)) \u002F toHeight;\n\n   toView.setScaleX(scaleX);\n   toView.setScaleY(scaleY);\n}\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003C\u002Fdiv\u003E\n                    \u003C\u002Fdiv\u003E\u003Cbr\u002F\u003E\r\n\u003Ch3\u003EВыбираем страницы для рисования анимации\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003E\u003Ccode\u003EViewPager\u003C\u002Fcode\u003E не спешит делиться сведениями между какими страницами идет скроллинг. Как я и обещал, сейчас расскажу как мы получаем эту информацию. В нашем \u003Ccode\u003EPageTransformer\u003C\u002Fcode\u003E мы реализуем еще один интерфейс \u003Ccode\u003EViewPager.OnPageChangeListener\u003C\u002Fcode\u003E. Поизучав выход \u003Ccode\u003EonPageScrolled()\u003C\u002Fcode\u003E через \u003Ccode\u003E System.out.println()\u003C\u002Fcode\u003E я пришел к следующей формуле:\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"java\"\u003Epublic void onPageScrolled(\n   int position, float positionOffset, int positionOffsetPixels\n) {\n   Set&lt;Integer\u003E visiblePages = new HashSet&lt;\u003E();\n\n   visiblePages.add(position);\n   visiblePages.add(positionOffset \u003E= 0 ? position + 1 : position - 1);\n   visiblePages.remove(fromPageNumber);\n\n   toPageNumber = visiblePages.iterator().next();\n\n   if (pages == null || toPageNumber \u003E= pages.size()) toPageNumber = null;\n}\n\npublic void onPageSelected(int position) {   this.position = position; }\n\npublic void onPageScrollStateChanged(int state) {\n   if (state == SCROLL_STATE_IDLE) {\n       \u002F\u002F Как только все анимации перехода закончены, запоминаем текущую страницу\n       fromPageNumber = position;\n       resetViewPositions();\n   }\n}\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EВот и все. \u003Cstrong\u003EМы сделали это!\u003C\u002Fstrong\u003E Анимация следит за жестами пользователя. Зачем выбирать между свайпами и \u003Cem\u003EShared Element Transition\u003C\u002Fem\u003E, когда можно оставить все. \u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EВо время написания статьи я добавил эффект исчезновения статичных элементов — он пока очень сырой, поэтому в библиотеку не добавлен.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cdiv class=\"spoiler\" role=\"button\" tabindex=\"0\"\u003E\n                        \u003Cb class=\"spoiler_title\"\u003EПосмотреть, что же получилось в итоге (анимация ‒ 2.4 mb)\u003C\u002Fb\u003E\n                        \u003Cdiv class=\"spoiler_text\"\u003E\u003Cdiv style=\"text-align:center;\"\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fqe\u002F38\u002Fac\u002Fqe38acszfutvrpyu2cru-pbwjwq.gif\"\u002F\u003E\u003C\u002Fdiv\u003E\u003C\u002Fdiv\u003E\n                    \u003C\u002Fdiv\u003E\u003Cbr\u002F\u003E\r\n\u003Cdiv class=\"spoiler\" role=\"button\" tabindex=\"0\"\u003E\n                        \u003Cb class=\"spoiler_title\"\u003EИсходный код целиком\u003C\u002Fb\u003E\n                        \u003Cdiv class=\"spoiler_text\"\u003E\u003Cdiv class=\"oembed\"\u003E\u003Cscript type=\"text\u002Fjavascript\" src=\"https:\u002F\u002Fgist.github.com\u002F0bca6b1317e2827c668f0791d73cc7c8.js\"\u003E\u003C\u002Fscript\u003E\u003C\u002Fdiv\u003E\u003C\u002Fdiv\u003E\n                    \u003C\u002Fdiv\u003E\u003Cbr\u002F\u003E\r\n\u003Ch3\u003EКак выглядит работа с библиотекой\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EКонфигурация получилась довольно лаконичной.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cdiv class=\"spoiler\" role=\"button\" tabindex=\"0\"\u003E\n                        \u003Cb class=\"spoiler_title\"\u003EПолная настройка для нашего примера выглядит так\u003C\u002Fb\u003E\n                        \u003Cdiv class=\"spoiler_text\"\u003E\u003Cpre\u003E\u003Ccode class=\"java\"\u003EArrayList&lt;Fragment\u003E fragments = new ArrayList&lt;\u003E();\n\nfragments.add(hello_fragment);\nfragments.add(small_picture_fragment);\nfragments.add(big_picture_fragment);\n\nSharedElementPageTransformer transformer =\n       new SharedElementPageTransformer(this,  fragments);\n\ntransformer.addSharedTransition(R.id.smallPic_image_cat2, R.id.bigPic_image_cat, true);\ntransformer.addSharedTransition(R.id.smallPic_text_label3, R.id.bigPic_text_label, true);\ntransformer.addSharedTransition(R.id.hello_text, R.id.smallPic_text_label3, true);\n\nviewPager.setPageTransformer(false, transformer);\nviewPager.addOnPageChangeListener(transformer);\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003C\u002Fdiv\u003E\n                    \u003C\u002Fdiv\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003E\u003Ccode\u003EonClick\u003C\u002Fcode\u003E, включающий все transition, может выглядеть так:\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"java\"\u003EsmallCatImageView.setOnClickListener(\n   v -\u003E activity.viewPager.setCurrentItem(2)\n);\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EЧтобы код не пропадал, я поместил библиотеку в репозиторий \u003Cem\u003EJCenter\u003C\u002Fem\u003E и на \u003Cem\u003EGitHub\u003C\u002Fem\u003E. Так я и соприкоснулся с миром opensource. Попробовать ее на своем проекте вы можете, просто добавив\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"java\"\u003Edependencies {\n   \u002F\u002F...    \n   implementation 'com.github.kirillgerasimov:shared-element-view-pager:0.0.2-alpha'\n}\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EВсе исходники доступны на \u003Ca href=\"https:\u002F\u002Fgithub.com\u002Fkirillgerasimov\u002FShared-Element-View-Pager\"\u003EGitHub\u003C\u002Fa\u003E \u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Ch3\u003EЗаключение\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EДаже если интернет не знает ответа, это не значит, что его нет. Ищите обходные пути, пробуйте пока не получится. Возможно, вы станете первым, кто докопается до сути и поделится этим с сообществом.\u003C\u002Fp\u003E\u003C\u002Fdiv\u003E","tags":[{"titleHtml":"android development"},{"titleHtml":"android разработка"},{"titleHtml":"java"},{"titleHtml":"лонгрид"},{"titleHtml":"своё"}],"metadata":{"stylesUrls":[],"scriptUrls":[],"shareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F451116\u002F2fdf83c3649dd1aedcdb77cef6708a91\u002F","shareImageWidth":1200,"shareImageHeight":630,"vkShareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F451116\u002F2fdf83c3649dd1aedcdb77cef6708a91\u002F?format=vk","schemaJsonLd":"{\"@context\":\"http:\\\u002F\\\u002Fschema.org\",\"@type\":\"Article\",\"mainEntityOfPage\":{\"@type\":\"WebPage\",\"@id\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fru\\\u002Fpost\\\u002F451116\\\u002F\"},\"headline\":\"Как я боролся с Shared Element Transition и написал свою первую opensource библиотeку\",\"datePublished\":\"2019-05-09T14:29:38+03:00\",\"dateModified\":\"2019-05-09T14:29:38+03:00\",\"author\":{\"@type\":\"Person\",\"name\":\"KirillGerasimov\"},\"publisher\":{\"@type\":\"Organization\",\"name\":\"Habr\",\"logo\":{\"@type\":\"ImageObject\",\"url\":\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fa_\\\u002Flk\\\u002F9m\\\u002Fa_lk9mjkccjox-zccjrpfolmkmq.png\"}},\"description\":\"Нет повести печальнее на свете,  чем повесть о ViewPager&rsquo;e и  SET&rsquo;e    Хочется предупредить, что автор ‒ новичок андроид, поэтому статья содержит столько техниче...\",\"url\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fru\\\u002Fpost\\\u002F451116\\\u002F#post-content-body\",\"about\":[\"h_android_dev\",\"f_develop\"],\"image\":[\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fxy\\\u002F9_\\\u002F-m\\\u002Fxy9_-mwralsvfgpectslixhktbw.jpeg\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002F7l\\\u002Fqu\\\u002Fr_\\\u002F7lqur_jrf31n12aqmqefruovwbo.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Ftu\\\u002Fqa\\\u002Fss\\\u002Ftuqasspx-ir0-tuk-fo4qk3m9fa.jpeg\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fkc\\\u002Fcz\\\u002Fvy\\\u002Fkcczvylf6a4kekytbyrtbyzk7w4.gif\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Flo\\\u002Fp2\\\u002F3h\\\u002Flop23hzo-o-cglifsb1aljyey-g.gif\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fqe\\\u002F38\\\u002Fac\\\u002Fqe38acszfutvrpyu2cru-pbwjwq.gif\"]}","metaDescription":"Нет повести печальнее на свете, \r\nчем повесть о ViewPager’e и  SET’e\r\n\r\n \r\nХочется предупредить, что автор ‒ новичок андроид, поэтому статья содержит столько технических неточностей, что вас, скорее,...","mainImageUrl":null,"amp":false},"polls":[],"commentsEnabled":true,"rulesRemindEnabled":false,"votesEnabled":true,"status":"published","plannedPublishTime":null,"checked":null,"isEditorial":false}},"articlesIds":{},"isLoading":false,"pagesCount":{},"route":{},"reasonsList":null,"view":"cards","lastVisitedRoute":{},"ssrCommentsArticleIds":[""],"karma":{}},"authorContribution":{"authors":{}},"betaTest":{"currentAnnouncement":null,"announcements":{},"announcementCards":null,"announcementComments":{},"announcementCommentThreads":{},"announcementCommentingStatuses":{},"archivedList":[]},"authorStatistics":{"articleRefs":{},"articleIds":{},"pagesCount":{},"route":{},"viewsCount":[],"maxStatsCount":{}},"career":{"seoLandings":[],"hubs":"android_dev"},"comments":{"articleComments":{},"searchCommentsResults":null,"previewComment":null,"pagesCount":null,"commentAccess":{},"scrollParents":{},"pageArticleComments":{"lastViewedComment":0,"postId":null,"lastCommentTimestamp":"","moderated":[],"moderatedIds":[],"commentRoute":""}},"companies":{"companyRefs":{},"companyIds":{},"companyTopIds":{},"pagesCount":{},"companyProfiles":{},"companiesCategories":[],"companiesCategoriesTotalCount":0,"companiesWidgets":{},"companiesWorkers":{},"companiesFans":{},"route":{},"isLoading":false,"companyWorkersLoading":false,"companyFansLoading":false,"vacancies":{}},"companiesContribution":{"hubs":{},"flows":{},"companyRefs":{}},"companyHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"conversation":{"messages":[],"respondent":null,"isLoadMore":false},"conversations":{"conversations":[],"unreadCount":0,"pagesCount":0,"isLoadMore":false},"desktopState":{"desktopFl":null,"desktopHl":null,"isChecked":false,"isLoginDemanded":false},"dfp":{"slotsDict":{}},"docs":{"menu":{},"articles":{},"mainMenu":[],"loading":{"main":false,"dropdown":false,"article":false}},"feature":{"isProbablyVisible":"true"},"flows":{"flows":[{"alias":"develop","id":1,"route":{"name":"FLOW_PAGE","params":{"flowName":"develop"}}},{"alias":"admin","id":6,"route":{"name":"FLOW_PAGE","params":{"flowName":"admin"}}},{"alias":"design","id":2,"route":{"name":"FLOW_PAGE","params":{"flowName":"design"}}},{"alias":"management","id":3,"route":{"name":"FLOW_PAGE","params":{"flowName":"management"}}},{"alias":"marketing","id":4,"route":{"name":"FLOW_PAGE","params":{"flowName":"marketing"}}},{"alias":"popsci","id":7,"route":{"name":"FLOW_PAGE","params":{"flowName":"popsci"}}}]},"global":{"isPwa":false,"device":"desktop","isHabrCom":true},"hubs":{"hubRefs":{},"hubIds":{},"pagesCount":{},"isLoading":false,"route":{}},"hubsBlock":{"hubRefs":{},"hubIds":{}},"i18n":{"fl":"ru","hl":"ru"},"info":{"infoPage":{},"isLoading":true},"location":{"urlStruct":{"protocol":null,"slashes":null,"auth":null,"host":null,"port":null,"hostname":null,"hash":null,"search":null,"query":{},"pathname":null,"path":null,"href":""},"searchQuery":null},"me":{"user":null,"ppgDemanded":false,"karmaResetInfo":{"canReincarnate":null,"wasReincarnated":null,"currentScore":null},"notes":null},"mostReadingList":{"mostReadingListIds":[],"mostReadingListRefs":null,"promoPost":null},"pinnedPost":{"pinnedPost":null},"ppa":{"articles":{},"card":null,"transactions":null,"totalTransactions":null,"isAccessible":null},"projectsBlocks":{"activeBlocks":{}},"pullRefresh":{"shouldRefresh":false},"sandbox":{"articleIds":[],"articleRefs":{},"pagesCount":null,"route":{},"lastVisitedRoute":{},"isLoading":false},"settingsOther":{"inputs":{"uiLang":{"errors":[],"ref":null,"value":""},"articlesLangEnglish":{"errors":[],"ref":null,"value":false},"articlesLangRussian":{"errors":[],"ref":null,"value":false},"agreement":{"errors":[],"ref":null,"value":false},"email":{"errors":[],"ref":null,"value":true},"digest":{"errors":[],"ref":null,"value":true}}},"similarList":{"similarListIds":[],"similarListRefs":null},"ssr":{"error":null,"isDataLoaded":false,"isDataLoading":false,"isHydrationFailed":false,"isServer":false},"userHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"userInvites":{"availableInvites":0,"usedInvitesIds":[],"usedInvitesRefs":{},"usedInvitesPagesCount":0,"unusedInvitesIds":[],"unusedInvitesRefs":{},"unusedInvitesPagesCount":0},"users":{"authorRefs":{},"authorIds":{},"pagesCount":{},"authorProfiles":{},"userHubs":{},"userInvitations":{},"authorFollowers":{},"authorFollowed":{},"karmaStats":[],"statistics":null,"isLoading":false,"authorFollowersLoading":false,"authorFollowedLoading":false,"userHubsLoading":false,"userInvitationsLoading":false,"route":{}},"viewport":{"prevScrollY":{},"scrollY":0,"width":0},"tracker":{"items":{},"pagesCache":{},"markedViewedSilently":{},"markedRead":{},"unreadCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null},"unviewedCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null}}};(function(){var s;(s=document.currentScript||document.scripts[document.scripts.length-1]).parentNode.removeChild(s);}());</script>
+<script src="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" defer></script><script src="https://assets.habr.com/habr-web/js/app.c0af73e7.js" defer></script>
+
+
+
+    <script>
+      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+        (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+        m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+      })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+    </script>
+  
+  <script type="text/javascript" >
+    (function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+    m[i].l=1*new Date();k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})
+    (window, document, "script", "https://mc.yandex.ru/metrika/tag.js", "ym");
+
+    ym(24049213, "init", {
+      defer:true,
+      trackLinks:true,
+      accurateTrackBounce:true,
+      webvisor:false,
+    });
+  </script>
+  <noscript>
+    <div>
+      <img src="https://mc.yandex.ru/watch/24049213" style="position:absolute; left:-9999px;" alt="" />
+    </div>
+  </noscript>
+  
+    <script type="text/javascript">
+      window.addEventListener('load', function () {
+        setTimeout(() => {
+          const img = new Image();
+          img.src = 'https://vk.com/rtrg?p=VK-RTRG-421343-57vKE';
+        }, 0);
+      });
+    </script>
+  
+</body>
+</html>

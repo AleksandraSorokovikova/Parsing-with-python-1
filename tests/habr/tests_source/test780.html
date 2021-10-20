@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="ru" data-vue-meta="%7B%22lang%22:%7B%22ssr%22:%22ru%22%7D%7D">
+<head >
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
+  <title>Запускаем инструментальные тесты в Firebase Test Lab. Часть 1: iOS проект / Хабр</title>
+  <style>
+    /* cyrillic-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSxf6TF0.woff2) format('woff2');
+      unicode-range: U+0460-052F, U+1C80-1C88, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+    }
+
+    /* cyrillic */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveQhf6TF0.woff2) format('woff2');
+      unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+    }
+
+    /* latin-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSBf6TF0.woff2) format('woff2');
+      unicode-range: U+0100-024F, U+0259, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20CF, U+2113, U+2C60-2C7F, U+A720-A7FF;
+    }
+
+    /* latin */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveRhf6.woff2) format('woff2');
+      unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+    }
+  </style>
+  <link rel="preload" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" as="script"><link rel="preload" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/app.c0af73e7.js" as="script">
+  <link rel="stylesheet" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css"><link rel="stylesheet" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css">
+  <script>window.i18nFetch = new Promise((res, rej) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open('GET', '/js/i18n/ru-compiled.85eb77f0b17c8235e7b64b9f81ea5ec2.json');
+          xhr.responseType = 'json';
+          xhr.onload = function(e) {
+            if (this.status === 200) {
+              res({ru: xhr.response});
+            } else {
+              rej(e);
+            }
+          };
+          xhr.send();
+        });</script>
+  
+  <script data-vue-meta="ssr" src="/js/ads.js" onload="window['zhY4i4nJ9K'] = true" data-vmid="checkad"></script><script data-vue-meta="ssr" type="application/ld+json" data-vmid="ldjson-schema">{"@context":"http:\/\/schema.org","@type":"Article","mainEntityOfPage":{"@type":"WebPage","@id":"https:\/\/habr.com\/ru\/post\/451786\/"},"headline":"Запускаем инструментальные тесты в Firebase Test Lab. Часть 1: iOS проект","datePublished":"2019-05-14T16:43:42+03:00","dateModified":"2019-05-16T10:31:37+03:00","author":{"@type":"Person","name":"Дмитрий Свиридов"},"publisher":{"@type":"Organization","name":"Habr","logo":{"@type":"ImageObject","url":"https:\/\/habrastorage.org\/webt\/a_\/lk\/9m\/a_lk9mjkccjox-zccjrpfolmkmq.png"}},"description":"Меня зовут Дмитрий, я работаю тестировщиком в компании MEL Science. Совсем недавно я закончил разбираться со сравнительно свежей фичей от Firebase Test Lab &mdash; а...","url":"https:\/\/habr.com\/ru\/post\/451786\/#post-content-body","about":["h_it_testing","h_mobile_testing","h_devops","f_develop","f_admin"],"image":["https:\/\/habrastorage.org\/webt\/ak\/zz\/ax\/akzzax8yp7xdofbpono3dplmgrw.png","https:\/\/habrastorage.org\/webt\/lz\/nv\/wj\/lznvwj2y7eup9jhvuo7tuuap0rk.png","https:\/\/habrastorage.org\/webt\/vm\/iu\/6y\/vmiu6yivxbeeftzzpw6mtsjwmki.png","https:\/\/habrastorage.org\/webt\/lv\/at\/h8\/lvath8ca3apgpkkre6yo0lngxfm.png","https:\/\/habrastorage.org\/webt\/-q\/am\/xp\/-qamxpb7mzfaeko-yqesuahxsk4.png","https:\/\/habrastorage.org\/webt\/hc\/yo\/uq\/hcyouqxvbupjhehw9ywslmxrf-g.png","https:\/\/habrastorage.org\/webt\/p4\/fx\/ws\/p4fxwszdhepxbhdhtw8zucmcwqy.png","https:\/\/habrastorage.org\/webt\/l0\/hq\/dg\/l0hqdgqi3w31ilkeo7emjo4n7ia.png","https:\/\/habrastorage.org\/webt\/4g\/2w\/gg\/4g2wggl51s6o5e44i9arfztz70s.png","https:\/\/habrastorage.org\/webt\/ey\/8x\/7b\/ey8x7bwmzkwdskvqiyoheco-icy.png","https:\/\/habrastorage.org\/webt\/sw\/2d\/jg\/sw2djgp6yn12gvsegbnpla2ki30.png","https:\/\/habrastorage.org\/webt\/-5\/c4\/mx\/-5c4mx_pjsy0qbj770baix-qo8w.png","https:\/\/habrastorage.org\/webt\/nv\/k8\/tb\/nvk8tbgrgycr_fnqdxxktcybgng.png"]}</script>
+  <script src="//www.googletagservices.com/tag/js/gpt.js" async></script>
+  <style>.grecaptcha-badge{visibility: hidden;}</style>
+  <meta name="habr-version" content="2.49.0">
+  
+  <meta data-vue-meta="ssr" property="fb:app_id" content="444736788986613"><meta data-vue-meta="ssr" property="fb:pages" content="472597926099084"><meta data-vue-meta="ssr" name="twitter:card" content="summary_large_image"><meta data-vue-meta="ssr" name="twitter:site" content="@habr_eng"><meta data-vue-meta="ssr" property="og:title" content="Запускаем инструментальные тесты в Firebase Test Lab. Часть 1: iOS проект" data-vmid="og:title"><meta data-vue-meta="ssr" name="twitter:title" content="Запускаем инструментальные тесты в Firebase Test Lab. Часть 1: iOS проект" data-vmid="twitter:title"><meta data-vue-meta="ssr" name="aiturec:title" content="Запускаем инструментальные тесты в Firebase Test Lab. Часть 1: iOS проект" data-vmid="aiturec:title"><meta data-vue-meta="ssr" name="description" content="Меня зовут Дмитрий, я работаю тестировщиком в компании MEL Science. Совсем недавно я закончил разбираться со сравнительно свежей фичей от Firebase Test Lab — а именно, с инструментальным..." data-vmid="description"><meta data-vue-meta="ssr" itemprop="description" content="Меня зовут Дмитрий, я работаю тестировщиком в компании MEL Science. Совсем недавно я закончил разбираться со сравнительно свежей фичей от Firebase Test Lab — а именно, с инструментальным..." data-vmid="description:itemprop"><meta data-vue-meta="ssr" property="og:description" content="Меня зовут Дмитрий, я работаю тестировщиком в компании MEL Science. Совсем недавно я закончил разбираться со сравнительно свежей фичей от Firebase Test Lab — а именно, с инструментальным..." data-vmid="og:description"><meta data-vue-meta="ssr" name="twitter:description" content="Меня зовут Дмитрий, я работаю тестировщиком в компании MEL Science. Совсем недавно я закончил разбираться со сравнительно свежей фичей от Firebase Test Lab — а именно, с инструментальным..." data-vmid="twitter:description"><meta data-vue-meta="ssr" property="aiturec:description" content="Меня зовут Дмитрий, я работаю тестировщиком в компании MEL Science. Совсем недавно я закончил разбираться со сравнительно свежей фичей от Firebase Test Lab — а именно, с инструментальным..." data-vmid="aiturec:description"><meta data-vue-meta="ssr" itemprop="image" content="https://habr.com/share/publication/451786/626b152f77925680dfa5fa3070813857/" data-vmid="image:itemprop"><meta data-vue-meta="ssr" property="og:image" content="https://habr.com/share/publication/451786/626b152f77925680dfa5fa3070813857/" data-vmid="og:image"><meta data-vue-meta="ssr" property="aiturec:image" content="https://habr.com/share/publication/451786/626b152f77925680dfa5fa3070813857/" data-vmid="aiturec:image"><meta data-vue-meta="ssr" name="twitter:image" content="https://habr.com/share/publication/451786/626b152f77925680dfa5fa3070813857/" data-vmid="twitter:image"><meta data-vue-meta="ssr" property="vk:image" content="https://habr.com/share/publication/451786/626b152f77925680dfa5fa3070813857/" data-vmid="vk:image"><meta data-vue-meta="ssr" property="aiturec:item_id" content="451786" data-vmid="aiturec:item_id"><meta data-vue-meta="ssr" property="aiturec:datetime" content="2019-05-14T13:43:42.000Z" data-vmid="aiturec:datetime"><meta data-vue-meta="ssr" property="og:type" content="article" data-vmid="og:type"><meta data-vue-meta="ssr" property="og:locale" content="ru_RU" data-vmid="og:locale"><meta data-vue-meta="ssr" property="og:image:width" content="1200" data-vmid="og:image:width"><meta data-vue-meta="ssr" property="og:image:height" content="630" data-vmid="og:image:height">
+  <link data-vue-meta="ssr" href="https://habr.com/ru/rss/post/451786/?fl=ru" type="application/rss+xml" title="" rel="alternate" name="rss"><link data-vue-meta="ssr" href="https://habr.com/ru/post/451786/" rel="canonical" data-vmid="canonical"><link data-vue-meta="ssr" data-vmid="hreflang"><link data-vue-meta="ssr" image_src="image" href="https://habr.com/share/publication/451786/626b152f77925680dfa5fa3070813857/" data-vmid="image:href">
+  <meta name="apple-mobile-web-app-status-bar-style" content="#303b44">
+  <meta name="msapplication-TileColor" content="#629FBC">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="16x16"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-16.png"
+  >
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="32x32"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-32.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="76x76"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-76.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="120x120"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="152x152"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-152.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="180x180"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-180.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="256x256"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-256.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1136x640.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2436x1125.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1792x828.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_828x1792.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1334x750.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2208x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1125x2436.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2208.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2732x2048.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2688x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2224x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_750x1334.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x2732.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2388x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2224.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_640x1136.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2388.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x1536.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1536x2048.png"
+  >
+  <link
+    rel="mask-icon"
+    color="#77a2b6"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.svg"
+  >
+  <link
+    crossorigin="use-credentials"
+    href="/manifest.webmanifest"
+    rel="manifest"
+  >
+</head>
+<body>
+
+
+<div id="app" data-server-rendered="true" data-async-called="true"><div class="tm-layout__wrapper"><!----> <div></div> <!----> <header class="tm-header"><div class="tm-page-width"><div class="tm-header__container"><!----> <span class="tm-header__logo-wrap"><a href="/ru/" class="tm-header__logo tm-header__logo_ru"><svg height="16" width="16" class="tm-svg-img tm-header__icon"><title>Хабр</title> <use xlink:href="/img/habr-logo-ru.svg#logo"></use></svg></a> <span class="tm-header__beta-sign" style="display:none;">β</span></span> <div class="tm-dropdown tm-header__projects"><div class="tm-dropdown__head"><button class="tm-header__dropdown-toggle"><svg height="16" width="16" class="tm-svg-img tm-header__icon tm-header__icon_dropdown"><title>Открыть список</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#arrow-down"></use></svg></button></div> <!----></div> <a href="/ru/sandbox/start/" class="tm-header__become-author-btn">
+            Как стать автором
+          </a> <div class="tm-feature tm-header__feature tm-feature_variant-inline"><!----></div> <!----> <!----></div></div></header> <div class="tm-layout"><div class="tm-page-progress-bar"></div> <div data-menu-sticky="true" class="tm-base-layout__header tm-base-layout__header_is-sticky"><div class="tm-page-width"><div class="tm-base-layout__header-wrapper"><div class="tm-main-menu"><div class="tm-main-menu__section"><nav class="tm-main-menu__section-content"><!----> <a href="/ru/all/" class="tm-main-menu__item">
+        Все потоки
+      </a> <a href="/ru/flows/develop/" class="tm-main-menu__item">
+          Разработка
+        </a><a href="/ru/flows/admin/" class="tm-main-menu__item">
+          Администрирование
+        </a><a href="/ru/flows/design/" class="tm-main-menu__item">
+          Дизайн
+        </a><a href="/ru/flows/management/" class="tm-main-menu__item">
+          Менеджмент
+        </a><a href="/ru/flows/marketing/" class="tm-main-menu__item">
+          Маркетинг
+        </a><a href="/ru/flows/popsci/" class="tm-main-menu__item">
+          Научпоп
+        </a></nav></div></div> <div class="tm-header-user-menu tm-base-layout__user-menu"><a href="/ru/search/" class="tm-header-user-menu__item tm-header-user-menu__search"><svg height="24" width="24" class="tm-svg-img tm-header-user-menu__icon tm-header-user-menu__icon_search tm-header-user-menu__icon_dark"><title>Поиск</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#search"></use></svg></a> <!----> <!----> <!----> <div class="tm-header-user-menu__item tm-header-user-menu__user_desktop"><div class="tm-dropdown"><div class="tm-dropdown__head"><svg height="24" width="24" data-test-id="menu-toggle-guest" class="tm-svg-img tm-header-user-menu__icon"><title>Профиль</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#header-user"></use></svg> <!----></div> <!----></div> <!----></div> <!----></div></div></div></div> <!----> <div class="tm-page-width"></div> <main class="tm-layout__container"><div hl="ru" data-async-called="true" class="tm-page"><div class="tm-page-width"><!----> <div class="tm-page__wrapper"><div class="tm-page__main tm-page__main_has-sidebar"><div class="pull-down"><div class="pull-down__header" style="height:0px;"><div class="pull-down__content" style="bottom:10px;"><svg height="24" width="24" class="tm-svg-img pull-down__arrow"><title>Обновить</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#pull-arrow"></use></svg></div></div> <div class="tm-article-presenter"> <div class="tm-article-presenter__body"><div class="tm-misprint-area"><div class="tm-misprint-area__wrapper"><article class="tm-article-presenter__content tm-article-presenter__content_narrow"><div class="tm-article-presenter__header"> <div class="tm-article-snippet tm-article-presenter__snippet"><div class="tm-article-snippet__meta-container"><div class="tm-article-snippet__meta"><span class="tm-user-info tm-article-snippet__author"><a href="/ru/users/dmitrij_kot/" title="dmitrij_kot" class="tm-user-info__userpic"><div class="tm-entity-image"><svg height="24" width="24" class="tm-svg-img tm-image-placeholder tm-image-placeholder_blue"><!----> <use xlink:href="/img/megazord-v24.ce74655c.svg#placeholder-user"></use></svg></div></a> <span class="tm-user-info__user"><a href="/ru/users/dmitrij_kot/" class="tm-user-info__username">
+      dmitrij_kot
+    </a> </span></span> <span class="tm-article-snippet__datetime-published"><time datetime="2019-05-14T13:43:42.000Z" title="2019-05-14, 16:43">14  мая  2019 в 16:43</time></span></div> <!----></div> <h1 lang="ru" class="tm-article-snippet__title tm-article-snippet__title_h1"><span>Запускаем инструментальные тесты в Firebase Test Lab. Часть 1: iOS проект</span></h1> <div class="tm-article-snippet__hubs"><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/it_testing/" class="tm-article-snippet__hubs-item-link"><span>Тестирование IT-систем</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/mobile_testing/" class="tm-article-snippet__hubs-item-link"><span>Тестирование мобильных приложений</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/devops/" class="tm-article-snippet__hubs-item-link"><span>DevOps</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span></div> <div class="tm-article-snippet__labels"><div class="tm-article-snippet__label"><span>
+        Tutorial
+      </span></div></div> <!----> <!----></div></div> <!----> <div data-gallery-root="" lang="ru" class="tm-article-body"><div id="post-content-body" class="article-formatted-body article-formatted-body_version-1"><div xmlns="http://www.w3.org/1999/xhtml"><img src="/img/image-loader.svg" alt="image" data-src="https://habrastorage.org/webt/ak/zz/ax/akzzax8yp7xdofbpono3dplmgrw.png"/><br/>
+<br/>
+Меня зовут Дмитрий, я работаю тестировщиком в компании <a href="https://melscience.com/RU-ru/">MEL Science</a>. Совсем недавно я закончил разбираться со сравнительно свежей фичей от <a href="https://firebase.google.com/docs/test-lab">Firebase Test Lab</a> — а именно, с инструментальным тестированием iOS приложений с использованием нативного фреймворка тестирования XCUITest.<br/>
+<br/>
+До этого я уже распробовал Firebase Test Lab для Android и мне все очень понравилось, так что я решил попробовать поставить тестовую инфраструктуру iOS проекта на те же рельсы. Приходилось очень много гуглить и не все получалось с первого раза, поэтому я решил написать статью-туториал для тех, кому все еще это предстоит.<br/>
+<br/>
+Итак, если у вас есть UI тесты на iOS проекте, вы сможете уже сегодня попробовать запустить их на реальных девайсах, любезно предоставленных Корпорацией Добра. Заинтересованным — добро пожаловать под кат.<br/>
+<a name="habracut"></a><br/>
+В повествовании я решил отталкиваться от некоторых исходных данных — приватный репозиторий на GitHub и система сборки CircleCI. Название приложения — AmazingApp, bundleID — com.company.amazingapp. Эти данные я привожу сразу, для уменьшения последующей путаницы.<br/>
+<br/>
+Если те или иные решения в своем проекте вы реализовали по-другому — делитесь опытом в комментариях.<br/>
+<br/>
+<h2>1. Сами тесты</h2><br/>
+Создаем новую ветку проекта для UI тестов:<br/>
+<br/>
+<pre><code class="bash">$ git checkout develop
+$ git pull
+$ git checkout -b “feature/add-ui-tests”
+</code></pre><br/>
+Откроем проект в XCode и создадим новую Цель (Target) с UI тестами [XCode -> File -> New -> Target -> iOS Testing Bundle], даем ей говорящее название AmazingAppUITests.<br/>
+<br/>
+<img src="/img/image-loader.svg" alt="image" data-src="https://habrastorage.org/webt/lz/nv/wj/lznvwj2y7eup9jhvuo7tuuap0rk.png"/><br/>
+<br/>
+Переходим в секцию Build Phases созданного Target и проверяем наличие Target Dependencies — AmazingApp, в Compile Sources — AmazingAppUITests.swift.<br/>
+<br/>
+Хорошей практикой является выделение различных вариантов сборки в отдельные Схемы (Schemes). Создаем схему для наших UI тестов [XCode -> Product -> Scheme -> New Scheme] и даем ей такое же название: AmazingAppUITests. <br/>
+<br/>
+Build созданной схемы должен включать в себя Target основного приложения — AmazingApp и Target UI тестов — AmazingAppUITests — см.скриншот<br/>
+<br/>
+<img src="/img/image-loader.svg" alt="image" data-src="https://habrastorage.org/webt/vm/iu/6y/vmiu6yivxbeeftzzpw6mtsjwmki.png"/><br/>
+<br/>
+Далее, создаем новую конфигурацию сборки для UI тестов. В XCode кликаем по файлу проекта, переходим в секцию Info. Кликаем на “+” и создаем новую конфигурацию, например XCtest. Это потребуется нам в дальнейшем, дабы избежать плясок с бубном когда дело дойдет до code signing. <br/>
+<br/>
+<img src="/img/image-loader.svg" alt="image" data-src="https://habrastorage.org/webt/lv/at/h8/lvath8ca3apgpkkre6yo0lngxfm.png"/><br/>
+<br/>
+В вашем проекте есть по крайней мере три Target: основное приложение, юнит тесты (ведь они есть, не так ли?) и созданный нами Target UI тестов. <br/>
+<br/>
+Заходим в Target AmazingApp, вкладка Build Settings, раздел Code Signing Identity. Для конфигурации XCtest выбираем iOS Developer. В разделе Code Signing Style выбираем Manual. Provisioning profile мы еще не сгенерировали, но чуть позже обязательно к нему вернемся.<br/>
+<br/>
+Для Target AmazingAppUITests делаем то же самое, но в графу Product Bundle Identifier вписываем com.company.amazingappuitests.<br/>
+<br/>
+<h2>2. Настройка проекта в Apple Developer Program</h2><br/>
+Заходим на страницу Apple Developer Program, переходим в раздел Certificates, Identifiers &amp; Profiles и затем в графу App IDs пункта Identifiers. Создаем новый App ID с именем AmazingAppUITests и bundleID com.company.amazingappuitests.<br/>
+<br/>
+<img src="/img/image-loader.svg" alt="image" data-src="https://habrastorage.org/webt/-q/am/xp/-qamxpb7mzfaeko-yqesuahxsk4.png"/><br/>
+<br/>
+Теперь у нас есть возможность подписывать наши тесты отдельным сертификатом, но… Процедура сборки билда для тестирования подразумевает сборку самого приложения и сборки раннера тестов. Соответственно, мы сталкиваемся с проблемой подписи двух bundle ID одним provisioning profile. Благо, существует простое и элегантное решение — Wildcard App ID. Повторяем процедуру создания нового App ID, но вместо Explicit App ID выбираем Wildcard App ID как на скриншоте.<br/>
+<br/>
+<img src="/img/image-loader.svg" alt="image" data-src="https://habrastorage.org/webt/hc/yo/uq/hcyouqxvbupjhehw9ywslmxrf-g.png"/><br/>
+<br/>
+На этом этапе работа с developer.apple.com окончена, но сворачивать окно браузера мы не будем. Идем на <a href="https://docs.fastlane.tools/actions/match/">сайт с документацией по Fastlane</a> и читаем про утилиту Match от корки до корки. <br/>
+<br/>
+Внимательный читатель заметил, что для использования этой утилиты нам понадобится приватный репозиторий и аккаунт, имеющий доступ как к Apple Developer Program, так и к Github. Создаем (если вдруг такого нет) аккаунт вида InfrastructureAccount@your.company.domain, придумываем мощный пароль, регистрируем его в developer.apple.com, назначаем администратором проекта. Далее, даем аккаунту доступ к github репозиторию вашей компании и создаем новый приватный репозиторий с именем вроде AmazingAppMatch.<br/>
+<br/>
+<h2>3. Настройка Fastlane и утилиты match</h2><br/>
+Открываем терминал, переходим в папку с проектом и инициализируем fastlane как указано в <a href="https://docs.fastlane.tools/">официальном мануале</a>. После ввода команды <br/>
+<br/>
+<pre><code class="bash">$ fastlane init</code></pre><br/>
+будет предложено выбрать доступные конфигурации использования. Выбираем четвертый пункт — ручная настройка проекта.<br/>
+<br/>
+<img src="/img/image-loader.svg" alt="image" data-src="https://habrastorage.org/webt/p4/fx/ws/p4fxwszdhepxbhdhtw8zucmcwqy.png"/><br/>
+<br/>
+В проекте появилась новая директория fastlane, в которой лежат два файла — Appfile и Fastfile. В двух словах — в Appfile мы храним служебные данные, а в Fastfile прописываем jobs, в терминологии Fastlane именуемые lanes. Рекомендую к прочтению официальную документацию: <a href="https://docs.fastlane.tools/advanced/Fastfile/">раз</a>, <a href="https://docs.fastlane.tools/advanced/Appfile/">два</a>.<br/>
+<br/>
+Открываем Appfile в любимом текстовом редакторе и приводим его к следующему виду:<br/>
+<br/>
+<pre><code class="ruby">app_identifier "com.company.amazingapp"       # Bundle ID
+apple_dev_portal_id "infrastructureaccount@your.company.domain"  # Созданный инфраструктурный аккаунт, имеющий право на редактирование iOS проекта в Apple Developer Program.
+team_id "LSDY3IFJAY9" # Your Developer Portal Team ID
+</code></pre><br/>
+Возвращаемся в терминал и по официальному мануалу начинаем настраивать match.<br/>
+<br/>
+<pre><code class="bash">$ fastlane match init
+$ fastlane match development
+</code></pre><br/>
+Далее вводим запрашиваемые данные — репозиторий, аккаунт, пароль и т.д.<br/>
+<br/>
+<b>Важно:</b> при первом запуске утилита match попросит ввести пароль для дешифровки репозитория. Очень важно сохранить этот пароль, на этапе настройки CI сервера он нам пригодится!<br/>
+<br/>
+В папке fastlane появился новый файл — Matchfile. Открываем в любимом текстовом редакторе и приводим к виду:<br/>
+<br/>
+<pre><code class="ruby">git_url("https://github.com/YourCompany/AmazingAppMatch") #Созданный приватный репозиторий для хранения сертификатов и профайлов.
+type("development") # The default type, can be: appstore, adhoc, enterprise or development
+app_identifier("com.company.amazingapp")
+username("infrastructureaccount@your.company.domain") # Your Infrastructure account Apple Developer Portal username
+</code></pre><br/>
+Заполняем именно таким образом, если хотим в дальнейшем использовать match для подписи билдов для выкладки в Crashlytics и/или AppStore, т.е для подписи bundle ID вашего приложения.<br/>
+<br/>
+Но, как мы помним, для подписи тестового билда мы создали специальный Wildcard ID. Поэтому, открываем Fastfile и вписываем новый lane:<br/>
+<br/>
+<pre><code class="ruby">lane :testing_build_for_firebase do
+
+    match(
+      type: "development",
+      readonly: true,
+      app_identifier: "com.company.*",
+      git_branch: "uitests"  # создаем отдельный бранч для development сертификата для подписи тестовой сборки.
+    )
+
+end
+</code></pre><br/>
+Сохраняем, вводим в терминал <br/>
+<br/>
+<pre><code class="bash">fastlane testing_build_for_firebase</code></pre> <br/>
+и видим как fastlane создал новый сертификат и положил его в репозиторий. Отлично! <br/>
+<br/>
+Открываем XCode. Теперь у нас есть нужный provisioning profile вида Match Development com.company.*, который нужно указать в секции Provisioning profile для таргетов AmazingApp и AmazingAppUITests.<br/>
+<br/>
+<img src="/img/image-loader.svg" alt="image" data-src="https://habrastorage.org/webt/l0/hq/dg/l0hqdgqi3w31ilkeo7emjo4n7ia.png"/><br/>
+<br/>
+Осталось дописать lane для сборки тестов. Идем в <a href="https://github.com/fastlane/fastlane-plugin-firebase_test_lab">репозиторий</a> проекта плагина для fastlane, облегчающего настройку экспорта в Firebase Test Lab и следуем инструкциям.<br/>
+<br/>
+Копипастим из исходного примера, чтобы наш lane testing_build_for_firebase в итоге выглядел так:<br/>
+<br/>
+<pre><code class="ruby">
+ lane :testing_build_for_firebase do
+
+    match(
+      type: "development",
+      readonly: true,
+      app_identifier: "com.company.*",
+      git_branch: "uitests"
+    )
+
+    scan(
+      scheme: 'AmazingAppUITests',      # UI Test scheme
+      clean: true,                        # Recommended: This would ensure the build would not include unnecessary files
+      skip_detect_devices: true,          # Required
+      build_for_testing: true,            # Required
+      sdk: 'iphoneos',                    # Required
+      should_zip_build_products: true,     # Must be true to set the correct format for Firebase Test Lab
+    )
+
+    firebase_test_lab_ios_xctest(
+      gcp_project: 'AmazingAppUITests', # Your Google Cloud project name (к этой строчке вернемся позже)
+      devices: [                          # Device(s) to run tests on
+        {
+          ios_model_id: 'iphonex',        # Device model ID, see gcloud command above
+          ios_version_id: '12.0',         # iOS version ID, see gcloud command above
+          locale: 'en_US',                # Optional: default to en_US if not set
+          orientation: 'portrait'         # Optional: default to portrait if not set
+        }
+      ]
+    )
+
+  end
+</code></pre><br/>
+Для получения полной информации о настройке fastlane в CircleCI рекомендую к прочтению официальную документацию <a href="https://docs.fastlane.tools/best-practices/continuous-integration/circle-ci/"> раз,</a> <a href="https://circleci.com/docs/2.0/testing-ios/#example-configuration-for-using-fastlane-on-circleci">два</a>.<br/>
+<br/>
+Не забываем дополнить наш config.yml новой задачей:<br/>
+<br/>
+<pre><code class="ruby">build-for-firebase-test-lab:
+   macos:
+     xcode: "10.1.0"   
+   working_directory: ~/project
+   shell: /bin/bash --login -o pipefail
+   steps:
+     - checkout
+     - attach_workspace:
+         at: ~/project
+     - run: sudo bundle install     # обновляем зависимости
+     - run:
+         name: install gcloud-sdk   # на mac машину необходимо установить gcloud
+         command: |
+           ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)" &lt; /dev/null 2> /dev/null ; brew install caskroom/cask/brew-cask 2> /dev/null
+           brew cask install google-cloud-sdk
+     - run:
+         name: build app for testing
+         command: fastlane testing_build_for_firebase  # запускаем lane сборки и отправки в firebase
+</code></pre><br/>
+<h2>4. А как же наш тестовый стенд? Настраиваем Firebase.</h2><br/>
+Приступим, собственно, к тому, для чего статья и писалась.<br/>
+ <br/>
+Возможно, ваше приложение использует Firebase на бесплатном тарифном плане, возможно — не использует вовсе. Принципиальной разницы абсолютно нет, потому как для нужд тестирования мы можем создать отдельный проект с годом бесплатного использования (круто, да?)<br/>
+<br/>
+Логинимся в наш инфраструктурный аккаунт (или любой другой, без разницы), и идем на <a href="https://console.firebase.google.com">страницу консоли Firebase</a>. Создаем новый проект с именем AmazingAppUITests.<br/>
+<br/>
+<b>Важно:</b> В предыдущем шаге в Fastfile в lane firebase_test_lab_ios_xctest параметр gcp_project должен соответствовать названию проекта.<br/>
+<br/>
+<img src="/img/image-loader.svg" alt="image" data-src="https://habrastorage.org/webt/4g/2w/gg/4g2wggl51s6o5e44i9arfztz70s.png"/><br/>
+<br/>
+Дефолтные настройки нас вполне устраивают.<br/>
+<br/>
+Не закрываем вкладку, под тем же аккаунтом регистрируемся в <a href="https://console.cloud.google.com">Gcloud</a> — это вынужденная мера, так как общение с Firebase происходит с помощью интерфейса консоли gcloud.<br/>
+<br/>
+Google дарит 300$ на год, что в контексте выполнения автотестов эквивалентно году бесплатного использования сервиса. Вводим платежные данные, дожидаемся тестового списания 1$ и получаем 300$ на счет. По прошествии года проект будет автоматически переведен на бесплатный тарифный план, так что волноваться о возможной потере денег не стоит. <br/>
+<br/>
+Вернемся на вкладку с проектом Firebase и переведем его на тарифный план Blaze — теперь нам есть чем платить в случае превышения лимита. <br/>
+<br/>
+В интерфейсе gcloud выбираем наш Firebase проект, выбираем пункт главного меню «Каталог» и добавляем Cloud Testing API и Cloud Tools Result API.<br/>
+<br/>
+<img src="/img/image-loader.svg" alt="image" data-src="https://habrastorage.org/webt/ey/8x/7b/ey8x7bwmzkwdskvqiyoheco-icy.png"/><br/>
+<br/>
+Затем переходим в пункт меню «IAM и администрирование» -> Сервисные аккаунты -> Создать сервисный аккаунт. Выдаем права на редактирование проекта.<br/>
+<br/>
+<img src="/img/image-loader.svg" alt="image" data-src="https://habrastorage.org/webt/sw/2d/jg/sw2djgp6yn12gvsegbnpla2ki30.png"/><br/>
+<br/>
+Создаем API ключ в формате JSON<br/>
+<br/>
+<img src="/img/image-loader.svg" alt="image" data-src="https://habrastorage.org/webt/-5/c4/mx/-5c4mx_pjsy0qbj770baix-qo8w.png"/><br/>
+<br/>
+Скачанный JSON понадобится нам чуть позже, а пока настройку Test Lab будем считать оконченной.<br/>
+<br/>
+<h2>5. Настройка CircleCI</h2><br/>
+Назревает резонный вопрос — а что делать с паролями? Надежно сохранить наши пароли и прочие чувствительные данные нам поможет механизм переменных окружения нашей билд-машины. В настройках проекта CircleCI выбираем Environment Variables<br/>
+<br/>
+<img src="/img/image-loader.svg" alt="image" data-src="https://habrastorage.org/webt/nv/k8/tb/nvk8tbgrgycr_fnqdxxktcybgng.png"/><br/>
+И заводим следующие переменные:<br/>
+<br/>
+<ul>
+<li>key: GOOGLE_APPLICATION_CREDENTIALS<br/>
+value: содержимое json файла ключа сервисного аккаунта gcloud</li>
+<li>key: MATCH_PASSWORD<br/>
+value: пароль для дешифровки github репозитория с сертификатами </li>
+<li>key: FASTLANE_PASSWORD<br/>
+value: пароль инфраструктурного аккаунта Apple Developer Portal </li>
+</ul><br/>
+Сохраняем изменения, создаем PR и отправляем на review своему тимлиду. <br/>
+<br/>
+<h2>Итоги</h2><br/>
+В результате выполнение этих нехитрых манипуляций мы получили хороший, стабильно работающий стенд с возможностью записи видео на экране устройства в момент прохождения тестирования. В тестовом примере я указал модель устройства iPhone X, но ферма предоставляет богатый выбор из комбинации различных моделей и версий iOS. <br/>
+<br/>
+Вторая часть будет посвящена пошаговой настройке Firebase Test Lab для Android проекта.</div></div> <!----> <!----></div> <div class="tm-article-presenter__meta"><div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Теги:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5BXCUITest%5D" class="tm-tags-list__link">XCUITest</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5BFirebase%20Test%20Lab%5D" class="tm-tags-list__link">Firebase Test Lab</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bfastlane%20match%5D" class="tm-tags-list__link">fastlane match</a></li></ul></div> <div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Хабы:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/hub/it_testing/" class="tm-hubs-list__link">
+    Тестирование IT-систем
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/mobile_testing/" class="tm-hubs-list__link">
+    Тестирование мобильных приложений
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/devops/" class="tm-hubs-list__link">
+    DevOps
+  </a></li></ul></div></div></article></div> <!----></div> <div class="tm-article-sticky-panel"><div class="tm-data-icons tm-article-sticky-panel__icons"><div class="tm-article-rating tm-data-icons__item"><div class="tm-votes-meter tm-article-rating__votes-switcher"><svg height="16" width="16" class="tm-svg-img tm-votes-meter__icon tm-votes-meter__icon_medium"><title>Всего голосов 7: ↑7 и ↓0</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-rating"></use></svg> <span title="Всего голосов 7: ↑7 и ↓0" class="tm-votes-meter__value tm-votes-meter__value_positive tm-votes-meter__value_medium">+7</span></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----> <span title="Количество просмотров" class="tm-icon-counter tm-data-icons__item"><svg height="16" width="16" class="tm-svg-img tm-icon-counter__icon"><title>Просмотры</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-views"></use></svg> <span class="tm-icon-counter__value">3.8K</span></span> <button title="Добавить в закладки" type="button" class="bookmarks-button tm-data-icons__item"><span title="Добавить в закладки" class="tm-svg-icon__wrapper bookmarks-button__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Добавить в закладки</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-favorite"></use></svg></span> <span title="Количество пользователей, добавивших публикацию в закладки" class="bookmarks-button__counter">
+    26
+  </span></button> <!----> <div title="Поделиться" class="tm-sharing tm-data-icons__item"><button type="button" class="tm-sharing__button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="tm-sharing__icon"><path fill="currentColor" d="M10.33.275l9.047 7.572a.2.2 0 010 .306l-9.048 7.572a.2.2 0 01-.328-.153V11c-8 0-9.94 6-9.94 6S-1 5 10 5V.428a.2.2 0 01.328-.153z"></path></svg></button> <!----></div> <DIV class="v-portal" style="display:none;"></DIV></div> </div></div> <!----> <!----> <div class="tm-article-presenter__footer"><div class="tm-article-blocks"><!----> <section class="tm-block tm-block_spacing-bottom"><!----> <div class="tm-block__body tm-block__body_variant-balanced"><div class="tm-article-author"> <div class="tm-user-card tm-article-author__user-card tm-user-card_variant-article"><div class="tm-user-card__info-container"><div class="tm-user-card__header"><div class="tm-user-card__header-data"><a href="/ru/users/dmitrij_kot/" class="tm-user-card__userpic tm-user-card__userpic_size-40"><div class="tm-entity-image"><svg class="tm-svg-img tm-image-placeholder tm-image-placeholder_blue"><!----> <use xlink:href="/img/megazord-v24.ce74655c.svg#placeholder-user"></use></svg></div></a> <div class="tm-user-card__meta"><div title=" 2 голоса " class="tm-karma tm-user-card__karma"><div class="tm-karma__votes tm-karma__votes_positive">
+    2
+  </div> <div class="tm-karma__text">
+    Карма
+  </div></div> <div title="Рейтинг пользователя" class="tm-rating tm-user-card__rating"><div class="tm-rating__header"> <div class="tm-rating__counter">0</div></div> <div class="tm-rating__text">
+    Рейтинг
+  </div></div></div></div></div> <div class="tm-user-card__info tm-user-card__info_variant-article"><div class="tm-user-card__title tm-user-card__title_variant-article"><span class="tm-user-card__name tm-user-card__name_variant-article">Дмитрий Свиридов</span> <a href="/ru/users/dmitrij_kot/" class="tm-user-card__nickname tm-user-card__nickname_variant-article">
+          @dmitrij_kot
+        </a> <!----></div> <p class="tm-user-card__short-info tm-user-card__short-info_variant-article">QA</p></div></div> <div class="tm-user-card__buttons tm-user-card__buttons_variant-article"><!----> <!----> <!----> <!----> <!----></div></div> <!----></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----></section> <div class="tm-article-blocks__comments"><div class="tm-article-page-comments"><div class="tm-article-comments-counter-link tm-article-comments-counter-button"><a href="/ru/post/451786/comments/" class="tm-article-comments-counter-link__link tm-article-comments-counter-link__link_button-style"><svg height="16" width="16" class="tm-svg-img tm-article-comments-counter-link__icon tm-article-comments-counter-link__icon_contrasted"><title>Комментарии</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-comments"></use></svg> <span class="tm-article-comments-counter-link__value tm-article-comments-counter-link__value_contrasted">
+       Комментарии 2 
+    </span></a> <!----></div></div></div> <div class="tm-ad-banner__container tm-page-article__banner"><!----> <div id="articleBottomBanner" class="tm-ad-banner"></div></div> <!----> <!----> <!----> <!----> </div></div></div></div></div> <div class="tm-page__sidebar"><div class="tm-layout-sidebar"><div class="tm-layout-sidebar__ads tm-layout-sidebar__ads_initial"><div class="tm-ad-banner__container tm-layout-sidebar__banner"><!----> <div id="sidebarBanner" class="tm-ad-banner"></div></div></div> <div class="tm-sexy-sidebar tm-sexy-sidebar_initial" style="margin-top:0px;"><!----> <!----></div></div></div></div></div></div></main> <!----></div> <div class="tm-footer-menu"><div class="tm-page-width"><div class="tm-footer-menu__container"><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Ваш аккаунт
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr/?back=/ru/post/451786/&amp;hl=ru" rel="nofollow" target="_self">
+                Войти
+              </a></li><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr-register/?back=/ru/post/451786/&amp;hl=ru" rel="nofollow" target="_self">
+                Регистрация
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Разделы
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/" class="footer-menu__item-link router-link-active">
+                Публикации
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/news/" class="footer-menu__item-link">
+                Новости
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/hubs/" class="footer-menu__item-link">
+                Хабы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/companies/" class="footer-menu__item-link">
+                Компании
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/users/" class="footer-menu__item-link">
+                Авторы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/sandbox/" class="footer-menu__item-link">
+                Песочница
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Информация
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/docs/help/" class="footer-menu__item-link">
+                Устройство сайта
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/authors/codex/" class="footer-menu__item-link">
+                Для авторов
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/companies/corpblogs/" class="footer-menu__item-link">
+                Для компаний
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/docs/transparency/" class="footer-menu__item-link">
+                Документы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/agreement" target="_blank">
+                Соглашение
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/confidential/" target="_blank">
+                Конфиденциальность
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Услуги
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQLwRfQmXibiUlWaRg-BAc38s7oM3lJiaPju7qmdJsp8ysIvZ_G-Npem0njJLMozE2bPHMpDqiI5hhy/pub?start=false&amp;loop=false&amp;delayms=60000&amp;slide=id.g91a03369cd_4_297" target="_blank">
+                Реклама
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://habrastorage.org/storage/stuff/habr/service_price.pdf" target="_blank">
+                Тарифы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQJJds8-Di7BQSP_guHxICN7woVYoN5NP_22ra-BIo4bqnTT9FR6fB-Ku2P0AoRpX0Ds-LRkDeAoD8F/pub?start=false&amp;loop=false&amp;delayms=60000" target="_blank">
+                Контент
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://tmtm.timepad.ru/" target="_blank">
+                Семинары
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/megaprojects/" class="footer-menu__item-link">
+                Мегапроекты
+              </a></li></ul></div></div></div></div></div> <div class="tm-footer"><div class="tm-page-width"><div class="tm-footer__container"><!----> <div class="tm-footer__social"><a href="https://www.facebook.com/habrahabr.ru" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Facebook</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-facebook"></use></svg></a><a href="https://twitter.com/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Twitter</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-twitter"></use></svg></a><a href="https://vk.com/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>VK</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-vkontakte"></use></svg></a><a href="https://telegram.me/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Telegram</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-telegram"></use></svg></a><a href="https://www.youtube.com/channel/UCd_sTwKqVrweTt4oAKY5y4w" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Youtube</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-youtube"></use></svg></a><a href="https://zen.yandex.ru/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Яндекс Дзен</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-zen"></use></svg></a></div> <DIV class="v-portal" style="display:none;"></DIV> <button class="tm-footer__link"><!---->
+        Настройка языка
+      </button> <a href="/ru/about" class="tm-footer__link">
+        О сайте
+      </a> <a href="/ru/feedback/" class="tm-footer__link">
+        Техническая поддержка
+      </a> <!----> <a href="/berserk-mode-nope" class="tm-footer__link">
+        Вернуться на старую версию
+      </a> <div class="tm-footer-copyright"><span class="tm-copyright"><span class="tm-copyright__years">© 2006–2021 </span> <span class="tm-copyright__name">«<a href="https://company.habr.com/" rel="noopener" target="_blank" class="tm-copyright__link">Habr</a>»</span></span></div></div></div></div> <!----> <!----></div> <div class="vue-portal-target"></div></div>
+<script>window.__INITIAL_STATE__={"adblock":{"hasAcceptableAdsFilter":false,"hasAdblock":false},"articlesList":{"articlesList":{"451786":{"id":"451786","timePublished":"2019-05-14T13:43:42+00:00","isCorporative":false,"lang":"ru","titleHtml":"Запускаем инструментальные тесты в Firebase Test Lab. Часть 1: iOS проект","leadData":{"textHtml":"\u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fak\u002Fzz\u002Fax\u002Fakzzax8yp7xdofbpono3dplmgrw.png\" alt=\"image\"\u003E\u003Cbr\u003E\r\n\u003Cbr\u003E\r\nМеня зовут Дмитрий, я работаю тестировщиком в компании \u003Ca href=\"https:\u002F\u002Fmelscience.com\u002FRU-ru\u002F\"\u003EMEL Science\u003C\u002Fa\u003E. Совсем недавно я закончил разбираться со сравнительно свежей фичей от \u003Ca href=\"https:\u002F\u002Ffirebase.google.com\u002Fdocs\u002Ftest-lab\"\u003EFirebase Test Lab\u003C\u002Fa\u003E — а именно, с инструментальным тестированием iOS приложений с использованием нативного фреймворка тестирования XCUITest.\u003Cbr\u003E\r\n\u003Cbr\u003E\r\nДо этого я уже распробовал Firebase Test Lab для Android и мне все очень понравилось, так что я решил попробовать поставить тестовую инфраструктуру iOS проекта на те же рельсы. Приходилось очень много гуглить и не все получалось с первого раза, поэтому я решил написать статью-туториал для тех, кому все еще это предстоит.\u003Cbr\u003E\r\n\u003Cbr\u003E\r\nИтак, если у вас есть UI тесты на iOS проекте, вы сможете уже сегодня попробовать запустить их на реальных девайсах, любезно предоставленных Корпорацией Добра. Заинтересованным — добро пожаловать под кат.\u003Cbr\u003E","imageUrl":null,"buttonTextHtml":"Читать дальше →","image":null},"editorVersion":"1.0","postType":"article","postLabels":[{"type":"tutorial","data":null}],"author":{"scoreStats":{"score":2,"votesCount":2},"rating":0,"relatedData":null,"contacts":[],"authorContacts":[],"paymentDetails":{"paymentYandexMoney":null,"paymentPayPalMe":null,"paymentWebmoney":null},"id":"1638909","alias":"dmitrij_kot","fullname":"Дмитрий Свиридов","avatarUrl":null,"speciality":"QA"},"statistics":{"commentsCount":2,"favoritesCount":26,"readingCount":3772,"score":7,"votesCount":7},"hubs":[{"relatedData":null,"id":"210","alias":"it_testing","type":"collective","title":"Тестирование IT-систем","titleHtml":"Тестирование IT-систем","isProfiled":true},{"relatedData":null,"id":"19281","alias":"mobile_testing","type":"collective","title":"Тестирование мобильных приложений","titleHtml":"Тестирование мобильных приложений","isProfiled":true},{"relatedData":null,"id":"20788","alias":"devops","type":"collective","title":"DevOps","titleHtml":"DevOps","isProfiled":true}],"flows":[{"id":"1","alias":"develop","title":"Разработка"},{"id":"6","alias":"admin","title":"Администрирование"}],"relatedData":null,"textHtml":"\u003Cdiv xmlns=\"http:\u002F\u002Fwww.w3.org\u002F1999\u002Fxhtml\"\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" alt=\"image\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fak\u002Fzz\u002Fax\u002Fakzzax8yp7xdofbpono3dplmgrw.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nМеня зовут Дмитрий, я работаю тестировщиком в компании \u003Ca href=\"https:\u002F\u002Fmelscience.com\u002FRU-ru\u002F\"\u003EMEL Science\u003C\u002Fa\u003E. Совсем недавно я закончил разбираться со сравнительно свежей фичей от \u003Ca href=\"https:\u002F\u002Ffirebase.google.com\u002Fdocs\u002Ftest-lab\"\u003EFirebase Test Lab\u003C\u002Fa\u003E — а именно, с инструментальным тестированием iOS приложений с использованием нативного фреймворка тестирования XCUITest.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nДо этого я уже распробовал Firebase Test Lab для Android и мне все очень понравилось, так что я решил попробовать поставить тестовую инфраструктуру iOS проекта на те же рельсы. Приходилось очень много гуглить и не все получалось с первого раза, поэтому я решил написать статью-туториал для тех, кому все еще это предстоит.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nИтак, если у вас есть UI тесты на iOS проекте, вы сможете уже сегодня попробовать запустить их на реальных девайсах, любезно предоставленных Корпорацией Добра. Заинтересованным — добро пожаловать под кат.\u003Cbr\u002F\u003E\r\n\u003Ca name=\"habracut\"\u003E\u003C\u002Fa\u003E\u003Cbr\u002F\u003E\r\nВ повествовании я решил отталкиваться от некоторых исходных данных — приватный репозиторий на GitHub и система сборки CircleCI. Название приложения — AmazingApp, bundleID — com.company.amazingapp. Эти данные я привожу сразу, для уменьшения последующей путаницы.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЕсли те или иные решения в своем проекте вы реализовали по-другому — делитесь опытом в комментариях.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003E1. Сами тесты\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nСоздаем новую ветку проекта для UI тестов:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"bash\"\u003E$ git checkout develop\n$ git pull\n$ git checkout -b “feature\u002Fadd-ui-tests”\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nОткроем проект в XCode и создадим новую Цель (Target) с UI тестами [XCode -\u003E File -\u003E New -\u003E Target -\u003E iOS Testing Bundle], даем ей говорящее название AmazingAppUITests.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" alt=\"image\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Flz\u002Fnv\u002Fwj\u002Flznvwj2y7eup9jhvuo7tuuap0rk.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПереходим в секцию Build Phases созданного Target и проверяем наличие Target Dependencies — AmazingApp, в Compile Sources — AmazingAppUITests.swift.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nХорошей практикой является выделение различных вариантов сборки в отдельные Схемы (Schemes). Создаем схему для наших UI тестов [XCode -\u003E Product -\u003E Scheme -\u003E New Scheme] и даем ей такое же название: AmazingAppUITests. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nBuild созданной схемы должен включать в себя Target основного приложения — AmazingApp и Target UI тестов — AmazingAppUITests — см.скриншот\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" alt=\"image\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fvm\u002Fiu\u002F6y\u002Fvmiu6yivxbeeftzzpw6mtsjwmki.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nДалее, создаем новую конфигурацию сборки для UI тестов. В XCode кликаем по файлу проекта, переходим в секцию Info. Кликаем на “+” и создаем новую конфигурацию, например XCtest. Это потребуется нам в дальнейшем, дабы избежать плясок с бубном когда дело дойдет до code signing. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" alt=\"image\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Flv\u002Fat\u002Fh8\u002Flvath8ca3apgpkkre6yo0lngxfm.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВ вашем проекте есть по крайней мере три Target: основное приложение, юнит тесты (ведь они есть, не так ли?) и созданный нами Target UI тестов. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЗаходим в Target AmazingApp, вкладка Build Settings, раздел Code Signing Identity. Для конфигурации XCtest выбираем iOS Developer. В разделе Code Signing Style выбираем Manual. Provisioning profile мы еще не сгенерировали, но чуть позже обязательно к нему вернемся.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nДля Target AmazingAppUITests делаем то же самое, но в графу Product Bundle Identifier вписываем com.company.amazingappuitests.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003E2. Настройка проекта в Apple Developer Program\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nЗаходим на страницу Apple Developer Program, переходим в раздел Certificates, Identifiers &amp; Profiles и затем в графу App IDs пункта Identifiers. Создаем новый App ID с именем AmazingAppUITests и bundleID com.company.amazingappuitests.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" alt=\"image\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002F-q\u002Fam\u002Fxp\u002F-qamxpb7mzfaeko-yqesuahxsk4.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nТеперь у нас есть возможность подписывать наши тесты отдельным сертификатом, но… Процедура сборки билда для тестирования подразумевает сборку самого приложения и сборки раннера тестов. Соответственно, мы сталкиваемся с проблемой подписи двух bundle ID одним provisioning profile. Благо, существует простое и элегантное решение — Wildcard App ID. Повторяем процедуру создания нового App ID, но вместо Explicit App ID выбираем Wildcard App ID как на скриншоте.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" alt=\"image\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fhc\u002Fyo\u002Fuq\u002Fhcyouqxvbupjhehw9ywslmxrf-g.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nНа этом этапе работа с developer.apple.com окончена, но сворачивать окно браузера мы не будем. Идем на \u003Ca href=\"https:\u002F\u002Fdocs.fastlane.tools\u002Factions\u002Fmatch\u002F\"\u003Eсайт с документацией по Fastlane\u003C\u002Fa\u003E и читаем про утилиту Match от корки до корки. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВнимательный читатель заметил, что для использования этой утилиты нам понадобится приватный репозиторий и аккаунт, имеющий доступ как к Apple Developer Program, так и к Github. Создаем (если вдруг такого нет) аккаунт вида InfrastructureAccount@your.company.domain, придумываем мощный пароль, регистрируем его в developer.apple.com, назначаем администратором проекта. Далее, даем аккаунту доступ к github репозиторию вашей компании и создаем новый приватный репозиторий с именем вроде AmazingAppMatch.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003E3. Настройка Fastlane и утилиты match\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nОткрываем терминал, переходим в папку с проектом и инициализируем fastlane как указано в \u003Ca href=\"https:\u002F\u002Fdocs.fastlane.tools\u002F\"\u003Eофициальном мануале\u003C\u002Fa\u003E. После ввода команды \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"bash\"\u003E$ fastlane init\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nбудет предложено выбрать доступные конфигурации использования. Выбираем четвертый пункт — ручная настройка проекта.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" alt=\"image\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fp4\u002Ffx\u002Fws\u002Fp4fxwszdhepxbhdhtw8zucmcwqy.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВ проекте появилась новая директория fastlane, в которой лежат два файла — Appfile и Fastfile. В двух словах — в Appfile мы храним служебные данные, а в Fastfile прописываем jobs, в терминологии Fastlane именуемые lanes. Рекомендую к прочтению официальную документацию: \u003Ca href=\"https:\u002F\u002Fdocs.fastlane.tools\u002Fadvanced\u002FFastfile\u002F\"\u003Eраз\u003C\u002Fa\u003E, \u003Ca href=\"https:\u002F\u002Fdocs.fastlane.tools\u002Fadvanced\u002FAppfile\u002F\"\u003Eдва\u003C\u002Fa\u003E.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nОткрываем Appfile в любимом текстовом редакторе и приводим его к следующему виду:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"ruby\"\u003Eapp_identifier \"com.company.amazingapp\"       # Bundle ID\napple_dev_portal_id \"infrastructureaccount@your.company.domain\"  # Созданный инфраструктурный аккаунт, имеющий право на редактирование iOS проекта в Apple Developer Program.\nteam_id \"LSDY3IFJAY9\" # Your Developer Portal Team ID\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nВозвращаемся в терминал и по официальному мануалу начинаем настраивать match.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"bash\"\u003E$ fastlane match init\n$ fastlane match development\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nДалее вводим запрашиваемые данные — репозиторий, аккаунт, пароль и т.д.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cb\u003EВажно:\u003C\u002Fb\u003E при первом запуске утилита match попросит ввести пароль для дешифровки репозитория. Очень важно сохранить этот пароль, на этапе настройки CI сервера он нам пригодится!\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВ папке fastlane появился новый файл — Matchfile. Открываем в любимом текстовом редакторе и приводим к виду:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"ruby\"\u003Egit_url(\"https:\u002F\u002Fgithub.com\u002FYourCompany\u002FAmazingAppMatch\") #Созданный приватный репозиторий для хранения сертификатов и профайлов.\ntype(\"development\") # The default type, can be: appstore, adhoc, enterprise or development\napp_identifier(\"com.company.amazingapp\")\nusername(\"infrastructureaccount@your.company.domain\") # Your Infrastructure account Apple Developer Portal username\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nЗаполняем именно таким образом, если хотим в дальнейшем использовать match для подписи билдов для выкладки в Crashlytics и\u002Fили AppStore, т.е для подписи bundle ID вашего приложения.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nНо, как мы помним, для подписи тестового билда мы создали специальный Wildcard ID. Поэтому, открываем Fastfile и вписываем новый lane:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"ruby\"\u003Elane :testing_build_for_firebase do\n\n    match(\n      type: \"development\",\n      readonly: true,\n      app_identifier: \"com.company.*\",\n      git_branch: \"uitests\"  # создаем отдельный бранч для development сертификата для подписи тестовой сборки.\n    )\n\nend\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nСохраняем, вводим в терминал \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"bash\"\u003Efastlane testing_build_for_firebase\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E \u003Cbr\u002F\u003E\r\nи видим как fastlane создал новый сертификат и положил его в репозиторий. Отлично! \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nОткрываем XCode. Теперь у нас есть нужный provisioning profile вида Match Development com.company.*, который нужно указать в секции Provisioning profile для таргетов AmazingApp и AmazingAppUITests.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" alt=\"image\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fl0\u002Fhq\u002Fdg\u002Fl0hqdgqi3w31ilkeo7emjo4n7ia.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nОсталось дописать lane для сборки тестов. Идем в \u003Ca href=\"https:\u002F\u002Fgithub.com\u002Ffastlane\u002Ffastlane-plugin-firebase_test_lab\"\u003Eрепозиторий\u003C\u002Fa\u003E проекта плагина для fastlane, облегчающего настройку экспорта в Firebase Test Lab и следуем инструкциям.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nКопипастим из исходного примера, чтобы наш lane testing_build_for_firebase в итоге выглядел так:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"ruby\"\u003E\n lane :testing_build_for_firebase do\n\n    match(\n      type: \"development\",\n      readonly: true,\n      app_identifier: \"com.company.*\",\n      git_branch: \"uitests\"\n    )\n\n    scan(\n      scheme: 'AmazingAppUITests',      # UI Test scheme\n      clean: true,                        # Recommended: This would ensure the build would not include unnecessary files\n      skip_detect_devices: true,          # Required\n      build_for_testing: true,            # Required\n      sdk: 'iphoneos',                    # Required\n      should_zip_build_products: true,     # Must be true to set the correct format for Firebase Test Lab\n    )\n\n    firebase_test_lab_ios_xctest(\n      gcp_project: 'AmazingAppUITests', # Your Google Cloud project name (к этой строчке вернемся позже)\n      devices: [                          # Device(s) to run tests on\n        {\n          ios_model_id: 'iphonex',        # Device model ID, see gcloud command above\n          ios_version_id: '12.0',         # iOS version ID, see gcloud command above\n          locale: 'en_US',                # Optional: default to en_US if not set\n          orientation: 'portrait'         # Optional: default to portrait if not set\n        }\n      ]\n    )\n\n  end\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nДля получения полной информации о настройке fastlane в CircleCI рекомендую к прочтению официальную документацию \u003Ca href=\"https:\u002F\u002Fdocs.fastlane.tools\u002Fbest-practices\u002Fcontinuous-integration\u002Fcircle-ci\u002F\"\u003E раз,\u003C\u002Fa\u003E \u003Ca href=\"https:\u002F\u002Fcircleci.com\u002Fdocs\u002F2.0\u002Ftesting-ios\u002F#example-configuration-for-using-fastlane-on-circleci\"\u003Eдва\u003C\u002Fa\u003E.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nНе забываем дополнить наш config.yml новой задачей:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"ruby\"\u003Ebuild-for-firebase-test-lab:\n   macos:\n     xcode: \"10.1.0\"   \n   working_directory: ~\u002Fproject\n   shell: \u002Fbin\u002Fbash --login -o pipefail\n   steps:\n     - checkout\n     - attach_workspace:\n         at: ~\u002Fproject\n     - run: sudo bundle install     # обновляем зависимости\n     - run:\n         name: install gcloud-sdk   # на mac машину необходимо установить gcloud\n         command: |\n           ruby -e \"$(curl -fsSL https:\u002F\u002Fraw.githubusercontent.com\u002FHomebrew\u002Finstall\u002Fmaster\u002Finstall)\" &lt; \u002Fdev\u002Fnull 2\u003E \u002Fdev\u002Fnull ; brew install caskroom\u002Fcask\u002Fbrew-cask 2\u003E \u002Fdev\u002Fnull\n           brew cask install google-cloud-sdk\n     - run:\n         name: build app for testing\n         command: fastlane testing_build_for_firebase  # запускаем lane сборки и отправки в firebase\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Ch2\u003E4. А как же наш тестовый стенд? Настраиваем Firebase.\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nПриступим, собственно, к тому, для чего статья и писалась.\u003Cbr\u002F\u003E\r\n \u003Cbr\u002F\u003E\r\nВозможно, ваше приложение использует Firebase на бесплатном тарифном плане, возможно — не использует вовсе. Принципиальной разницы абсолютно нет, потому как для нужд тестирования мы можем создать отдельный проект с годом бесплатного использования (круто, да?)\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЛогинимся в наш инфраструктурный аккаунт (или любой другой, без разницы), и идем на \u003Ca href=\"https:\u002F\u002Fconsole.firebase.google.com\"\u003Eстраницу консоли Firebase\u003C\u002Fa\u003E. Создаем новый проект с именем AmazingAppUITests.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cb\u003EВажно:\u003C\u002Fb\u003E В предыдущем шаге в Fastfile в lane firebase_test_lab_ios_xctest параметр gcp_project должен соответствовать названию проекта.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" alt=\"image\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002F4g\u002F2w\u002Fgg\u002F4g2wggl51s6o5e44i9arfztz70s.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nДефолтные настройки нас вполне устраивают.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nНе закрываем вкладку, под тем же аккаунтом регистрируемся в \u003Ca href=\"https:\u002F\u002Fconsole.cloud.google.com\"\u003EGcloud\u003C\u002Fa\u003E — это вынужденная мера, так как общение с Firebase происходит с помощью интерфейса консоли gcloud.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nGoogle дарит 300$ на год, что в контексте выполнения автотестов эквивалентно году бесплатного использования сервиса. Вводим платежные данные, дожидаемся тестового списания 1$ и получаем 300$ на счет. По прошествии года проект будет автоматически переведен на бесплатный тарифный план, так что волноваться о возможной потере денег не стоит. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВернемся на вкладку с проектом Firebase и переведем его на тарифный план Blaze — теперь нам есть чем платить в случае превышения лимита. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВ интерфейсе gcloud выбираем наш Firebase проект, выбираем пункт главного меню «Каталог» и добавляем Cloud Testing API и Cloud Tools Result API.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" alt=\"image\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fey\u002F8x\u002F7b\u002Fey8x7bwmzkwdskvqiyoheco-icy.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЗатем переходим в пункт меню «IAM и администрирование» -\u003E Сервисные аккаунты -\u003E Создать сервисный аккаунт. Выдаем права на редактирование проекта.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" alt=\"image\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fsw\u002F2d\u002Fjg\u002Fsw2djgp6yn12gvsegbnpla2ki30.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nСоздаем API ключ в формате JSON\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" alt=\"image\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002F-5\u002Fc4\u002Fmx\u002F-5c4mx_pjsy0qbj770baix-qo8w.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nСкачанный JSON понадобится нам чуть позже, а пока настройку Test Lab будем считать оконченной.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003E5. Настройка CircleCI\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nНазревает резонный вопрос — а что делать с паролями? Надежно сохранить наши пароли и прочие чувствительные данные нам поможет механизм переменных окружения нашей билд-машины. В настройках проекта CircleCI выбираем Environment Variables\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" alt=\"image\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fnv\u002Fk8\u002Ftb\u002Fnvk8tbgrgycr_fnqdxxktcybgng.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\nИ заводим следующие переменные:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003Ekey: GOOGLE_APPLICATION_CREDENTIALS\u003Cbr\u002F\u003E\r\nvalue: содержимое json файла ключа сервисного аккаунта gcloud\u003C\u002Fli\u003E\r\n\u003Cli\u003Ekey: MATCH_PASSWORD\u003Cbr\u002F\u003E\r\nvalue: пароль для дешифровки github репозитория с сертификатами \u003C\u002Fli\u003E\r\n\u003Cli\u003Ekey: FASTLANE_PASSWORD\u003Cbr\u002F\u003E\r\nvalue: пароль инфраструктурного аккаунта Apple Developer Portal \u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\nСохраняем изменения, создаем PR и отправляем на review своему тимлиду. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EИтоги\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nВ результате выполнение этих нехитрых манипуляций мы получили хороший, стабильно работающий стенд с возможностью записи видео на экране устройства в момент прохождения тестирования. В тестовом примере я указал модель устройства iPhone X, но ферма предоставляет богатый выбор из комбинации различных моделей и версий iOS. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВторая часть будет посвящена пошаговой настройке Firebase Test Lab для Android проекта.\u003C\u002Fdiv\u003E","tags":[{"titleHtml":"XCUITest"},{"titleHtml":"Firebase Test Lab"},{"titleHtml":"fastlane match"}],"metadata":{"stylesUrls":[],"scriptUrls":[],"shareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F451786\u002F626b152f77925680dfa5fa3070813857\u002F","shareImageWidth":1200,"shareImageHeight":630,"vkShareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F451786\u002F626b152f77925680dfa5fa3070813857\u002F?format=vk","schemaJsonLd":"{\"@context\":\"http:\\\u002F\\\u002Fschema.org\",\"@type\":\"Article\",\"mainEntityOfPage\":{\"@type\":\"WebPage\",\"@id\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fru\\\u002Fpost\\\u002F451786\\\u002F\"},\"headline\":\"Запускаем инструментальные тесты в Firebase Test Lab. Часть 1: iOS проект\",\"datePublished\":\"2019-05-14T16:43:42+03:00\",\"dateModified\":\"2019-05-16T10:31:37+03:00\",\"author\":{\"@type\":\"Person\",\"name\":\"Дмитрий Свиридов\"},\"publisher\":{\"@type\":\"Organization\",\"name\":\"Habr\",\"logo\":{\"@type\":\"ImageObject\",\"url\":\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fa_\\\u002Flk\\\u002F9m\\\u002Fa_lk9mjkccjox-zccjrpfolmkmq.png\"}},\"description\":\"Меня зовут Дмитрий, я работаю тестировщиком в компании MEL Science. Совсем недавно я закончил разбираться со сравнительно свежей фичей от Firebase Test Lab &mdash; а...\",\"url\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fru\\\u002Fpost\\\u002F451786\\\u002F#post-content-body\",\"about\":[\"h_it_testing\",\"h_mobile_testing\",\"h_devops\",\"f_develop\",\"f_admin\"],\"image\":[\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fak\\\u002Fzz\\\u002Fax\\\u002Fakzzax8yp7xdofbpono3dplmgrw.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Flz\\\u002Fnv\\\u002Fwj\\\u002Flznvwj2y7eup9jhvuo7tuuap0rk.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fvm\\\u002Fiu\\\u002F6y\\\u002Fvmiu6yivxbeeftzzpw6mtsjwmki.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Flv\\\u002Fat\\\u002Fh8\\\u002Flvath8ca3apgpkkre6yo0lngxfm.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002F-q\\\u002Fam\\\u002Fxp\\\u002F-qamxpb7mzfaeko-yqesuahxsk4.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fhc\\\u002Fyo\\\u002Fuq\\\u002Fhcyouqxvbupjhehw9ywslmxrf-g.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fp4\\\u002Ffx\\\u002Fws\\\u002Fp4fxwszdhepxbhdhtw8zucmcwqy.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fl0\\\u002Fhq\\\u002Fdg\\\u002Fl0hqdgqi3w31ilkeo7emjo4n7ia.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002F4g\\\u002F2w\\\u002Fgg\\\u002F4g2wggl51s6o5e44i9arfztz70s.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fey\\\u002F8x\\\u002F7b\\\u002Fey8x7bwmzkwdskvqiyoheco-icy.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fsw\\\u002F2d\\\u002Fjg\\\u002Fsw2djgp6yn12gvsegbnpla2ki30.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002F-5\\\u002Fc4\\\u002Fmx\\\u002F-5c4mx_pjsy0qbj770baix-qo8w.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fnv\\\u002Fk8\\\u002Ftb\\\u002Fnvk8tbgrgycr_fnqdxxktcybgng.png\"]}","metaDescription":"Меня зовут Дмитрий, я работаю тестировщиком в компании MEL Science. Совсем недавно я закончил разбираться со сравнительно свежей фичей от Firebase Test Lab — а именно, с инструментальным...","mainImageUrl":null,"amp":false},"polls":[],"commentsEnabled":true,"rulesRemindEnabled":false,"votesEnabled":true,"status":"published","plannedPublishTime":null,"checked":null,"isEditorial":false}},"articlesIds":{},"isLoading":false,"pagesCount":{},"route":{},"reasonsList":null,"view":"cards","lastVisitedRoute":{},"ssrCommentsArticleIds":[""],"karma":{}},"authorContribution":{"authors":{}},"betaTest":{"currentAnnouncement":null,"announcements":{},"announcementCards":null,"announcementComments":{},"announcementCommentThreads":{},"announcementCommentingStatuses":{},"archivedList":[]},"authorStatistics":{"articleRefs":{},"articleIds":{},"pagesCount":{},"route":{},"viewsCount":[],"maxStatsCount":{}},"career":{"seoLandings":[],"hubs":"it_testing,mobile_testing,devops"},"comments":{"articleComments":{},"searchCommentsResults":null,"previewComment":null,"pagesCount":null,"commentAccess":{},"scrollParents":{},"pageArticleComments":{"lastViewedComment":0,"postId":null,"lastCommentTimestamp":"","moderated":[],"moderatedIds":[],"commentRoute":""}},"companies":{"companyRefs":{},"companyIds":{},"companyTopIds":{},"pagesCount":{},"companyProfiles":{},"companiesCategories":[],"companiesCategoriesTotalCount":0,"companiesWidgets":{},"companiesWorkers":{},"companiesFans":{},"route":{},"isLoading":false,"companyWorkersLoading":false,"companyFansLoading":false,"vacancies":{}},"companiesContribution":{"hubs":{},"flows":{},"companyRefs":{}},"companyHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"conversation":{"messages":[],"respondent":null,"isLoadMore":false},"conversations":{"conversations":[],"unreadCount":0,"pagesCount":0,"isLoadMore":false},"desktopState":{"desktopFl":null,"desktopHl":null,"isChecked":false,"isLoginDemanded":false},"dfp":{"slotsDict":{}},"docs":{"menu":{},"articles":{},"mainMenu":[],"loading":{"main":false,"dropdown":false,"article":false}},"feature":{"isProbablyVisible":"true"},"flows":{"flows":[{"alias":"develop","id":1,"route":{"name":"FLOW_PAGE","params":{"flowName":"develop"}}},{"alias":"admin","id":6,"route":{"name":"FLOW_PAGE","params":{"flowName":"admin"}}},{"alias":"design","id":2,"route":{"name":"FLOW_PAGE","params":{"flowName":"design"}}},{"alias":"management","id":3,"route":{"name":"FLOW_PAGE","params":{"flowName":"management"}}},{"alias":"marketing","id":4,"route":{"name":"FLOW_PAGE","params":{"flowName":"marketing"}}},{"alias":"popsci","id":7,"route":{"name":"FLOW_PAGE","params":{"flowName":"popsci"}}}]},"global":{"isPwa":false,"device":"desktop","isHabrCom":true},"hubs":{"hubRefs":{},"hubIds":{},"pagesCount":{},"isLoading":false,"route":{}},"hubsBlock":{"hubRefs":{},"hubIds":{}},"i18n":{"fl":"ru","hl":"ru"},"info":{"infoPage":{},"isLoading":true},"location":{"urlStruct":{"protocol":null,"slashes":null,"auth":null,"host":null,"port":null,"hostname":null,"hash":null,"search":null,"query":{},"pathname":null,"path":null,"href":""},"searchQuery":null},"me":{"user":null,"ppgDemanded":false,"karmaResetInfo":{"canReincarnate":null,"wasReincarnated":null,"currentScore":null},"notes":null},"mostReadingList":{"mostReadingListIds":[],"mostReadingListRefs":null,"promoPost":null},"pinnedPost":{"pinnedPost":null},"ppa":{"articles":{},"card":null,"transactions":null,"totalTransactions":null,"isAccessible":null},"projectsBlocks":{"activeBlocks":{}},"pullRefresh":{"shouldRefresh":false},"sandbox":{"articleIds":[],"articleRefs":{},"pagesCount":null,"route":{},"lastVisitedRoute":{},"isLoading":false},"settingsOther":{"inputs":{"uiLang":{"errors":[],"ref":null,"value":""},"articlesLangEnglish":{"errors":[],"ref":null,"value":false},"articlesLangRussian":{"errors":[],"ref":null,"value":false},"agreement":{"errors":[],"ref":null,"value":false},"email":{"errors":[],"ref":null,"value":true},"digest":{"errors":[],"ref":null,"value":true}}},"similarList":{"similarListIds":[],"similarListRefs":null},"ssr":{"error":null,"isDataLoaded":false,"isDataLoading":false,"isHydrationFailed":false,"isServer":false},"userHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"userInvites":{"availableInvites":0,"usedInvitesIds":[],"usedInvitesRefs":{},"usedInvitesPagesCount":0,"unusedInvitesIds":[],"unusedInvitesRefs":{},"unusedInvitesPagesCount":0},"users":{"authorRefs":{},"authorIds":{},"pagesCount":{},"authorProfiles":{},"userHubs":{},"userInvitations":{},"authorFollowers":{},"authorFollowed":{},"karmaStats":[],"statistics":null,"isLoading":false,"authorFollowersLoading":false,"authorFollowedLoading":false,"userHubsLoading":false,"userInvitationsLoading":false,"route":{}},"viewport":{"prevScrollY":{},"scrollY":0,"width":0},"tracker":{"items":{},"pagesCache":{},"markedViewedSilently":{},"markedRead":{},"unreadCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null},"unviewedCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null}}};(function(){var s;(s=document.currentScript||document.scripts[document.scripts.length-1]).parentNode.removeChild(s);}());</script>
+<script src="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" defer></script><script src="https://assets.habr.com/habr-web/js/app.c0af73e7.js" defer></script>
+
+
+
+    <script>
+      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+        (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+        m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+      })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+    </script>
+  
+  <script type="text/javascript" >
+    (function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+    m[i].l=1*new Date();k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})
+    (window, document, "script", "https://mc.yandex.ru/metrika/tag.js", "ym");
+
+    ym(24049213, "init", {
+      defer:true,
+      trackLinks:true,
+      accurateTrackBounce:true,
+      webvisor:false,
+    });
+  </script>
+  <noscript>
+    <div>
+      <img src="https://mc.yandex.ru/watch/24049213" style="position:absolute; left:-9999px;" alt="" />
+    </div>
+  </noscript>
+  
+    <script type="text/javascript">
+      window.addEventListener('load', function () {
+        setTimeout(() => {
+          const img = new Image();
+          img.src = 'https://vk.com/rtrg?p=VK-RTRG-421343-57vKE';
+        }, 0);
+      });
+    </script>
+  
+</body>
+</html>

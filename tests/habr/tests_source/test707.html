@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="ru" data-vue-meta="%7B%22lang%22:%7B%22ssr%22:%22ru%22%7D%7D">
+<head >
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
+  <title>Про подсчёт битов, беззнаковые типы в Kotlin и про ситуации, когда экономия на спичках оправдана / Хабр</title>
+  <style>
+    /* cyrillic-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSxf6TF0.woff2) format('woff2');
+      unicode-range: U+0460-052F, U+1C80-1C88, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+    }
+
+    /* cyrillic */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveQhf6TF0.woff2) format('woff2');
+      unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+    }
+
+    /* latin-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSBf6TF0.woff2) format('woff2');
+      unicode-range: U+0100-024F, U+0259, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20CF, U+2113, U+2C60-2C7F, U+A720-A7FF;
+    }
+
+    /* latin */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveRhf6.woff2) format('woff2');
+      unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+    }
+  </style>
+  <link rel="preload" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" as="script"><link rel="preload" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/app.c0af73e7.js" as="script">
+  <link rel="stylesheet" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css"><link rel="stylesheet" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css">
+  <script>window.i18nFetch = new Promise((res, rej) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open('GET', '/js/i18n/ru-compiled.85eb77f0b17c8235e7b64b9f81ea5ec2.json');
+          xhr.responseType = 'json';
+          xhr.onload = function(e) {
+            if (this.status === 200) {
+              res({ru: xhr.response});
+            } else {
+              rej(e);
+            }
+          };
+          xhr.send();
+        });</script>
+  
+  <script data-vue-meta="ssr" src="/js/ads.js" onload="window['zhY4i4nJ9K'] = true" data-vmid="checkad"></script><script data-vue-meta="ssr" type="application/ld+json" data-vmid="ldjson-schema">{"@context":"http:\/\/schema.org","@type":"Article","mainEntityOfPage":{"@type":"WebPage","@id":"https:\/\/habr.com\/ru\/company\/funcorp\/blog\/451622\/"},"headline":"Про подсчёт битов, беззнаковые типы в Kotlin и про ситуации, когда экономия на спичках оправдана","datePublished":"2019-05-16T10:26:56+03:00","dateModified":"2019-05-16T12:22:11+03:00","author":{"@type":"Person","name":"Громов Андрей"},"publisher":{"@type":"Organization","name":"Habr","logo":{"@type":"ImageObject","url":"https:\/\/habrastorage.org\/webt\/a_\/lk\/9m\/a_lk9mjkccjox-zccjrpfolmkmq.png"}},"description":"К написанию статьи подтолкнул вот этот комментарий. А точнее, одна фраза из него. &hellip; расходовать память или такты процессора на элементы в миллиардных объёмах &mdash;...","url":"https:\/\/habr.com\/ru\/company\/funcorp\/blog\/451622\/#post-content-body","about":["c_funcorp","h_crazydev","h_kotlin","f_develop"],"image":["https:\/\/habrastorage.org\/webt\/b6\/qc\/5k\/b6qc5klplot_lkmjsi0edrecbye.png","https:\/\/habrastorage.org\/webt\/cl\/yh\/m8\/clyhm8caq35-td519odrgd95msq.png","https:\/\/habrastorage.org\/webt\/nu\/ny\/mv\/nunymvgccfhu2hlexvir0d0dlvq.png","https:\/\/habrastorage.org\/webt\/em\/pk\/um\/empkumsytnx11yoplffogdf4dbc.png","https:\/\/habrastorage.org\/webt\/ra\/md\/xd\/ramdxdoczcczinkn8bouj_40zls.png"]}</script>
+  <script src="//www.googletagservices.com/tag/js/gpt.js" async></script>
+  <style>.grecaptcha-badge{visibility: hidden;}</style>
+  <meta name="habr-version" content="2.49.0">
+  
+  <meta data-vue-meta="ssr" property="fb:app_id" content="444736788986613"><meta data-vue-meta="ssr" property="fb:pages" content="472597926099084"><meta data-vue-meta="ssr" name="twitter:card" content="summary_large_image"><meta data-vue-meta="ssr" name="twitter:site" content="@habr_eng"><meta data-vue-meta="ssr" property="og:title" content="Про подсчёт битов, беззнаковые типы в Kotlin и про ситуации, когда экономия на спичках оправдана" data-vmid="og:title"><meta data-vue-meta="ssr" name="twitter:title" content="Про подсчёт битов, беззнаковые типы в Kotlin и про ситуации, когда экономия на спичках оправдана" data-vmid="twitter:title"><meta data-vue-meta="ssr" name="aiturec:title" content="Про подсчёт битов, беззнаковые типы в Kotlin и про ситуации, когда экономия на спичках оправдана" data-vmid="aiturec:title"><meta data-vue-meta="ssr" name="description" content="К написанию статьи подтолкнул вот этот комментарий. А точнее, одна фраза из него.
+… расходовать память или такты процессора на элементы в миллиардных объёмах — это нехорошо…
+ Так сложилось, что в..." data-vmid="description"><meta data-vue-meta="ssr" itemprop="description" content="К написанию статьи подтолкнул вот этот комментарий. А точнее, одна фраза из него.
+… расходовать память или такты процессора на элементы в миллиардных объёмах — это нехорошо…
+ Так сложилось, что в..." data-vmid="description:itemprop"><meta data-vue-meta="ssr" property="og:description" content="К написанию статьи подтолкнул вот этот комментарий. А точнее, одна фраза из него.
+… расходовать память или такты процессора на элементы в миллиардных объёмах — это нехорошо…
+ Так сложилось, что в..." data-vmid="og:description"><meta data-vue-meta="ssr" name="twitter:description" content="К написанию статьи подтолкнул вот этот комментарий. А точнее, одна фраза из него.
+… расходовать память или такты процессора на элементы в миллиардных объёмах — это нехорошо…
+ Так сложилось, что в..." data-vmid="twitter:description"><meta data-vue-meta="ssr" property="aiturec:description" content="К написанию статьи подтолкнул вот этот комментарий. А точнее, одна фраза из него.
+… расходовать память или такты процессора на элементы в миллиардных объёмах — это нехорошо…
+ Так сложилось, что в..." data-vmid="aiturec:description"><meta data-vue-meta="ssr" itemprop="image" content="https://habr.com/share/publication/451622/460f670bc16b73135fc6a9d3302e8053/" data-vmid="image:itemprop"><meta data-vue-meta="ssr" property="og:image" content="https://habr.com/share/publication/451622/460f670bc16b73135fc6a9d3302e8053/" data-vmid="og:image"><meta data-vue-meta="ssr" property="aiturec:image" content="https://habr.com/share/publication/451622/460f670bc16b73135fc6a9d3302e8053/" data-vmid="aiturec:image"><meta data-vue-meta="ssr" name="twitter:image" content="https://habr.com/share/publication/451622/460f670bc16b73135fc6a9d3302e8053/" data-vmid="twitter:image"><meta data-vue-meta="ssr" property="vk:image" content="https://habr.com/share/publication/451622/460f670bc16b73135fc6a9d3302e8053/" data-vmid="vk:image"><meta data-vue-meta="ssr" property="aiturec:item_id" content="451622" data-vmid="aiturec:item_id"><meta data-vue-meta="ssr" property="aiturec:datetime" content="2019-05-16T07:26:56.000Z" data-vmid="aiturec:datetime"><meta data-vue-meta="ssr" property="og:type" content="article" data-vmid="og:type"><meta data-vue-meta="ssr" property="og:locale" content="ru_RU" data-vmid="og:locale"><meta data-vue-meta="ssr" property="og:image:width" content="1200" data-vmid="og:image:width"><meta data-vue-meta="ssr" property="og:image:height" content="630" data-vmid="og:image:height">
+  <link data-vue-meta="ssr" href="https://habr.com/ru/rss/post/451622/?fl=ru" type="application/rss+xml" title="" rel="alternate" name="rss"><link data-vue-meta="ssr" href="https://habr.com/ru/company/funcorp/blog/451622/" rel="canonical" data-vmid="canonical"><link data-vue-meta="ssr" data-vmid="hreflang"><link data-vue-meta="ssr" image_src="image" href="https://habr.com/share/publication/451622/460f670bc16b73135fc6a9d3302e8053/" data-vmid="image:href">
+  <meta name="apple-mobile-web-app-status-bar-style" content="#303b44">
+  <meta name="msapplication-TileColor" content="#629FBC">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="16x16"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-16.png"
+  >
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="32x32"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-32.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="76x76"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-76.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="120x120"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="152x152"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-152.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="180x180"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-180.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="256x256"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-256.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1136x640.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2436x1125.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1792x828.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_828x1792.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1334x750.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2208x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1125x2436.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2208.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2732x2048.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2688x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2224x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_750x1334.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x2732.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2388x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2224.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_640x1136.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2388.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x1536.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1536x2048.png"
+  >
+  <link
+    rel="mask-icon"
+    color="#77a2b6"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.svg"
+  >
+  <link
+    crossorigin="use-credentials"
+    href="/manifest.webmanifest"
+    rel="manifest"
+  >
+</head>
+<body>
+
+
+<div id="app" data-server-rendered="true" data-async-called="true"><div class="tm-layout__wrapper"><!----> <div></div> <!----> <header class="tm-header"><div class="tm-page-width"><div class="tm-header__container"><!----> <span class="tm-header__logo-wrap"><a href="/ru/" class="tm-header__logo tm-header__logo_ru"><svg height="16" width="16" class="tm-svg-img tm-header__icon"><title>Хабр</title> <use xlink:href="/img/habr-logo-ru.svg#logo"></use></svg></a> <span class="tm-header__beta-sign" style="display:none;">β</span></span> <div class="tm-dropdown tm-header__projects"><div class="tm-dropdown__head"><button class="tm-header__dropdown-toggle"><svg height="16" width="16" class="tm-svg-img tm-header__icon tm-header__icon_dropdown"><title>Открыть список</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#arrow-down"></use></svg></button></div> <!----></div> <a href="/ru/sandbox/start/" class="tm-header__become-author-btn">
+            Как стать автором
+          </a> <div class="tm-feature tm-header__feature tm-feature_variant-inline"><!----></div> <!----> <!----></div></div></header> <div class="tm-layout"><div class="tm-page-progress-bar"></div> <div data-menu-sticky="true" class="tm-base-layout__header tm-base-layout__header_is-sticky"><div class="tm-page-width"><div class="tm-base-layout__header-wrapper"><div class="tm-main-menu"><div class="tm-main-menu__section"><nav class="tm-main-menu__section-content"><!----> <a href="/ru/all/" class="tm-main-menu__item">
+        Все потоки
+      </a> <a href="/ru/flows/develop/" class="tm-main-menu__item">
+          Разработка
+        </a><a href="/ru/flows/admin/" class="tm-main-menu__item">
+          Администрирование
+        </a><a href="/ru/flows/design/" class="tm-main-menu__item">
+          Дизайн
+        </a><a href="/ru/flows/management/" class="tm-main-menu__item">
+          Менеджмент
+        </a><a href="/ru/flows/marketing/" class="tm-main-menu__item">
+          Маркетинг
+        </a><a href="/ru/flows/popsci/" class="tm-main-menu__item">
+          Научпоп
+        </a></nav></div></div> <div class="tm-header-user-menu tm-base-layout__user-menu"><a href="/ru/search/" class="tm-header-user-menu__item tm-header-user-menu__search"><svg height="24" width="24" class="tm-svg-img tm-header-user-menu__icon tm-header-user-menu__icon_search tm-header-user-menu__icon_dark"><title>Поиск</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#search"></use></svg></a> <!----> <!----> <!----> <div class="tm-header-user-menu__item tm-header-user-menu__user_desktop"><div class="tm-dropdown"><div class="tm-dropdown__head"><svg height="24" width="24" data-test-id="menu-toggle-guest" class="tm-svg-img tm-header-user-menu__icon"><title>Профиль</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#header-user"></use></svg> <!----></div> <!----></div> <!----></div> <!----></div></div></div></div> <!----> <div class="tm-page-width"></div> <main class="tm-layout__container"><div hl="ru" companyName="funcorp" data-async-called="true" class="tm-page"><div class="tm-page-width"><div class="tm-page__header"><div class="tm-company-card__branding tm-company-article__branding tm-company-card__branding_loading"><div class="tm-company-card__branding-placeholder"><!----></div> <a href="https://fun.co/"><img src="//habrastorage.org/getpro/habr/branding/c94/e51/fca/c94e51fca23cf417547a7af7b038e8d1.jpg" width="100%" class="tm-company-card__branding-image"></a></div></div> <div class="tm-page__wrapper"><div class="tm-page__main tm-page__main_has-sidebar"><div class="pull-down"><div class="pull-down__header" style="height:0px;"><div class="pull-down__content" style="bottom:10px;"><svg height="24" width="24" class="tm-svg-img pull-down__arrow"><title>Обновить</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#pull-arrow"></use></svg></div></div> <div class="tm-article-presenter"><div class="tm-company-card tm-company-article__company-card"><div class="tm-company-card__info"><div class="tm-company-card__header"><a href="/ru/company/funcorp/profile/" class="tm-company-card__avatar"><div class="tm-entity-image"><img alt="" height="48" src="//habrastorage.org/getpro/habr/company/f21/9f1/718/f219f1718c640f7b145969eeaad26e7b.jpg" width="48" class="tm-entity-image__pic"></div></a> <!----> <div class="tm-rating tm-company-card__rating"><div class="tm-rating__header"> <div class="tm-rating__counter">261.17</div></div> <div class="tm-rating__text">
+    Рейтинг
+  </div></div></div> <div class="tm-company-card__info"><a href="/ru/company/funcorp/profile/" class="tm-company-card__name">
+        FUNCORP
+      </a> <div class="tm-company-card__description">Разработка развлекательных сервисов</div></div></div> <div class="tm-company-card__buttons"><!----> <!----></div></div> <div class="tm-article-presenter__body"><div class="tm-misprint-area"><div class="tm-misprint-area__wrapper"><article class="tm-article-presenter__content tm-article-presenter__content_narrow"><div class="tm-article-presenter__header"> <div class="tm-article-snippet tm-article-presenter__snippet"><div class="tm-article-snippet__meta-container"><div class="tm-article-snippet__meta"><span class="tm-user-info tm-article-snippet__author"><a href="/ru/users/rjhdby/" title="rjhdby" class="tm-user-info__userpic"><div class="tm-entity-image"><img alt="" height="24" loading="lazy" src="//habrastorage.org/r/w32/getpro/habr/avatars/330/b5e/fbd/330b5efbd4f629e93730d497b8d865e1.png" width="24" class="tm-entity-image__pic"></div></a> <span class="tm-user-info__user"><a href="/ru/users/rjhdby/" class="tm-user-info__username">
+      rjhdby
+    </a> </span></span> <span class="tm-article-snippet__datetime-published"><time datetime="2019-05-16T07:26:56.000Z" title="2019-05-16, 10:26">16  мая  2019 в 10:26</time></span></div> <!----></div> <h1 lang="ru" class="tm-article-snippet__title tm-article-snippet__title_h1"><span>Про подсчёт битов, беззнаковые типы в Kotlin и про ситуации, когда экономия на спичках оправдана</span></h1> <div class="tm-article-snippet__hubs"><span class="tm-article-snippet__hubs-item"><a href="/ru/company/funcorp/blog/" class="tm-article-snippet__hubs-item-link router-link-active"><span>Блог компании FUNCORP</span> <!----></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/crazydev/" class="tm-article-snippet__hubs-item-link"><span>Ненормальное программирование</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/kotlin/" class="tm-article-snippet__hubs-item-link"><span>Kotlin</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span></div> <!----> <!----> <!----></div></div> <!----> <div data-gallery-root="" lang="ru" class="tm-article-body"><div id="post-content-body" class="article-formatted-body article-formatted-body_version-1"><div xmlns="http://www.w3.org/1999/xhtml"><img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/b6/qc/5k/b6qc5klplot_lkmjsi0edrecbye.png"/><br/>
+К написанию статьи подтолкнул вот <a href="https://habr.com/ru/post/451490/#comment_20145200">этот комментарий</a>. А точнее, одна фраза из него.<br/>
+<blockquote>… расходовать память или такты процессора на элементы в миллиардных объёмах — это нехорошо…<br/>
+</blockquote> Так сложилось, что в последнее время мне именно этим и пришлось заниматься. И, хотя, случай, который я рассмотрю в статье, довольно частный — выводы и применённые решения могут быть кому-нибудь полезны.<br/>
+<br/>
+<h1>Немного контекста</h1><br/>
+Приложение iFunny имеет дело с колоссальным объёмом графического и видеоконтента, а нечёткий поиск дубликатов является одной из очень важных задач. Сама по себе это большая тема, заслуживающая отдельной статьи, но сегодня я просто немного расскажу о некоторых подходах к обсчёту очень больших массивов чисел, применительно к этому поиску. Конечно же, у всех разное понимание «очень больших массивов», и тягаться с Адронным коллайдером было бы глупо, но всё же. :)<br/>
+<br/>
+Если совсем коротко про алгоритм, то для каждого изображения создаётся его цифровая подпись (сигнатура) из 968 целых чисел, а сравнение производится путем нахождения «расстояния» между двумя сигнатурами. Учитывая, что объём контента только за два последних месяца составил порядка 10 миллионов изображений, то, как легко прикинет в уме внимательный читатель, — это как раз те самые «элементы в миллиардных объёмах». Кому интересно — добро пожаловать под кат.<br/>
+<a name="habracut"></a><br/>
+В начале будет скучный рассказ про экономию тактов и памяти, а в конце небольшая поучительная история, про то, что иногда очень полезно смотреть в исходники. Картинка для привлечения внимания имеет прямое отношение к этой поучительной истории.<br/>
+<br/>
+Должен признаться, что я немного слукавил. При предварительном анализе алгоритма удалось сократить количество значений в каждой сигнатуре с 968 до 420. Уже в два раза лучше, но порядок величин остался тот же. <br/>
+<br/>
+Хотя, если подумать, то не так уж я и слукавил, и это будет первым выводом: прежде чем приступать к задаче, стоит подумать — а нельзя ли её как-то заранее упростить?<br/>
+<br/>
+Алгоритм сравнения довольно простой: вычисляется корень из суммы квадратов разностей двух сигнатур, делится на сумму предварительно рассчитанных значений (т.е. в каждой итерации суммирование всё же будет и совсем его в константу не вынести) и сравнивается с пороговым значением. Стоит отметить, что элементы сигнатуры ограничены значениями от -2 до +2, а, соответственно, абсолютное значение разности — значениями от 0 до 4.<br/>
+<br/>
+<div style="text-align:center;"><img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/cl/yh/m8/clyhm8caq35-td519odrgd95msq.png"/></div><br/>
+Ничего сложного, но количество решает.<br/>
+<br/>
+<h1>Подход первый, наивный</h1><br/>
+<pre><code class="kotlin">// Порог
+const val d = 0.3
+
+// 10.000.000 объектов. 
+// Будем держать эту цифру в уме,
+// чтобы не упоминать в каждом втором предложении
+val collection: MutableList&lt;Signature> = mutableListOf()        
+
+// signature — массив из 420 значений типа Byte
+class Signature(val signature: Array&lt;Byte>, val norma: Double)  
+
+fun getSimilar(signature: Signature) = collection
+    .filter { calculateDistance(it, signature) &lt; d }
+
+fun calculateDistance(first: Signature, second: Signature): Double = 
+	Math.sqrt(first.signature.mapIndexed { index, value ->
+        Math.pow((value - second.signature[index]).toDouble(), 2.0)
+    }.sum()) / (first.norma + second.norma)
+</code></pre><br/>
+Давайте посчитаем, что у нас тут с количеством операций:<br/>
+<br/>
+<code>10M</code> квадратных корней <code>Math.sqrt</code><br/>
+<code>10M</code> сложений и делений <code>/ (first.norma + second.norma)</code><br/>
+<code>4.200M</code> вычитаний и возведений в квадрат <code>Math.pow((value - second.signature[index]).toDouble(), 2.0)</code><br/>
+<code>4.200M</code> сложений <code>.sum()</code><br/>
+<br/>
+Какие у нас есть варианты:<br/>
+<br/>
+<ol>
+<li>При таких объёмах тратить целый <code>Byte</code> (или, не дай бог, кто-то догадался бы использовать <code>Int</code>) на хранение трёх значащих бит — это непростительное расточительство.</li>
+<li>Может, как-то подсократить количество математики?</li>
+<li>А нельзя ли сделать какую-нибудь предварительную фильтрацию, не такую затратную по вычислениям?</li>
+</ol><br/>
+<h1>Подход второй, упаковываем</h1><br/>
+<i>Кстати, если кто-то предложит, как можно упростить вычисления при такой упаковке — получит большое спасибо и плюс в карму. Хоть и один, но зато от всей души :)</i><br/>
+<br/>
+Один <code>Long</code> — это 64 бита, что, в нашем случае, позволит хранить в нём 21 значение (и 1 бит останется неприкаянным).<br/>
+<br/>
+<pre><code class="kotlin">// массив из 20 значений типа Long
+class Signature(val signature: Array&lt;Long>, val norma: Double) 
+
+fun calculateDistance(first: Signature, second: Signature): Double =
+    Math.sqrt(first.signature.mapIndexed { index, value ->
+        calculatePartial(value, second.signature[index])
+    }.sum()) / (first.norma + second.norma)
+
+fun calculatePartial(first: Long, second: Long): Double {
+    var sum = 0L
+    (0..60 step 3).onEach {
+        val current = (first.ushr(it) and 0x7) - (second.ushr(it) and 0x7)
+        sum += current * current
+    }
+    return sum.toDouble()
+}
+</code></pre><br/>
+По памяти стало лучше (<code>4.200M</code> против <code>1.600M</code> байт, если грубо), но что там с вычислениями?<br/>
+<br/>
+Думаю, очевидно, что количество операций осталось прежним и к ним добавились <code>8.400M</code> сдвигов и <code>8.400M</code> логических И. Может и можно оптимизировать, но тенденция всё равно не радует — это не то, чего мы хотели.<br/>
+<br/>
+<h1>Подход третий, упаковываем заново с подвыподвертом</h1><br/>
+Нутром чую, тут можно использовать битовую магию!<br/>
+<br/>
+Давайте хранить значения не в трёх, а в четырёх битах. Таким, вот, образом:<br/>
+<div class="scrollable-table"><table>
+<tr>
+<td>-2</td>
+<td>0b1100</td>
+</tr>
+<tr>
+<td>-1</td>
+<td>0b0100</td>
+</tr>
+<tr>
+<td>0</td>
+<td>0b0000</td>
+</tr>
+<tr>
+<td>1</td>
+<td>0b0010</td>
+</tr>
+<tr>
+<td>2</td>
+<td>0b0011</td>
+</tr>
+</table></div><br/>
+Да, мы потеряем в плотности упаковки по сравнению с предыдущим вариантом, но зато получим возможность одним <code>XOR</code>'ом получать <code>Long</code> с разностями (не совсем) сразу 16-ти элементов. Кроме того, будет всего 11 вариантов распределения бит в каждом конечном полубайте, что позволит использовать заранее рассчитанные значения квадратов разностей.<br/>
+<br/>
+<pre><code class="kotlin">// массив из 27 значений типа Long
+class Signature(val signature: Array&lt;Long>, val norma: Double) 
+
+// -1 для невозможных вариантов
+val precomputed = arrayOf(0, 1, 1, 4, 1, -1, 4, 9, 1, -1, -1, -1, 4, -1, 9, 16)
+
+fun calculatePartial(first: Long, second: Long): Double {
+    var sum = 0L
+    val difference = first xor second
+    (0..60 step 4).onEach {
+        sum += precomputed[(difference.ushr(it) and 0xF).toInt()]
+    }
+    return sum.toDouble()
+}
+</code></pre><br/>
+По памяти стало <code>2.160M</code> против <code>1.600M</code> — неприятно, но всё же лучше, чем начальные <code>4.200M</code>.<br/>
+<br/>
+Посчитаем операции:<br/>
+<br/>
+<code>10M</code> квадратных корней, сложений и делений (никуда не делись)<br/>
+<code>270M</code> <code>XOR</code>'ов<br/>
+<code>4.320</code> сложений, сдвигов, логических И и извлечений из массива.<br/>
+<br/>
+Выглядит уже более интересно, но, всё равно, слишком много вычислений. К сожалению, похоже, что те 20% усилий, дающих 80% результата, мы тут уже потратили и пора подумать, где ещё можно выгадать. Первое, что приходит на ум, — вообще не доводить до расчёта, отфильтровывая заведомо неподходящие сигнатуры каким-нибудь легковесным фильтром.<br/>
+<br/>
+<h1>Подход четвёртый, крупное сито</h1><br/>
+Если немного преобразовать формулу расчёта, то можно получить такое неравенство (чем меньше рассчитанная дистанция — тем лучше):<br/>
+<br/>
+<div style="text-align:center;"><img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/nu/ny/mv/nunymvgccfhu2hlexvir0d0dlvq.png"/></div><br/>
+Т.е. теперь нам надо придумать, как на основании имеющейся у нас информации по количеству выставленных бит в <code>Long</code>'ах вычислить минимальное возможное значение левой части неравенства. После чего просто отбрасывать все сигнатуры, ему не удовлетворяющие.<br/>
+Напомню, что x<sub>i</sub> может принимать значения от 0 до 4 (знак не важен, думаю, понятно почему). Учитывая, что каждое слагаемое возводится в квадрат, несложно вывести общую закономерность:<br/>
+<br/>
+<div style="text-align:center;"><img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/em/pk/um/empkumsytnx11yoplffogdf4dbc.png"/></div><br/>
+Конечная формула выглядит так (она нам не понадобится, но я довольно долго её выводил и было бы обидно просто забыть и никому не показать):<br/>
+<br/>
+<div style="text-align:center;"><img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/ra/md/xd/ramdxdoczcczinkn8bouj_40zls.png"/></div><br/>
+Где B — количество выставленных бит.<br/>
+<br/>
+На самом то деле, в одном <code>Long</code>'е всего 64 бита, читай 64 возможных результата. И они отлично рассчитываются заранее и складываются в массив, по аналогии с предыдущим разделом.<br/>
+<br/>
+Кроме того, совершенно необязательно просчитывать все 27 <code>Long</code>'ов — достаточно на очередном из них превысить порог и можно прерывать проверку и возвращать false. Такой же подход, кстати, можно использовать и при основном расчёте.<br/>
+<br/>
+<pre><code class="kotlin">fun getSimilar(signature: Signature) = collection
+        .asSequence()  //  Зачем нам лишняя промежуточная коллекция!?
+        .filter { estimate(it, signature) }
+        .filter { calculateDistance(it, signature) &lt; d }
+
+val estimateValues = arrayOf(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 19, 22, 25, 28, 31, 34, 37, 40, 43, 46, 49, 52, 55, 58, 61, 64, 69, 74, 79, 84, 89, 94, 99, 104, 109, 114, 119, 124, 129, 134, 139, 144, 151, 158, 165, 172, 179, 186, 193, 200, 207, 214, 221, 228, 235, 242, 249, 256)
+
+fun estimate(first: Signature, second: Signature):Boolean{
+    var bitThreshold = Math.pow(d * (first.norma + second.norma), 2.0).toLong()
+    first.signature.forEachIndexed { index, value ->
+        bitThreshold -= estimateValues[java.lang.Long.bitCount(value xor second.signature[index])]
+        if (bitThreshold &lt;= 0) return false
+    }
+
+    return true
+}
+</code></pre><br/>
+Тут надо понимать, что эффективность данного фильтра (вплоть до отрицательной) катастрофически сильно зависит от выбранного порога и, чуть менее сильно, от входных данных. К счастью, для нужного нам порога <code>d=0.3</code> пройти фильтр удаётся довольно малому количеству объектов и вклад их обсчёта в общее время ответа настолько мизерный, что им можно пренебречь. А раз так, то можно ещё немножко сэкономить.<br/>
+<br/>
+<h1>Подход пятый, избавляемся от sequence</h1><br/>
+При работе с большими коллекциями, <code>sequence</code> — это хорошая защита от крайне неприятного <b>Out of memory</b>. Однако если мы заведомо знаем, что на первом же фильтре коллекция уменьшится до вменяемых размеров, то гораздо более разумным выбором будет использовать обычный перебор в цикле с созданием промежуточной коллекции, потому как <code>sequence</code> — это не только модно и молодёжно, но ещё и итератор, у которого <code>hasNext</code> сотоварищи, которые совсем не бесплатны.<br/>
+<br/>
+<pre><code class="kotlin">fun getSimilar(signature: Signature) = collection
+        .filter { estimate(it, signature) }
+        .filter { calculateDistance(it, signature) &lt; d }
+</code></pre><br/>
+Казалось бы, вот оно счастье, но захотелось «сделать красиво». Вот тут мы и подошли к обещанной поучительной истории.<br/>
+<br/>
+<h1>Подход шестой, хотели как лучше</h1><br/>
+Мы же пишем на Kotlin, а тут какие-то инородные <code>java.lang.Long.bitCount</code>! А ещё недавно в язык подвезли беззнаковые типы. В атаку!<br/>
+<br/>
+Сказано — сделано. Все <code>Long</code> заменены на <code>ULong</code>, из исходников Java с корнем выдрана <code>java.lang.Long.bitCount</code> и переписана как функция расширения для <code>ULong</code><br/>
+<br/>
+<pre><code class="kotlin">fun ULong.bitCount(): Int {
+    var i = this
+    i = i - (i.shr(1) and 0x5555555555555555uL)
+    i = (i and 0x3333333333333333uL) + (i.shr(2) and 0x3333333333333333uL)
+    i = i + i.shr(4) and 0x0f0f0f0f0f0f0f0fuL
+    i = i + i.shr(8)
+    i = i + i.shr(16)
+    i = i + i.shr(32)
+    return i.toInt() and 0x7f
+}
+</code></pre><br/>
+Запускаем и… Что-то не так. Код стал отрабатывать заметно медленнее. Запускаем профайлер и видим странное (см. заглавную иллюстрацию статьи): на чуть меньше миллиона вызовов <code>bitCount()</code> почти 16 миллионов вызовов <code>Kotlin.ULong.constructor-impl</code>. WAT!?<br/>
+<br/>
+Загадка объясняется просто — достаточно посмотреть в код класса <code>ULong</code><br/>
+<br/>
+<pre><code class="kotlin">public inline class ULong @PublishedApi internal constructor(@PublishedApi internal val data: Long) : Comparable&lt;ULong> {
+    @kotlin.internal.InlineOnly
+    public inline operator fun plus(other: ULong): ULong = ULong(this.data.plus(other.data))
+    @kotlin.internal.InlineOnly
+    public inline operator fun minus(other: ULong): ULong = ULong(this.data.minus(other.data))
+    @kotlin.internal.InlineOnly
+    public inline infix fun shl(bitCount: Int): ULong = ULong(data shl bitCount)
+    @kotlin.internal.InlineOnly
+    public inline operator fun inc(): ULong = ULong(data.inc())
+    и т.д.
+ }
+</code></pre><br/>
+Нет, я всё понимаю, <code>ULong</code> сейчас <code>experimental</code>, но как так-то!?<br/>
+В общем и целом, признаём подход несостоявшимся, а жаль.<br/>
+<br/>
+Ну, а всё-таки, может можно ещё что-то улучшить?<br/>
+<br/>
+На самом деле, можно. Оригинальный код <code>java.lang.Long.bitCount</code> — не самый оптимальный. Он даёт хороший результат в общем случае, но если мы заранее знаем на каких процессорах будет работать наше приложение, то можно подобрать более оптимальный способ — вот очень хорошая статья об этом на Хабре <a href="https://habr.com/ru/post/276957/">Обстоятельно о подсчёте единичных битов</a>, крайне рекомендую к прочтению.<br/>
+<br/>
+Я использовал «Комбинированный метод»<br/>
+<br/>
+<pre><code class="kotlin">fun Long.bitCount(): Int {
+    var n = this
+    n -= (n.shr(1)) and 0x5555555555555555L
+    n = ((n.shr(2)) and 0x3333333333333333L) + (n and 0x3333333333333333L)
+    n = ((((n.shr(4)) + n) and 0x0F0F0F0F0F0F0F0FL) * 0x0101010101010101).shr(56)
+    return n.toInt() and 0x7F
+}
+</code></pre><br/>
+<h1>Считаем попугаев</h1><br/>
+Все замеры производились бессистемно, по ходу разработки на локальной машине и воспроизводятся по памяти, так что о какой-либо точности говорить сложно, но оценить приблизительный вклад каждого из подходов можно.<br/>
+<br/>
+<div class="scrollable-table"><table>
+<tr>
+<th>Что делали</th>
+<th> попугаи (секунды)</th>
+</tr>
+<tr>
+<td>Подход первый, наивный</td>
+<td>25±</td>
+</tr>
+<tr>
+<td>Подход второй, упаковываем</td>
+<td>-</td>
+</tr>
+<tr>
+<td>Подход третий, упаковываем заново с подвыподвертом</td>
+<td>11-14</td>
+</tr>
+<tr>
+<td>Подход четвёртый, крупное сито</td>
+<td>2-3</td>
+</tr>
+<tr>
+<td>Подход пятый, избавляемся от sequence</td>
+<td>1.8-2.2</td>
+</tr>
+<tr>
+<td>Подход шестой, хотели как лучше</td>
+<td>3-4</td>
+</tr>
+<tr>
+<td>«Комбинированный метод» подсчёта установленных битов</td>
+<td>1.5-1.7</td>
+</tr>
+</table></div><br/>
+<h1>Выводы</h1><br/>
+<ul>
+<li>Когда имеешь дело с обработкой большого количества данных, то стоит потратить время на предварительный анализ. Возможно, не все из этих данных надо обрабатывать.</li>
+<li>Если есть возможность использовать грубую, но дешёвую предварительную фильтрацию, то это может сильно помочь.</li>
+<li>Битовая магия — наше всё. Ну там, где она применима, конечно.</li>
+<li>Посмотреть исходники стандартных классов и функций иногда бывает очень полезно.</li>
+</ul><br/>
+Спасибо за внимание! :)<br/>
+<br/>
+И да, продолжение следует.</div></div> <!----> <!----></div> <div class="tm-article-presenter__meta"><div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Теги:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bkotlin%5D" class="tm-tags-list__link">kotlin</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5B%D0%BE%D0%BF%D1%82%D0%B8%D0%BC%D0%B8%D0%B7%D0%B0%D1%86%D0%B8%D1%8F%20%D0%BA%D0%BE%D0%B4%D0%B0%5D" class="tm-tags-list__link">оптимизация кода</a></li></ul></div> <div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Хабы:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/company/funcorp/blog/" class="tm-hubs-list__link router-link-active">
+    Блог компании FUNCORP
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/crazydev/" class="tm-hubs-list__link">
+    Ненормальное программирование
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/kotlin/" class="tm-hubs-list__link">
+    Kotlin
+  </a></li></ul></div></div></article></div> <!----></div> <div class="tm-article-sticky-panel"><div class="tm-data-icons tm-article-sticky-panel__icons"><div class="tm-article-rating tm-data-icons__item"><div class="tm-votes-meter tm-article-rating__votes-switcher"><svg height="16" width="16" class="tm-svg-img tm-votes-meter__icon tm-votes-meter__icon_medium"><title>Всего голосов 42: ↑40 и ↓2</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-rating"></use></svg> <span title="Всего голосов 42: ↑40 и ↓2" class="tm-votes-meter__value tm-votes-meter__value_positive tm-votes-meter__value_medium">+38</span></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----> <span title="Количество просмотров" class="tm-icon-counter tm-data-icons__item"><svg height="16" width="16" class="tm-svg-img tm-icon-counter__icon"><title>Просмотры</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-views"></use></svg> <span class="tm-icon-counter__value">7K</span></span> <button title="Добавить в закладки" type="button" class="bookmarks-button tm-data-icons__item"><span title="Добавить в закладки" class="tm-svg-icon__wrapper bookmarks-button__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Добавить в закладки</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-favorite"></use></svg></span> <span title="Количество пользователей, добавивших публикацию в закладки" class="bookmarks-button__counter">
+    32
+  </span></button> <!----> <div title="Поделиться" class="tm-sharing tm-data-icons__item"><button type="button" class="tm-sharing__button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="tm-sharing__icon"><path fill="currentColor" d="M10.33.275l9.047 7.572a.2.2 0 010 .306l-9.048 7.572a.2.2 0 01-.328-.153V11c-8 0-9.94 6-9.94 6S-1 5 10 5V.428a.2.2 0 01.328-.153z"></path></svg></button> <!----></div> <DIV class="v-portal" style="display:none;"></DIV></div> </div></div> <!----> <!----> <div class="tm-article-presenter__footer"><div class="tm-article-blocks"><!----> <section class="tm-block tm-block_spacing-bottom"><!----> <div class="tm-block__body tm-block__body_variant-balanced"><div class="tm-article-author"><div class="tm-article-author__company"><div class="tm-article-author__company-card"><div class="tm-company-snippet"><a href="/ru/company/funcorp/profile/" class="tm-company-snippet__logo-link"><div class="tm-entity-image"><img alt="" height="40" src="//habrastorage.org/getpro/habr/company/f21/9f1/718/f219f1718c640f7b145969eeaad26e7b.jpg" width="40" class="tm-entity-image__pic"></div></a> <div class="tm-company-snippet__info"><a href="/ru/company/funcorp/profile/" class="tm-company-snippet__title">FUNCORP</a> <div class="tm-company-snippet__description">Разработка развлекательных сервисов</div></div></div> <div class="tm-article-author__buttons"><!----> <!----></div></div> <!----> <div class="tm-article-author__separator"></div></div> <div class="tm-user-card tm-article-author__user-card tm-user-card_variant-article"><div class="tm-user-card__info-container"><div class="tm-user-card__header"><div class="tm-user-card__header-data"><a href="/ru/users/rjhdby/" class="tm-user-card__userpic tm-user-card__userpic_size-40"><div class="tm-entity-image"><img alt="" src="//habrastorage.org/getpro/habr/avatars/330/b5e/fbd/330b5efbd4f629e93730d497b8d865e1.png" class="tm-entity-image__pic"></div></a> <div class="tm-user-card__meta"><div title=" 237 голосов " class="tm-karma tm-user-card__karma"><div class="tm-karma__votes tm-karma__votes_positive">
+    154.2
+  </div> <div class="tm-karma__text">
+    Карма
+  </div></div> <div title="Рейтинг пользователя" class="tm-rating tm-user-card__rating"><div class="tm-rating__header"> <div class="tm-rating__counter">0</div></div> <div class="tm-rating__text">
+    Рейтинг
+  </div></div></div></div></div> <div class="tm-user-card__info tm-user-card__info_variant-article"><div class="tm-user-card__title tm-user-card__title_variant-article"><span class="tm-user-card__name tm-user-card__name_variant-article">Громов Андрей</span> <a href="/ru/users/rjhdby/" class="tm-user-card__nickname tm-user-card__nickname_variant-article">
+          @rjhdby
+        </a> <!----></div> <p class="tm-user-card__short-info tm-user-card__short-info_variant-article">И то и сё</p></div></div> <div class="tm-user-card__buttons tm-user-card__buttons_variant-article"><!----> <!----> <!----> <!----> <!----></div></div> <!----></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----></section> <div class="tm-article-blocks__comments"><div class="tm-article-page-comments"><div class="tm-article-comments-counter-link tm-article-comments-counter-button"><a href="/ru/company/funcorp/blog/451622/comments/" class="tm-article-comments-counter-link__link tm-article-comments-counter-link__link_button-style"><svg height="16" width="16" class="tm-svg-img tm-article-comments-counter-link__icon tm-article-comments-counter-link__icon_contrasted"><title>Комментарии</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-comments"></use></svg> <span class="tm-article-comments-counter-link__value tm-article-comments-counter-link__value_contrasted">
+       Комментарии 35 
+    </span></a> <!----></div></div></div>  <!---->  <!----> <!----></div></div></div></div></div> <div class="tm-page__sidebar"><div class="tm-layout-sidebar"><div class="tm-layout-sidebar__placeholder_initial"></div> <div class="tm-sexy-sidebar tm-sexy-sidebar_initial" style="margin-top:0px;"><!----> <section class="tm-block tm-block_spacing-bottom"><header class="tm-block__header"><h2 class="tm-block__title">Информация</h2> <!----></header> <div class="tm-block__body"><div class="tm-company-basic-info"><dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Дата основания</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><time datetime="2004-12-16T21:00:00.000Z" title="2004-12-17, 00:00">17  декабря  2004</time></dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Местоположение</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap">
+    Кипр
+  </dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Сайт</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><a href="http://fun.co" target="_blank" class="tm-company-basic-info__link">
+      fun.co
+    </a></dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Численность</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap">
+    101–200 человек
+  </dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Дата регистрации</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><time datetime="2013-08-28T16:20:29.000Z" title="2013-08-28, 20:20">28  августа  2013</time></dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Представитель</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><a href="/ru/users/Account_is_busy/" class="tm-company-basic-info__link">
+      Account_is_busy
+    </a></dd></dl></div></div> <!----></section> <div class="tm-company-widgets"></div> <!----></div></div></div></div></div></div></main> <!----></div> <div class="tm-footer-menu"><div class="tm-page-width"><div class="tm-footer-menu__container"><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Ваш аккаунт
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr/?back=/ru/company/funcorp/blog/451622/&amp;hl=ru" rel="nofollow" target="_self">
+                Войти
+              </a></li><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr-register/?back=/ru/company/funcorp/blog/451622/&amp;hl=ru" rel="nofollow" target="_self">
+                Регистрация
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Разделы
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/" class="footer-menu__item-link router-link-active">
+                Публикации
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/news/" class="footer-menu__item-link">
+                Новости
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/hubs/" class="footer-menu__item-link">
+                Хабы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/companies/" class="footer-menu__item-link">
+                Компании
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/users/" class="footer-menu__item-link">
+                Авторы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/sandbox/" class="footer-menu__item-link">
+                Песочница
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Информация
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/docs/help/" class="footer-menu__item-link">
+                Устройство сайта
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/authors/codex/" class="footer-menu__item-link">
+                Для авторов
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/companies/corpblogs/" class="footer-menu__item-link">
+                Для компаний
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/docs/transparency/" class="footer-menu__item-link">
+                Документы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/agreement" target="_blank">
+                Соглашение
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/confidential/" target="_blank">
+                Конфиденциальность
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Услуги
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQLwRfQmXibiUlWaRg-BAc38s7oM3lJiaPju7qmdJsp8ysIvZ_G-Npem0njJLMozE2bPHMpDqiI5hhy/pub?start=false&amp;loop=false&amp;delayms=60000&amp;slide=id.g91a03369cd_4_297" target="_blank">
+                Реклама
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://habrastorage.org/storage/stuff/habr/service_price.pdf" target="_blank">
+                Тарифы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQJJds8-Di7BQSP_guHxICN7woVYoN5NP_22ra-BIo4bqnTT9FR6fB-Ku2P0AoRpX0Ds-LRkDeAoD8F/pub?start=false&amp;loop=false&amp;delayms=60000" target="_blank">
+                Контент
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://tmtm.timepad.ru/" target="_blank">
+                Семинары
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/megaprojects/" class="footer-menu__item-link">
+                Мегапроекты
+              </a></li></ul></div></div></div></div></div> <div class="tm-footer"><div class="tm-page-width"><div class="tm-footer__container"><!----> <div class="tm-footer__social"><a href="https://www.facebook.com/habrahabr.ru" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Facebook</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-facebook"></use></svg></a><a href="https://twitter.com/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Twitter</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-twitter"></use></svg></a><a href="https://vk.com/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>VK</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-vkontakte"></use></svg></a><a href="https://telegram.me/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Telegram</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-telegram"></use></svg></a><a href="https://www.youtube.com/channel/UCd_sTwKqVrweTt4oAKY5y4w" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Youtube</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-youtube"></use></svg></a><a href="https://zen.yandex.ru/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Яндекс Дзен</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-zen"></use></svg></a></div> <DIV class="v-portal" style="display:none;"></DIV> <button class="tm-footer__link"><!---->
+        Настройка языка
+      </button> <a href="/ru/about" class="tm-footer__link">
+        О сайте
+      </a> <a href="/ru/feedback/" class="tm-footer__link">
+        Техническая поддержка
+      </a> <!----> <a href="/berserk-mode-nope" class="tm-footer__link">
+        Вернуться на старую версию
+      </a> <div class="tm-footer-copyright"><span class="tm-copyright"><span class="tm-copyright__years">© 2006–2021 </span> <span class="tm-copyright__name">«<a href="https://company.habr.com/" rel="noopener" target="_blank" class="tm-copyright__link">Habr</a>»</span></span></div></div></div></div> <!----> <!----></div> <div class="vue-portal-target"></div></div>
+<script>window.__INITIAL_STATE__={"adblock":{"hasAcceptableAdsFilter":false,"hasAdblock":false},"articlesList":{"articlesList":{"451622":{"id":"451622","timePublished":"2019-05-16T07:26:56+00:00","isCorporative":true,"lang":"ru","titleHtml":"Про подсчёт битов, беззнаковые типы в Kotlin и про ситуации, когда экономия на спичках оправдана","leadData":{"textHtml":"\u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fb6\u002Fqc\u002F5k\u002Fb6qc5klplot_lkmjsi0edrecbye.png\"\u003E\u003Cbr\u003E\r\nК написанию статьи подтолкнул вот \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fpost\u002F451490\u002F#comment_20145200\"\u003Eэтот комментарий\u003C\u002Fa\u003E. А точнее, одна фраза из него.\u003Cbr\u003E\r\n\u003Cblockquote\u003E… расходовать память или такты процессора на элементы в миллиардных объёмах — это нехорошо…\u003Cbr\u003E\r\n\u003C\u002Fblockquote\u003E Так сложилось, что в последнее время мне именно этим и пришлось заниматься. И, хотя, случай, который я рассмотрю в статье, довольно частный — выводы и применённые решения могут быть кому-нибудь полезны.\u003Cbr\u003E\r\n\u003Cbr\u003E\r\n\u003Ch1\u003EНемного контекста\u003C\u002Fh1\u003E\u003Cbr\u003E\r\nПриложение iFunny имеет дело с колоссальным объёмом графического и видеоконтента, а нечёткий поиск дубликатов является одной из очень важных задач. Сама по себе это большая тема, заслуживающая отдельной статьи, но сегодня я просто немного расскажу о некоторых подходах к обсчёту очень больших массивов чисел, применительно к этому поиску. Конечно же, у всех разное понимание «очень больших массивов», и тягаться с Адронным коллайдером было бы глупо, но всё же. :)\u003Cbr\u003E\r\n\u003Cbr\u003E\r\nЕсли совсем коротко про алгоритм, то для каждого изображения создаётся его цифровая подпись (сигнатура) из 968 целых чисел, а сравнение производится путем нахождения «расстояния» между двумя сигнатурами. Учитывая, что объём контента только за два последних месяца составил порядка 10 миллионов изображений, то, как легко прикинет в уме внимательный читатель, — это как раз те самые «элементы в миллиардных объёмах». Кому интересно — добро пожаловать под кат.\u003Cbr\u003E","imageUrl":null,"buttonTextHtml":"Читать дальше →","image":null},"editorVersion":"1.0","postType":"article","postLabels":[],"author":{"scoreStats":{"score":154.2,"votesCount":237},"rating":0,"relatedData":null,"contacts":[],"authorContacts":[],"paymentDetails":{"paymentYandexMoney":null,"paymentPayPalMe":null,"paymentWebmoney":null},"id":"471750","alias":"rjhdby","fullname":"Громов Андрей","avatarUrl":"\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Favatars\u002F330\u002Fb5e\u002Ffbd\u002F330b5efbd4f629e93730d497b8d865e1.png","speciality":"И то и сё"},"statistics":{"commentsCount":35,"favoritesCount":32,"readingCount":7006,"score":38,"votesCount":42},"hubs":[{"relatedData":null,"id":"18232","alias":"funcorp","type":"corporative","title":"Блог компании FUNCORP","titleHtml":"Блог компании FUNCORP","isProfiled":false},{"relatedData":null,"id":"84","alias":"crazydev","type":"collective","title":"Ненормальное программирование","titleHtml":"Ненормальное программирование","isProfiled":true},{"relatedData":null,"id":"19441","alias":"kotlin","type":"collective","title":"Kotlin","titleHtml":"Kotlin","isProfiled":true}],"flows":[{"id":"1","alias":"develop","title":"Разработка"}],"relatedData":null,"textHtml":"\u003Cdiv xmlns=\"http:\u002F\u002Fwww.w3.org\u002F1999\u002Fxhtml\"\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fb6\u002Fqc\u002F5k\u002Fb6qc5klplot_lkmjsi0edrecbye.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\nК написанию статьи подтолкнул вот \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fpost\u002F451490\u002F#comment_20145200\"\u003Eэтот комментарий\u003C\u002Fa\u003E. А точнее, одна фраза из него.\u003Cbr\u002F\u003E\r\n\u003Cblockquote\u003E… расходовать память или такты процессора на элементы в миллиардных объёмах — это нехорошо…\u003Cbr\u002F\u003E\r\n\u003C\u002Fblockquote\u003E Так сложилось, что в последнее время мне именно этим и пришлось заниматься. И, хотя, случай, который я рассмотрю в статье, довольно частный — выводы и применённые решения могут быть кому-нибудь полезны.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch1\u003EНемного контекста\u003C\u002Fh1\u003E\u003Cbr\u002F\u003E\r\nПриложение iFunny имеет дело с колоссальным объёмом графического и видеоконтента, а нечёткий поиск дубликатов является одной из очень важных задач. Сама по себе это большая тема, заслуживающая отдельной статьи, но сегодня я просто немного расскажу о некоторых подходах к обсчёту очень больших массивов чисел, применительно к этому поиску. Конечно же, у всех разное понимание «очень больших массивов», и тягаться с Адронным коллайдером было бы глупо, но всё же. :)\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЕсли совсем коротко про алгоритм, то для каждого изображения создаётся его цифровая подпись (сигнатура) из 968 целых чисел, а сравнение производится путем нахождения «расстояния» между двумя сигнатурами. Учитывая, что объём контента только за два последних месяца составил порядка 10 миллионов изображений, то, как легко прикинет в уме внимательный читатель, — это как раз те самые «элементы в миллиардных объёмах». Кому интересно — добро пожаловать под кат.\u003Cbr\u002F\u003E\r\n\u003Ca name=\"habracut\"\u003E\u003C\u002Fa\u003E\u003Cbr\u002F\u003E\r\nВ начале будет скучный рассказ про экономию тактов и памяти, а в конце небольшая поучительная история, про то, что иногда очень полезно смотреть в исходники. Картинка для привлечения внимания имеет прямое отношение к этой поучительной истории.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nДолжен признаться, что я немного слукавил. При предварительном анализе алгоритма удалось сократить количество значений в каждой сигнатуре с 968 до 420. Уже в два раза лучше, но порядок величин остался тот же. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nХотя, если подумать, то не так уж я и слукавил, и это будет первым выводом: прежде чем приступать к задаче, стоит подумать — а нельзя ли её как-то заранее упростить?\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nАлгоритм сравнения довольно простой: вычисляется корень из суммы квадратов разностей двух сигнатур, делится на сумму предварительно рассчитанных значений (т.е. в каждой итерации суммирование всё же будет и совсем его в константу не вынести) и сравнивается с пороговым значением. Стоит отметить, что элементы сигнатуры ограничены значениями от -2 до +2, а, соответственно, абсолютное значение разности — значениями от 0 до 4.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cdiv style=\"text-align:center;\"\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fcl\u002Fyh\u002Fm8\u002Fclyhm8caq35-td519odrgd95msq.png\"\u002F\u003E\u003C\u002Fdiv\u003E\u003Cbr\u002F\u003E\r\nНичего сложного, но количество решает.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch1\u003EПодход первый, наивный\u003C\u002Fh1\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"kotlin\"\u003E\u002F\u002F Порог\nconst val d = 0.3\n\n\u002F\u002F 10.000.000 объектов. \n\u002F\u002F Будем держать эту цифру в уме,\n\u002F\u002F чтобы не упоминать в каждом втором предложении\nval collection: MutableList&lt;Signature\u003E = mutableListOf()        \n\n\u002F\u002F signature — массив из 420 значений типа Byte\nclass Signature(val signature: Array&lt;Byte\u003E, val norma: Double)  \n\nfun getSimilar(signature: Signature) = collection\n    .filter { calculateDistance(it, signature) &lt; d }\n\nfun calculateDistance(first: Signature, second: Signature): Double = \n\tMath.sqrt(first.signature.mapIndexed { index, value -\u003E\n        Math.pow((value - second.signature[index]).toDouble(), 2.0)\n    }.sum()) \u002F (first.norma + second.norma)\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nДавайте посчитаем, что у нас тут с количеством операций:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ccode\u003E10M\u003C\u002Fcode\u003E квадратных корней \u003Ccode\u003EMath.sqrt\u003C\u002Fcode\u003E\u003Cbr\u002F\u003E\r\n\u003Ccode\u003E10M\u003C\u002Fcode\u003E сложений и делений \u003Ccode\u003E\u002F (first.norma + second.norma)\u003C\u002Fcode\u003E\u003Cbr\u002F\u003E\r\n\u003Ccode\u003E4.200M\u003C\u002Fcode\u003E вычитаний и возведений в квадрат \u003Ccode\u003EMath.pow((value - second.signature[index]).toDouble(), 2.0)\u003C\u002Fcode\u003E\u003Cbr\u002F\u003E\r\n\u003Ccode\u003E4.200M\u003C\u002Fcode\u003E сложений \u003Ccode\u003E.sum()\u003C\u002Fcode\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nКакие у нас есть варианты:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Col\u003E\r\n\u003Cli\u003EПри таких объёмах тратить целый \u003Ccode\u003EByte\u003C\u002Fcode\u003E (или, не дай бог, кто-то догадался бы использовать \u003Ccode\u003EInt\u003C\u002Fcode\u003E) на хранение трёх значащих бит — это непростительное расточительство.\u003C\u002Fli\u003E\r\n\u003Cli\u003EМожет, как-то подсократить количество математики?\u003C\u002Fli\u003E\r\n\u003Cli\u003EА нельзя ли сделать какую-нибудь предварительную фильтрацию, не такую затратную по вычислениям?\u003C\u002Fli\u003E\r\n\u003C\u002Fol\u003E\u003Cbr\u002F\u003E\r\n\u003Ch1\u003EПодход второй, упаковываем\u003C\u002Fh1\u003E\u003Cbr\u002F\u003E\r\n\u003Ci\u003EКстати, если кто-то предложит, как можно упростить вычисления при такой упаковке — получит большое спасибо и плюс в карму. Хоть и один, но зато от всей души :)\u003C\u002Fi\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nОдин \u003Ccode\u003ELong\u003C\u002Fcode\u003E — это 64 бита, что, в нашем случае, позволит хранить в нём 21 значение (и 1 бит останется неприкаянным).\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"kotlin\"\u003E\u002F\u002F массив из 20 значений типа Long\nclass Signature(val signature: Array&lt;Long\u003E, val norma: Double) \n\nfun calculateDistance(first: Signature, second: Signature): Double =\n    Math.sqrt(first.signature.mapIndexed { index, value -\u003E\n        calculatePartial(value, second.signature[index])\n    }.sum()) \u002F (first.norma + second.norma)\n\nfun calculatePartial(first: Long, second: Long): Double {\n    var sum = 0L\n    (0..60 step 3).onEach {\n        val current = (first.ushr(it) and 0x7) - (second.ushr(it) and 0x7)\n        sum += current * current\n    }\n    return sum.toDouble()\n}\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nПо памяти стало лучше (\u003Ccode\u003E4.200M\u003C\u002Fcode\u003E против \u003Ccode\u003E1.600M\u003C\u002Fcode\u003E байт, если грубо), но что там с вычислениями?\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nДумаю, очевидно, что количество операций осталось прежним и к ним добавились \u003Ccode\u003E8.400M\u003C\u002Fcode\u003E сдвигов и \u003Ccode\u003E8.400M\u003C\u002Fcode\u003E логических И. Может и можно оптимизировать, но тенденция всё равно не радует — это не то, чего мы хотели.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch1\u003EПодход третий, упаковываем заново с подвыподвертом\u003C\u002Fh1\u003E\u003Cbr\u002F\u003E\r\nНутром чую, тут можно использовать битовую магию!\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nДавайте хранить значения не в трёх, а в четырёх битах. Таким, вот, образом:\u003Cbr\u002F\u003E\r\n\u003Cdiv class=\"scrollable-table\"\u003E\u003Ctable\u003E\r\n\u003Ctr\u003E\r\n\u003Ctd\u003E-2\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E0b1100\u003C\u002Ftd\u003E\r\n\u003C\u002Ftr\u003E\r\n\u003Ctr\u003E\r\n\u003Ctd\u003E-1\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E0b0100\u003C\u002Ftd\u003E\r\n\u003C\u002Ftr\u003E\r\n\u003Ctr\u003E\r\n\u003Ctd\u003E0\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E0b0000\u003C\u002Ftd\u003E\r\n\u003C\u002Ftr\u003E\r\n\u003Ctr\u003E\r\n\u003Ctd\u003E1\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E0b0010\u003C\u002Ftd\u003E\r\n\u003C\u002Ftr\u003E\r\n\u003Ctr\u003E\r\n\u003Ctd\u003E2\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E0b0011\u003C\u002Ftd\u003E\r\n\u003C\u002Ftr\u003E\r\n\u003C\u002Ftable\u003E\u003C\u002Fdiv\u003E\u003Cbr\u002F\u003E\r\nДа, мы потеряем в плотности упаковки по сравнению с предыдущим вариантом, но зато получим возможность одним \u003Ccode\u003EXOR\u003C\u002Fcode\u003E'ом получать \u003Ccode\u003ELong\u003C\u002Fcode\u003E с разностями (не совсем) сразу 16-ти элементов. Кроме того, будет всего 11 вариантов распределения бит в каждом конечном полубайте, что позволит использовать заранее рассчитанные значения квадратов разностей.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"kotlin\"\u003E\u002F\u002F массив из 27 значений типа Long\nclass Signature(val signature: Array&lt;Long\u003E, val norma: Double) \n\n\u002F\u002F -1 для невозможных вариантов\nval precomputed = arrayOf(0, 1, 1, 4, 1, -1, 4, 9, 1, -1, -1, -1, 4, -1, 9, 16)\n\nfun calculatePartial(first: Long, second: Long): Double {\n    var sum = 0L\n    val difference = first xor second\n    (0..60 step 4).onEach {\n        sum += precomputed[(difference.ushr(it) and 0xF).toInt()]\n    }\n    return sum.toDouble()\n}\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nПо памяти стало \u003Ccode\u003E2.160M\u003C\u002Fcode\u003E против \u003Ccode\u003E1.600M\u003C\u002Fcode\u003E — неприятно, но всё же лучше, чем начальные \u003Ccode\u003E4.200M\u003C\u002Fcode\u003E.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПосчитаем операции:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ccode\u003E10M\u003C\u002Fcode\u003E квадратных корней, сложений и делений (никуда не делись)\u003Cbr\u002F\u003E\r\n\u003Ccode\u003E270M\u003C\u002Fcode\u003E \u003Ccode\u003EXOR\u003C\u002Fcode\u003E'ов\u003Cbr\u002F\u003E\r\n\u003Ccode\u003E4.320\u003C\u002Fcode\u003E сложений, сдвигов, логических И и извлечений из массива.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВыглядит уже более интересно, но, всё равно, слишком много вычислений. К сожалению, похоже, что те 20% усилий, дающих 80% результата, мы тут уже потратили и пора подумать, где ещё можно выгадать. Первое, что приходит на ум, — вообще не доводить до расчёта, отфильтровывая заведомо неподходящие сигнатуры каким-нибудь легковесным фильтром.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch1\u003EПодход четвёртый, крупное сито\u003C\u002Fh1\u003E\u003Cbr\u002F\u003E\r\nЕсли немного преобразовать формулу расчёта, то можно получить такое неравенство (чем меньше рассчитанная дистанция — тем лучше):\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cdiv style=\"text-align:center;\"\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fnu\u002Fny\u002Fmv\u002Fnunymvgccfhu2hlexvir0d0dlvq.png\"\u002F\u003E\u003C\u002Fdiv\u003E\u003Cbr\u002F\u003E\r\nТ.е. теперь нам надо придумать, как на основании имеющейся у нас информации по количеству выставленных бит в \u003Ccode\u003ELong\u003C\u002Fcode\u003E'ах вычислить минимальное возможное значение левой части неравенства. После чего просто отбрасывать все сигнатуры, ему не удовлетворяющие.\u003Cbr\u002F\u003E\r\nНапомню, что x\u003Csub\u003Ei\u003C\u002Fsub\u003E может принимать значения от 0 до 4 (знак не важен, думаю, понятно почему). Учитывая, что каждое слагаемое возводится в квадрат, несложно вывести общую закономерность:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cdiv style=\"text-align:center;\"\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fem\u002Fpk\u002Fum\u002Fempkumsytnx11yoplffogdf4dbc.png\"\u002F\u003E\u003C\u002Fdiv\u003E\u003Cbr\u002F\u003E\r\nКонечная формула выглядит так (она нам не понадобится, но я довольно долго её выводил и было бы обидно просто забыть и никому не показать):\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cdiv style=\"text-align:center;\"\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fra\u002Fmd\u002Fxd\u002Framdxdoczcczinkn8bouj_40zls.png\"\u002F\u003E\u003C\u002Fdiv\u003E\u003Cbr\u002F\u003E\r\nГде B — количество выставленных бит.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nНа самом то деле, в одном \u003Ccode\u003ELong\u003C\u002Fcode\u003E'е всего 64 бита, читай 64 возможных результата. И они отлично рассчитываются заранее и складываются в массив, по аналогии с предыдущим разделом.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nКроме того, совершенно необязательно просчитывать все 27 \u003Ccode\u003ELong\u003C\u002Fcode\u003E'ов — достаточно на очередном из них превысить порог и можно прерывать проверку и возвращать false. Такой же подход, кстати, можно использовать и при основном расчёте.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"kotlin\"\u003Efun getSimilar(signature: Signature) = collection\n        .asSequence()  \u002F\u002F  Зачем нам лишняя промежуточная коллекция!?\n        .filter { estimate(it, signature) }\n        .filter { calculateDistance(it, signature) &lt; d }\n\nval estimateValues = arrayOf(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 19, 22, 25, 28, 31, 34, 37, 40, 43, 46, 49, 52, 55, 58, 61, 64, 69, 74, 79, 84, 89, 94, 99, 104, 109, 114, 119, 124, 129, 134, 139, 144, 151, 158, 165, 172, 179, 186, 193, 200, 207, 214, 221, 228, 235, 242, 249, 256)\n\nfun estimate(first: Signature, second: Signature):Boolean{\n    var bitThreshold = Math.pow(d * (first.norma + second.norma), 2.0).toLong()\n    first.signature.forEachIndexed { index, value -\u003E\n        bitThreshold -= estimateValues[java.lang.Long.bitCount(value xor second.signature[index])]\n        if (bitThreshold &lt;= 0) return false\n    }\n\n    return true\n}\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nТут надо понимать, что эффективность данного фильтра (вплоть до отрицательной) катастрофически сильно зависит от выбранного порога и, чуть менее сильно, от входных данных. К счастью, для нужного нам порога \u003Ccode\u003Ed=0.3\u003C\u002Fcode\u003E пройти фильтр удаётся довольно малому количеству объектов и вклад их обсчёта в общее время ответа настолько мизерный, что им можно пренебречь. А раз так, то можно ещё немножко сэкономить.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch1\u003EПодход пятый, избавляемся от sequence\u003C\u002Fh1\u003E\u003Cbr\u002F\u003E\r\nПри работе с большими коллекциями, \u003Ccode\u003Esequence\u003C\u002Fcode\u003E — это хорошая защита от крайне неприятного \u003Cb\u003EOut of memory\u003C\u002Fb\u003E. Однако если мы заведомо знаем, что на первом же фильтре коллекция уменьшится до вменяемых размеров, то гораздо более разумным выбором будет использовать обычный перебор в цикле с созданием промежуточной коллекции, потому как \u003Ccode\u003Esequence\u003C\u002Fcode\u003E — это не только модно и молодёжно, но ещё и итератор, у которого \u003Ccode\u003EhasNext\u003C\u002Fcode\u003E сотоварищи, которые совсем не бесплатны.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"kotlin\"\u003Efun getSimilar(signature: Signature) = collection\n        .filter { estimate(it, signature) }\n        .filter { calculateDistance(it, signature) &lt; d }\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nКазалось бы, вот оно счастье, но захотелось «сделать красиво». Вот тут мы и подошли к обещанной поучительной истории.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch1\u003EПодход шестой, хотели как лучше\u003C\u002Fh1\u003E\u003Cbr\u002F\u003E\r\nМы же пишем на Kotlin, а тут какие-то инородные \u003Ccode\u003Ejava.lang.Long.bitCount\u003C\u002Fcode\u003E! А ещё недавно в язык подвезли беззнаковые типы. В атаку!\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nСказано — сделано. Все \u003Ccode\u003ELong\u003C\u002Fcode\u003E заменены на \u003Ccode\u003EULong\u003C\u002Fcode\u003E, из исходников Java с корнем выдрана \u003Ccode\u003Ejava.lang.Long.bitCount\u003C\u002Fcode\u003E и переписана как функция расширения для \u003Ccode\u003EULong\u003C\u002Fcode\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"kotlin\"\u003Efun ULong.bitCount(): Int {\n    var i = this\n    i = i - (i.shr(1) and 0x5555555555555555uL)\n    i = (i and 0x3333333333333333uL) + (i.shr(2) and 0x3333333333333333uL)\n    i = i + i.shr(4) and 0x0f0f0f0f0f0f0f0fuL\n    i = i + i.shr(8)\n    i = i + i.shr(16)\n    i = i + i.shr(32)\n    return i.toInt() and 0x7f\n}\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nЗапускаем и… Что-то не так. Код стал отрабатывать заметно медленнее. Запускаем профайлер и видим странное (см. заглавную иллюстрацию статьи): на чуть меньше миллиона вызовов \u003Ccode\u003EbitCount()\u003C\u002Fcode\u003E почти 16 миллионов вызовов \u003Ccode\u003EKotlin.ULong.constructor-impl\u003C\u002Fcode\u003E. WAT!?\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЗагадка объясняется просто — достаточно посмотреть в код класса \u003Ccode\u003EULong\u003C\u002Fcode\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"kotlin\"\u003Epublic inline class ULong @PublishedApi internal constructor(@PublishedApi internal val data: Long) : Comparable&lt;ULong\u003E {\n    @kotlin.internal.InlineOnly\n    public inline operator fun plus(other: ULong): ULong = ULong(this.data.plus(other.data))\n    @kotlin.internal.InlineOnly\n    public inline operator fun minus(other: ULong): ULong = ULong(this.data.minus(other.data))\n    @kotlin.internal.InlineOnly\n    public inline infix fun shl(bitCount: Int): ULong = ULong(data shl bitCount)\n    @kotlin.internal.InlineOnly\n    public inline operator fun inc(): ULong = ULong(data.inc())\n    и т.д.\n }\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nНет, я всё понимаю, \u003Ccode\u003EULong\u003C\u002Fcode\u003E сейчас \u003Ccode\u003Eexperimental\u003C\u002Fcode\u003E, но как так-то!?\u003Cbr\u002F\u003E\r\nВ общем и целом, признаём подход несостоявшимся, а жаль.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nНу, а всё-таки, может можно ещё что-то улучшить?\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nНа самом деле, можно. Оригинальный код \u003Ccode\u003Ejava.lang.Long.bitCount\u003C\u002Fcode\u003E — не самый оптимальный. Он даёт хороший результат в общем случае, но если мы заранее знаем на каких процессорах будет работать наше приложение, то можно подобрать более оптимальный способ — вот очень хорошая статья об этом на Хабре \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fpost\u002F276957\u002F\"\u003EОбстоятельно о подсчёте единичных битов\u003C\u002Fa\u003E, крайне рекомендую к прочтению.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЯ использовал «Комбинированный метод»\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"kotlin\"\u003Efun Long.bitCount(): Int {\n    var n = this\n    n -= (n.shr(1)) and 0x5555555555555555L\n    n = ((n.shr(2)) and 0x3333333333333333L) + (n and 0x3333333333333333L)\n    n = ((((n.shr(4)) + n) and 0x0F0F0F0F0F0F0F0FL) * 0x0101010101010101).shr(56)\n    return n.toInt() and 0x7F\n}\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Ch1\u003EСчитаем попугаев\u003C\u002Fh1\u003E\u003Cbr\u002F\u003E\r\nВсе замеры производились бессистемно, по ходу разработки на локальной машине и воспроизводятся по памяти, так что о какой-либо точности говорить сложно, но оценить приблизительный вклад каждого из подходов можно.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cdiv class=\"scrollable-table\"\u003E\u003Ctable\u003E\r\n\u003Ctr\u003E\r\n\u003Cth\u003EЧто делали\u003C\u002Fth\u003E\r\n\u003Cth\u003E попугаи (секунды)\u003C\u002Fth\u003E\r\n\u003C\u002Ftr\u003E\r\n\u003Ctr\u003E\r\n\u003Ctd\u003EПодход первый, наивный\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E25±\u003C\u002Ftd\u003E\r\n\u003C\u002Ftr\u003E\r\n\u003Ctr\u003E\r\n\u003Ctd\u003EПодход второй, упаковываем\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E-\u003C\u002Ftd\u003E\r\n\u003C\u002Ftr\u003E\r\n\u003Ctr\u003E\r\n\u003Ctd\u003EПодход третий, упаковываем заново с подвыподвертом\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E11-14\u003C\u002Ftd\u003E\r\n\u003C\u002Ftr\u003E\r\n\u003Ctr\u003E\r\n\u003Ctd\u003EПодход четвёртый, крупное сито\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E2-3\u003C\u002Ftd\u003E\r\n\u003C\u002Ftr\u003E\r\n\u003Ctr\u003E\r\n\u003Ctd\u003EПодход пятый, избавляемся от sequence\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E1.8-2.2\u003C\u002Ftd\u003E\r\n\u003C\u002Ftr\u003E\r\n\u003Ctr\u003E\r\n\u003Ctd\u003EПодход шестой, хотели как лучше\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E3-4\u003C\u002Ftd\u003E\r\n\u003C\u002Ftr\u003E\r\n\u003Ctr\u003E\r\n\u003Ctd\u003E«Комбинированный метод» подсчёта установленных битов\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E1.5-1.7\u003C\u002Ftd\u003E\r\n\u003C\u002Ftr\u003E\r\n\u003C\u002Ftable\u003E\u003C\u002Fdiv\u003E\u003Cbr\u002F\u003E\r\n\u003Ch1\u003EВыводы\u003C\u002Fh1\u003E\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003EКогда имеешь дело с обработкой большого количества данных, то стоит потратить время на предварительный анализ. Возможно, не все из этих данных надо обрабатывать.\u003C\u002Fli\u003E\r\n\u003Cli\u003EЕсли есть возможность использовать грубую, но дешёвую предварительную фильтрацию, то это может сильно помочь.\u003C\u002Fli\u003E\r\n\u003Cli\u003EБитовая магия — наше всё. Ну там, где она применима, конечно.\u003C\u002Fli\u003E\r\n\u003Cli\u003EПосмотреть исходники стандартных классов и функций иногда бывает очень полезно.\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\nСпасибо за внимание! :)\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nИ да, продолжение следует.\u003C\u002Fdiv\u003E","tags":[{"titleHtml":"kotlin"},{"titleHtml":"оптимизация кода"}],"metadata":{"stylesUrls":[],"scriptUrls":[],"shareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F451622\u002F460f670bc16b73135fc6a9d3302e8053\u002F","shareImageWidth":1200,"shareImageHeight":630,"vkShareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F451622\u002F460f670bc16b73135fc6a9d3302e8053\u002F?format=vk","schemaJsonLd":"{\"@context\":\"http:\\\u002F\\\u002Fschema.org\",\"@type\":\"Article\",\"mainEntityOfPage\":{\"@type\":\"WebPage\",\"@id\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fru\\\u002Fcompany\\\u002Ffuncorp\\\u002Fblog\\\u002F451622\\\u002F\"},\"headline\":\"Про подсчёт битов, беззнаковые типы в Kotlin и про ситуации, когда экономия на спичках оправдана\",\"datePublished\":\"2019-05-16T10:26:56+03:00\",\"dateModified\":\"2019-05-16T12:22:11+03:00\",\"author\":{\"@type\":\"Person\",\"name\":\"Громов Андрей\"},\"publisher\":{\"@type\":\"Organization\",\"name\":\"Habr\",\"logo\":{\"@type\":\"ImageObject\",\"url\":\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fa_\\\u002Flk\\\u002F9m\\\u002Fa_lk9mjkccjox-zccjrpfolmkmq.png\"}},\"description\":\"К написанию статьи подтолкнул вот этот комментарий. А точнее, одна фраза из него. &hellip; расходовать память или такты процессора на элементы в миллиардных объёмах &mdash;...\",\"url\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fru\\\u002Fcompany\\\u002Ffuncorp\\\u002Fblog\\\u002F451622\\\u002F#post-content-body\",\"about\":[\"c_funcorp\",\"h_crazydev\",\"h_kotlin\",\"f_develop\"],\"image\":[\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fb6\\\u002Fqc\\\u002F5k\\\u002Fb6qc5klplot_lkmjsi0edrecbye.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fcl\\\u002Fyh\\\u002Fm8\\\u002Fclyhm8caq35-td519odrgd95msq.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fnu\\\u002Fny\\\u002Fmv\\\u002Fnunymvgccfhu2hlexvir0d0dlvq.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fem\\\u002Fpk\\\u002Fum\\\u002Fempkumsytnx11yoplffogdf4dbc.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fra\\\u002Fmd\\\u002Fxd\\\u002Framdxdoczcczinkn8bouj_40zls.png\"]}","metaDescription":"К написанию статьи подтолкнул вот этот комментарий. А точнее, одна фраза из него.\r\n… расходовать память или такты процессора на элементы в миллиардных объёмах — это нехорошо…\r\n Так сложилось, что в...","mainImageUrl":null,"amp":false},"polls":[],"commentsEnabled":true,"rulesRemindEnabled":false,"votesEnabled":true,"status":"published","plannedPublishTime":null,"checked":null,"isEditorial":false}},"articlesIds":{},"isLoading":false,"pagesCount":{},"route":{},"reasonsList":null,"view":"cards","lastVisitedRoute":{},"ssrCommentsArticleIds":[""],"karma":{}},"authorContribution":{"authors":{}},"betaTest":{"currentAnnouncement":null,"announcements":{},"announcementCards":null,"announcementComments":{},"announcementCommentThreads":{},"announcementCommentingStatuses":{},"archivedList":[]},"authorStatistics":{"articleRefs":{},"articleIds":{},"pagesCount":{},"route":{},"viewsCount":[],"maxStatsCount":{}},"career":{"seoLandings":[],"hubs":""},"comments":{"articleComments":{},"searchCommentsResults":null,"previewComment":null,"pagesCount":null,"commentAccess":{},"scrollParents":{},"pageArticleComments":{"lastViewedComment":0,"postId":null,"lastCommentTimestamp":"","moderated":[],"moderatedIds":[],"commentRoute":""}},"companies":{"companyRefs":{"funcorp":{"alias":"funcorp","imageUrl":"\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fcompany\u002Ff21\u002F9f1\u002F718\u002Ff219f1718c640f7b145969eeaad26e7b.jpg","titleHtml":"FUNCORP","descriptionHtml":"Разработка развлекательных сервисов","relatedData":null,"statistics":{"postsCount":181,"newsCount":2,"vacanciesCount":15,"employeesCount":66,"careerRating":null,"subscribersCount":34811,"rating":261.17,"invest":null},"foundationDate":{"year":"2004","month":"12","day":"17"},"location":{"city":{"id":"185290","title":"Лимассол"},"region":{"id":"487","title":"Government controlled area"},"country":{"id":"96","title":"Кипр"}},"siteUrl":"http:\u002F\u002Ffun.co","staffNumber":"101–200 человек","registrationDate":"2013-08-28T16:20:29+00:00","representativeUser":{"alias":"Account_is_busy","fullname":null},"contacts":[],"settings":{"analyticsSettings":[{"type":"ga","trackingId":"UA-75839671-2"}],"branding":{"imageUrl":"\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fbranding\u002Fc94\u002Fe51\u002Ffca\u002Fc94e51fca23cf417547a7af7b038e8d1.jpg","linkUrl":"https:\u002F\u002Ffun.co\u002F","pixelUrl":""},"status":"active"},"metadata":{"titleHtml":"FUNCORP, Лимассол - Разработка развлекательных сервисов с 17 декабря 2004 г.","title":"FUNCORP, Лимассол - Разработка развлекательных сервисов с 17 декабря 2004 г.","keywords":["Разработка мобильных приложений","Разработка под Android","Kotlin","Тестирование мобильных приложений","Программирование"],"descriptionHtml":"181 статья от авторов компании FUNCORP","description":"181 статья от авторов компании FUNCORP"},"aDeskSettings":null,"careerAlias":"funcorp","maxCustomTrackerLinks":3}},"companyIds":{},"companyTopIds":{},"pagesCount":{},"companyProfiles":{},"companiesCategories":[],"companiesCategoriesTotalCount":0,"companiesWidgets":{},"companiesWorkers":{},"companiesFans":{},"route":{},"isLoading":false,"companyWorkersLoading":false,"companyFansLoading":false,"vacancies":{}},"companiesContribution":{"hubs":{},"flows":{},"companyRefs":{}},"companyHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"conversation":{"messages":[],"respondent":null,"isLoadMore":false},"conversations":{"conversations":[],"unreadCount":0,"pagesCount":0,"isLoadMore":false},"desktopState":{"desktopFl":null,"desktopHl":null,"isChecked":false,"isLoginDemanded":false},"dfp":{"slotsDict":{}},"docs":{"menu":{},"articles":{},"mainMenu":[],"loading":{"main":false,"dropdown":false,"article":false}},"feature":{"isProbablyVisible":"true"},"flows":{"flows":[{"alias":"develop","id":1,"route":{"name":"FLOW_PAGE","params":{"flowName":"develop"}}},{"alias":"admin","id":6,"route":{"name":"FLOW_PAGE","params":{"flowName":"admin"}}},{"alias":"design","id":2,"route":{"name":"FLOW_PAGE","params":{"flowName":"design"}}},{"alias":"management","id":3,"route":{"name":"FLOW_PAGE","params":{"flowName":"management"}}},{"alias":"marketing","id":4,"route":{"name":"FLOW_PAGE","params":{"flowName":"marketing"}}},{"alias":"popsci","id":7,"route":{"name":"FLOW_PAGE","params":{"flowName":"popsci"}}}]},"global":{"isPwa":false,"device":"desktop","isHabrCom":true},"hubs":{"hubRefs":{},"hubIds":{},"pagesCount":{},"isLoading":false,"route":{}},"hubsBlock":{"hubRefs":{},"hubIds":{}},"i18n":{"fl":"ru","hl":"ru"},"info":{"infoPage":{},"isLoading":true},"location":{"urlStruct":{"protocol":null,"slashes":null,"auth":null,"host":null,"port":null,"hostname":null,"hash":null,"search":null,"query":{},"pathname":null,"path":null,"href":""},"searchQuery":null},"me":{"user":null,"ppgDemanded":false,"karmaResetInfo":{"canReincarnate":null,"wasReincarnated":null,"currentScore":null},"notes":null},"mostReadingList":{"mostReadingListIds":[],"mostReadingListRefs":null,"promoPost":null},"pinnedPost":{"pinnedPost":null},"ppa":{"articles":{},"card":null,"transactions":null,"totalTransactions":null,"isAccessible":null},"projectsBlocks":{"activeBlocks":{}},"pullRefresh":{"shouldRefresh":false},"sandbox":{"articleIds":[],"articleRefs":{},"pagesCount":null,"route":{},"lastVisitedRoute":{},"isLoading":false},"settingsOther":{"inputs":{"uiLang":{"errors":[],"ref":null,"value":""},"articlesLangEnglish":{"errors":[],"ref":null,"value":false},"articlesLangRussian":{"errors":[],"ref":null,"value":false},"agreement":{"errors":[],"ref":null,"value":false},"email":{"errors":[],"ref":null,"value":true},"digest":{"errors":[],"ref":null,"value":true}}},"similarList":{"similarListIds":[],"similarListRefs":null},"ssr":{"error":null,"isDataLoaded":false,"isDataLoading":false,"isHydrationFailed":false,"isServer":false},"userHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"userInvites":{"availableInvites":0,"usedInvitesIds":[],"usedInvitesRefs":{},"usedInvitesPagesCount":0,"unusedInvitesIds":[],"unusedInvitesRefs":{},"unusedInvitesPagesCount":0},"users":{"authorRefs":{},"authorIds":{},"pagesCount":{},"authorProfiles":{},"userHubs":{},"userInvitations":{},"authorFollowers":{},"authorFollowed":{},"karmaStats":[],"statistics":null,"isLoading":false,"authorFollowersLoading":false,"authorFollowedLoading":false,"userHubsLoading":false,"userInvitationsLoading":false,"route":{}},"viewport":{"prevScrollY":{},"scrollY":0,"width":0},"tracker":{"items":{},"pagesCache":{},"markedViewedSilently":{},"markedRead":{},"unreadCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null},"unviewedCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null}}};(function(){var s;(s=document.currentScript||document.scripts[document.scripts.length-1]).parentNode.removeChild(s);}());</script>
+<script src="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" defer></script><script src="https://assets.habr.com/habr-web/js/app.c0af73e7.js" defer></script>
+
+
+
+    <script>
+      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+        (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+        m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+      })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+    </script>
+  
+  <script type="text/javascript" >
+    (function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+    m[i].l=1*new Date();k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})
+    (window, document, "script", "https://mc.yandex.ru/metrika/tag.js", "ym");
+
+    ym(24049213, "init", {
+      defer:true,
+      trackLinks:true,
+      accurateTrackBounce:true,
+      webvisor:false,
+    });
+  </script>
+  <noscript>
+    <div>
+      <img src="https://mc.yandex.ru/watch/24049213" style="position:absolute; left:-9999px;" alt="" />
+    </div>
+  </noscript>
+  
+    <script type="text/javascript">
+      window.addEventListener('load', function () {
+        setTimeout(() => {
+          const img = new Image();
+          img.src = 'https://vk.com/rtrg?p=VK-RTRG-421343-57vKE';
+        }, 0);
+      });
+    </script>
+  
+</body>
+</html>

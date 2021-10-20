@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="ru" data-vue-meta="%7B%22lang%22:%7B%22ssr%22:%22ru%22%7D%7D">
+<head >
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
+  <title>Как мы построили надёжный кластер PostgreSQL на Patroni / Хабр</title>
+  <style>
+    /* cyrillic-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSxf6TF0.woff2) format('woff2');
+      unicode-range: U+0460-052F, U+1C80-1C88, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+    }
+
+    /* cyrillic */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveQhf6TF0.woff2) format('woff2');
+      unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+    }
+
+    /* latin-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSBf6TF0.woff2) format('woff2');
+      unicode-range: U+0100-024F, U+0259, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20CF, U+2113, U+2C60-2C7F, U+A720-A7FF;
+    }
+
+    /* latin */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveRhf6.woff2) format('woff2');
+      unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+    }
+  </style>
+  <link rel="preload" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" as="script"><link rel="preload" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/app.c0af73e7.js" as="script">
+  <link rel="stylesheet" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css"><link rel="stylesheet" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css">
+  <script>window.i18nFetch = new Promise((res, rej) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open('GET', '/js/i18n/ru-compiled.85eb77f0b17c8235e7b64b9f81ea5ec2.json');
+          xhr.responseType = 'json';
+          xhr.onload = function(e) {
+            if (this.status === 200) {
+              res({ru: xhr.response});
+            } else {
+              rej(e);
+            }
+          };
+          xhr.send();
+        });</script>
+  
+  <script data-vue-meta="ssr" src="/js/ads.js" onload="window['zhY4i4nJ9K'] = true" data-vmid="checkad"></script><script data-vue-meta="ssr" type="application/ld+json" data-vmid="ldjson-schema">{"@context":"http:\/\/schema.org","@type":"Article","mainEntityOfPage":{"@type":"WebPage","@id":"https:\/\/habr.com\/ru\/company\/vk\/blog\/452846\/"},"headline":"Как мы построили надёжный кластер PostgreSQL на Patroni","datePublished":"2019-05-22T11:39:44+03:00","dateModified":"2020-10-01T16:24:01+03:00","author":{"@type":"Person","name":"Azat Khadiev"},"publisher":{"@type":"Organization","name":"Habr","logo":{"@type":"ImageObject","url":"https:\/\/habrastorage.org\/webt\/a_\/lk\/9m\/a_lk9mjkccjox-zccjrpfolmkmq.png"}},"description":"На сегодняшний день высокая доступность сервисов требуется всегда и везде, не только в крупных дорогих проектах. Временно недоступные сайты с сообщением &laquo;Извин...","url":"https:\/\/habr.com\/ru\/company\/vk\/blog\/452846\/#post-content-body","about":["c_vk","h_linux","h_postgresql","h_s_admin","h_db_admins","f_develop","f_admin"],"image":["https:\/\/habrastorage.org\/getpro\/habr\/post_images\/e4f\/486\/7ea\/e4f4867ea77fb60f3aa2a3fb902bfef1.jpg","https:\/\/habrastorage.org\/getpro\/habr\/post_images\/f2c\/aee\/463\/f2caee46351a0f304dac92483739a3c5.png","https:\/\/habrastorage.org\/getpro\/habr\/post_images\/690\/14e\/15e\/69014e15ec3ec260f2313703195e93de.png","https:\/\/habrastorage.org\/getpro\/habr\/post_images\/f11\/a98\/a64\/f11a98a64f55f3296cd60191984e2999.png","https:\/\/habrastorage.org\/getpro\/habr\/post_images\/b0c\/e4c\/b58\/b0ce4cb5876872488a24cda72306f850.png","https:\/\/habrastorage.org\/getpro\/habr\/post_images\/aa9\/131\/383\/aa9131383deaf7379101fa6dd29aa20e.png","https:\/\/habrastorage.org\/getpro\/habr\/post_images\/ad8\/027\/a7b\/ad8027a7b7c52a05172c54e6611240d6.png","https:\/\/habrastorage.org\/getpro\/habr\/post_images\/bc3\/6bb\/a5e\/bc36bba5e864141e790089a9fa8f5be0.png"]}</script>
+  <script src="//www.googletagservices.com/tag/js/gpt.js" async></script>
+  <style>.grecaptcha-badge{visibility: hidden;}</style>
+  <meta name="habr-version" content="2.49.0">
+  
+  <meta data-vue-meta="ssr" property="fb:app_id" content="444736788986613"><meta data-vue-meta="ssr" property="fb:pages" content="472597926099084"><meta data-vue-meta="ssr" name="twitter:card" content="summary_large_image"><meta data-vue-meta="ssr" name="twitter:site" content="@habr_eng"><meta data-vue-meta="ssr" property="og:title" content="Как мы построили надёжный кластер PostgreSQL на Patroni" data-vmid="og:title"><meta data-vue-meta="ssr" name="twitter:title" content="Как мы построили надёжный кластер PostgreSQL на Patroni" data-vmid="twitter:title"><meta data-vue-meta="ssr" name="aiturec:title" content="Как мы построили надёжный кластер PostgreSQL на Patroni" data-vmid="aiturec:title"><meta data-vue-meta="ssr" name="description" content="На сегодняшний день высокая доступность сервисов требуется всегда и везде, не только в крупных дорогих проектах. Временно недоступные сайты с сообщением «Извините, проводится техническое..." data-vmid="description"><meta data-vue-meta="ssr" itemprop="description" content="На сегодняшний день высокая доступность сервисов требуется всегда и везде, не только в крупных дорогих проектах. Временно недоступные сайты с сообщением «Извините, проводится техническое..." data-vmid="description:itemprop"><meta data-vue-meta="ssr" property="og:description" content="На сегодняшний день высокая доступность сервисов требуется всегда и везде, не только в крупных дорогих проектах. Временно недоступные сайты с сообщением «Извините, проводится техническое..." data-vmid="og:description"><meta data-vue-meta="ssr" name="twitter:description" content="На сегодняшний день высокая доступность сервисов требуется всегда и везде, не только в крупных дорогих проектах. Временно недоступные сайты с сообщением «Извините, проводится техническое..." data-vmid="twitter:description"><meta data-vue-meta="ssr" property="aiturec:description" content="На сегодняшний день высокая доступность сервисов требуется всегда и везде, не только в крупных дорогих проектах. Временно недоступные сайты с сообщением «Извините, проводится техническое..." data-vmid="aiturec:description"><meta data-vue-meta="ssr" itemprop="image" content="https://habr.com/share/publication/452846/1542fcb1c90a2fee9c4b30735e94ccd8/" data-vmid="image:itemprop"><meta data-vue-meta="ssr" property="og:image" content="https://habr.com/share/publication/452846/1542fcb1c90a2fee9c4b30735e94ccd8/" data-vmid="og:image"><meta data-vue-meta="ssr" property="aiturec:image" content="https://habr.com/share/publication/452846/1542fcb1c90a2fee9c4b30735e94ccd8/" data-vmid="aiturec:image"><meta data-vue-meta="ssr" name="twitter:image" content="https://habr.com/share/publication/452846/1542fcb1c90a2fee9c4b30735e94ccd8/" data-vmid="twitter:image"><meta data-vue-meta="ssr" property="vk:image" content="https://habr.com/share/publication/452846/1542fcb1c90a2fee9c4b30735e94ccd8/" data-vmid="vk:image"><meta data-vue-meta="ssr" property="aiturec:item_id" content="452846" data-vmid="aiturec:item_id"><meta data-vue-meta="ssr" property="aiturec:datetime" content="2019-05-22T08:39:44.000Z" data-vmid="aiturec:datetime"><meta data-vue-meta="ssr" property="og:type" content="article" data-vmid="og:type"><meta data-vue-meta="ssr" property="og:locale" content="ru_RU" data-vmid="og:locale"><meta data-vue-meta="ssr" property="og:image:width" content="1200" data-vmid="og:image:width"><meta data-vue-meta="ssr" property="og:image:height" content="630" data-vmid="og:image:height">
+  <link data-vue-meta="ssr" href="https://habr.com/ru/rss/post/452846/?fl=ru" type="application/rss+xml" title="" rel="alternate" name="rss"><link data-vue-meta="ssr" href="https://habr.com/ru/company/vk/blog/452846/" rel="canonical" data-vmid="canonical"><link data-vue-meta="ssr" data-vmid="hreflang"><link data-vue-meta="ssr" image_src="image" href="https://habr.com/share/publication/452846/1542fcb1c90a2fee9c4b30735e94ccd8/" data-vmid="image:href">
+  <meta name="apple-mobile-web-app-status-bar-style" content="#303b44">
+  <meta name="msapplication-TileColor" content="#629FBC">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="16x16"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-16.png"
+  >
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="32x32"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-32.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="76x76"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-76.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="120x120"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="152x152"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-152.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="180x180"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-180.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="256x256"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-256.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1136x640.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2436x1125.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1792x828.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_828x1792.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1334x750.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2208x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1125x2436.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2208.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2732x2048.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2688x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2224x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_750x1334.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x2732.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2388x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2224.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_640x1136.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2388.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x1536.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1536x2048.png"
+  >
+  <link
+    rel="mask-icon"
+    color="#77a2b6"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.svg"
+  >
+  <link
+    crossorigin="use-credentials"
+    href="/manifest.webmanifest"
+    rel="manifest"
+  >
+</head>
+<body>
+
+
+<div id="app" data-server-rendered="true" data-async-called="true"><div class="tm-layout__wrapper"><!----> <div></div> <!----> <header class="tm-header"><div class="tm-page-width"><div class="tm-header__container"><!----> <span class="tm-header__logo-wrap"><a href="/ru/" class="tm-header__logo tm-header__logo_ru"><svg height="16" width="16" class="tm-svg-img tm-header__icon"><title>Хабр</title> <use xlink:href="/img/habr-logo-ru.svg#logo"></use></svg></a> <span class="tm-header__beta-sign" style="display:none;">β</span></span> <div class="tm-dropdown tm-header__projects"><div class="tm-dropdown__head"><button class="tm-header__dropdown-toggle"><svg height="16" width="16" class="tm-svg-img tm-header__icon tm-header__icon_dropdown"><title>Открыть список</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#arrow-down"></use></svg></button></div> <!----></div> <a href="/ru/sandbox/start/" class="tm-header__become-author-btn">
+            Как стать автором
+          </a> <div class="tm-feature tm-header__feature tm-feature_variant-inline"><!----></div> <!----> <!----></div></div></header> <div class="tm-layout"><div class="tm-page-progress-bar"></div> <div data-menu-sticky="true" class="tm-base-layout__header tm-base-layout__header_is-sticky"><div class="tm-page-width"><div class="tm-base-layout__header-wrapper"><div class="tm-main-menu"><div class="tm-main-menu__section"><nav class="tm-main-menu__section-content"><!----> <a href="/ru/all/" class="tm-main-menu__item">
+        Все потоки
+      </a> <a href="/ru/flows/develop/" class="tm-main-menu__item">
+          Разработка
+        </a><a href="/ru/flows/admin/" class="tm-main-menu__item">
+          Администрирование
+        </a><a href="/ru/flows/design/" class="tm-main-menu__item">
+          Дизайн
+        </a><a href="/ru/flows/management/" class="tm-main-menu__item">
+          Менеджмент
+        </a><a href="/ru/flows/marketing/" class="tm-main-menu__item">
+          Маркетинг
+        </a><a href="/ru/flows/popsci/" class="tm-main-menu__item">
+          Научпоп
+        </a></nav></div></div> <div class="tm-header-user-menu tm-base-layout__user-menu"><a href="/ru/search/" class="tm-header-user-menu__item tm-header-user-menu__search"><svg height="24" width="24" class="tm-svg-img tm-header-user-menu__icon tm-header-user-menu__icon_search tm-header-user-menu__icon_dark"><title>Поиск</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#search"></use></svg></a> <!----> <!----> <!----> <div class="tm-header-user-menu__item tm-header-user-menu__user_desktop"><div class="tm-dropdown"><div class="tm-dropdown__head"><svg height="24" width="24" data-test-id="menu-toggle-guest" class="tm-svg-img tm-header-user-menu__icon"><title>Профиль</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#header-user"></use></svg> <!----></div> <!----></div> <!----></div> <!----></div></div></div></div> <!----> <div class="tm-page-width"></div> <main class="tm-layout__container"><div hl="ru" companyName="vk" data-async-called="true" class="tm-page"><div class="tm-page-width"><div class="tm-page__header"><div class="tm-company-card__branding tm-company-article__branding tm-company-card__branding_loading"><div class="tm-company-card__branding-placeholder"><!----></div> <a href="https://vk.com/vkteam"><img src="//habrastorage.org/getpro/habr/branding/174/2c4/3a5/1742c43a5b504987a0fadf577a0bd4de.png" width="100%" class="tm-company-card__branding-image"></a></div></div> <div class="tm-page__wrapper"><div class="tm-page__main tm-page__main_has-sidebar"><div class="pull-down"><div class="pull-down__header" style="height:0px;"><div class="pull-down__content" style="bottom:10px;"><svg height="24" width="24" class="tm-svg-img pull-down__arrow"><title>Обновить</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#pull-arrow"></use></svg></div></div> <div class="tm-article-presenter"><div class="tm-company-card tm-company-article__company-card"><div class="tm-company-card__info"><div class="tm-company-card__header"><a href="/ru/company/vk/profile/" class="tm-company-card__avatar"><div class="tm-entity-image"><img alt="" height="48" src="//habrastorage.org/getpro/habr/company/9ed/c74/6b4/9edc746b484c805ecad1f941b5f7068a.png" width="48" class="tm-entity-image__pic"></div></a> <a href="https://career.habr.com/companies/vk" rel="noopener" target="_blank" class="tm-grade tm-company-card__rating"><div class="tm-rating"><div class="tm-rating__header"><svg height="24" width="24" class="tm-svg-img tm-svg-grade__icon"><title>Оценка компании на Хабр Карьере</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#grade"></use></svg> <div class="tm-rating__counter tm-rating__counter_variant-grade">4.37</div></div> <div class="tm-rating__text tm-rating__text_variant-grade">
+    Оценка
+  </div></div></a> <div class="tm-rating tm-company-card__rating"><div class="tm-rating__header"> <div class="tm-rating__counter">331.84</div></div> <div class="tm-rating__text">
+    Рейтинг
+  </div></div></div> <div class="tm-company-card__info"><a href="/ru/company/vk/profile/" class="tm-company-card__name">
+        VK
+      </a> <div class="tm-company-card__description">Технологии, которые объединяют</div></div></div> <div class="tm-company-card__buttons"><!----> <!----></div></div> <div class="tm-article-presenter__body"><div class="tm-misprint-area"><div class="tm-misprint-area__wrapper"><article class="tm-article-presenter__content tm-article-presenter__content_narrow"><div class="tm-article-presenter__header"> <div class="tm-article-snippet tm-article-presenter__snippet"><div class="tm-article-snippet__meta-container"><div class="tm-article-snippet__meta"><span class="tm-user-info tm-article-snippet__author"><a href="/ru/users/anuriq/" title="anuriq" class="tm-user-info__userpic"><div class="tm-entity-image"><img alt="" height="24" loading="lazy" src="//habrastorage.org/r/w32/getpro/habr/avatars/c4c/aaa/038/c4caaa03828c39f8fc60a306c9948e03.jpg" width="24" class="tm-entity-image__pic"></div></a> <span class="tm-user-info__user"><a href="/ru/users/anuriq/" class="tm-user-info__username">
+      anuriq
+    </a> </span></span> <span class="tm-article-snippet__datetime-published"><time datetime="2019-05-22T08:39:44.000Z" title="2019-05-22, 11:39">22  мая  2019 в 11:39</time></span></div> <!----></div> <h1 lang="ru" class="tm-article-snippet__title tm-article-snippet__title_h1"><span>Как мы построили надёжный кластер PostgreSQL на Patroni</span></h1> <div class="tm-article-snippet__hubs"><span class="tm-article-snippet__hubs-item"><a href="/ru/company/vk/blog/" class="tm-article-snippet__hubs-item-link router-link-active"><span>Блог компании VK</span> <!----></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/linux/" class="tm-article-snippet__hubs-item-link"><span>Настройка Linux</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/postgresql/" class="tm-article-snippet__hubs-item-link"><span>PostgreSQL</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/s_admin/" class="tm-article-snippet__hubs-item-link"><span>Серверное администрирование</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/db_admins/" class="tm-article-snippet__hubs-item-link"><span>Администрирование баз данных</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span></div> <!----> <!----> <!----></div></div> <!----> <div data-gallery-root="" lang="ru" class="tm-article-body"><div id="post-content-body" class="article-formatted-body article-formatted-body_version-1"><div xmlns="http://www.w3.org/1999/xhtml"><img src="https://habrastorage.org/r/w780q1/getpro/habr/post_images/e4f/486/7ea/e4f4867ea77fb60f3aa2a3fb902bfef1.jpg" data-src="https://habrastorage.org/getpro/habr/post_images/e4f/486/7ea/e4f4867ea77fb60f3aa2a3fb902bfef1.jpg" data-blurred="true"/><br/>
+<br/>
+На сегодняшний день высокая доступность сервисов требуется всегда и везде, не только в крупных дорогих проектах. Временно недоступные сайты с сообщением «Извините, проводится техническое обслуживание» ещё встречаются, но обычно вызывают снисходительную улыбку. Прибавим к этому жизнь в облаках, когда для запуска дополнительного сервера нужен лишь один вызов к API, причем думать о «железной» эксплуатации не надо. И уже не остается оправданий, почему критичная система не была сделана надежно с использованием кластерных технологий и резервирования.<br/>
+<br/>
+Мы расскажем, какие решения мы рассматривали для обеспечения надёжности баз данных в своих сервисах и к чему пришли. Плюс демо с далеко идущими выводами.<br/>
+<a name="habracut"></a><br/>
+<h2>Легаси в архитектуре обеспечения высокой доступности</h2><br/>
+Еще лучше это видно в разрезе развития различных opensource-систем. Старые решения вынуждены были добавлять технологии высокой доступности по мере повышения спроса. И качество их было разным. Решения нового поколения ставят высокую доступность в основу своей архитектуры. Например, MongoDB позиционирует кластер как основной вариант использования. Кластер масштабируется горизонтально, что является сильным конкурентным преимуществом этой СУБД.<br/>
+<br/>
+Вернёмся к PostgreSQL. Это один из старейших популярных opensource-проектов, первый релиз которого состоялся в 95-м году прошлого века. Команда проекта долгое время не считала высокую доступность задачей, которую нужно решать со стороны системы. Поэтому технология репликации для создания копий данных стала встроенной только в версии 8.2 в 2006-м, но она была файловой (log shipping). В 2010 в версии 9.0 появилась потоковая репликация, и она является основой для создания самых разных кластеров. Это, собственно, очень удивляет людей, которые знакомятся с PostgreSQL после Enterprise SQL или современных NoSQL — стандартным решением от сообщества является просто пара master-replica с синхронной или асинхронной репликацией. При этом в стоке переключение мастера производится вручную, и вопрос переключения клиентов также предлагается решать самостоятельно.<br/>
+<br/>
+<h2>Как мы решили делать надёжный PostgreSQL и что мы для этого выбрали</h2><br/>
+Тем не менее, PostgreSQL не стал бы таким популярным, если бы не было огромного количества проектов и инструментов, которые помогают построить отказоустойчивое решение, не требующее постоянного внимания. В облаке <a href="https://mcs.mail.ru/">Mail.ru Cloud Solutions</a> (MCS) с самого запуска DBaaS были доступны одиночные серверы PostgreSQL и пары мастер-реплика с асинхронной репликацией.<br/>
+<br/>
+Естественно, мы хотели упростить всем жизнь и сделать доступной такую инсталляцию PostgreSQL, которая могла служить основой для высокодоступных сервисов, за которой не нужно было бы постоянно следить и просыпаться ночью, чтобы сделать переключение. В этом сегменте есть и старые проверенные решения, и поколение новых утилит, использующих последние наработки. <br/>
+<br/>
+Сегодня проблема высокой доступности упирается не в резервирование (это само собой), а в консенсус — алгоритм по выбору лидера (Leader election). Чаще всего крупные аварии происходят не из-за нехватки серверов, а из-за проблем с консенсусом: не выбрался новый лидер, появились два лидера в разных датацентрах и т.п. Пример — авария на MySQL-кластере Github — они написали <a href="https://github.blog/2018-10-30-oct21-post-incident-analysis/">подробный постмортем</a>.<br/>
+<br/>
+Математическая база в этом вопросе очень серьезная. С одной стороны, есть <a href="https://en.wikipedia.org/wiki/CAP_theorem">CAP теорема</a>, которая накладывает теоретические ограничения на возможности построения HA-решений, с другой — математически доказанные алгоритмы определения консенсуса, такие как <a href="https://en.wikipedia.org/wiki/Paxos_(computer_science)">Paxos</a> и <a href="https://en.wikipedia.org/wiki/Raft_(computer_science)">Raft</a>. На этой основе существуют довольно популярные DCS (системы децентрализованного консенсуса) — Zookeeper, etcd, Consul. Поэтому если система принятия решения работает на каком-то своем алгоритме, написанном самостоятельно, следует крайне осторожно к нему относиться. После анализа огромного количества систем мы остановились на Patroni — opensource-системе, в основном, разрабатываемой компанией Zalando.<br/>
+<br/>
+В качестве лирического отступления скажу, что мы также рассматривали и multi-master решения, то есть кластеры, которые можно горизонтально масштабировать на запись. Однако по двум главным причинам решили не делать такой кластер. Во-первых, такие решения имеют высокую сложность и, соответственно, больше уязвимых мест. Будет тяжело сделать стабильное решение для всех случаев. Во-вторых, в таком случае PostgreSQL перестает быть чистым (native), некоторые функции будут недоступны, у некоторых приложений при работе могут возникнуть скрытые баги.<br/>
+<br/>
+<h2>Patroni</h2><br/>
+Итак, как работает Patroni? Разработчики не стали изобретать велосипед и предложили использовать в основе одно из проверенных DCS-решений. На откуп ему отдаются все вопросы с синхронизацией конфигураций, выбором лидера и кворумом. Мы выбрали для этого etcd.<br/>
+<br/>
+Далее Patroni занимается правильным применением всех настроек на PostgreSQL и настройками репликации, а также исполнением команд на switchover и failover (то есть — штатного и нештатного переключения мастера). Конкретно в облаке MCS можно создать кластер из мастера, синхронной реплики и одной или нескольких асинхронных реплик. Присутствие синхронной реплики обеспечивает сохранность данных как минимум на 2 серверах, и именно эта реплика будет главным «кандидатом в мастера». <br/>
+<br/>
+Так как etcd разворачивается на тех же серверах, рекомендуется количество серверов 3 или 5, для оптимального значения кворума. Такой кластер масштабируется горизонтально на чтение (о масштабировании на запись я писал выше). Тем не менее следует учитывать, что асинхронным репликам свойственно отставание, особенно при высоких нагрузках.<br/>
+<br/>
+Использование таких реплик на чтение (hot standby) обоснованно для задач отчетности или аналитики и разгружает мастер-сервер.<br/>
+<br/>
+Если вы захотите сделать такой кластер самостоятельно, то вам понадобится:<br/>
+<br/>
+<ul>
+<li>подготовить 3 или более серверов, настроить IP-адресацию и правила firewall между ними;<br/>
+</li>
+<li>установить пакеты для сервисов etcd, Patroni, PostgreSQL;<br/>
+</li>
+<li>настроить etcd кластер;<br/>
+</li>
+<li>настроить службу patroni для работы с PostgreSQL.<br/>
+</li>
+</ul><br/>
+То есть в общей сложности нужно правильно составить десяток конфигурационных файлов и нигде не ошибиться. Для этого точно стоит использовать configuration management tool, такой как Ansible, например. При этом здесь все равно отсутствует высокодоступный TCP-балансировщик. Сделать его — отдельная работа.<br/>
+<br/>
+Для тех, кому нужен готовый кластер, но не хочется во всём этом ковыряться, мы постарались упростить жизнь и сделали готовый кластер на Patroni у себя в облаке, его можно потестить бесплатно. Помимо самого кластера, мы сделали:<br/>
+<br/>
+<ul>
+<li>TCP-балансировщик; по разным портам он всегда указывает на текущий мастер, синхронную или асинхронную реплику, соответственно;<br/>
+</li>
+<li>API для переключения активного мастера Patroni.<br/>
+</li>
+</ul><br/>
+Их можно подключить и через API облака MCS, и веб-консоль. <br/>
+<br/>
+<h2>Демо</h2><br/>
+Для тестирования возможностей PostgreSQL кластера в облаке MCS давайте посмотрим, как поведет себя живое приложение при проблемах с СУБД. <br/>
+<br/>
+Далее представлен код приложения, которое будет логировать искусственные события и сообщать об этом на экран. В случае ошибок оно будет сообщать об этом и продолжать свою работу в цикле, пока мы его не остановим комбинацией Ctrl + C. <br/>
+<br/>
+<pre><code class="python">from __future__ import print_function
+
+from datetime import datetime
+from random import randint
+from time import sleep
+import psycopg2
+
+
+def main():
+    try:
+        connection = psycopg2.connect(user = "admin",
+                                      password = "P@ssw0rd",
+                                      host = "89.208.87.38",
+                                      port = "5432",
+                                      database = "myproddb")
+
+        cursor = connection.cursor()
+        cursor.execute("SELECT version();")
+        record = cursor.fetchone()
+        print("Connection opened to", record[0])
+
+        cursor.execute(
+            "INSERT INTO log VALUES ({});".format(randint(1, 10000)))
+        connection.commit()
+        cursor.execute("SELECT COUNT(event_id) from log;")
+        record = cursor.fetchone()
+        print("Logged a value, overall count: {}".format(record[0]))
+    except Exception as error:
+        print ("Error while connecting to PostgreSQL", error)
+    finally:
+        if connection:
+            cursor.close()
+            connection.close()
+            print("Connection closed")
+
+
+if __name__ == '__main__':
+    try:
+        while True:
+            try:
+                print(datetime.now())
+                main()
+                sleep(3)
+            except Exception as e:
+                print("Caught error:\n", e)
+                sleep(1)
+    except KeyboardInterrupt:
+        print("exit")
+</code></pre><br/>
+Приложению для работы необходим PostgreSQL. Создадим кластер в облаке MCS, используя API. В обычном терминале, где в переменной OS_TOKEN содержится токен для доступа к API (можно получить командой openstack token issue), наберем команды:<br/>
+<br/>
+Создаем кластер:<br/>
+<br/>
+<pre><code class="bash">cat &lt;&lt;EОF > pgc10.json
+{"cluster":{"name":"postgres10","allow_remote_access":true,"datastore":{"type":"postgresql","version":"10"},"databases":[{"name":"myproddb"}],"users":[{"databases":[{"name":"myproddb"}],"name":"admin","password":"P@ssw0rd"}],"instances":[{"key_name":"shared","availability_zone":"DP1","flavorRef":"d659fa16-c7fb-42cf-8a5e-9bcbe80a7538","nics":[{"net-id":"b91eafed-12b1-4a46-b000-3984c7e01599"}],"volume":{"size":50,"type":"DP1"}},{"key_name":"shared","availability_zone":"DP1","flavorRef":"d659fa16-c7fb-42cf-8a5e-9bcbe80a7538","nics":[{"net-id":"b91eafed-12b1-4a46-b000-3984c7e01599"}],"volume":{"size":50,"type":"DP1"}},{"key_name":"shared","availability_zone":"DP1","flavorRef":"d659fa16-c7fb-42cf-8a5e-9bcbe80a7538","nics":[{"net-id":"b91eafed-12b1-4a46-b000-3984c7e01599"}],"volume":{"size":50,"type":"DP1"}}]}}
+EOF
+
+curl -s -H "X-Auth-Token: $OS_TOKEN" \
+-H 'Accept: application/json' \
+-H 'Content-Type: application/json' \
+-d @pgc10.json https://infra.mail.ru:8779/v1.0/ce2a41bbd1434013b85bdf0ba07c770f/clusters
+</code></pre><br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/getpro/habr/post_images/f2c/aee/463/f2caee46351a0f304dac92483739a3c5.png"/><br/>
+<br/>
+Когда кластер перейдет в статус ACTIVE, все поля получат актуальные значения — кластер готов.<br/>
+<br/>
+В GUI:<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/getpro/habr/post_images/690/14e/15e/69014e15ec3ec260f2313703195e93de.png"/><br/>
+<br/>
+Попробуем подключиться и создать таблицу:<br/>
+<br/>
+<pre><code class="bash">psql -h 89.208.87.38 -U admin -d myproddb
+Password for user admin:
+psql (11.1, server 10.7)
+Type "help" for help.
+
+myproddb=> CREATE TABLE log (event_id integer NOT NULL);
+CREATE TABLE
+myproddb=> INSERT INTO log VALUES (1),(2),(3);
+INSERT 0 3
+myproddb=> SELECT * FROM log;
+ event_id
+----------
+        1
+        2
+        3
+(3 rows)
+
+myproddb=>
+</code></pre><br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/getpro/habr/post_images/f11/a98/a64/f11a98a64f55f3296cd60191984e2999.png"/><br/>
+<br/>
+В приложении укажем актуальные настройки для подключения к PostgreSQL. Мы укажем адрес TCP-балансировщика, тем самым отпадёт необходимость в ручном переключении на адрес мастера. Запустим его. Как видно, события успешно логируются в базу данных.<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/getpro/habr/post_images/b0c/e4c/b58/b0ce4cb5876872488a24cda72306f850.png"/><br/>
+<br/>
+<h2>Плановое переключение мастера</h2><br/>
+Теперь протестируем работу нашего приложения при плановом переключении мастера:<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/getpro/habr/post_images/aa9/131/383/aa9131383deaf7379101fa6dd29aa20e.png"/><br/>
+<br/>
+Наблюдаем за приложением. Видим, что работа приложения действительно прерывается, но занимает это всего несколько секунд, в этом конкретном случае, максимум 9.<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/getpro/habr/post_images/ad8/027/a7b/ad8027a7b7c52a05172c54e6611240d6.png"/><br/>
+<br/>
+<h2>Падение машины</h2><br/>
+Теперь попробуем сымитировать падение виртуальной машины, текущего мастера. Можно было бы просто выключить виртуальную машину через интерфейс Horizon, только это будет штатное выключение. Такое переключение будет обработано всеми службами, в том числе, Patroni. <br/>
+<br/>
+Нам же нужно непредсказуемое выключение. Поэтому я попросил наших администраторов в тестовых целях выключить виртуальную машину — текущего мастера — нештатным способом.<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/getpro/habr/post_images/bc3/6bb/a5e/bc36bba5e864141e790089a9fa8f5be0.png"/><br/>
+<br/>
+В это же время продолжало работу наше приложение. Естественно, такое экстренное переключение мастера не может пройти незаметно.<br/>
+<br/>
+<pre><code class="bash">2019-03-29 10:45:56.071234
+Connection opened to PostgreSQL 10.7 on x86_64-pc-linux-gnu, compiled by gcc (GCC) 4.8.5 20150623 (Red Hat 4.8.5-36), 64-bit
+Logged a value, overall count: 453
+Connection closed
+2019-03-29 10:45:59.205463
+Connection opened to PostgreSQL 10.7 on x86_64-pc-linux-gnu, compiled by gcc (GCC) 4.8.5 20150623 (Red Hat 4.8.5-36), 64-bit
+Logged a value, overall count: 454
+
+Connection closed
+2019-03-29 10:46:02.661440
+Error while connecting to PostgreSQL server closed the connection unexpectedly
+        This probably means the server terminated abnormally
+        before or while processing the request.
+
+Caught error:
+ local variable 'connection' referenced before assignment
+……………………………………………………….. - здесь какое-то количество ошибок
+2019-03-29 10:46:30.930445
+Error while connecting to PostgreSQL server closed the connection unexpectedly
+        This probably means the server terminated abnormally
+        before or while processing the request.
+
+Caught error:
+ local variable 'connection' referenced before assignment
+2019-03-29 10:46:31.954399
+Connection opened to PostgreSQL 10.7 on x86_64-pc-linux-gnu, compiled by gcc (GCC) 4.8.5 20150623 (Red Hat 4.8.5-36), 64-bit
+Logged a value, overall count: 455
+Connection closed
+2019-03-29 10:46:35.409800
+Connection opened to PostgreSQL 10.7 on x86_64-pc-linux-gnu, compiled by gcc (GCC) 4.8.5 20150623 (Red Hat 4.8.5-36), 64-bit
+Logged a value, overall count: 456
+Connection closed
+^Cexit
+</code></pre><br/>
+Как видно, приложение смогло продолжить свою работу менее чем через 30 секунд. Да, какое-то количество пользователей сервиса успеет заметить проблемы. Однако это серьезная поломка сервера, такое случается не так часто. При этом человек (администратор) вряд ли успел бы отреагировать так же быстро, если только он не сидел в консоли наготове со скриптом переключения.<br/>
+<br/>
+<h2>Вывод</h2><br/>
+Как мне кажется, такой кластер дает колоссальное преимущество для администраторов. По сути, серьезные поломки и выходы из строя серверов БД не будут заметны для приложения и, соответственно, для пользователя. Не придется чинить что-то в спешке и переключаться на временные конфигурации, серверы и т.п. А если такое решение использовать в виде готового сервиса в облаке, то не нужно будет тратить время на его подготовку. Можно будет заниматься чем-то поинтереснее.<br/>
+<br/>
+<a href="https://t.me/mcsnews">В нашем телеграм-канале</a> — новости об этом и других сервисах на облачной платформе Mail.ru Cloud Solutions.<br/>
+<br/>
+Что еще почитать:<br/>
+<br/>
+1. <a href="https://mcs.mail.ru/cloud-platform/success-story/kak-carprice-stal-samoj-cifrovoj-kompaniej-rossijskogo-avtorynka/">Как CarPrice стал самой цифровой компанией российского авторынка</a>.<br/>
+2. <a href="https://habr.com/ru/company/mailru/blog/513702/">Как собрать гибридное облако с помощью Kubernetes, которое может заменить DBaaS</a>.</div></div> <!----> <!----></div> <div class="tm-article-presenter__meta"><div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Теги:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bpostgresql%5D" class="tm-tags-list__link">postgresql</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bhigh%20availability%5D" class="tm-tags-list__link">high availability</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bcloud%5D" class="tm-tags-list__link">cloud</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5BMail.Ru%20Cloud%20Solutions%5D" class="tm-tags-list__link">Mail.Ru Cloud Solutions</a></li></ul></div> <div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Хабы:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/company/vk/blog/" class="tm-hubs-list__link router-link-active">
+    Блог компании VK
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/linux/" class="tm-hubs-list__link">
+    Настройка Linux
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/postgresql/" class="tm-hubs-list__link">
+    PostgreSQL
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/s_admin/" class="tm-hubs-list__link">
+    Серверное администрирование
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/db_admins/" class="tm-hubs-list__link">
+    Администрирование баз данных
+  </a></li></ul></div></div></article></div> <!----></div> <div class="tm-article-sticky-panel"><div class="tm-data-icons tm-article-sticky-panel__icons"><div class="tm-article-rating tm-data-icons__item"><div class="tm-votes-meter tm-article-rating__votes-switcher"><svg height="16" width="16" class="tm-svg-img tm-votes-meter__icon tm-votes-meter__icon_medium"><title>Всего голосов 37: ↑36 и ↓1</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-rating"></use></svg> <span title="Всего голосов 37: ↑36 и ↓1" class="tm-votes-meter__value tm-votes-meter__value_positive tm-votes-meter__value_medium">+35</span></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----> <span title="Количество просмотров" class="tm-icon-counter tm-data-icons__item"><svg height="16" width="16" class="tm-svg-img tm-icon-counter__icon"><title>Просмотры</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-views"></use></svg> <span class="tm-icon-counter__value">20K</span></span> <button title="Добавить в закладки" type="button" class="bookmarks-button tm-data-icons__item"><span title="Добавить в закладки" class="tm-svg-icon__wrapper bookmarks-button__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Добавить в закладки</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-favorite"></use></svg></span> <span title="Количество пользователей, добавивших публикацию в закладки" class="bookmarks-button__counter">
+    98
+  </span></button> <!----> <div title="Поделиться" class="tm-sharing tm-data-icons__item"><button type="button" class="tm-sharing__button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="tm-sharing__icon"><path fill="currentColor" d="M10.33.275l9.047 7.572a.2.2 0 010 .306l-9.048 7.572a.2.2 0 01-.328-.153V11c-8 0-9.94 6-9.94 6S-1 5 10 5V.428a.2.2 0 01.328-.153z"></path></svg></button> <!----></div> <DIV class="v-portal" style="display:none;"></DIV></div> </div></div> <!----> <!----> <div class="tm-article-presenter__footer"><div class="tm-article-blocks"><!----> <section class="tm-block tm-block_spacing-bottom"><!----> <div class="tm-block__body tm-block__body_variant-balanced"><div class="tm-article-author"><div class="tm-article-author__company"><div class="tm-article-author__company-card"><div class="tm-company-snippet"><a href="/ru/company/vk/profile/" class="tm-company-snippet__logo-link"><div class="tm-entity-image"><img alt="" height="40" src="//habrastorage.org/getpro/habr/company/9ed/c74/6b4/9edc746b484c805ecad1f941b5f7068a.png" width="40" class="tm-entity-image__pic"></div></a> <div class="tm-company-snippet__info"><a href="/ru/company/vk/profile/" class="tm-company-snippet__title">VK</a> <div class="tm-company-snippet__description">Технологии, которые объединяют</div></div></div> <div class="tm-article-author__buttons"><!----> <!----></div></div> <div class="tm-article-author__company-contacts"><a href="https://facebook.com/insidevk" rel="noopener" target="_blank" class="tm-article-author__contact">
+      Facebook
+    </a><a href="https://twitter.com/inside_vk" rel="noopener" target="_blank" class="tm-article-author__contact">
+      Twitter
+    </a><a href="https://vk.com/insidevk" rel="noopener" target="_blank" class="tm-article-author__contact">
+      ВКонтакте
+    </a><a href="https://instagram.com/inside.vk" rel="noopener" target="_blank" class="tm-article-author__contact">
+      Instagram
+    </a><a href="https://telegram.me/inside_vk" rel="noopener" target="_blank" class="tm-article-author__contact">
+      Telegram
+    </a></div> <div class="tm-article-author__separator"></div></div> <div class="tm-user-card tm-article-author__user-card tm-user-card_variant-article"><div class="tm-user-card__info-container"><div class="tm-user-card__header"><div class="tm-user-card__header-data"><a href="/ru/users/anuriq/" class="tm-user-card__userpic tm-user-card__userpic_size-40"><div class="tm-entity-image"><img alt="" src="//habrastorage.org/getpro/habr/avatars/c4c/aaa/038/c4caaa03828c39f8fc60a306c9948e03.jpg" class="tm-entity-image__pic"></div></a> <div class="tm-user-card__meta"><div title=" 13 голосов " class="tm-karma tm-user-card__karma"><div class="tm-karma__votes tm-karma__votes_positive">
+    11
+  </div> <div class="tm-karma__text">
+    Карма
+  </div></div> <div title="Рейтинг пользователя" class="tm-rating tm-user-card__rating"><div class="tm-rating__header"> <div class="tm-rating__counter">0</div></div> <div class="tm-rating__text">
+    Рейтинг
+  </div></div></div></div></div> <div class="tm-user-card__info tm-user-card__info_variant-article"><div class="tm-user-card__title tm-user-card__title_variant-article"><span class="tm-user-card__name tm-user-card__name_variant-article">Azat Khadiev</span> <a href="/ru/users/anuriq/" class="tm-user-card__nickname tm-user-card__nickname_variant-article">
+          @anuriq
+        </a> <!----></div> <p class="tm-user-card__short-info tm-user-card__short-info_variant-article">Пользователь</p></div></div> <div class="tm-user-card__buttons tm-user-card__buttons_variant-article"><!----> <!----> <!----> <!----> <!----></div></div> <!----></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----></section> <div class="tm-article-blocks__comments"><div class="tm-article-page-comments"><div class="tm-article-comments-counter-link tm-article-comments-counter-button"><a href="/ru/company/vk/blog/452846/comments/" class="tm-article-comments-counter-link__link tm-article-comments-counter-link__link_button-style"><svg height="16" width="16" class="tm-svg-img tm-article-comments-counter-link__icon tm-article-comments-counter-link__icon_contrasted"><title>Комментарии</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-comments"></use></svg> <span class="tm-article-comments-counter-link__value tm-article-comments-counter-link__value_contrasted">
+       Комментарии 15 
+    </span></a> <!----></div></div></div>  <!---->  <!----> <!----></div></div></div></div></div> <div class="tm-page__sidebar"><div class="tm-layout-sidebar"><div class="tm-layout-sidebar__placeholder_initial"></div> <div class="tm-sexy-sidebar tm-sexy-sidebar_initial" style="margin-top:0px;"><!----> <section class="tm-block tm-block_spacing-bottom"><header class="tm-block__header"><h2 class="tm-block__title">Информация</h2> <!----></header> <div class="tm-block__body"><div class="tm-company-basic-info"><dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Дата основания</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><time datetime="1998-10-14T20:00:00.000Z" title="1998-10-15, 00:00">15  октября  1998</time></dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Местоположение</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap">
+    Россия
+  </dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Сайт</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><a href="https://vk.com/vkteam" target="_blank" class="tm-company-basic-info__link">
+      vk.com
+    </a></dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Численность</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap">
+    5 001–10 000 человек
+  </dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Дата регистрации</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><time datetime="2008-08-09T07:42:32.000Z" title="2008-08-09, 11:42">9  августа  2008</time></dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Представитель</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><a href="/ru/users/somuchmich/" class="tm-company-basic-info__link">
+      Миша Буданов
+    </a></dd></dl></div></div> <!----></section> <div class="tm-company-widgets"></div> <!----></div></div></div></div></div></div></main> <!----></div> <div class="tm-footer-menu"><div class="tm-page-width"><div class="tm-footer-menu__container"><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Ваш аккаунт
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr/?back=/ru/company/vk/blog/452846/&amp;hl=ru" rel="nofollow" target="_self">
+                Войти
+              </a></li><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr-register/?back=/ru/company/vk/blog/452846/&amp;hl=ru" rel="nofollow" target="_self">
+                Регистрация
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Разделы
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/" class="footer-menu__item-link router-link-active">
+                Публикации
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/news/" class="footer-menu__item-link">
+                Новости
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/hubs/" class="footer-menu__item-link">
+                Хабы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/companies/" class="footer-menu__item-link">
+                Компании
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/users/" class="footer-menu__item-link">
+                Авторы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/sandbox/" class="footer-menu__item-link">
+                Песочница
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Информация
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/docs/help/" class="footer-menu__item-link">
+                Устройство сайта
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/authors/codex/" class="footer-menu__item-link">
+                Для авторов
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/companies/corpblogs/" class="footer-menu__item-link">
+                Для компаний
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/docs/transparency/" class="footer-menu__item-link">
+                Документы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/agreement" target="_blank">
+                Соглашение
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/confidential/" target="_blank">
+                Конфиденциальность
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Услуги
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQLwRfQmXibiUlWaRg-BAc38s7oM3lJiaPju7qmdJsp8ysIvZ_G-Npem0njJLMozE2bPHMpDqiI5hhy/pub?start=false&amp;loop=false&amp;delayms=60000&amp;slide=id.g91a03369cd_4_297" target="_blank">
+                Реклама
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://habrastorage.org/storage/stuff/habr/service_price.pdf" target="_blank">
+                Тарифы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQJJds8-Di7BQSP_guHxICN7woVYoN5NP_22ra-BIo4bqnTT9FR6fB-Ku2P0AoRpX0Ds-LRkDeAoD8F/pub?start=false&amp;loop=false&amp;delayms=60000" target="_blank">
+                Контент
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://tmtm.timepad.ru/" target="_blank">
+                Семинары
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/megaprojects/" class="footer-menu__item-link">
+                Мегапроекты
+              </a></li></ul></div></div></div></div></div> <div class="tm-footer"><div class="tm-page-width"><div class="tm-footer__container"><!----> <div class="tm-footer__social"><a href="https://www.facebook.com/habrahabr.ru" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Facebook</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-facebook"></use></svg></a><a href="https://twitter.com/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Twitter</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-twitter"></use></svg></a><a href="https://vk.com/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>VK</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-vkontakte"></use></svg></a><a href="https://telegram.me/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Telegram</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-telegram"></use></svg></a><a href="https://www.youtube.com/channel/UCd_sTwKqVrweTt4oAKY5y4w" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Youtube</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-youtube"></use></svg></a><a href="https://zen.yandex.ru/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Яндекс Дзен</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-zen"></use></svg></a></div> <DIV class="v-portal" style="display:none;"></DIV> <button class="tm-footer__link"><!---->
+        Настройка языка
+      </button> <a href="/ru/about" class="tm-footer__link">
+        О сайте
+      </a> <a href="/ru/feedback/" class="tm-footer__link">
+        Техническая поддержка
+      </a> <!----> <a href="/berserk-mode-nope" class="tm-footer__link">
+        Вернуться на старую версию
+      </a> <div class="tm-footer-copyright"><span class="tm-copyright"><span class="tm-copyright__years">© 2006–2021 </span> <span class="tm-copyright__name">«<a href="https://company.habr.com/" rel="noopener" target="_blank" class="tm-copyright__link">Habr</a>»</span></span></div></div></div></div> <!----> <!----></div> <div class="vue-portal-target"></div></div>
+<script>window.__INITIAL_STATE__={"adblock":{"hasAcceptableAdsFilter":false,"hasAdblock":false},"articlesList":{"articlesList":{"452846":{"id":"452846","timePublished":"2019-05-22T08:39:44+00:00","isCorporative":true,"lang":"ru","titleHtml":"Как мы построили надёжный кластер PostgreSQL на Patroni","leadData":{"textHtml":"\u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fpost_images\u002Fe4f\u002F486\u002F7ea\u002Fe4f4867ea77fb60f3aa2a3fb902bfef1.jpg\"\u003E\u003Cbr\u003E\r\n\u003Cbr\u003E\r\nНа сегодняшний день высокая доступность сервисов требуется всегда и везде, не только в крупных дорогих проектах. Временно недоступные сайты с сообщением «Извините, проводится техническое обслуживание» ещё встречаются, но обычно вызывают снисходительную улыбку. Прибавим к этому жизнь в облаках, когда для запуска дополнительного сервера нужен лишь один вызов к API, причем думать о «железной» эксплуатации не надо. И уже не остается оправданий, почему критичная система не была сделана надежно с использованием кластерных технологий и резервирования.\u003Cbr\u003E\r\n\u003Cbr\u003E\r\nМы расскажем, какие решения мы рассматривали для обеспечения надёжности баз данных в своих сервисах и к чему пришли. Плюс демо с далеко идущими выводами.\u003Cbr\u003E","imageUrl":null,"buttonTextHtml":"Читать дальше &rarr;","image":null},"editorVersion":"1.0","postType":"article","postLabels":[],"author":{"scoreStats":{"score":11,"votesCount":13},"rating":0,"relatedData":null,"contacts":[],"authorContacts":[],"paymentDetails":{"paymentYandexMoney":null,"paymentPayPalMe":null,"paymentWebmoney":null},"id":"118439","alias":"anuriq","fullname":"Azat Khadiev","avatarUrl":"\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Favatars\u002Fc4c\u002Faaa\u002F038\u002Fc4caaa03828c39f8fc60a306c9948e03.jpg","speciality":"Пользователь"},"statistics":{"commentsCount":15,"favoritesCount":98,"readingCount":19986,"score":35,"votesCount":37},"hubs":[{"relatedData":null,"id":"4992","alias":"vk","type":"corporative","title":"Блог компании VK","titleHtml":"Блог компании VK","isProfiled":false},{"relatedData":null,"id":"36","alias":"linux","type":"collective","title":"Настройка Linux","titleHtml":"Настройка Linux","isProfiled":true},{"relatedData":null,"id":"358","alias":"postgresql","type":"collective","title":"PostgreSQL","titleHtml":"PostgreSQL","isProfiled":true},{"relatedData":null,"id":"17350","alias":"s_admin","type":"collective","title":"Серверное администрирование","titleHtml":"Серверное администрирование","isProfiled":true},{"relatedData":null,"id":"17681","alias":"db_admins","type":"collective","title":"Администрирование баз данных","titleHtml":"Администрирование баз данных","isProfiled":true}],"flows":[{"id":"1","alias":"develop","title":"Разработка"},{"id":"6","alias":"admin","title":"Администрирование"}],"relatedData":null,"textHtml":"\u003Cdiv xmlns=\"http:\u002F\u002Fwww.w3.org\u002F1999\u002Fxhtml\"\u003E\u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fr\u002Fw780q1\u002Fgetpro\u002Fhabr\u002Fpost_images\u002Fe4f\u002F486\u002F7ea\u002Fe4f4867ea77fb60f3aa2a3fb902bfef1.jpg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fpost_images\u002Fe4f\u002F486\u002F7ea\u002Fe4f4867ea77fb60f3aa2a3fb902bfef1.jpg\" data-blurred=\"true\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nНа сегодняшний день высокая доступность сервисов требуется всегда и везде, не только в крупных дорогих проектах. Временно недоступные сайты с сообщением «Извините, проводится техническое обслуживание» ещё встречаются, но обычно вызывают снисходительную улыбку. Прибавим к этому жизнь в облаках, когда для запуска дополнительного сервера нужен лишь один вызов к API, причем думать о «железной» эксплуатации не надо. И уже не остается оправданий, почему критичная система не была сделана надежно с использованием кластерных технологий и резервирования.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nМы расскажем, какие решения мы рассматривали для обеспечения надёжности баз данных в своих сервисах и к чему пришли. Плюс демо с далеко идущими выводами.\u003Cbr\u002F\u003E\r\n\u003Ca name=\"habracut\"\u003E\u003C\u002Fa\u003E\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EЛегаси в архитектуре обеспечения высокой доступности\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nЕще лучше это видно в разрезе развития различных opensource-систем. Старые решения вынуждены были добавлять технологии высокой доступности по мере повышения спроса. И качество их было разным. Решения нового поколения ставят высокую доступность в основу своей архитектуры. Например, MongoDB позиционирует кластер как основной вариант использования. Кластер масштабируется горизонтально, что является сильным конкурентным преимуществом этой СУБД.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВернёмся к PostgreSQL. Это один из старейших популярных opensource-проектов, первый релиз которого состоялся в 95-м году прошлого века. Команда проекта долгое время не считала высокую доступность задачей, которую нужно решать со стороны системы. Поэтому технология репликации для создания копий данных стала встроенной только в версии 8.2 в 2006-м, но она была файловой (log shipping). В 2010 в версии 9.0 появилась потоковая репликация, и она является основой для создания самых разных кластеров. Это, собственно, очень удивляет людей, которые знакомятся с PostgreSQL после Enterprise SQL или современных NoSQL — стандартным решением от сообщества является просто пара master-replica с синхронной или асинхронной репликацией. При этом в стоке переключение мастера производится вручную, и вопрос переключения клиентов также предлагается решать самостоятельно.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EКак мы решили делать надёжный PostgreSQL и что мы для этого выбрали\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nТем не менее, PostgreSQL не стал бы таким популярным, если бы не было огромного количества проектов и инструментов, которые помогают построить отказоустойчивое решение, не требующее постоянного внимания. В облаке \u003Ca href=\"https:\u002F\u002Fmcs.mail.ru\u002F\"\u003EMail.ru Cloud Solutions\u003C\u002Fa\u003E (MCS) с самого запуска DBaaS были доступны одиночные серверы PostgreSQL и пары мастер-реплика с асинхронной репликацией.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЕстественно, мы хотели упростить всем жизнь и сделать доступной такую инсталляцию PostgreSQL, которая могла служить основой для высокодоступных сервисов, за которой не нужно было бы постоянно следить и просыпаться ночью, чтобы сделать переключение. В этом сегменте есть и старые проверенные решения, и поколение новых утилит, использующих последние наработки. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nСегодня проблема высокой доступности упирается не в резервирование (это само собой), а в консенсус — алгоритм по выбору лидера (Leader election). Чаще всего крупные аварии происходят не из-за нехватки серверов, а из-за проблем с консенсусом: не выбрался новый лидер, появились два лидера в разных датацентрах и т.п. Пример — авария на MySQL-кластере Github — они написали \u003Ca href=\"https:\u002F\u002Fgithub.blog\u002F2018-10-30-oct21-post-incident-analysis\u002F\"\u003Eподробный постмортем\u003C\u002Fa\u003E.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nМатематическая база в этом вопросе очень серьезная. С одной стороны, есть \u003Ca href=\"https:\u002F\u002Fen.wikipedia.org\u002Fwiki\u002FCAP_theorem\"\u003ECAP теорема\u003C\u002Fa\u003E, которая накладывает теоретические ограничения на возможности построения HA-решений, с другой — математически доказанные алгоритмы определения консенсуса, такие как \u003Ca href=\"https:\u002F\u002Fen.wikipedia.org\u002Fwiki\u002FPaxos_(computer_science)\"\u003EPaxos\u003C\u002Fa\u003E и \u003Ca href=\"https:\u002F\u002Fen.wikipedia.org\u002Fwiki\u002FRaft_(computer_science)\"\u003ERaft\u003C\u002Fa\u003E. На этой основе существуют довольно популярные DCS (системы децентрализованного консенсуса) — Zookeeper, etcd, Consul. Поэтому если система принятия решения работает на каком-то своем алгоритме, написанном самостоятельно, следует крайне осторожно к нему относиться. После анализа огромного количества систем мы остановились на Patroni — opensource-системе, в основном, разрабатываемой компанией Zalando.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВ качестве лирического отступления скажу, что мы также рассматривали и multi-master решения, то есть кластеры, которые можно горизонтально масштабировать на запись. Однако по двум главным причинам решили не делать такой кластер. Во-первых, такие решения имеют высокую сложность и, соответственно, больше уязвимых мест. Будет тяжело сделать стабильное решение для всех случаев. Во-вторых, в таком случае PostgreSQL перестает быть чистым (native), некоторые функции будут недоступны, у некоторых приложений при работе могут возникнуть скрытые баги.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EPatroni\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nИтак, как работает Patroni? Разработчики не стали изобретать велосипед и предложили использовать в основе одно из проверенных DCS-решений. На откуп ему отдаются все вопросы с синхронизацией конфигураций, выбором лидера и кворумом. Мы выбрали для этого etcd.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nДалее Patroni занимается правильным применением всех настроек на PostgreSQL и настройками репликации, а также исполнением команд на switchover и failover (то есть — штатного и нештатного переключения мастера). Конкретно в облаке MCS можно создать кластер из мастера, синхронной реплики и одной или нескольких асинхронных реплик. Присутствие синхронной реплики обеспечивает сохранность данных как минимум на 2 серверах, и именно эта реплика будет главным «кандидатом в мастера». \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nТак как etcd разворачивается на тех же серверах, рекомендуется количество серверов 3 или 5, для оптимального значения кворума. Такой кластер масштабируется горизонтально на чтение (о масштабировании на запись я писал выше). Тем не менее следует учитывать, что асинхронным репликам свойственно отставание, особенно при высоких нагрузках.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nИспользование таких реплик на чтение (hot standby) обоснованно для задач отчетности или аналитики и разгружает мастер-сервер.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЕсли вы захотите сделать такой кластер самостоятельно, то вам понадобится:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003Eподготовить 3 или более серверов, настроить IP-адресацию и правила firewall между ними;\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003Cli\u003Eустановить пакеты для сервисов etcd, Patroni, PostgreSQL;\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003Cli\u003Eнастроить etcd кластер;\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003Cli\u003Eнастроить службу patroni для работы с PostgreSQL.\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\nТо есть в общей сложности нужно правильно составить десяток конфигурационных файлов и нигде не ошибиться. Для этого точно стоит использовать configuration management tool, такой как Ansible, например. При этом здесь все равно отсутствует высокодоступный TCP-балансировщик. Сделать его — отдельная работа.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nДля тех, кому нужен готовый кластер, но не хочется во всём этом ковыряться, мы постарались упростить жизнь и сделали готовый кластер на Patroni у себя в облаке, его можно потестить бесплатно. Помимо самого кластера, мы сделали:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003ETCP-балансировщик; по разным портам он всегда указывает на текущий мастер, синхронную или асинхронную реплику, соответственно;\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003Cli\u003EAPI для переключения активного мастера Patroni.\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\nИх можно подключить и через API облака MCS, и веб-консоль. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EДемо\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nДля тестирования возможностей PostgreSQL кластера в облаке MCS давайте посмотрим, как поведет себя живое приложение при проблемах с СУБД. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nДалее представлен код приложения, которое будет логировать искусственные события и сообщать об этом на экран. В случае ошибок оно будет сообщать об этом и продолжать свою работу в цикле, пока мы его не остановим комбинацией Ctrl + C. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"python\"\u003Efrom __future__ import print_function\n\nfrom datetime import datetime\nfrom random import randint\nfrom time import sleep\nimport psycopg2\n\n\ndef main():\n    try:\n        connection = psycopg2.connect(user = \"admin\",\n                                      password = \"P@ssw0rd\",\n                                      host = \"89.208.87.38\",\n                                      port = \"5432\",\n                                      database = \"myproddb\")\n\n        cursor = connection.cursor()\n        cursor.execute(\"SELECT version();\")\n        record = cursor.fetchone()\n        print(\"Connection opened to\", record[0])\n\n        cursor.execute(\n            \"INSERT INTO log VALUES ({});\".format(randint(1, 10000)))\n        connection.commit()\n        cursor.execute(\"SELECT COUNT(event_id) from log;\")\n        record = cursor.fetchone()\n        print(\"Logged a value, overall count: {}\".format(record[0]))\n    except Exception as error:\n        print (\"Error while connecting to PostgreSQL\", error)\n    finally:\n        if connection:\n            cursor.close()\n            connection.close()\n            print(\"Connection closed\")\n\n\nif __name__ == '__main__':\n    try:\n        while True:\n            try:\n                print(datetime.now())\n                main()\n                sleep(3)\n            except Exception as e:\n                print(\"Caught error:\\n\", e)\n                sleep(1)\n    except KeyboardInterrupt:\n        print(\"exit\")\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nПриложению для работы необходим PostgreSQL. Создадим кластер в облаке MCS, используя API. В обычном терминале, где в переменной OS_TOKEN содержится токен для доступа к API (можно получить командой openstack token issue), наберем команды:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nСоздаем кластер:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"bash\"\u003Ecat &lt;&lt;EОF \u003E pgc10.json\n{\"cluster\":{\"name\":\"postgres10\",\"allow_remote_access\":true,\"datastore\":{\"type\":\"postgresql\",\"version\":\"10\"},\"databases\":[{\"name\":\"myproddb\"}],\"users\":[{\"databases\":[{\"name\":\"myproddb\"}],\"name\":\"admin\",\"password\":\"P@ssw0rd\"}],\"instances\":[{\"key_name\":\"shared\",\"availability_zone\":\"DP1\",\"flavorRef\":\"d659fa16-c7fb-42cf-8a5e-9bcbe80a7538\",\"nics\":[{\"net-id\":\"b91eafed-12b1-4a46-b000-3984c7e01599\"}],\"volume\":{\"size\":50,\"type\":\"DP1\"}},{\"key_name\":\"shared\",\"availability_zone\":\"DP1\",\"flavorRef\":\"d659fa16-c7fb-42cf-8a5e-9bcbe80a7538\",\"nics\":[{\"net-id\":\"b91eafed-12b1-4a46-b000-3984c7e01599\"}],\"volume\":{\"size\":50,\"type\":\"DP1\"}},{\"key_name\":\"shared\",\"availability_zone\":\"DP1\",\"flavorRef\":\"d659fa16-c7fb-42cf-8a5e-9bcbe80a7538\",\"nics\":[{\"net-id\":\"b91eafed-12b1-4a46-b000-3984c7e01599\"}],\"volume\":{\"size\":50,\"type\":\"DP1\"}}]}}\nEOF\n\ncurl -s -H \"X-Auth-Token: $OS_TOKEN\" \\\n-H 'Accept: application\u002Fjson' \\\n-H 'Content-Type: application\u002Fjson' \\\n-d @pgc10.json https:\u002F\u002Finfra.mail.ru:8779\u002Fv1.0\u002Fce2a41bbd1434013b85bdf0ba07c770f\u002Fclusters\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fpost_images\u002Ff2c\u002Faee\u002F463\u002Ff2caee46351a0f304dac92483739a3c5.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nКогда кластер перейдет в статус ACTIVE, все поля получат актуальные значения — кластер готов.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВ GUI:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fpost_images\u002F690\u002F14e\u002F15e\u002F69014e15ec3ec260f2313703195e93de.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПопробуем подключиться и создать таблицу:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"bash\"\u003Epsql -h 89.208.87.38 -U admin -d myproddb\nPassword for user admin:\npsql (11.1, server 10.7)\nType \"help\" for help.\n\nmyproddb=\u003E CREATE TABLE log (event_id integer NOT NULL);\nCREATE TABLE\nmyproddb=\u003E INSERT INTO log VALUES (1),(2),(3);\nINSERT 0 3\nmyproddb=\u003E SELECT * FROM log;\n event_id\n----------\n        1\n        2\n        3\n(3 rows)\n\nmyproddb=\u003E\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fpost_images\u002Ff11\u002Fa98\u002Fa64\u002Ff11a98a64f55f3296cd60191984e2999.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВ приложении укажем актуальные настройки для подключения к PostgreSQL. Мы укажем адрес TCP-балансировщика, тем самым отпадёт необходимость в ручном переключении на адрес мастера. Запустим его. Как видно, события успешно логируются в базу данных.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fpost_images\u002Fb0c\u002Fe4c\u002Fb58\u002Fb0ce4cb5876872488a24cda72306f850.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EПлановое переключение мастера\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nТеперь протестируем работу нашего приложения при плановом переключении мастера:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fpost_images\u002Faa9\u002F131\u002F383\u002Faa9131383deaf7379101fa6dd29aa20e.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nНаблюдаем за приложением. Видим, что работа приложения действительно прерывается, но занимает это всего несколько секунд, в этом конкретном случае, максимум 9.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fpost_images\u002Fad8\u002F027\u002Fa7b\u002Fad8027a7b7c52a05172c54e6611240d6.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EПадение машины\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nТеперь попробуем сымитировать падение виртуальной машины, текущего мастера. Можно было бы просто выключить виртуальную машину через интерфейс Horizon, только это будет штатное выключение. Такое переключение будет обработано всеми службами, в том числе, Patroni. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nНам же нужно непредсказуемое выключение. Поэтому я попросил наших администраторов в тестовых целях выключить виртуальную машину — текущего мастера — нештатным способом.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fpost_images\u002Fbc3\u002F6bb\u002Fa5e\u002Fbc36bba5e864141e790089a9fa8f5be0.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВ это же время продолжало работу наше приложение. Естественно, такое экстренное переключение мастера не может пройти незаметно.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"bash\"\u003E2019-03-29 10:45:56.071234\nConnection opened to PostgreSQL 10.7 on x86_64-pc-linux-gnu, compiled by gcc (GCC) 4.8.5 20150623 (Red Hat 4.8.5-36), 64-bit\nLogged a value, overall count: 453\nConnection closed\n2019-03-29 10:45:59.205463\nConnection opened to PostgreSQL 10.7 on x86_64-pc-linux-gnu, compiled by gcc (GCC) 4.8.5 20150623 (Red Hat 4.8.5-36), 64-bit\nLogged a value, overall count: 454\n\nConnection closed\n2019-03-29 10:46:02.661440\nError while connecting to PostgreSQL server closed the connection unexpectedly\n        This probably means the server terminated abnormally\n        before or while processing the request.\n\nCaught error:\n local variable 'connection' referenced before assignment\n……………………………………………………….. - здесь какое-то количество ошибок\n2019-03-29 10:46:30.930445\nError while connecting to PostgreSQL server closed the connection unexpectedly\n        This probably means the server terminated abnormally\n        before or while processing the request.\n\nCaught error:\n local variable 'connection' referenced before assignment\n2019-03-29 10:46:31.954399\nConnection opened to PostgreSQL 10.7 on x86_64-pc-linux-gnu, compiled by gcc (GCC) 4.8.5 20150623 (Red Hat 4.8.5-36), 64-bit\nLogged a value, overall count: 455\nConnection closed\n2019-03-29 10:46:35.409800\nConnection opened to PostgreSQL 10.7 on x86_64-pc-linux-gnu, compiled by gcc (GCC) 4.8.5 20150623 (Red Hat 4.8.5-36), 64-bit\nLogged a value, overall count: 456\nConnection closed\n^Cexit\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nКак видно, приложение смогло продолжить свою работу менее чем через 30 секунд. Да, какое-то количество пользователей сервиса успеет заметить проблемы. Однако это серьезная поломка сервера, такое случается не так часто. При этом человек (администратор) вряд ли успел бы отреагировать так же быстро, если только он не сидел в консоли наготове со скриптом переключения.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EВывод\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nКак мне кажется, такой кластер дает колоссальное преимущество для администраторов. По сути, серьезные поломки и выходы из строя серверов БД не будут заметны для приложения и, соответственно, для пользователя. Не придется чинить что-то в спешке и переключаться на временные конфигурации, серверы и т.п. А если такое решение использовать в виде готового сервиса в облаке, то не нужно будет тратить время на его подготовку. Можно будет заниматься чем-то поинтереснее.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ca href=\"https:\u002F\u002Ft.me\u002Fmcsnews\"\u003EВ нашем телеграм-канале\u003C\u002Fa\u003E — новости об этом и других сервисах на облачной платформе Mail.ru Cloud Solutions.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЧто еще почитать:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n1. \u003Ca href=\"https:\u002F\u002Fmcs.mail.ru\u002Fcloud-platform\u002Fsuccess-story\u002Fkak-carprice-stal-samoj-cifrovoj-kompaniej-rossijskogo-avtorynka\u002F\"\u003EКак CarPrice стал самой цифровой компанией российского авторынка\u003C\u002Fa\u003E.\u003Cbr\u002F\u003E\r\n2. \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fmailru\u002Fblog\u002F513702\u002F\"\u003EКак собрать гибридное облако с помощью Kubernetes, которое может заменить DBaaS\u003C\u002Fa\u003E.\u003C\u002Fdiv\u003E","tags":[{"titleHtml":"postgresql"},{"titleHtml":"high availability"},{"titleHtml":"cloud"},{"titleHtml":"Mail.Ru Cloud Solutions"}],"metadata":{"stylesUrls":[],"scriptUrls":[],"shareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F452846\u002F1542fcb1c90a2fee9c4b30735e94ccd8\u002F","shareImageWidth":1200,"shareImageHeight":630,"vkShareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F452846\u002F1542fcb1c90a2fee9c4b30735e94ccd8\u002F?format=vk","schemaJsonLd":"{\"@context\":\"http:\\\u002F\\\u002Fschema.org\",\"@type\":\"Article\",\"mainEntityOfPage\":{\"@type\":\"WebPage\",\"@id\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fru\\\u002Fcompany\\\u002Fvk\\\u002Fblog\\\u002F452846\\\u002F\"},\"headline\":\"Как мы построили надёжный кластер PostgreSQL на Patroni\",\"datePublished\":\"2019-05-22T11:39:44+03:00\",\"dateModified\":\"2020-10-01T16:24:01+03:00\",\"author\":{\"@type\":\"Person\",\"name\":\"Azat Khadiev\"},\"publisher\":{\"@type\":\"Organization\",\"name\":\"Habr\",\"logo\":{\"@type\":\"ImageObject\",\"url\":\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fa_\\\u002Flk\\\u002F9m\\\u002Fa_lk9mjkccjox-zccjrpfolmkmq.png\"}},\"description\":\"На сегодняшний день высокая доступность сервисов требуется всегда и везде, не только в крупных дорогих проектах. Временно недоступные сайты с сообщением &laquo;Извин...\",\"url\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fru\\\u002Fcompany\\\u002Fvk\\\u002Fblog\\\u002F452846\\\u002F#post-content-body\",\"about\":[\"c_vk\",\"h_linux\",\"h_postgresql\",\"h_s_admin\",\"h_db_admins\",\"f_develop\",\"f_admin\"],\"image\":[\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fgetpro\\\u002Fhabr\\\u002Fpost_images\\\u002Fe4f\\\u002F486\\\u002F7ea\\\u002Fe4f4867ea77fb60f3aa2a3fb902bfef1.jpg\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fgetpro\\\u002Fhabr\\\u002Fpost_images\\\u002Ff2c\\\u002Faee\\\u002F463\\\u002Ff2caee46351a0f304dac92483739a3c5.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fgetpro\\\u002Fhabr\\\u002Fpost_images\\\u002F690\\\u002F14e\\\u002F15e\\\u002F69014e15ec3ec260f2313703195e93de.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fgetpro\\\u002Fhabr\\\u002Fpost_images\\\u002Ff11\\\u002Fa98\\\u002Fa64\\\u002Ff11a98a64f55f3296cd60191984e2999.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fgetpro\\\u002Fhabr\\\u002Fpost_images\\\u002Fb0c\\\u002Fe4c\\\u002Fb58\\\u002Fb0ce4cb5876872488a24cda72306f850.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fgetpro\\\u002Fhabr\\\u002Fpost_images\\\u002Faa9\\\u002F131\\\u002F383\\\u002Faa9131383deaf7379101fa6dd29aa20e.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fgetpro\\\u002Fhabr\\\u002Fpost_images\\\u002Fad8\\\u002F027\\\u002Fa7b\\\u002Fad8027a7b7c52a05172c54e6611240d6.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fgetpro\\\u002Fhabr\\\u002Fpost_images\\\u002Fbc3\\\u002F6bb\\\u002Fa5e\\\u002Fbc36bba5e864141e790089a9fa8f5be0.png\"]}","metaDescription":"На сегодняшний день высокая доступность сервисов требуется всегда и везде, не только в крупных дорогих проектах. Временно недоступные сайты с сообщением «Извините, проводится техническое...","mainImageUrl":null,"amp":false},"polls":[],"commentsEnabled":true,"rulesRemindEnabled":false,"votesEnabled":true,"status":"published","plannedPublishTime":null,"checked":null,"isEditorial":false}},"articlesIds":{},"isLoading":false,"pagesCount":{},"route":{},"reasonsList":null,"view":"cards","lastVisitedRoute":{},"ssrCommentsArticleIds":[""],"karma":{}},"authorContribution":{"authors":{}},"betaTest":{"currentAnnouncement":null,"announcements":{},"announcementCards":null,"announcementComments":{},"announcementCommentThreads":{},"announcementCommentingStatuses":{},"archivedList":[]},"authorStatistics":{"articleRefs":{},"articleIds":{},"pagesCount":{},"route":{},"viewsCount":[],"maxStatsCount":{}},"career":{"seoLandings":[],"hubs":""},"comments":{"articleComments":{},"searchCommentsResults":null,"previewComment":null,"pagesCount":null,"commentAccess":{},"scrollParents":{},"pageArticleComments":{"lastViewedComment":0,"postId":null,"lastCommentTimestamp":"","moderated":[],"moderatedIds":[],"commentRoute":""}},"companies":{"companyRefs":{"vk":{"alias":"vk","imageUrl":"\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fcompany\u002F9ed\u002Fc74\u002F6b4\u002F9edc746b484c805ecad1f941b5f7068a.png","titleHtml":"VK","descriptionHtml":"Технологии, которые объединяют","relatedData":null,"statistics":{"postsCount":2250,"newsCount":142,"vacanciesCount":24,"employeesCount":693,"careerRating":4.37,"subscribersCount":124428,"rating":331.84,"invest":null},"foundationDate":{"year":"1998","month":"10","day":"15"},"location":{"city":{"id":"447159","title":"Москва"},"region":{"id":"1885","title":"Москва и Московская обл."},"country":{"id":"168","title":"Россия"}},"siteUrl":"https:\u002F\u002Fvk.com\u002Fvkteam","staffNumber":"5 001–10 000 человек","registrationDate":"2008-08-09T07:42:32+00:00","representativeUser":{"alias":"somuchmich","fullname":"Миша Буданов"},"contacts":[{"title":"Facebook","url":"https:\u002F\u002Ffacebook.com\u002Finsidevk"},{"title":"Twitter","url":"https:\u002F\u002Ftwitter.com\u002Finside_vk"},{"title":"ВКонтакте","url":"https:\u002F\u002Fvk.com\u002Finsidevk"},{"title":"Instagram","url":"https:\u002F\u002Finstagram.com\u002Finside.vk"},{"title":"Telegram","url":"https:\u002F\u002Ftelegram.me\u002Finside_vk"}],"settings":{"analyticsSettings":[{"type":"ga","trackingId":"UA-16546458-6"}],"branding":{"imageUrl":"\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fbranding\u002F174\u002F2c4\u002F3a5\u002F1742c43a5b504987a0fadf577a0bd4de.png","linkUrl":"https:\u002F\u002Fvk.com\u002Fvkteam","pixelUrl":""},"status":"active"},"metadata":{"titleHtml":"VK, Москва - Технологии, которые объединяют с 15 октября 1998 г.","title":"VK, Москва - Технологии, которые объединяют с 15 октября 1998 г.","keywords":["Программирование","DevOps","Kubernetes","Облачные вычисления","Tarantool"],"descriptionHtml":"2 250 статей от авторов компании VK","description":"2 250 статей от авторов компании VK"},"aDeskSettings":null,"careerAlias":"vk","maxCustomTrackerLinks":3}},"companyIds":{},"companyTopIds":{},"pagesCount":{},"companyProfiles":{},"companiesCategories":[],"companiesCategoriesTotalCount":0,"companiesWidgets":{},"companiesWorkers":{},"companiesFans":{},"route":{},"isLoading":false,"companyWorkersLoading":false,"companyFansLoading":false,"vacancies":{}},"companiesContribution":{"hubs":{},"flows":{},"companyRefs":{}},"companyHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"conversation":{"messages":[],"respondent":null,"isLoadMore":false},"conversations":{"conversations":[],"unreadCount":0,"pagesCount":0,"isLoadMore":false},"desktopState":{"desktopFl":null,"desktopHl":null,"isChecked":false,"isLoginDemanded":false},"dfp":{"slotsDict":{}},"docs":{"menu":{},"articles":{},"mainMenu":[],"loading":{"main":false,"dropdown":false,"article":false}},"feature":{"isProbablyVisible":"true"},"flows":{"flows":[{"alias":"develop","id":1,"route":{"name":"FLOW_PAGE","params":{"flowName":"develop"}}},{"alias":"admin","id":6,"route":{"name":"FLOW_PAGE","params":{"flowName":"admin"}}},{"alias":"design","id":2,"route":{"name":"FLOW_PAGE","params":{"flowName":"design"}}},{"alias":"management","id":3,"route":{"name":"FLOW_PAGE","params":{"flowName":"management"}}},{"alias":"marketing","id":4,"route":{"name":"FLOW_PAGE","params":{"flowName":"marketing"}}},{"alias":"popsci","id":7,"route":{"name":"FLOW_PAGE","params":{"flowName":"popsci"}}}]},"global":{"isPwa":false,"device":"desktop","isHabrCom":true},"hubs":{"hubRefs":{},"hubIds":{},"pagesCount":{},"isLoading":false,"route":{}},"hubsBlock":{"hubRefs":{},"hubIds":{}},"i18n":{"fl":"ru","hl":"ru"},"info":{"infoPage":{},"isLoading":true},"location":{"urlStruct":{"protocol":null,"slashes":null,"auth":null,"host":null,"port":null,"hostname":null,"hash":null,"search":null,"query":{},"pathname":null,"path":null,"href":""},"searchQuery":null},"me":{"user":null,"ppgDemanded":false,"karmaResetInfo":{"canReincarnate":null,"wasReincarnated":null,"currentScore":null},"notes":null},"mostReadingList":{"mostReadingListIds":[],"mostReadingListRefs":null,"promoPost":null},"pinnedPost":{"pinnedPost":null},"ppa":{"articles":{},"card":null,"transactions":null,"totalTransactions":null,"isAccessible":null},"projectsBlocks":{"activeBlocks":{}},"pullRefresh":{"shouldRefresh":false},"sandbox":{"articleIds":[],"articleRefs":{},"pagesCount":null,"route":{},"lastVisitedRoute":{},"isLoading":false},"settingsOther":{"inputs":{"uiLang":{"errors":[],"ref":null,"value":""},"articlesLangEnglish":{"errors":[],"ref":null,"value":false},"articlesLangRussian":{"errors":[],"ref":null,"value":false},"agreement":{"errors":[],"ref":null,"value":false},"email":{"errors":[],"ref":null,"value":true},"digest":{"errors":[],"ref":null,"value":true}}},"similarList":{"similarListIds":[],"similarListRefs":null},"ssr":{"error":null,"isDataLoaded":false,"isDataLoading":false,"isHydrationFailed":false,"isServer":false},"userHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"userInvites":{"availableInvites":0,"usedInvitesIds":[],"usedInvitesRefs":{},"usedInvitesPagesCount":0,"unusedInvitesIds":[],"unusedInvitesRefs":{},"unusedInvitesPagesCount":0},"users":{"authorRefs":{},"authorIds":{},"pagesCount":{},"authorProfiles":{},"userHubs":{},"userInvitations":{},"authorFollowers":{},"authorFollowed":{},"karmaStats":[],"statistics":null,"isLoading":false,"authorFollowersLoading":false,"authorFollowedLoading":false,"userHubsLoading":false,"userInvitationsLoading":false,"route":{}},"viewport":{"prevScrollY":{},"scrollY":0,"width":0},"tracker":{"items":{},"pagesCache":{},"markedViewedSilently":{},"markedRead":{},"unreadCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null},"unviewedCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null}}};(function(){var s;(s=document.currentScript||document.scripts[document.scripts.length-1]).parentNode.removeChild(s);}());</script>
+<script src="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" defer></script><script src="https://assets.habr.com/habr-web/js/app.c0af73e7.js" defer></script>
+
+
+
+    <script>
+      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+        (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+        m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+      })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+    </script>
+  
+  <script type="text/javascript" >
+    (function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+    m[i].l=1*new Date();k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})
+    (window, document, "script", "https://mc.yandex.ru/metrika/tag.js", "ym");
+
+    ym(24049213, "init", {
+      defer:true,
+      trackLinks:true,
+      accurateTrackBounce:true,
+      webvisor:false,
+    });
+  </script>
+  <noscript>
+    <div>
+      <img src="https://mc.yandex.ru/watch/24049213" style="position:absolute; left:-9999px;" alt="" />
+    </div>
+  </noscript>
+  
+    <script type="text/javascript">
+      window.addEventListener('load', function () {
+        setTimeout(() => {
+          const img = new Image();
+          img.src = 'https://vk.com/rtrg?p=VK-RTRG-421343-57vKE';
+        }, 0);
+      });
+    </script>
+  
+</body>
+</html>

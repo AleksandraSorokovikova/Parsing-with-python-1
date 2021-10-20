@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="ru" data-vue-meta="%7B%22lang%22:%7B%22ssr%22:%22ru%22%7D%7D">
+<head >
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
+  <title>Как я программирую движки для ролевых игр в Google-таблицах / Хабр</title>
+  <style>
+    /* cyrillic-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSxf6TF0.woff2) format('woff2');
+      unicode-range: U+0460-052F, U+1C80-1C88, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+    }
+
+    /* cyrillic */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveQhf6TF0.woff2) format('woff2');
+      unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+    }
+
+    /* latin-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSBf6TF0.woff2) format('woff2');
+      unicode-range: U+0100-024F, U+0259, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20CF, U+2113, U+2C60-2C7F, U+A720-A7FF;
+    }
+
+    /* latin */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveRhf6.woff2) format('woff2');
+      unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+    }
+  </style>
+  <link rel="preload" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" as="script"><link rel="preload" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/app.c0af73e7.js" as="script">
+  <link rel="stylesheet" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css"><link rel="stylesheet" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css">
+  <script>window.i18nFetch = new Promise((res, rej) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open('GET', '/js/i18n/ru-compiled.85eb77f0b17c8235e7b64b9f81ea5ec2.json');
+          xhr.responseType = 'json';
+          xhr.onload = function(e) {
+            if (this.status === 200) {
+              res({ru: xhr.response});
+            } else {
+              rej(e);
+            }
+          };
+          xhr.send();
+        });</script>
+  
+  <script data-vue-meta="ssr" src="/js/ads.js" onload="window['zhY4i4nJ9K'] = true" data-vmid="checkad"></script><script data-vue-meta="ssr" type="application/ld+json" data-vmid="ldjson-schema">{"@context":"http:\/\/schema.org","@type":"Article","mainEntityOfPage":{"@type":"WebPage","@id":"https:\/\/habr.com\/ru\/post\/451776\/"},"headline":"Как я программирую движки для ролевых игр в Google-таблицах","datePublished":"2019-05-14T14:01:59+03:00","dateModified":"2019-05-14T14:01:59+03:00","author":{"@type":"Person","name":"Станислав"},"publisher":{"@type":"Organization","name":"Habr","logo":{"@type":"ImageObject","url":"https:\/\/habrastorage.org\/webt\/a_\/lk\/9m\/a_lk9mjkccjox-zccjrpfolmkmq.png"}},"description":"Идея использовать электронные таблицы в качестве среды для разработки игрушек не нова. В этой статье я поделюсь опытом в создании движков для ролевых игр живого...","url":"https:\/\/habr.com\/ru\/post\/451776\/#post-content-body","about":["h_gamedev","h_game_testing","h_game_monetization","h_game_design","f_develop","f_design","f_marketing"],"image":["https:\/\/i.ibb.co\/kcbyKNd\/image.jpg","https:\/\/i.ibb.co\/MP2PcsP\/image.jpg","https:\/\/i.ibb.co\/SrPzXT9\/image.jpg","https:\/\/i.ibb.co\/hRTy62k\/image.jpg","https:\/\/i.ibb.co\/nrfFJ4j\/image.jpg","https:\/\/i.ibb.co\/8mMT5yy\/2019-05-12-17-27-39-Google-Docs-Google-Chrome.jpg","https:\/\/i.ibb.co\/BsQWFR1\/2019-05-12-17-28-08-Google-Docs-Google-Chrome.jpg","https:\/\/i.ibb.co\/3RLvddT\/image.jpg","https:\/\/i.ibb.co\/SnzG3JR\/image.jpg","https:\/\/i.ibb.co\/RTHDwBz\/image.jpg","https:\/\/i.ibb.co\/dcxrJhw\/image.jpg","https:\/\/i.ibb.co\/nr25xKP\/image.jpg","https:\/\/i.ibb.co\/pWg8csf\/image.jpg","https:\/\/i.ibb.co\/drNX95T\/image.jpg","https:\/\/i.ibb.co\/gtw5D2S\/image.jpg","https:\/\/i.ibb.co\/MGk19HR\/image.jpg","https:\/\/i.ibb.co\/0FcPmYP\/2019-05-12-17-28-33-Google-Docs-Google-Chrome.jpg","https:\/\/i.ibb.co\/F5K48Vc\/image.jpg"]}</script>
+  <script src="//www.googletagservices.com/tag/js/gpt.js" async></script>
+  <style>.grecaptcha-badge{visibility: hidden;}</style>
+  <meta name="habr-version" content="2.49.0">
+  
+  <meta data-vue-meta="ssr" property="fb:app_id" content="444736788986613"><meta data-vue-meta="ssr" property="fb:pages" content="472597926099084"><meta data-vue-meta="ssr" name="twitter:card" content="summary_large_image"><meta data-vue-meta="ssr" name="twitter:site" content="@habr_eng"><meta data-vue-meta="ssr" property="og:title" content="Как я программирую движки для ролевых игр в Google-таблицах" data-vmid="og:title"><meta data-vue-meta="ssr" name="twitter:title" content="Как я программирую движки для ролевых игр в Google-таблицах" data-vmid="twitter:title"><meta data-vue-meta="ssr" name="aiturec:title" content="Как я программирую движки для ролевых игр в Google-таблицах" data-vmid="aiturec:title"><meta data-vue-meta="ssr" name="description" content="Идея использовать электронные таблицы в качестве среды для разработки игрушек не нова. В этой статье я поделюсь опытом в создании движков для ролевых игр живого действия и тимбилдингов, которые..." data-vmid="description"><meta data-vue-meta="ssr" itemprop="description" content="Идея использовать электронные таблицы в качестве среды для разработки игрушек не нова. В этой статье я поделюсь опытом в создании движков для ролевых игр живого действия и тимбилдингов, которые..." data-vmid="description:itemprop"><meta data-vue-meta="ssr" property="og:description" content="Идея использовать электронные таблицы в качестве среды для разработки игрушек не нова. В этой статье я поделюсь опытом в создании движков для ролевых игр живого действия и тимбилдингов, которые..." data-vmid="og:description"><meta data-vue-meta="ssr" name="twitter:description" content="Идея использовать электронные таблицы в качестве среды для разработки игрушек не нова. В этой статье я поделюсь опытом в создании движков для ролевых игр живого действия и тимбилдингов, которые..." data-vmid="twitter:description"><meta data-vue-meta="ssr" property="aiturec:description" content="Идея использовать электронные таблицы в качестве среды для разработки игрушек не нова. В этой статье я поделюсь опытом в создании движков для ролевых игр живого действия и тимбилдингов, которые..." data-vmid="aiturec:description"><meta data-vue-meta="ssr" itemprop="image" content="https://habr.com/share/publication/451776/1d705fbf4190b11d82304c0f3575b49b/" data-vmid="image:itemprop"><meta data-vue-meta="ssr" property="og:image" content="https://habr.com/share/publication/451776/1d705fbf4190b11d82304c0f3575b49b/" data-vmid="og:image"><meta data-vue-meta="ssr" property="aiturec:image" content="https://habr.com/share/publication/451776/1d705fbf4190b11d82304c0f3575b49b/" data-vmid="aiturec:image"><meta data-vue-meta="ssr" name="twitter:image" content="https://habr.com/share/publication/451776/1d705fbf4190b11d82304c0f3575b49b/" data-vmid="twitter:image"><meta data-vue-meta="ssr" property="vk:image" content="https://habr.com/share/publication/451776/1d705fbf4190b11d82304c0f3575b49b/" data-vmid="vk:image"><meta data-vue-meta="ssr" property="aiturec:item_id" content="451776" data-vmid="aiturec:item_id"><meta data-vue-meta="ssr" property="aiturec:datetime" content="2019-05-14T11:01:59.000Z" data-vmid="aiturec:datetime"><meta data-vue-meta="ssr" property="og:type" content="article" data-vmid="og:type"><meta data-vue-meta="ssr" property="og:locale" content="ru_RU" data-vmid="og:locale"><meta data-vue-meta="ssr" property="og:image:width" content="1200" data-vmid="og:image:width"><meta data-vue-meta="ssr" property="og:image:height" content="630" data-vmid="og:image:height">
+  <link data-vue-meta="ssr" href="https://habr.com/ru/rss/post/451776/?fl=ru" type="application/rss+xml" title="" rel="alternate" name="rss"><link data-vue-meta="ssr" href="https://habr.com/ru/post/451776/" rel="canonical" data-vmid="canonical"><link data-vue-meta="ssr" data-vmid="hreflang"><link data-vue-meta="ssr" image_src="image" href="https://habr.com/share/publication/451776/1d705fbf4190b11d82304c0f3575b49b/" data-vmid="image:href">
+  <meta name="apple-mobile-web-app-status-bar-style" content="#303b44">
+  <meta name="msapplication-TileColor" content="#629FBC">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="16x16"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-16.png"
+  >
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="32x32"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-32.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="76x76"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-76.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="120x120"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="152x152"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-152.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="180x180"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-180.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="256x256"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-256.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1136x640.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2436x1125.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1792x828.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_828x1792.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1334x750.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2208x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1125x2436.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2208.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2732x2048.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2688x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2224x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_750x1334.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x2732.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2388x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2224.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_640x1136.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2388.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x1536.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1536x2048.png"
+  >
+  <link
+    rel="mask-icon"
+    color="#77a2b6"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.svg"
+  >
+  <link
+    crossorigin="use-credentials"
+    href="/manifest.webmanifest"
+    rel="manifest"
+  >
+</head>
+<body>
+
+
+<div id="app" data-server-rendered="true" data-async-called="true"><div class="tm-layout__wrapper"><!----> <div></div> <!----> <header class="tm-header"><div class="tm-page-width"><div class="tm-header__container"><!----> <span class="tm-header__logo-wrap"><a href="/ru/" class="tm-header__logo tm-header__logo_ru"><svg height="16" width="16" class="tm-svg-img tm-header__icon"><title>Хабр</title> <use xlink:href="/img/habr-logo-ru.svg#logo"></use></svg></a> <span class="tm-header__beta-sign" style="display:none;">β</span></span> <div class="tm-dropdown tm-header__projects"><div class="tm-dropdown__head"><button class="tm-header__dropdown-toggle"><svg height="16" width="16" class="tm-svg-img tm-header__icon tm-header__icon_dropdown"><title>Открыть список</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#arrow-down"></use></svg></button></div> <!----></div> <a href="/ru/sandbox/start/" class="tm-header__become-author-btn">
+            Как стать автором
+          </a> <div class="tm-feature tm-header__feature tm-feature_variant-inline"><!----></div> <!----> <!----></div></div></header> <div class="tm-layout"><div class="tm-page-progress-bar"></div> <div data-menu-sticky="true" class="tm-base-layout__header tm-base-layout__header_is-sticky"><div class="tm-page-width"><div class="tm-base-layout__header-wrapper"><div class="tm-main-menu"><div class="tm-main-menu__section"><nav class="tm-main-menu__section-content"><!----> <a href="/ru/all/" class="tm-main-menu__item">
+        Все потоки
+      </a> <a href="/ru/flows/develop/" class="tm-main-menu__item">
+          Разработка
+        </a><a href="/ru/flows/admin/" class="tm-main-menu__item">
+          Администрирование
+        </a><a href="/ru/flows/design/" class="tm-main-menu__item">
+          Дизайн
+        </a><a href="/ru/flows/management/" class="tm-main-menu__item">
+          Менеджмент
+        </a><a href="/ru/flows/marketing/" class="tm-main-menu__item">
+          Маркетинг
+        </a><a href="/ru/flows/popsci/" class="tm-main-menu__item">
+          Научпоп
+        </a></nav></div></div> <div class="tm-header-user-menu tm-base-layout__user-menu"><a href="/ru/search/" class="tm-header-user-menu__item tm-header-user-menu__search"><svg height="24" width="24" class="tm-svg-img tm-header-user-menu__icon tm-header-user-menu__icon_search tm-header-user-menu__icon_dark"><title>Поиск</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#search"></use></svg></a> <!----> <!----> <!----> <div class="tm-header-user-menu__item tm-header-user-menu__user_desktop"><div class="tm-dropdown"><div class="tm-dropdown__head"><svg height="24" width="24" data-test-id="menu-toggle-guest" class="tm-svg-img tm-header-user-menu__icon"><title>Профиль</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#header-user"></use></svg> <!----></div> <!----></div> <!----></div> <!----></div></div></div></div> <!----> <div class="tm-page-width"></div> <main class="tm-layout__container"><div hl="ru" data-async-called="true" class="tm-page"><div class="tm-page-width"><!----> <div class="tm-page__wrapper"><div class="tm-page__main tm-page__main_has-sidebar"><div class="pull-down"><div class="pull-down__header" style="height:0px;"><div class="pull-down__content" style="bottom:10px;"><svg height="24" width="24" class="tm-svg-img pull-down__arrow"><title>Обновить</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#pull-arrow"></use></svg></div></div> <div class="tm-article-presenter"> <div class="tm-article-presenter__body"><div class="tm-misprint-area"><div class="tm-misprint-area__wrapper"><article class="tm-article-presenter__content tm-article-presenter__content_narrow"><div class="tm-article-presenter__header"> <div class="tm-article-snippet tm-article-presenter__snippet"><div class="tm-article-snippet__meta-container"><div class="tm-article-snippet__meta"><span class="tm-user-info tm-article-snippet__author"><a href="/ru/users/stasakimov/" title="stasakimov" class="tm-user-info__userpic"><div class="tm-entity-image"><img alt="" height="24" loading="lazy" src="//habrastorage.org/r/w32/getpro/habr/avatars/890/af5/341/890af5341b7a25fcb03bfb026f288960.jpg" width="24" class="tm-entity-image__pic"></div></a> <span class="tm-user-info__user"><a href="/ru/users/stasakimov/" class="tm-user-info__username">
+      stasakimov
+    </a> </span></span> <span class="tm-article-snippet__datetime-published"><time datetime="2019-05-14T11:01:59.000Z" title="2019-05-14, 14:01">14  мая  2019 в 14:01</time></span></div> <!----></div> <h1 lang="ru" class="tm-article-snippet__title tm-article-snippet__title_h1"><span>Как я программирую движки для ролевых игр в Google-таблицах</span></h1> <div class="tm-article-snippet__hubs"><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/gamedev/" class="tm-article-snippet__hubs-item-link"><span>Разработка игр</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/game_testing/" class="tm-article-snippet__hubs-item-link"><span>Тестирование игр</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/game_monetization/" class="tm-article-snippet__hubs-item-link"><span>Монетизация игр</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/game_design/" class="tm-article-snippet__hubs-item-link"><span>Дизайн игр</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span></div> <div class="tm-article-snippet__labels"><div class="tm-article-snippet__label"><span>
+        Из песочницы
+      </span></div></div> <!----> <!----></div></div> <!----> <div data-gallery-root="" lang="ru" class="tm-article-body"><div id="post-content-body" class="article-formatted-body article-formatted-body_version-1"><div xmlns="http://www.w3.org/1999/xhtml"><div style="text-align:center;"><img src="https://i.ibb.co/kcbyKNd/image.jpg" alt="image" data-src="https://i.ibb.co/kcbyKNd/image.jpg" data-blurred="true"/></div><br/>
+Идея использовать электронные таблицы в качестве среды для разработки игрушек <a href="https://habr.com/ru/company/google/blog/217425/">не нова</a>. В этой статье я поделюсь опытом в создании движков для ролевых игр живого действия и тимбилдингов, которые смогут сильно облегчить жизнь игропрактикам.<br/>
+<a name="habracut"></a><br/>
+<h3>Зачем это надо</h3><br/>
+Допустим, вы проводите игру, в которой участвует одновременно 50-60 человек. У каждого игрока есть набор личных параметров (например, опыт, деньги, здоровье, репутация), которые меняются в зависимости от совершенных им действий. Также есть ряд общеигровых показателей (например, экология, бюджет страны или рейтинг правительства), которые также колеблются в соответствии с действиями и решениями игроков. А еще есть игровые события, которые происходят при определенной комбинации внешних факторов.<br/>
+<br/>
+В общем, это довольно плотный поток информации, который нуждается в оперативном и точном просчитывании. В классической ролевой игре эту функцию обычно выполняют мастера игры. Но мастер не застрахован от ошибок, и много информации он все равно не обработает — ни в голове, ни даже при помощи листка бумаги.<br/>
+<br/>
+С электронным движком один человек способен обрабатывать информационный поток любого объема. При этом игровую статистику можно выводить на проектор, чтобы участники в реальном времени наблюдали, как их действия влияют на игровые расклады. Или, например, можно показывать секретные данные каждому игроку адресно на смартфон. И самое главное — пользоваться таким движком можно совершенно бесплатно!<br/>
+<br/>
+Увлекшись игровыми практиками около года назад, я успел написать 7 движков для разных командообразующих игр. Большая часть из этих игр имеет коммерческий успех, а одна даже продалась в качестве франшизы за границу.<br/>
+<br/>
+<h3>Денежный поток</h3><br/>
+Все началось с игры «<a href="https://www.mosigra.ru/Face/Show/cashflow/">Денежный поток</a>». Знакомые пригласили меня поиграть в знаменитую настолку Роберта Кийосаки, и она меня очень зацепила. Единственное, что раздражало в игре, — это необходимость постоянно производить расчеты в столбик, стирать ластиком устаревшие данные и вносить новые. Из-за того, что все участники, боясь ошибиться, были постоянно сконцентрированы на собственных расчетах, игра сильно теряла в динамике и затягивалась на долгие часы.<br/>
+<br/>
+Я решил оптимизировать игровой процесс, переведя все калькуляции в Гугл-таблицу.<br/>
+<br/>
+<img src="https://i.ibb.co/MP2PcsP/image.jpg" alt="image" data-src="https://i.ibb.co/MP2PcsP/image.jpg" data-blurred="true"/><br/>
+<br/>
+Чтобы протестировать этот «калькулятор», я провел несколько игр для друзей. Эффект был потрясающий! Вместо того, чтобы корпеть над вычислениями, игроки активно вовлекались в игровой процесс, вели переговоры, придумывали сложные финансовые схемы и махинации. Скорость самой игры возросла почти в два раза. Нам впервые удалось довести ее до конца, когда все игроки покинули дорожку крысиных бегов и достигли своих целей. Для сравнения, в «ручной» версии участникам едва хватало терпения доиграть до того момента, когда хотя бы кому-то одному удавалось выйти на большой круг.<br/>
+<br/>
+«Офигеть! — воскликнул мой товарищ Рубен во время одной из игр. — Восемь взрослых мужиков собрались, чтобы весь вечер пялиться на экран с гугл-табличкой. Но это реально интереснее любого кино!»<br/>
+<br/>
+Мою табличку для расчетов в игре «Денежный поток» можно скачать <a href="https://docs.google.com/spreadsheets/d/1OTVk696_2-lyEBhzX8UWam3FPzPygnttu03QW10U2m8/edit#gid=0">отсюда</a>. Если не до конца будет понятно, как ей пользоваться, напишите мне, и я вышлю подробную инструкцию.<br/>
+<br/>
+<h3>Зомби, президенты и ассасины</h3><br/>
+Немного позже я наткнулся на сценарий кабинетной ролевой игры «<a href="http://www.interactivitiesink.com/larps/zombies/zombies.html">All The President's Zombies</a>» американского геймдизайнера Майка Янга. По сюжету, в стране происходит зомби-апокалипсис, и группа высших чиновников собирается в кабинете президента, чтобы выработать план по решению этой проблемы.<br/>
+<br/>
+<img src="https://i.ibb.co/SrPzXT9/image.jpg" alt="image" data-src="https://i.ibb.co/SrPzXT9/image.jpg" data-blurred="true"/><br/>
+<br/>
+Концепция мне понравилась, и я решил создать свою собственную игру, локализовав творение Янга. Получилась игра «<a href="https://2048.events/products/ekstrennoe-soveshanie">Экстренное совещание</a>», которая достаточно далеко ушла от оригинала. В ее основе — развесистое дерево событий, которые в реальном времени происходят в зависимости от тех или иных решений, принятых игроками на совещании. Вместо того, чтобы кропотливо обучать мастеров игры, я создал гугл-таблицу, которая автоматически вычисляла последствия каждого из предпринятых игроками действий. Ведущему оставалось только ставить на экране галочки и вытягивать из колоды карты, номера которых высвечивались в таблице.<br/>
+<br/>
+<img src="https://i.ibb.co/hRTy62k/image.jpg" alt="image" data-src="https://i.ibb.co/hRTy62k/image.jpg" data-blurred="true"/><br/>
+<br/>
+Определенную сложность у меня вызвала необходимость отслеживать динамику игровых параметров. Ведь при изменении значения ячейки таблица моментально пересчитывает все связанные с ней формулы, нигде не сохраняя старого значения. Я придумал, как обойти эту сложность, но об этом расскажу ниже.<br/>
+<br/>
+Проведя пару десятков «Экстренных совещаний» для друзей и знакомых, я понял, что это перспективный формат для всякого рода тимбилдингов и корпоративных историй. Мешало только ограничение на максимальное число участников в 12 человек. И я стал придумывать новые игры, в которые можно было бы играть большим коллективом. При этом управлять игровой экосистемой должен был по-прежнему один ведущий. Так появились игры «<a href="https://2048.events/products/venezia">Чумовая Венеция</a>» по мотивам франшизы Assassin’s Creed, «Мировое господство» о противостоянии сверхдержав на мировой арене, «День выборов» о честных и не очень политических технологиях и еще несколько игр, решающих специфические задачи конкретных заказчиков.<br/>
+<br/>
+При разработке каждой из этих игр я сталкивался с определенными сложностями, и сейчас разберу несколько наиболее интересных примеров.<br/>
+<br/>
+<h3>Проблема — решение</h3><br/>
+В основе любого игрового движка лежит следующая последовательность действий: 1) сбор информации о решениях, принятых игроками, 2) ввод этой информации в систему, 3) проверка условий и вычисление системой новых данных, 4) выдача игрокам новых данных. В зависимости от сюжета игры, этот цикл может повторяться от одного до условно бесконечного числа раз. При этом вся коммуникация игроков, предшествующая принятию окончательных решений, остается «за кадром», и игровой системой никак не учитывается. Так что в целом процесс не производит ощущения компьютерной игры, оставляя простор для живого эмоционального взаимодействия.<br/>
+<br/>
+<u>Эмуляция циклов</u><br/>
+<br/>
+Основная сложность при разработке движка в гугл-таблице — отсутствие таких привычных программисту сущностей, как переменная, цикл, прерывание, процедура.<br/>
+<br/>
+Допустим, отсутствующие кнопки можно заменить ячейкой со значением «чекбокс» — в какой-то отдельной ячейке тогда будет формула, проверяющая состояние чекбокса и вычисляющая в зависимости от этого значение целевой ячейки. Но как быть с тем фактом, что вся таблица статична во времени, и при изменении значения одной ячейки-переменной моментально и «без спроса» пересчитываются значения всех других ячеек, ссылающихся на нее в формуле? Я не придумал ничего лучше, чем компенсировать отсутствие подпрограмм и циклов при помощи вкладок. Вы просто создаете в таблице столько вкладок, сколько циклов предполагается в игре и сколько раз за игру теоретически одна переменная может поменять свое значение. Тогда, например, ячейка во вкладке-2 будет наследовать значение той же ячейки во вкладке-1, претерпевать какие-то изменения и передавать свое значение в ту же ячейку из вкладки-3. Вот, например, как выглядят вкладки циклов в игре «Мировое господство».<br/>
+<br/>
+<img src="https://i.ibb.co/nrfFJ4j/image.jpg" alt="image" data-src="https://i.ibb.co/nrfFJ4j/image.jpg" data-blurred="true"/><br/>
+<br/>
+По сюжету, игра всегда завершается через 6 лет, поэтому в таблице 6 вкладок с игровыми полями.<br/>
+А вот, например, формула, которая вычисляет бюджет страны в третий год игры, суммируя исходный бюджет второго года и сумму прироста бюджета второго года:<br/>
+<br/>
+<img src="https://i.ibb.co/8mMT5yy/2019-05-12-17-27-39-Google-Docs-Google-Chrome.jpg" alt="2019-05-12-17-27-39-Google-Docs-Google-Chrome" data-src="https://i.ibb.co/8mMT5yy/2019-05-12-17-27-39-Google-Docs-Google-Chrome.jpg" data-blurred="true"/><br/>
+<br/>
+Здесь E41 — это сумма в бюджете на начало года, X44 — сумма изменений в бюджете в течение года.<br/>
+<br/>
+Или вот формула, которая выводит в ячейку на планшет игрока данные об экономическом состоянии города в зависимости от того, какой сейчас год на дворе. В зависимости от значения ячейки «счетчик лет» $F$1 выводятся значения одной и той же ячейки E36, но из разных вкладок, соответствующих тому или иному году.<br/>
+<br/>
+<img src="https://i.ibb.co/BsQWFR1/2019-05-12-17-28-08-Google-Docs-Google-Chrome.jpg" alt="2019-05-12-17-28-08-Google-Docs-Google-Chrome" data-src="https://i.ibb.co/BsQWFR1/2019-05-12-17-28-08-Google-Docs-Google-Chrome.jpg" data-blurred="true"/><br/>
+<br/>
+Такое решение, к сожалению, дает возможность разрабатывать только пошаговые игры, состоящие из определенных циклов (сутки, день-ночь, месяц, год и т. п.). Причем количество циклов должно быть обозримым, иначе на написание кода уйдет целая вечность. Впрочем, если нет задачи сообщать игрокам промежуточные значения игровых параметров и отслеживать их динамику в процессе, с вкладками-циклами можно вообще не заморачиваться.<br/>
+<br/>
+<u>Распределение ролей</u><br/>
+<br/>
+Иногда перед началом игры хочется мудро распределить роли, чтобы, например, наиболее активные персонажи достались более общительным игрокам, а роли с двойным дном — тем участникам, которые умеют блефовать и сдерживать эмоции. В игре «Экстренное совещание» эта задача тоже автоматизирована. Перед началом игры участники получают ссылку на анкету в формате Google Forms, где они отвечают на несколько вопросов о своих игровых предпочтениях.<br/>
+<br/>
+<img src="https://i.ibb.co/3RLvddT/image.jpg" alt="image" data-src="https://i.ibb.co/3RLvddT/image.jpg" data-blurred="true"/><br/>
+<br/>
+Эти даные попадают в таблицу, где алгоритм на их основе распределяет роли между игроками.<br/>
+<br/>
+<img src="https://i.ibb.co/SnzG3JR/image.jpg" alt="image" data-src="https://i.ibb.co/SnzG3JR/image.jpg" data-blurred="true"/><br/>
+<br/>
+<u>Сбор данных у игроков</u><br/>
+<br/>
+Как организовать сбор данных у игроков, если их 80 человек? Поначалу мне казалось хорошей идеей использовать для этой цели мессенджеры. У каждого игрока (или у каждого капитана команды) есть прямой чатик с ведущим, куда он может отправлять свои команды и распоряжения, оповещать о принятых решениях. Однако тестовые игры показали, что мессенджеры — плохая идея. Игроки начинают флудить, задавать кучу вопросов, ошибаться и отменять отправленные ранее распоряжения. В итоге скорость обработки данных падает, стек запросов разрастается, а игрокам приходится ждать по несколько минут, когда их распоряжение вступит в силу. К тому же большую часть игры участники проводят устваившись в свои смартфоны, а это не способствует живому общению и командообразованию.<br/>
+<br/>
+Хорошим решением оказался сбор у игроков данных посредством анкет и карточек. Например, в «Чумовой Венеции» игроки в течение всей игры сдают ведущему заполненные карточки с формулировками типа «Паоло Алигьери подослал убийц к Джакомо Сфорца» или «Леонардо Бертолуччи соблазнил Лукрецию Медичи», а ведущему остается только ставить галочки в таблице на пересечении соответствующих имен и фамилий.<br/>
+<br/>
+<img src="https://i.ibb.co/RTHDwBz/image.jpg" alt="image" data-src="https://i.ibb.co/RTHDwBz/image.jpg" data-blurred="true"/><br/>
+<br/>
+А в игре «День Выборов» команды старшеклассников сдают после каждого игрового цикла заполненные анкеты вот такого формата.<br/>
+<br/>
+<img src="https://i.ibb.co/dcxrJhw/image.jpg" alt="image" data-src="https://i.ibb.co/dcxrJhw/image.jpg" data-blurred="true"/><br/>
+<br/>
+Данные в такой анкете максимально упорядочены, и ведущему требуется не больше 5 секунд, чтобы вбить их в таблицу.<br/>
+<br/>
+<img src="https://i.ibb.co/nr25xKP/image.jpg" alt="image" data-src="https://i.ibb.co/nr25xKP/image.jpg" data-blurred="true"/><br/>
+<br/>
+<u>Отстройка баланса</u><br/>
+<br/>
+В ролевых играх важен игровой баланс: ресурсы всегда должны быть в легком дефиците, а различные инструменты по достижению целей примерно одинаково эффективными. Отстраивать баланс можно только вручную и только опытным путем, проводя серию тестовых игр. Чтобы не сойти с ума, меняя туда-сюда параметры в каждой формуле и в каждой ячейке, очень удобным решением является отдельная вкладка-справочник, где выведены все настраиваемые параметры, а формулы всей остальной таблицы ссылаются на них. При помощи справочника также можно, например, одним переключением чекбокса менять язык игры. Такая функция реализована в игре «Мировое господство».<br/>
+<br/>
+<img src="https://i.ibb.co/pWg8csf/image.jpg" alt="image" data-src="https://i.ibb.co/pWg8csf/image.jpg" data-blurred="true"/><br/>
+<br/>
+<u>Ввод данных в систему</u><br/>
+<br/>
+Чтобы игра не провисала, ведущий должен иметь возможность вводить в таблицу данные максимально оперативно и эргономично. В гугл-таблицах можно настраивать формат ввода данных (dada validation). Самый быстрый и удобный формат — чекбокс. Правда, не все формулы умеют работать со значениями TRUE и FALSE. Поэтому значения чекбокса лучше сразу перевести в ноль или единицу в какой-нибудь соседней технической ячейке, а дальше уже с этими нулем и единицей делать все что угодно.<br/>
+<br/>
+Выпадающий список — тоже очень удобный формат ввода, если в ячейке предполагается более двух значений. Наличие готовых вариантов в списке уберегает ведущего от опечаток, которые в игре могут сыграть критическую роль.<br/>
+<br/>
+Вот пример полей для ввода данных в игре «Мировое господство».<br/>
+<br/>
+<img src="https://i.ibb.co/drNX95T/image.jpg" alt="image" data-src="https://i.ibb.co/drNX95T/image.jpg" data-blurred="true"/><br/>
+<br/>
+<u>Индикация событий</u><br/>
+<br/>
+Ведущему важно вовремя замечать игровые события и реагировать на них. Так, в «Экстренном совещании» нужно вовремя замечать изменения в ячейках с номерами карточек, которые нужно выдать игрокам. А в «Мировом господстве» нужно вовремя сообщить игрокам, что город подвергся ядерному удару. Чтобы ведущий ничего не прозевал, можно использовать свойство ячейки conditional formatting (условное форматирование) — с ее помощью можно, например, сделать так, что при появлении текста «город уничтожен» ячейка самостоятельно красилась в красный цвет. В поле зрения ведущего окажется яркое красное пятно, которое невозможно не заметить.<br/>
+<br/>
+<img src="https://i.ibb.co/gtw5D2S/image.jpg" alt="image" data-src="https://i.ibb.co/gtw5D2S/image.jpg" data-blurred="true"/><br/>
+<br/>
+<u>Индивидуальная информация</u><br/>
+<br/>
+В игре возможны ситуации, когда часть данных известна одной команде, а другой — нет. Например, в игре «Мировое господство» информация о наличии ядерного вооружения в той или иной стране является засекреченной. В этом случае удобно использовать отдельные устройства вывода для каждой команды, а на главный экран выводить только общедоступную информацию. Технически это решается как группа отдельных таблиц (свой файл для каждой команды), в которые из мастер-таблицы при помощи функции IMPORTRANGE подтягивается только нужная информация.<br/>
+<br/>
+Кстати, <a href="https://habr.com/ru/company/englishdom/blog/343082/">Google Sheets предусматривает возможность экспортировать данные из таблицы в веб-интерфейс</a>, так что при желании вместо сухой таблицы игрокам на планшеты можно выводить данные в виде красиво сверстанной и анимированной инфографики.<br/>
+<br/>
+<u>Аккуратные графики</u><br/>
+<br/>
+В игре иногда вместо цифр хочется вывести на экран график, но стандартные диаграммы раздражают своей избыточностью. А еще тем, что они не умеют прилипать к ячейкам и всегда выглядят очень неаккуратно. К счастью, в гугл таблицах есть функция SPARKLINE. Эта функция отображает мини-график внутри ячейки. Он имеет определенные настройки, и его можно использовать для лаконичной визуализации некоторых данных.<br/>
+<br/>
+<img src="https://i.ibb.co/MGk19HR/image.jpg" alt="image" data-src="https://i.ibb.co/MGk19HR/image.jpg" data-blurred="true"/><br/>
+<br/>
+<u>Игровые новости</u><br/>
+<br/>
+Иногда требуется не просто вывести цифру в ячейке, но и сформулировать мысль в виде грамотно выстроенного предложения (например, в разделе «Последние новости»). В этом случае на выручку приходит функция CONCATENATE, которая умеет склеивать куски текста с цифровыми значениями из разных ячеек. Вот как выглядит формула с использованием этой функции.<br/>
+<br/>
+<img src="https://i.ibb.co/0FcPmYP/2019-05-12-17-28-33-Google-Docs-Google-Chrome.jpg" alt="2019-05-12-17-28-33-Google-Docs-Google-Chrome" data-src="https://i.ibb.co/0FcPmYP/2019-05-12-17-28-33-Google-Docs-Google-Chrome.jpg" data-blurred="true"/><br/>
+<br/>
+<u>Подведение итогов</u><br/>
+<br/>
+В «Мировом господстве» и «Чумовой Венеции» в финале игры объявляют не только главного победителя, но и команды, отличившиеся в различных номинациях. Для подведения итогов очень удобно использовать функцию MAX, которая вычисляет максимальное число в диапазоне. Ведущему ничего не надо дополнительно делать — достаточно просто прочитать с экрана названия победивших команд.<br/>
+<br/>
+<img src="https://i.ibb.co/F5K48Vc/image.jpg" alt="image" data-src="https://i.ibb.co/F5K48Vc/image.jpg" data-blurred="true"/><br/>
+</div></div> <!----> <!----></div> <div class="tm-article-presenter__meta"><div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Теги:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bgoogle%20sheets%5D" class="tm-tags-list__link">google sheets</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5B%D1%80%D0%BE%D0%BB%D0%B5%D0%B2%D1%8B%D0%B5%20%D0%B8%D0%B3%D1%80%D1%8B%5D" class="tm-tags-list__link">ролевые игры</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5B%D1%80%D0%BE%D0%BB%D0%B5%D0%B2%D1%8B%D0%B5%20%D0%B8%D0%B3%D1%80%D1%8B%20%D0%B6%D0%B8%D0%B2%D0%BE%D0%B3%D0%BE%20%D0%B4%D0%B5%D0%B9%D1%81%D1%82%D0%B2%D0%B8%D1%8F%5D" class="tm-tags-list__link">ролевые игры живого действия</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Blarp%5D" class="tm-tags-list__link">larp</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Blarpg%5D" class="tm-tags-list__link">larpg</a></li></ul></div> <div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Хабы:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/hub/gamedev/" class="tm-hubs-list__link">
+    Разработка игр
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/game_testing/" class="tm-hubs-list__link">
+    Тестирование игр
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/game_monetization/" class="tm-hubs-list__link">
+    Монетизация игр
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/game_design/" class="tm-hubs-list__link">
+    Дизайн игр
+  </a></li></ul></div></div></article></div> <!----></div> <div class="tm-article-sticky-panel"><div class="tm-data-icons tm-article-sticky-panel__icons"><div class="tm-article-rating tm-data-icons__item"><div class="tm-votes-meter tm-article-rating__votes-switcher"><svg height="16" width="16" class="tm-svg-img tm-votes-meter__icon tm-votes-meter__icon_medium"><title>Всего голосов 18: ↑18 и ↓0</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-rating"></use></svg> <span title="Всего голосов 18: ↑18 и ↓0" class="tm-votes-meter__value tm-votes-meter__value_positive tm-votes-meter__value_medium">+18</span></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----> <span title="Количество просмотров" class="tm-icon-counter tm-data-icons__item"><svg height="16" width="16" class="tm-svg-img tm-icon-counter__icon"><title>Просмотры</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-views"></use></svg> <span class="tm-icon-counter__value">8.4K</span></span> <button title="Добавить в закладки" type="button" class="bookmarks-button tm-data-icons__item"><span title="Добавить в закладки" class="tm-svg-icon__wrapper bookmarks-button__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Добавить в закладки</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-favorite"></use></svg></span> <span title="Количество пользователей, добавивших публикацию в закладки" class="bookmarks-button__counter">
+    102
+  </span></button> <!----> <div title="Поделиться" class="tm-sharing tm-data-icons__item"><button type="button" class="tm-sharing__button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="tm-sharing__icon"><path fill="currentColor" d="M10.33.275l9.047 7.572a.2.2 0 010 .306l-9.048 7.572a.2.2 0 01-.328-.153V11c-8 0-9.94 6-9.94 6S-1 5 10 5V.428a.2.2 0 01.328-.153z"></path></svg></button> <!----></div> <DIV class="v-portal" style="display:none;"></DIV></div> </div></div> <!----> <!----> <div class="tm-article-presenter__footer"><div class="tm-article-blocks"><!----> <section class="tm-block tm-block_spacing-bottom"><!----> <div class="tm-block__body tm-block__body_variant-balanced"><div class="tm-article-author"> <div class="tm-user-card tm-article-author__user-card tm-user-card_variant-article"><div class="tm-user-card__info-container"><div class="tm-user-card__header"><div class="tm-user-card__header-data"><a href="/ru/users/stasakimov/" class="tm-user-card__userpic tm-user-card__userpic_size-40"><div class="tm-entity-image"><img alt="" src="//habrastorage.org/getpro/habr/avatars/890/af5/341/890af5341b7a25fcb03bfb026f288960.jpg" class="tm-entity-image__pic"></div></a> <div class="tm-user-card__meta"><div title=" 3 голоса " class="tm-karma tm-user-card__karma"><div class="tm-karma__votes tm-karma__votes_positive">
+    3
+  </div> <div class="tm-karma__text">
+    Карма
+  </div></div> <div title="Рейтинг пользователя" class="tm-rating tm-user-card__rating"><div class="tm-rating__header"> <div class="tm-rating__counter">0</div></div> <div class="tm-rating__text">
+    Рейтинг
+  </div></div></div></div></div> <div class="tm-user-card__info tm-user-card__info_variant-article"><div class="tm-user-card__title tm-user-card__title_variant-article"><span class="tm-user-card__name tm-user-card__name_variant-article">Станислав</span> <a href="/ru/users/stasakimov/" class="tm-user-card__nickname tm-user-card__nickname_variant-article">
+          @stasakimov
+        </a> <!----></div> <p class="tm-user-card__short-info tm-user-card__short-info_variant-article">Организатор мероприятий</p></div></div> <div class="tm-user-card__buttons tm-user-card__buttons_variant-article"><!----> <!----> <!----> <!----> <!----></div></div> <div class="tm-article-author__user-contacts"><a href="http://msk2048.ru" rel="noopener" target="_blank" class="tm-article-author__contact">
+      Сайт
+    </a></div></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----></section> <div class="tm-article-blocks__comments"><div class="tm-article-page-comments"><div class="tm-article-comments-counter-link tm-article-comments-counter-button"><a href="/ru/post/451776/comments/" class="tm-article-comments-counter-link__link tm-article-comments-counter-link__link_button-style"><svg height="16" width="16" class="tm-svg-img tm-article-comments-counter-link__icon tm-article-comments-counter-link__icon_contrasted"><title>Комментарии</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-comments"></use></svg> <span class="tm-article-comments-counter-link__value tm-article-comments-counter-link__value_contrasted">
+       Комментарии 2 
+    </span></a> <!----></div></div></div> <div class="tm-ad-banner__container tm-page-article__banner"><!----> <div id="articleBottomBanner" class="tm-ad-banner"></div></div> <!----> <!----> <!----> <!----> </div></div></div></div></div> <div class="tm-page__sidebar"><div class="tm-layout-sidebar"><div class="tm-layout-sidebar__ads tm-layout-sidebar__ads_initial"><div class="tm-ad-banner__container tm-layout-sidebar__banner"><!----> <div id="sidebarBanner" class="tm-ad-banner"></div></div></div> <div class="tm-sexy-sidebar tm-sexy-sidebar_initial" style="margin-top:0px;"><!----> <!----></div></div></div></div></div></div></main> <!----></div> <div class="tm-footer-menu"><div class="tm-page-width"><div class="tm-footer-menu__container"><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Ваш аккаунт
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr/?back=/ru/post/451776/&amp;hl=ru" rel="nofollow" target="_self">
+                Войти
+              </a></li><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr-register/?back=/ru/post/451776/&amp;hl=ru" rel="nofollow" target="_self">
+                Регистрация
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Разделы
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/" class="footer-menu__item-link router-link-active">
+                Публикации
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/news/" class="footer-menu__item-link">
+                Новости
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/hubs/" class="footer-menu__item-link">
+                Хабы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/companies/" class="footer-menu__item-link">
+                Компании
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/users/" class="footer-menu__item-link">
+                Авторы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/sandbox/" class="footer-menu__item-link">
+                Песочница
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Информация
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/docs/help/" class="footer-menu__item-link">
+                Устройство сайта
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/authors/codex/" class="footer-menu__item-link">
+                Для авторов
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/companies/corpblogs/" class="footer-menu__item-link">
+                Для компаний
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/docs/transparency/" class="footer-menu__item-link">
+                Документы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/agreement" target="_blank">
+                Соглашение
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/confidential/" target="_blank">
+                Конфиденциальность
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Услуги
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQLwRfQmXibiUlWaRg-BAc38s7oM3lJiaPju7qmdJsp8ysIvZ_G-Npem0njJLMozE2bPHMpDqiI5hhy/pub?start=false&amp;loop=false&amp;delayms=60000&amp;slide=id.g91a03369cd_4_297" target="_blank">
+                Реклама
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://habrastorage.org/storage/stuff/habr/service_price.pdf" target="_blank">
+                Тарифы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQJJds8-Di7BQSP_guHxICN7woVYoN5NP_22ra-BIo4bqnTT9FR6fB-Ku2P0AoRpX0Ds-LRkDeAoD8F/pub?start=false&amp;loop=false&amp;delayms=60000" target="_blank">
+                Контент
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://tmtm.timepad.ru/" target="_blank">
+                Семинары
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/megaprojects/" class="footer-menu__item-link">
+                Мегапроекты
+              </a></li></ul></div></div></div></div></div> <div class="tm-footer"><div class="tm-page-width"><div class="tm-footer__container"><!----> <div class="tm-footer__social"><a href="https://www.facebook.com/habrahabr.ru" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Facebook</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-facebook"></use></svg></a><a href="https://twitter.com/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Twitter</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-twitter"></use></svg></a><a href="https://vk.com/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>VK</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-vkontakte"></use></svg></a><a href="https://telegram.me/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Telegram</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-telegram"></use></svg></a><a href="https://www.youtube.com/channel/UCd_sTwKqVrweTt4oAKY5y4w" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Youtube</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-youtube"></use></svg></a><a href="https://zen.yandex.ru/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Яндекс Дзен</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-zen"></use></svg></a></div> <DIV class="v-portal" style="display:none;"></DIV> <button class="tm-footer__link"><!---->
+        Настройка языка
+      </button> <a href="/ru/about" class="tm-footer__link">
+        О сайте
+      </a> <a href="/ru/feedback/" class="tm-footer__link">
+        Техническая поддержка
+      </a> <!----> <a href="/berserk-mode-nope" class="tm-footer__link">
+        Вернуться на старую версию
+      </a> <div class="tm-footer-copyright"><span class="tm-copyright"><span class="tm-copyright__years">© 2006–2021 </span> <span class="tm-copyright__name">«<a href="https://company.habr.com/" rel="noopener" target="_blank" class="tm-copyright__link">Habr</a>»</span></span></div></div></div></div> <!----> <!----></div> <div class="vue-portal-target"></div></div>
+<script>window.__INITIAL_STATE__={"adblock":{"hasAcceptableAdsFilter":false,"hasAdblock":false},"articlesList":{"articlesList":{"451776":{"id":"451776","timePublished":"2019-05-14T11:01:59+00:00","isCorporative":false,"lang":"ru","titleHtml":"Как я программирую движки для ролевых игр в Google-таблицах","leadData":{"textHtml":"\u003Cdiv style=\"text-align:center;\"\u003E\u003Cimg src=\"https:\u002F\u002Fi.ibb.co\u002FkcbyKNd\u002Fimage.jpg\" alt=\"image\" \u002F\u003E\u003C\u002Fdiv\u003E\u003Cbr\u002F\u003E\r\nИдея использовать электронные таблицы в качестве среды для разработки игрушек \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fgoogle\u002Fblog\u002F217425\u002F\"\u003Eне нова\u003C\u002Fa\u003E. В этой статье я поделюсь опытом в создании движков для ролевых игр живого действия и тимбилдингов, которые смогут сильно облегчить жизнь игропрактикам.\u003Cbr\u002F\u003E\r\n","imageUrl":null,"buttonTextHtml":"Читать дальше &rarr;","image":null},"editorVersion":"1.0","postType":"article","postLabels":[{"type":"sandbox","data":null}],"author":{"scoreStats":{"score":3,"votesCount":3},"rating":0,"relatedData":null,"contacts":[{"title":"Сайт","url":"http:\u002F\u002Fmsk2048.ru","value":"http:\u002F\u002Fmsk2048.ru"}],"authorContacts":[{"title":"Сайт","url":"http:\u002F\u002Fmsk2048.ru","value":"http:\u002F\u002Fmsk2048.ru"}],"paymentDetails":{"paymentYandexMoney":null,"paymentPayPalMe":null,"paymentWebmoney":null},"id":"1970165","alias":"stasakimov","fullname":"Станислав","avatarUrl":"\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Favatars\u002F890\u002Faf5\u002F341\u002F890af5341b7a25fcb03bfb026f288960.jpg","speciality":"Организатор мероприятий"},"statistics":{"commentsCount":2,"favoritesCount":102,"readingCount":8396,"score":18,"votesCount":18},"hubs":[{"relatedData":null,"id":"7773","alias":"gamedev","type":"collective","title":"Разработка игр","titleHtml":"Разработка игр","isProfiled":true},{"relatedData":null,"id":"19289","alias":"game_testing","type":"collective","title":"Тестирование игр","titleHtml":"Тестирование игр","isProfiled":true},{"relatedData":null,"id":"20708","alias":"game_monetization","type":"collective","title":"Монетизация игр","titleHtml":"Монетизация игр","isProfiled":true},{"relatedData":null,"id":"20800","alias":"game_design","type":"collective","title":"Дизайн игр","titleHtml":"Дизайн игр","isProfiled":true}],"flows":[{"id":"1","alias":"develop","title":"Разработка"},{"id":"2","alias":"design","title":"Дизайн"},{"id":"4","alias":"marketing","title":"Маркетинг"}],"relatedData":null,"textHtml":"\u003Cdiv xmlns=\"http:\u002F\u002Fwww.w3.org\u002F1999\u002Fxhtml\"\u003E\u003Cdiv style=\"text-align:center;\"\u003E\u003Cimg src=\"https:\u002F\u002Fi.ibb.co\u002FkcbyKNd\u002Fimage.jpg\" alt=\"image\" data-src=\"https:\u002F\u002Fi.ibb.co\u002FkcbyKNd\u002Fimage.jpg\" data-blurred=\"true\"\u002F\u003E\u003C\u002Fdiv\u003E\u003Cbr\u002F\u003E\r\nИдея использовать электронные таблицы в качестве среды для разработки игрушек \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fgoogle\u002Fblog\u002F217425\u002F\"\u003Eне нова\u003C\u002Fa\u003E. В этой статье я поделюсь опытом в создании движков для ролевых игр живого действия и тимбилдингов, которые смогут сильно облегчить жизнь игропрактикам.\u003Cbr\u002F\u003E\r\n\u003Ca name=\"habracut\"\u003E\u003C\u002Fa\u003E\u003Cbr\u002F\u003E\r\n\u003Ch3\u003EЗачем это надо\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\nДопустим, вы проводите игру, в которой участвует одновременно 50-60 человек. У каждого игрока есть набор личных параметров (например, опыт, деньги, здоровье, репутация), которые меняются в зависимости от совершенных им действий. Также есть ряд общеигровых показателей (например, экология, бюджет страны или рейтинг правительства), которые также колеблются в соответствии с действиями и решениями игроков. А еще есть игровые события, которые происходят при определенной комбинации внешних факторов.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВ общем, это довольно плотный поток информации, который нуждается в оперативном и точном просчитывании. В классической ролевой игре эту функцию обычно выполняют мастера игры. Но мастер не застрахован от ошибок, и много информации он все равно не обработает — ни в голове, ни даже при помощи листка бумаги.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nС электронным движком один человек способен обрабатывать информационный поток любого объема. При этом игровую статистику можно выводить на проектор, чтобы участники в реальном времени наблюдали, как их действия влияют на игровые расклады. Или, например, можно показывать секретные данные каждому игроку адресно на смартфон. И самое главное — пользоваться таким движком можно совершенно бесплатно!\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nУвлекшись игровыми практиками около года назад, я успел написать 7 движков для разных командообразующих игр. Большая часть из этих игр имеет коммерческий успех, а одна даже продалась в качестве франшизы за границу.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch3\u003EДенежный поток\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\nВсе началось с игры «\u003Ca href=\"https:\u002F\u002Fwww.mosigra.ru\u002FFace\u002FShow\u002Fcashflow\u002F\"\u003EДенежный поток\u003C\u002Fa\u003E». Знакомые пригласили меня поиграть в знаменитую настолку Роберта Кийосаки, и она меня очень зацепила. Единственное, что раздражало в игре, — это необходимость постоянно производить расчеты в столбик, стирать ластиком устаревшие данные и вносить новые. Из-за того, что все участники, боясь ошибиться, были постоянно сконцентрированы на собственных расчетах, игра сильно теряла в динамике и затягивалась на долгие часы.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЯ решил оптимизировать игровой процесс, переведя все калькуляции в Гугл-таблицу.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"https:\u002F\u002Fi.ibb.co\u002FMP2PcsP\u002Fimage.jpg\" alt=\"image\" data-src=\"https:\u002F\u002Fi.ibb.co\u002FMP2PcsP\u002Fimage.jpg\" data-blurred=\"true\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЧтобы протестировать этот «калькулятор», я провел несколько игр для друзей. Эффект был потрясающий! Вместо того, чтобы корпеть над вычислениями, игроки активно вовлекались в игровой процесс, вели переговоры, придумывали сложные финансовые схемы и махинации. Скорость самой игры возросла почти в два раза. Нам впервые удалось довести ее до конца, когда все игроки покинули дорожку крысиных бегов и достигли своих целей. Для сравнения, в «ручной» версии участникам едва хватало терпения доиграть до того момента, когда хотя бы кому-то одному удавалось выйти на большой круг.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n«Офигеть! — воскликнул мой товарищ Рубен во время одной из игр. — Восемь взрослых мужиков собрались, чтобы весь вечер пялиться на экран с гугл-табличкой. Но это реально интереснее любого кино!»\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nМою табличку для расчетов в игре «Денежный поток» можно скачать \u003Ca href=\"https:\u002F\u002Fdocs.google.com\u002Fspreadsheets\u002Fd\u002F1OTVk696_2-lyEBhzX8UWam3FPzPygnttu03QW10U2m8\u002Fedit#gid=0\"\u003Eотсюда\u003C\u002Fa\u003E. Если не до конца будет понятно, как ей пользоваться, напишите мне, и я вышлю подробную инструкцию.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch3\u003EЗомби, президенты и ассасины\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\nНемного позже я наткнулся на сценарий кабинетной ролевой игры «\u003Ca href=\"http:\u002F\u002Fwww.interactivitiesink.com\u002Flarps\u002Fzombies\u002Fzombies.html\"\u003EAll The President's Zombies\u003C\u002Fa\u003E» американского геймдизайнера Майка Янга. По сюжету, в стране происходит зомби-апокалипсис, и группа высших чиновников собирается в кабинете президента, чтобы выработать план по решению этой проблемы.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"https:\u002F\u002Fi.ibb.co\u002FSrPzXT9\u002Fimage.jpg\" alt=\"image\" data-src=\"https:\u002F\u002Fi.ibb.co\u002FSrPzXT9\u002Fimage.jpg\" data-blurred=\"true\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nКонцепция мне понравилась, и я решил создать свою собственную игру, локализовав творение Янга. Получилась игра «\u003Ca href=\"https:\u002F\u002F2048.events\u002Fproducts\u002Fekstrennoe-soveshanie\"\u003EЭкстренное совещание\u003C\u002Fa\u003E», которая достаточно далеко ушла от оригинала. В ее основе — развесистое дерево событий, которые в реальном времени происходят в зависимости от тех или иных решений, принятых игроками на совещании. Вместо того, чтобы кропотливо обучать мастеров игры, я создал гугл-таблицу, которая автоматически вычисляла последствия каждого из предпринятых игроками действий. Ведущему оставалось только ставить на экране галочки и вытягивать из колоды карты, номера которых высвечивались в таблице.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"https:\u002F\u002Fi.ibb.co\u002FhRTy62k\u002Fimage.jpg\" alt=\"image\" data-src=\"https:\u002F\u002Fi.ibb.co\u002FhRTy62k\u002Fimage.jpg\" data-blurred=\"true\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nОпределенную сложность у меня вызвала необходимость отслеживать динамику игровых параметров. Ведь при изменении значения ячейки таблица моментально пересчитывает все связанные с ней формулы, нигде не сохраняя старого значения. Я придумал, как обойти эту сложность, но об этом расскажу ниже.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПроведя пару десятков «Экстренных совещаний» для друзей и знакомых, я понял, что это перспективный формат для всякого рода тимбилдингов и корпоративных историй. Мешало только ограничение на максимальное число участников в 12 человек. И я стал придумывать новые игры, в которые можно было бы играть большим коллективом. При этом управлять игровой экосистемой должен был по-прежнему один ведущий. Так появились игры «\u003Ca href=\"https:\u002F\u002F2048.events\u002Fproducts\u002Fvenezia\"\u003EЧумовая Венеция\u003C\u002Fa\u003E» по мотивам франшизы Assassin’s Creed, «Мировое господство» о противостоянии сверхдержав на мировой арене, «День выборов» о честных и не очень политических технологиях и еще несколько игр, решающих специфические задачи конкретных заказчиков.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПри разработке каждой из этих игр я сталкивался с определенными сложностями, и сейчас разберу несколько наиболее интересных примеров.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch3\u003EПроблема — решение\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\nВ основе любого игрового движка лежит следующая последовательность действий: 1) сбор информации о решениях, принятых игроками, 2) ввод этой информации в систему, 3) проверка условий и вычисление системой новых данных, 4) выдача игрокам новых данных. В зависимости от сюжета игры, этот цикл может повторяться от одного до условно бесконечного числа раз. При этом вся коммуникация игроков, предшествующая принятию окончательных решений, остается «за кадром», и игровой системой никак не учитывается. Так что в целом процесс не производит ощущения компьютерной игры, оставляя простор для живого эмоционального взаимодействия.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cu\u003EЭмуляция циклов\u003C\u002Fu\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nОсновная сложность при разработке движка в гугл-таблице — отсутствие таких привычных программисту сущностей, как переменная, цикл, прерывание, процедура.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nДопустим, отсутствующие кнопки можно заменить ячейкой со значением «чекбокс» — в какой-то отдельной ячейке тогда будет формула, проверяющая состояние чекбокса и вычисляющая в зависимости от этого значение целевой ячейки. Но как быть с тем фактом, что вся таблица статична во времени, и при изменении значения одной ячейки-переменной моментально и «без спроса» пересчитываются значения всех других ячеек, ссылающихся на нее в формуле? Я не придумал ничего лучше, чем компенсировать отсутствие подпрограмм и циклов при помощи вкладок. Вы просто создаете в таблице столько вкладок, сколько циклов предполагается в игре и сколько раз за игру теоретически одна переменная может поменять свое значение. Тогда, например, ячейка во вкладке-2 будет наследовать значение той же ячейки во вкладке-1, претерпевать какие-то изменения и передавать свое значение в ту же ячейку из вкладки-3. Вот, например, как выглядят вкладки циклов в игре «Мировое господство».\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"https:\u002F\u002Fi.ibb.co\u002FnrfFJ4j\u002Fimage.jpg\" alt=\"image\" data-src=\"https:\u002F\u002Fi.ibb.co\u002FnrfFJ4j\u002Fimage.jpg\" data-blurred=\"true\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПо сюжету, игра всегда завершается через 6 лет, поэтому в таблице 6 вкладок с игровыми полями.\u003Cbr\u002F\u003E\r\nА вот, например, формула, которая вычисляет бюджет страны в третий год игры, суммируя исходный бюджет второго года и сумму прироста бюджета второго года:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"https:\u002F\u002Fi.ibb.co\u002F8mMT5yy\u002F2019-05-12-17-27-39-Google-Docs-Google-Chrome.jpg\" alt=\"2019-05-12-17-27-39-Google-Docs-Google-Chrome\" data-src=\"https:\u002F\u002Fi.ibb.co\u002F8mMT5yy\u002F2019-05-12-17-27-39-Google-Docs-Google-Chrome.jpg\" data-blurred=\"true\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЗдесь E41 — это сумма в бюджете на начало года, X44 — сумма изменений в бюджете в течение года.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nИли вот формула, которая выводит в ячейку на планшет игрока данные об экономическом состоянии города в зависимости от того, какой сейчас год на дворе. В зависимости от значения ячейки «счетчик лет» $F$1 выводятся значения одной и той же ячейки E36, но из разных вкладок, соответствующих тому или иному году.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"https:\u002F\u002Fi.ibb.co\u002FBsQWFR1\u002F2019-05-12-17-28-08-Google-Docs-Google-Chrome.jpg\" alt=\"2019-05-12-17-28-08-Google-Docs-Google-Chrome\" data-src=\"https:\u002F\u002Fi.ibb.co\u002FBsQWFR1\u002F2019-05-12-17-28-08-Google-Docs-Google-Chrome.jpg\" data-blurred=\"true\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nТакое решение, к сожалению, дает возможность разрабатывать только пошаговые игры, состоящие из определенных циклов (сутки, день-ночь, месяц, год и т. п.). Причем количество циклов должно быть обозримым, иначе на написание кода уйдет целая вечность. Впрочем, если нет задачи сообщать игрокам промежуточные значения игровых параметров и отслеживать их динамику в процессе, с вкладками-циклами можно вообще не заморачиваться.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cu\u003EРаспределение ролей\u003C\u002Fu\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nИногда перед началом игры хочется мудро распределить роли, чтобы, например, наиболее активные персонажи достались более общительным игрокам, а роли с двойным дном — тем участникам, которые умеют блефовать и сдерживать эмоции. В игре «Экстренное совещание» эта задача тоже автоматизирована. Перед началом игры участники получают ссылку на анкету в формате Google Forms, где они отвечают на несколько вопросов о своих игровых предпочтениях.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"https:\u002F\u002Fi.ibb.co\u002F3RLvddT\u002Fimage.jpg\" alt=\"image\" data-src=\"https:\u002F\u002Fi.ibb.co\u002F3RLvddT\u002Fimage.jpg\" data-blurred=\"true\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЭти даные попадают в таблицу, где алгоритм на их основе распределяет роли между игроками.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"https:\u002F\u002Fi.ibb.co\u002FSnzG3JR\u002Fimage.jpg\" alt=\"image\" data-src=\"https:\u002F\u002Fi.ibb.co\u002FSnzG3JR\u002Fimage.jpg\" data-blurred=\"true\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cu\u003EСбор данных у игроков\u003C\u002Fu\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nКак организовать сбор данных у игроков, если их 80 человек? Поначалу мне казалось хорошей идеей использовать для этой цели мессенджеры. У каждого игрока (или у каждого капитана команды) есть прямой чатик с ведущим, куда он может отправлять свои команды и распоряжения, оповещать о принятых решениях. Однако тестовые игры показали, что мессенджеры — плохая идея. Игроки начинают флудить, задавать кучу вопросов, ошибаться и отменять отправленные ранее распоряжения. В итоге скорость обработки данных падает, стек запросов разрастается, а игрокам приходится ждать по несколько минут, когда их распоряжение вступит в силу. К тому же большую часть игры участники проводят устваившись в свои смартфоны, а это не способствует живому общению и командообразованию.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nХорошим решением оказался сбор у игроков данных посредством анкет и карточек. Например, в «Чумовой Венеции» игроки в течение всей игры сдают ведущему заполненные карточки с формулировками типа «Паоло Алигьери подослал убийц к Джакомо Сфорца» или «Леонардо Бертолуччи соблазнил Лукрецию Медичи», а ведущему остается только ставить галочки в таблице на пересечении соответствующих имен и фамилий.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"https:\u002F\u002Fi.ibb.co\u002FRTHDwBz\u002Fimage.jpg\" alt=\"image\" data-src=\"https:\u002F\u002Fi.ibb.co\u002FRTHDwBz\u002Fimage.jpg\" data-blurred=\"true\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nА в игре «День Выборов» команды старшеклассников сдают после каждого игрового цикла заполненные анкеты вот такого формата.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"https:\u002F\u002Fi.ibb.co\u002FdcxrJhw\u002Fimage.jpg\" alt=\"image\" data-src=\"https:\u002F\u002Fi.ibb.co\u002FdcxrJhw\u002Fimage.jpg\" data-blurred=\"true\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nДанные в такой анкете максимально упорядочены, и ведущему требуется не больше 5 секунд, чтобы вбить их в таблицу.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"https:\u002F\u002Fi.ibb.co\u002Fnr25xKP\u002Fimage.jpg\" alt=\"image\" data-src=\"https:\u002F\u002Fi.ibb.co\u002Fnr25xKP\u002Fimage.jpg\" data-blurred=\"true\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cu\u003EОтстройка баланса\u003C\u002Fu\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВ ролевых играх важен игровой баланс: ресурсы всегда должны быть в легком дефиците, а различные инструменты по достижению целей примерно одинаково эффективными. Отстраивать баланс можно только вручную и только опытным путем, проводя серию тестовых игр. Чтобы не сойти с ума, меняя туда-сюда параметры в каждой формуле и в каждой ячейке, очень удобным решением является отдельная вкладка-справочник, где выведены все настраиваемые параметры, а формулы всей остальной таблицы ссылаются на них. При помощи справочника также можно, например, одним переключением чекбокса менять язык игры. Такая функция реализована в игре «Мировое господство».\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"https:\u002F\u002Fi.ibb.co\u002FpWg8csf\u002Fimage.jpg\" alt=\"image\" data-src=\"https:\u002F\u002Fi.ibb.co\u002FpWg8csf\u002Fimage.jpg\" data-blurred=\"true\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cu\u003EВвод данных в систему\u003C\u002Fu\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЧтобы игра не провисала, ведущий должен иметь возможность вводить в таблицу данные максимально оперативно и эргономично. В гугл-таблицах можно настраивать формат ввода данных (dada validation). Самый быстрый и удобный формат — чекбокс. Правда, не все формулы умеют работать со значениями TRUE и FALSE. Поэтому значения чекбокса лучше сразу перевести в ноль или единицу в какой-нибудь соседней технической ячейке, а дальше уже с этими нулем и единицей делать все что угодно.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВыпадающий список — тоже очень удобный формат ввода, если в ячейке предполагается более двух значений. Наличие готовых вариантов в списке уберегает ведущего от опечаток, которые в игре могут сыграть критическую роль.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВот пример полей для ввода данных в игре «Мировое господство».\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"https:\u002F\u002Fi.ibb.co\u002FdrNX95T\u002Fimage.jpg\" alt=\"image\" data-src=\"https:\u002F\u002Fi.ibb.co\u002FdrNX95T\u002Fimage.jpg\" data-blurred=\"true\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cu\u003EИндикация событий\u003C\u002Fu\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВедущему важно вовремя замечать игровые события и реагировать на них. Так, в «Экстренном совещании» нужно вовремя замечать изменения в ячейках с номерами карточек, которые нужно выдать игрокам. А в «Мировом господстве» нужно вовремя сообщить игрокам, что город подвергся ядерному удару. Чтобы ведущий ничего не прозевал, можно использовать свойство ячейки conditional formatting (условное форматирование) — с ее помощью можно, например, сделать так, что при появлении текста «город уничтожен» ячейка самостоятельно красилась в красный цвет. В поле зрения ведущего окажется яркое красное пятно, которое невозможно не заметить.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"https:\u002F\u002Fi.ibb.co\u002Fgtw5D2S\u002Fimage.jpg\" alt=\"image\" data-src=\"https:\u002F\u002Fi.ibb.co\u002Fgtw5D2S\u002Fimage.jpg\" data-blurred=\"true\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cu\u003EИндивидуальная информация\u003C\u002Fu\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВ игре возможны ситуации, когда часть данных известна одной команде, а другой — нет. Например, в игре «Мировое господство» информация о наличии ядерного вооружения в той или иной стране является засекреченной. В этом случае удобно использовать отдельные устройства вывода для каждой команды, а на главный экран выводить только общедоступную информацию. Технически это решается как группа отдельных таблиц (свой файл для каждой команды), в которые из мастер-таблицы при помощи функции IMPORTRANGE подтягивается только нужная информация.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nКстати, \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fenglishdom\u002Fblog\u002F343082\u002F\"\u003EGoogle Sheets предусматривает возможность экспортировать данные из таблицы в веб-интерфейс\u003C\u002Fa\u003E, так что при желании вместо сухой таблицы игрокам на планшеты можно выводить данные в виде красиво сверстанной и анимированной инфографики.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cu\u003EАккуратные графики\u003C\u002Fu\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВ игре иногда вместо цифр хочется вывести на экран график, но стандартные диаграммы раздражают своей избыточностью. А еще тем, что они не умеют прилипать к ячейкам и всегда выглядят очень неаккуратно. К счастью, в гугл таблицах есть функция SPARKLINE. Эта функция отображает мини-график внутри ячейки. Он имеет определенные настройки, и его можно использовать для лаконичной визуализации некоторых данных.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"https:\u002F\u002Fi.ibb.co\u002FMGk19HR\u002Fimage.jpg\" alt=\"image\" data-src=\"https:\u002F\u002Fi.ibb.co\u002FMGk19HR\u002Fimage.jpg\" data-blurred=\"true\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cu\u003EИгровые новости\u003C\u002Fu\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nИногда требуется не просто вывести цифру в ячейке, но и сформулировать мысль в виде грамотно выстроенного предложения (например, в разделе «Последние новости»). В этом случае на выручку приходит функция CONCATENATE, которая умеет склеивать куски текста с цифровыми значениями из разных ячеек. Вот как выглядит формула с использованием этой функции.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"https:\u002F\u002Fi.ibb.co\u002F0FcPmYP\u002F2019-05-12-17-28-33-Google-Docs-Google-Chrome.jpg\" alt=\"2019-05-12-17-28-33-Google-Docs-Google-Chrome\" data-src=\"https:\u002F\u002Fi.ibb.co\u002F0FcPmYP\u002F2019-05-12-17-28-33-Google-Docs-Google-Chrome.jpg\" data-blurred=\"true\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cu\u003EПодведение итогов\u003C\u002Fu\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВ «Мировом господстве» и «Чумовой Венеции» в финале игры объявляют не только главного победителя, но и команды, отличившиеся в различных номинациях. Для подведения итогов очень удобно использовать функцию MAX, которая вычисляет максимальное число в диапазоне. Ведущему ничего не надо дополнительно делать — достаточно просто прочитать с экрана названия победивших команд.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"https:\u002F\u002Fi.ibb.co\u002FF5K48Vc\u002Fimage.jpg\" alt=\"image\" data-src=\"https:\u002F\u002Fi.ibb.co\u002FF5K48Vc\u002Fimage.jpg\" data-blurred=\"true\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003C\u002Fdiv\u003E","tags":[{"titleHtml":"google sheets"},{"titleHtml":"ролевые игры"},{"titleHtml":"ролевые игры живого действия"},{"titleHtml":"larp"},{"titleHtml":"larpg"}],"metadata":{"stylesUrls":[],"scriptUrls":[],"shareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F451776\u002F1d705fbf4190b11d82304c0f3575b49b\u002F","shareImageWidth":1200,"shareImageHeight":630,"vkShareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F451776\u002F1d705fbf4190b11d82304c0f3575b49b\u002F?format=vk","schemaJsonLd":"{\"@context\":\"http:\\\u002F\\\u002Fschema.org\",\"@type\":\"Article\",\"mainEntityOfPage\":{\"@type\":\"WebPage\",\"@id\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fru\\\u002Fpost\\\u002F451776\\\u002F\"},\"headline\":\"Как я программирую движки для ролевых игр в Google-таблицах\",\"datePublished\":\"2019-05-14T14:01:59+03:00\",\"dateModified\":\"2019-05-14T14:01:59+03:00\",\"author\":{\"@type\":\"Person\",\"name\":\"Станислав\"},\"publisher\":{\"@type\":\"Organization\",\"name\":\"Habr\",\"logo\":{\"@type\":\"ImageObject\",\"url\":\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fa_\\\u002Flk\\\u002F9m\\\u002Fa_lk9mjkccjox-zccjrpfolmkmq.png\"}},\"description\":\"Идея использовать электронные таблицы в качестве среды для разработки игрушек не нова. В этой статье я поделюсь опытом в создании движков для ролевых игр живого...\",\"url\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fru\\\u002Fpost\\\u002F451776\\\u002F#post-content-body\",\"about\":[\"h_gamedev\",\"h_game_testing\",\"h_game_monetization\",\"h_game_design\",\"f_develop\",\"f_design\",\"f_marketing\"],\"image\":[\"https:\\\u002F\\\u002Fi.ibb.co\\\u002FkcbyKNd\\\u002Fimage.jpg\",\"https:\\\u002F\\\u002Fi.ibb.co\\\u002FMP2PcsP\\\u002Fimage.jpg\",\"https:\\\u002F\\\u002Fi.ibb.co\\\u002FSrPzXT9\\\u002Fimage.jpg\",\"https:\\\u002F\\\u002Fi.ibb.co\\\u002FhRTy62k\\\u002Fimage.jpg\",\"https:\\\u002F\\\u002Fi.ibb.co\\\u002FnrfFJ4j\\\u002Fimage.jpg\",\"https:\\\u002F\\\u002Fi.ibb.co\\\u002F8mMT5yy\\\u002F2019-05-12-17-27-39-Google-Docs-Google-Chrome.jpg\",\"https:\\\u002F\\\u002Fi.ibb.co\\\u002FBsQWFR1\\\u002F2019-05-12-17-28-08-Google-Docs-Google-Chrome.jpg\",\"https:\\\u002F\\\u002Fi.ibb.co\\\u002F3RLvddT\\\u002Fimage.jpg\",\"https:\\\u002F\\\u002Fi.ibb.co\\\u002FSnzG3JR\\\u002Fimage.jpg\",\"https:\\\u002F\\\u002Fi.ibb.co\\\u002FRTHDwBz\\\u002Fimage.jpg\",\"https:\\\u002F\\\u002Fi.ibb.co\\\u002FdcxrJhw\\\u002Fimage.jpg\",\"https:\\\u002F\\\u002Fi.ibb.co\\\u002Fnr25xKP\\\u002Fimage.jpg\",\"https:\\\u002F\\\u002Fi.ibb.co\\\u002FpWg8csf\\\u002Fimage.jpg\",\"https:\\\u002F\\\u002Fi.ibb.co\\\u002FdrNX95T\\\u002Fimage.jpg\",\"https:\\\u002F\\\u002Fi.ibb.co\\\u002Fgtw5D2S\\\u002Fimage.jpg\",\"https:\\\u002F\\\u002Fi.ibb.co\\\u002FMGk19HR\\\u002Fimage.jpg\",\"https:\\\u002F\\\u002Fi.ibb.co\\\u002F0FcPmYP\\\u002F2019-05-12-17-28-33-Google-Docs-Google-Chrome.jpg\",\"https:\\\u002F\\\u002Fi.ibb.co\\\u002FF5K48Vc\\\u002Fimage.jpg\"]}","metaDescription":"Идея использовать электронные таблицы в качестве среды для разработки игрушек не нова. В этой статье я поделюсь опытом в создании движков для ролевых игр живого действия и тимбилдингов, которые...","mainImageUrl":null,"amp":false},"polls":[],"commentsEnabled":true,"rulesRemindEnabled":false,"votesEnabled":true,"status":"published","plannedPublishTime":null,"checked":null,"isEditorial":false}},"articlesIds":{},"isLoading":false,"pagesCount":{},"route":{},"reasonsList":null,"view":"cards","lastVisitedRoute":{},"ssrCommentsArticleIds":[""],"karma":{}},"authorContribution":{"authors":{}},"betaTest":{"currentAnnouncement":null,"announcements":{},"announcementCards":null,"announcementComments":{},"announcementCommentThreads":{},"announcementCommentingStatuses":{},"archivedList":[]},"authorStatistics":{"articleRefs":{},"articleIds":{},"pagesCount":{},"route":{},"viewsCount":[],"maxStatsCount":{}},"career":{"seoLandings":[],"hubs":"gamedev,game_testing,game_monetization,game_design"},"comments":{"articleComments":{},"searchCommentsResults":null,"previewComment":null,"pagesCount":null,"commentAccess":{},"scrollParents":{},"pageArticleComments":{"lastViewedComment":0,"postId":null,"lastCommentTimestamp":"","moderated":[],"moderatedIds":[],"commentRoute":""}},"companies":{"companyRefs":{},"companyIds":{},"companyTopIds":{},"pagesCount":{},"companyProfiles":{},"companiesCategories":[],"companiesCategoriesTotalCount":0,"companiesWidgets":{},"companiesWorkers":{},"companiesFans":{},"route":{},"isLoading":false,"companyWorkersLoading":false,"companyFansLoading":false,"vacancies":{}},"companiesContribution":{"hubs":{},"flows":{},"companyRefs":{}},"companyHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"conversation":{"messages":[],"respondent":null,"isLoadMore":false},"conversations":{"conversations":[],"unreadCount":0,"pagesCount":0,"isLoadMore":false},"desktopState":{"desktopFl":null,"desktopHl":null,"isChecked":false,"isLoginDemanded":false},"dfp":{"slotsDict":{}},"docs":{"menu":{},"articles":{},"mainMenu":[],"loading":{"main":false,"dropdown":false,"article":false}},"feature":{"isProbablyVisible":"true"},"flows":{"flows":[{"alias":"develop","id":1,"route":{"name":"FLOW_PAGE","params":{"flowName":"develop"}}},{"alias":"admin","id":6,"route":{"name":"FLOW_PAGE","params":{"flowName":"admin"}}},{"alias":"design","id":2,"route":{"name":"FLOW_PAGE","params":{"flowName":"design"}}},{"alias":"management","id":3,"route":{"name":"FLOW_PAGE","params":{"flowName":"management"}}},{"alias":"marketing","id":4,"route":{"name":"FLOW_PAGE","params":{"flowName":"marketing"}}},{"alias":"popsci","id":7,"route":{"name":"FLOW_PAGE","params":{"flowName":"popsci"}}}]},"global":{"isPwa":false,"device":"desktop","isHabrCom":true},"hubs":{"hubRefs":{},"hubIds":{},"pagesCount":{},"isLoading":false,"route":{}},"hubsBlock":{"hubRefs":{},"hubIds":{}},"i18n":{"fl":"ru","hl":"ru"},"info":{"infoPage":{},"isLoading":true},"location":{"urlStruct":{"protocol":null,"slashes":null,"auth":null,"host":null,"port":null,"hostname":null,"hash":null,"search":null,"query":{},"pathname":null,"path":null,"href":""},"searchQuery":null},"me":{"user":null,"ppgDemanded":false,"karmaResetInfo":{"canReincarnate":null,"wasReincarnated":null,"currentScore":null},"notes":null},"mostReadingList":{"mostReadingListIds":[],"mostReadingListRefs":null,"promoPost":null},"pinnedPost":{"pinnedPost":null},"ppa":{"articles":{},"card":null,"transactions":null,"totalTransactions":null,"isAccessible":null},"projectsBlocks":{"activeBlocks":{}},"pullRefresh":{"shouldRefresh":false},"sandbox":{"articleIds":[],"articleRefs":{},"pagesCount":null,"route":{},"lastVisitedRoute":{},"isLoading":false},"settingsOther":{"inputs":{"uiLang":{"errors":[],"ref":null,"value":""},"articlesLangEnglish":{"errors":[],"ref":null,"value":false},"articlesLangRussian":{"errors":[],"ref":null,"value":false},"agreement":{"errors":[],"ref":null,"value":false},"email":{"errors":[],"ref":null,"value":true},"digest":{"errors":[],"ref":null,"value":true}}},"similarList":{"similarListIds":[],"similarListRefs":null},"ssr":{"error":null,"isDataLoaded":false,"isDataLoading":false,"isHydrationFailed":false,"isServer":false},"userHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"userInvites":{"availableInvites":0,"usedInvitesIds":[],"usedInvitesRefs":{},"usedInvitesPagesCount":0,"unusedInvitesIds":[],"unusedInvitesRefs":{},"unusedInvitesPagesCount":0},"users":{"authorRefs":{},"authorIds":{},"pagesCount":{},"authorProfiles":{},"userHubs":{},"userInvitations":{},"authorFollowers":{},"authorFollowed":{},"karmaStats":[],"statistics":null,"isLoading":false,"authorFollowersLoading":false,"authorFollowedLoading":false,"userHubsLoading":false,"userInvitationsLoading":false,"route":{}},"viewport":{"prevScrollY":{},"scrollY":0,"width":0},"tracker":{"items":{},"pagesCache":{},"markedViewedSilently":{},"markedRead":{},"unreadCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null},"unviewedCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null}}};(function(){var s;(s=document.currentScript||document.scripts[document.scripts.length-1]).parentNode.removeChild(s);}());</script>
+<script src="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" defer></script><script src="https://assets.habr.com/habr-web/js/app.c0af73e7.js" defer></script>
+
+
+
+    <script>
+      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+        (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+        m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+      })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+    </script>
+  
+  <script type="text/javascript" >
+    (function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+    m[i].l=1*new Date();k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})
+    (window, document, "script", "https://mc.yandex.ru/metrika/tag.js", "ym");
+
+    ym(24049213, "init", {
+      defer:true,
+      trackLinks:true,
+      accurateTrackBounce:true,
+      webvisor:false,
+    });
+  </script>
+  <noscript>
+    <div>
+      <img src="https://mc.yandex.ru/watch/24049213" style="position:absolute; left:-9999px;" alt="" />
+    </div>
+  </noscript>
+  
+    <script type="text/javascript">
+      window.addEventListener('load', function () {
+        setTimeout(() => {
+          const img = new Image();
+          img.src = 'https://vk.com/rtrg?p=VK-RTRG-421343-57vKE';
+        }, 0);
+      });
+    </script>
+  
+</body>
+</html>

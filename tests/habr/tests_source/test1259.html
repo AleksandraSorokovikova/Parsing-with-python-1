@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html lang="ru" data-vue-meta="%7B%22lang%22:%7B%22ssr%22:%22ru%22%7D%7D">
+<head >
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
+  <title>JavaScript-движки: как они работают? От стека вызовов до промисов — (почти) всё, что вам нужно знать / Хабр</title>
+  <style>
+    /* cyrillic-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSxf6TF0.woff2) format('woff2');
+      unicode-range: U+0460-052F, U+1C80-1C88, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+    }
+
+    /* cyrillic */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveQhf6TF0.woff2) format('woff2');
+      unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+    }
+
+    /* latin-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSBf6TF0.woff2) format('woff2');
+      unicode-range: U+0100-024F, U+0259, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20CF, U+2113, U+2C60-2C7F, U+A720-A7FF;
+    }
+
+    /* latin */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveRhf6.woff2) format('woff2');
+      unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+    }
+  </style>
+  <link rel="preload" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" as="script"><link rel="preload" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/app.c0af73e7.js" as="script">
+  <link rel="stylesheet" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css"><link rel="stylesheet" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css">
+  <script>window.i18nFetch = new Promise((res, rej) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open('GET', '/js/i18n/ru-compiled.85eb77f0b17c8235e7b64b9f81ea5ec2.json');
+          xhr.responseType = 'json';
+          xhr.onload = function(e) {
+            if (this.status === 200) {
+              res({ru: xhr.response});
+            } else {
+              rej(e);
+            }
+          };
+          xhr.send();
+        });</script>
+  
+  <script data-vue-meta="ssr" src="/js/ads.js" onload="window['zhY4i4nJ9K'] = true" data-vmid="checkad"></script><script data-vue-meta="ssr" type="application/ld+json" data-vmid="ldjson-schema">{"@context":"http:\/\/schema.org","@type":"Article","mainEntityOfPage":{"@type":"WebPage","@id":"https:\/\/habr.com\/ru\/company\/vk\/blog\/452906\/"},"headline":"JavaScript-движки: как они работают? От стека вызовов до промисов — (почти) всё, что вам нужно знать","datePublished":"2019-05-22T16:14:57+03:00","dateModified":"2019-09-09T10:49:36+03:00","author":{"@type":"Person","name":"Макс"},"publisher":{"@type":"Organization","name":"Habr","logo":{"@type":"ImageObject","url":"https:\/\/habrastorage.org\/webt\/a_\/lk\/9m\/a_lk9mjkccjox-zccjrpfolmkmq.png"}},"description":"Вы когда-нибудь задумывались, как браузеры читают и исполняют JavaScript-код? Это выглядит таинственно, но в этом посте вы можете получить представление, что же...","url":"https:\/\/habr.com\/ru\/company\/vk\/blog\/452906\/#post-content-body","about":["c_vk","h_javascript","h_programming","h_nodejs","h_browsers","f_develop"],"image":["https:\/\/habrastorage.org\/webt\/sd\/nm\/n6\/sdnmn6cuvwusvk4fysdkzvnw9rg.jpeg","https:\/\/habrastorage.org\/getpro\/habr\/post_images\/d34\/46f\/a81\/d3446fa81bf753ff80d32e39bcf5778c.png","https:\/\/habrastorage.org\/getpro\/habr\/post_images\/11b\/0a8\/a90\/11b0a8a904acef9ee7bde8b84cb76873.png","https:\/\/habrastorage.org\/getpro\/habr\/post_images\/b79\/118\/a43\/b79118a430d9daa8af3491138c0cfd2b.png","https:\/\/habrastorage.org\/getpro\/habr\/post_images\/ea8\/a33\/9c1\/ea8a339c120638632b57eb0fb3161254.png","https:\/\/habrastorage.org\/getpro\/habr\/post_images\/00f\/8e2\/b33\/00f8e2b33a47490117a9e8f6abad23f5.png","https:\/\/habrastorage.org\/getpro\/habr\/post_images\/eba\/ec9\/fec\/ebaec9fec5dc1931176371fd4a9f3cbd.png"]}</script>
+  <script src="//www.googletagservices.com/tag/js/gpt.js" async></script>
+  <style>.grecaptcha-badge{visibility: hidden;}</style>
+  <meta name="habr-version" content="2.49.0">
+  
+  <meta data-vue-meta="ssr" property="fb:app_id" content="444736788986613"><meta data-vue-meta="ssr" property="fb:pages" content="472597926099084"><meta data-vue-meta="ssr" name="twitter:card" content="summary_large_image"><meta data-vue-meta="ssr" name="twitter:site" content="@habr_eng"><meta data-vue-meta="ssr" property="og:title" content="JavaScript-движки: как они работают? От стека вызовов до промисов — (почти) всё, что вам нужно знать" data-vmid="og:title"><meta data-vue-meta="ssr" name="twitter:title" content="JavaScript-движки: как они работают? От стека вызовов до промисов — (почти) всё, что вам нужно знать" data-vmid="twitter:title"><meta data-vue-meta="ssr" name="aiturec:title" content="JavaScript-движки: как они работают? От стека вызовов до промисов — (почти) всё, что вам нужно знать" data-vmid="aiturec:title"><meta data-vue-meta="ssr" name="description" content="Вы когда-нибудь задумывались, как браузеры читают и исполняют JavaScript-код? Это выглядит таинственно, но в этом посте вы можете получить представление, что же происходит под капотом.
+
+Начнём..." data-vmid="description"><meta data-vue-meta="ssr" itemprop="description" content="Вы когда-нибудь задумывались, как браузеры читают и исполняют JavaScript-код? Это выглядит таинственно, но в этом посте вы можете получить представление, что же происходит под капотом.
+
+Начнём..." data-vmid="description:itemprop"><meta data-vue-meta="ssr" property="og:description" content="Вы когда-нибудь задумывались, как браузеры читают и исполняют JavaScript-код? Это выглядит таинственно, но в этом посте вы можете получить представление, что же происходит под капотом.
+
+Начнём..." data-vmid="og:description"><meta data-vue-meta="ssr" name="twitter:description" content="Вы когда-нибудь задумывались, как браузеры читают и исполняют JavaScript-код? Это выглядит таинственно, но в этом посте вы можете получить представление, что же происходит под капотом.
+
+Начнём..." data-vmid="twitter:description"><meta data-vue-meta="ssr" property="aiturec:description" content="Вы когда-нибудь задумывались, как браузеры читают и исполняют JavaScript-код? Это выглядит таинственно, но в этом посте вы можете получить представление, что же происходит под капотом.
+
+Начнём..." data-vmid="aiturec:description"><meta data-vue-meta="ssr" itemprop="image" content="https://habr.com/share/publication/452906/933deb4ce7d3e1e14b5c6a791713937f/" data-vmid="image:itemprop"><meta data-vue-meta="ssr" property="og:image" content="https://habr.com/share/publication/452906/933deb4ce7d3e1e14b5c6a791713937f/" data-vmid="og:image"><meta data-vue-meta="ssr" property="aiturec:image" content="https://habr.com/share/publication/452906/933deb4ce7d3e1e14b5c6a791713937f/" data-vmid="aiturec:image"><meta data-vue-meta="ssr" name="twitter:image" content="https://habr.com/share/publication/452906/933deb4ce7d3e1e14b5c6a791713937f/" data-vmid="twitter:image"><meta data-vue-meta="ssr" property="vk:image" content="https://habr.com/share/publication/452906/933deb4ce7d3e1e14b5c6a791713937f/" data-vmid="vk:image"><meta data-vue-meta="ssr" property="aiturec:item_id" content="452906" data-vmid="aiturec:item_id"><meta data-vue-meta="ssr" property="aiturec:datetime" content="2019-05-22T13:14:57.000Z" data-vmid="aiturec:datetime"><meta data-vue-meta="ssr" property="og:type" content="article" data-vmid="og:type"><meta data-vue-meta="ssr" property="og:locale" content="ru_RU" data-vmid="og:locale"><meta data-vue-meta="ssr" property="og:image:width" content="1200" data-vmid="og:image:width"><meta data-vue-meta="ssr" property="og:image:height" content="630" data-vmid="og:image:height">
+  <link data-vue-meta="ssr" href="https://habr.com/ru/rss/post/452906/?fl=ru" type="application/rss+xml" title="" rel="alternate" name="rss"><link data-vue-meta="ssr" href="https://habr.com/ru/company/vk/blog/452906/" rel="canonical" data-vmid="canonical"><link data-vue-meta="ssr" data-vmid="hreflang"><link data-vue-meta="ssr" image_src="image" href="https://habr.com/share/publication/452906/933deb4ce7d3e1e14b5c6a791713937f/" data-vmid="image:href">
+  <meta name="apple-mobile-web-app-status-bar-style" content="#303b44">
+  <meta name="msapplication-TileColor" content="#629FBC">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="16x16"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-16.png"
+  >
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="32x32"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-32.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="76x76"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-76.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="120x120"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="152x152"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-152.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="180x180"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-180.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="256x256"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-256.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1136x640.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2436x1125.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1792x828.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_828x1792.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1334x750.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2208x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1125x2436.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2208.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2732x2048.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2688x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2224x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_750x1334.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x2732.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2388x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2224.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_640x1136.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2388.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x1536.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1536x2048.png"
+  >
+  <link
+    rel="mask-icon"
+    color="#77a2b6"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.svg"
+  >
+  <link
+    crossorigin="use-credentials"
+    href="/manifest.webmanifest"
+    rel="manifest"
+  >
+</head>
+<body>
+
+
+<div id="app" data-server-rendered="true" data-async-called="true"><div class="tm-layout__wrapper"><!----> <div></div> <!----> <header class="tm-header"><div class="tm-page-width"><div class="tm-header__container"><!----> <span class="tm-header__logo-wrap"><a href="/ru/" class="tm-header__logo tm-header__logo_ru"><svg height="16" width="16" class="tm-svg-img tm-header__icon"><title>Хабр</title> <use xlink:href="/img/habr-logo-ru.svg#logo"></use></svg></a> <span class="tm-header__beta-sign" style="display:none;">β</span></span> <div class="tm-dropdown tm-header__projects"><div class="tm-dropdown__head"><button class="tm-header__dropdown-toggle"><svg height="16" width="16" class="tm-svg-img tm-header__icon tm-header__icon_dropdown"><title>Открыть список</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#arrow-down"></use></svg></button></div> <!----></div> <a href="/ru/sandbox/start/" class="tm-header__become-author-btn">
+            Как стать автором
+          </a> <div class="tm-feature tm-header__feature tm-feature_variant-inline"><!----></div> <!----> <!----></div></div></header> <div class="tm-layout"><div class="tm-page-progress-bar"></div> <div data-menu-sticky="true" class="tm-base-layout__header tm-base-layout__header_is-sticky"><div class="tm-page-width"><div class="tm-base-layout__header-wrapper"><div class="tm-main-menu"><div class="tm-main-menu__section"><nav class="tm-main-menu__section-content"><!----> <a href="/ru/all/" class="tm-main-menu__item">
+        Все потоки
+      </a> <a href="/ru/flows/develop/" class="tm-main-menu__item">
+          Разработка
+        </a><a href="/ru/flows/admin/" class="tm-main-menu__item">
+          Администрирование
+        </a><a href="/ru/flows/design/" class="tm-main-menu__item">
+          Дизайн
+        </a><a href="/ru/flows/management/" class="tm-main-menu__item">
+          Менеджмент
+        </a><a href="/ru/flows/marketing/" class="tm-main-menu__item">
+          Маркетинг
+        </a><a href="/ru/flows/popsci/" class="tm-main-menu__item">
+          Научпоп
+        </a></nav></div></div> <div class="tm-header-user-menu tm-base-layout__user-menu"><a href="/ru/search/" class="tm-header-user-menu__item tm-header-user-menu__search"><svg height="24" width="24" class="tm-svg-img tm-header-user-menu__icon tm-header-user-menu__icon_search tm-header-user-menu__icon_dark"><title>Поиск</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#search"></use></svg></a> <!----> <!----> <!----> <div class="tm-header-user-menu__item tm-header-user-menu__user_desktop"><div class="tm-dropdown"><div class="tm-dropdown__head"><svg height="24" width="24" data-test-id="menu-toggle-guest" class="tm-svg-img tm-header-user-menu__icon"><title>Профиль</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#header-user"></use></svg> <!----></div> <!----></div> <!----></div> <!----></div></div></div></div> <!----> <div class="tm-page-width"></div> <main class="tm-layout__container"><div hl="ru" companyName="vk" data-async-called="true" class="tm-page"><div class="tm-page-width"><div class="tm-page__header"><div class="tm-company-card__branding tm-company-article__branding tm-company-card__branding_loading"><div class="tm-company-card__branding-placeholder"><!----></div> <a href="https://vk.com/vkteam"><img src="//habrastorage.org/getpro/habr/branding/174/2c4/3a5/1742c43a5b504987a0fadf577a0bd4de.png" width="100%" class="tm-company-card__branding-image"></a></div></div> <div class="tm-page__wrapper"><div class="tm-page__main tm-page__main_has-sidebar"><div class="pull-down"><div class="pull-down__header" style="height:0px;"><div class="pull-down__content" style="bottom:10px;"><svg height="24" width="24" class="tm-svg-img pull-down__arrow"><title>Обновить</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#pull-arrow"></use></svg></div></div> <div class="tm-article-presenter"><div class="tm-company-card tm-company-article__company-card"><div class="tm-company-card__info"><div class="tm-company-card__header"><a href="/ru/company/vk/profile/" class="tm-company-card__avatar"><div class="tm-entity-image"><img alt="" height="48" src="//habrastorage.org/getpro/habr/company/9ed/c74/6b4/9edc746b484c805ecad1f941b5f7068a.png" width="48" class="tm-entity-image__pic"></div></a> <a href="https://career.habr.com/companies/vk" rel="noopener" target="_blank" class="tm-grade tm-company-card__rating"><div class="tm-rating"><div class="tm-rating__header"><svg height="24" width="24" class="tm-svg-img tm-svg-grade__icon"><title>Оценка компании на Хабр Карьере</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#grade"></use></svg> <div class="tm-rating__counter tm-rating__counter_variant-grade">4.37</div></div> <div class="tm-rating__text tm-rating__text_variant-grade">
+    Оценка
+  </div></div></a> <div class="tm-rating tm-company-card__rating"><div class="tm-rating__header"> <div class="tm-rating__counter">331.84</div></div> <div class="tm-rating__text">
+    Рейтинг
+  </div></div></div> <div class="tm-company-card__info"><a href="/ru/company/vk/profile/" class="tm-company-card__name">
+        VK
+      </a> <div class="tm-company-card__description">Технологии, которые объединяют</div></div></div> <div class="tm-company-card__buttons"><!----> <!----></div></div> <div class="tm-article-presenter__body"><div class="tm-misprint-area"><div class="tm-misprint-area__wrapper"><article class="tm-article-presenter__content tm-article-presenter__content_narrow"><div class="tm-article-presenter__header"> <div class="tm-article-snippet tm-article-presenter__snippet"><div class="tm-article-snippet__meta-container"><div class="tm-article-snippet__meta"><span class="tm-user-info tm-article-snippet__author"><a href="/ru/users/AloneCoder/" title="AloneCoder" class="tm-user-info__userpic"><div class="tm-entity-image"><img alt="" height="24" loading="lazy" src="//habrastorage.org/r/w32/getpro/habr/avatars/741/45e/bea/74145ebeab7f222cce402aed2683f9d7.png" width="24" class="tm-entity-image__pic"></div></a> <span class="tm-user-info__user"><a href="/ru/users/AloneCoder/" class="tm-user-info__username">
+      AloneCoder
+    </a> </span></span> <span class="tm-article-snippet__datetime-published"><time datetime="2019-05-22T13:14:57.000Z" title="2019-05-22, 16:14">22  мая  2019 в 16:14</time></span></div> <!----></div> <h1 lang="ru" class="tm-article-snippet__title tm-article-snippet__title_h1"><span>JavaScript-движки: как они работают? От стека вызовов до промисов — (почти) всё, что вам нужно знать</span></h1> <div class="tm-article-snippet__hubs"><span class="tm-article-snippet__hubs-item"><a href="/ru/company/vk/blog/" class="tm-article-snippet__hubs-item-link router-link-active"><span>Блог компании VK</span> <!----></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/javascript/" class="tm-article-snippet__hubs-item-link"><span>JavaScript</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/programming/" class="tm-article-snippet__hubs-item-link"><span>Программирование</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/nodejs/" class="tm-article-snippet__hubs-item-link"><span>Node.JS</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/browsers/" class="tm-article-snippet__hubs-item-link"><span>Браузеры</span> <!----></a></span></div> <div class="tm-article-snippet__labels"><div class="tm-article-snippet__label"><span>
+        Перевод
+      </span></div></div> <!----> <!----></div></div> <div class="tm-article-presenter__origin"><a href="https://www.valentinog.com/blog/engines/" target="_blank" class="tm-article-presenter__origin-link">
+                Автор оригинала:
+                <span>
+                  Valentino Gagliardi
+                </span></a></div> <div data-gallery-root="" lang="ru" class="tm-article-body"><div id="post-content-body" class="article-formatted-body article-formatted-body_version-1"><div xmlns="http://www.w3.org/1999/xhtml"><div style="text-align:center;"><img src="https://habrastorage.org/r/w780q1/webt/sd/nm/n6/sdnmn6cuvwusvk4fysdkzvnw9rg.jpeg" data-src="https://habrastorage.org/webt/sd/nm/n6/sdnmn6cuvwusvk4fysdkzvnw9rg.jpeg" data-blurred="true"/></div><br/>
+Вы когда-нибудь задумывались, как браузеры читают и исполняют JavaScript-код? Это выглядит таинственно, но в этом посте вы можете получить представление, что же происходит под капотом.<br/>
+<br/>
+Начнём наше путешествие в язык с экскурсии в удивительный мир JavaScript-движков.<br/>
+<a name="habracut"></a><br/>
+Откройте консоль в Chrome и перейдите на вкладку Sources. Вы увидите несколько разделов, и один из самых интересных называется <b>Call Stack</b> (в Firefox вы увидите Call Stack, когда поставите брейкпоинт в коде):<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/getpro/habr/post_images/d34/46f/a81/d3446fa81bf753ff80d32e39bcf5778c.png"/><br/>
+<br/>
+Что такое Call Stack? Похоже, тут много чего происходит, даже ради исполнения пары строк кода. На самом деле JavaScript не поставляется в коробке с каждым браузером. Существует большой компонент, который компилирует и интерпретирует наш JavaScript-код — это JavaScript-движок. Самыми популярными являются V8, он используется в Google Chrome и Node.js, SpiderMonkey в Firefox, JavaScriptCore в Safari/WebKit.<br/>
+<br/>
+Сегодня JavaScript-движки представляют собой прекрасные образцы программной инженерии, и будет практически невозможно рассказать обо всех аспектах. Однако основную работу по исполнению кода делают для нас лишь несколько компонентов движков: Call Stack (стек вызовов), Global Memory (глобальная память) и Execution Context (контекст исполнения). Готовы с ними познакомиться?<br/>
+<br/>
+Содержание:<br/>
+<br/>
+<ol>
+<li><a href="https://habr.com/ru/company/mailru/blog/452906/#1">JavaScript-движки и глобальная память</a><br/>
+</li>
+<li><a href="https://habr.com/ru/company/mailru/blog/452906/#2">JavaScript-движки: как они работают? Глобальный контекст исполнения и стек вызовов</a><br/>
+</li>
+<li><a href="https://habr.com/ru/company/mailru/blog/452906/#3">JavaScript является однопоточным, и другие забавные истории</a><br/>
+</li>
+<li><a href="https://habr.com/ru/company/mailru/blog/452906/#4">Асинхронный JavaScript, очередь обратных вызовов и цикл событий</a><br/>
+</li>
+<li><a href="https://habr.com/ru/company/mailru/blog/452906/#5">Callback hell и промисы ES6</a><br/>
+</li>
+<li><a href="https://habr.com/ru/company/mailru/blog/452906/#6">Создание и работа с JavaScript-промисами</a><br/>
+</li>
+<li><a href="https://habr.com/ru/company/mailru/blog/452906/#7">Обработка ошибок в ES6-промисах</a><br/>
+</li>
+<li><a href="https://habr.com/ru/company/mailru/blog/452906/#8">Комбинаторы ES6-промисов: Promise.all, Promise.allSettled, Promise.any и другие</a><br/>
+</li>
+<li><a href="https://habr.com/ru/company/mailru/blog/452906/#9">ES6-промисы и очередь микрозадач</a><br/>
+</li>
+<li><a href="https://habr.com/ru/company/mailru/blog/452906/#10">JavaScript-движки: как они работают? Асинхронная эволюция: от промисов до async/await</a><br/>
+</li>
+<li><a href="https://habr.com/ru/company/mailru/blog/452906/#11">JavaScript-движки: как они работают? Итоги</a><br/>
+</li>
+</ol><br/>
+<a name="1"></a><h2>1. JavaScript-движки и глобальная память</h2><br/>
+Я говорил, что JavaScript является одновременно компилируемым и интерпретируемым языком. Хотите верьте, хотите нет, но на самом деле JavaScript-движки компилируют ваш код за микросекунды до его исполнения.<br/>
+<br/>
+Волшебство какое-то, да? Это волшебство называется JIT (Just in time compilation). Она сама по себе является большой темой для обсуждения, даже книги будет мало, чтобы описать работу JIT. Но пока что мы пропустим теорию и сосредоточимся на фазе исполнения, которая не менее интересна.<br/>
+<br/>
+Для начала посмотрите на этот код:<br/>
+<br/>
+<pre><code class="javascript">var num = 2;
+
+function pow(num) {
+    return num * num;
+}</code></pre><br/>
+Допустим, я спрошу вас, как этот код обрабатывается в браузере? Что вы ответите? Вы можете сказать: «браузер читает код» или «браузер исполняет код». В реальности всё не так просто. Во-первых, код считывает не браузер, а движок. <b>JavaScript-движок считывает код</b>, и как только он определяет первую строку, то кладёт пару ссылок в <b>глобальную память</b>.<br/>
+<br/>
+Глобальная память (которую также называют кучей (heap)) — это область, в которой JavaScript-движок хранит переменные и объявления функций. И когда он прочитает приведённый выше код, то в глобальной памяти появятся два биндинга:<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/getpro/habr/post_images/11b/0a8/a90/11b0a8a904acef9ee7bde8b84cb76873.png"/><br/>
+<br/>
+Даже если в примере содержится лишь переменная и функция, представьте, что ваш JavaScript-код исполняется в более крупной среде: в браузере или в Node.js. В таких средах есть много заранее определённых функций и переменных, которые называют глобальными. Поэтому глобальная память будет содержать гораздо больше данных, чем просто <code>num</code> и <code>pow</code>, имейте в виду.<br/>
+<br/>
+В данный момент ничего не исполняется. Давайте теперь попробуем исполнить нашу функцию:<br/>
+<br/>
+<pre><code class="javascript">var num = 2;
+
+function pow(num) {
+    return num * num;
+}
+
+pow(num);</code></pre><br/>
+Что произойдёт? А произойдёт кое-что интересное. При вызове функции JavaScript-движок выделит два раздела:<br/>
+<br/>
+<ul>
+<li>Глобальный контекст исполнения (Global Execution Context)<br/>
+</li>
+<li>Стек вызовов (Call Stack)<br/>
+</li>
+</ul><br/>
+Что они собой представляют?<br/>
+<br/>
+<a name="2"></a><h2>2. JavaScript-движки: как они работают? Глобальный контекст исполнения и стек вызовов</h2><br/>
+Вы узнали, как JavaScript-движок читает переменные и объявления функций. Они попадают в глобальную память (кучу).<br/>
+<br/>
+Но теперь мы исполняем JavaScript-функцию, и движок должен об этом позаботиться. Каким образом? У каждого JavaScript-движка есть <b>ключевой компонент, который называется стек вызовов</b>.<br/>
+<br/>
+<a href="https://en.wikibooks.org/wiki/Data_Structures/Stacks_and_Queues">Это стековая структура данных</a>: элементы могут добавляться в неё сверху, но они не могут исключаться из структуры, пока над ними есть другие элементы. Именно так устроены JavaScript-функции. При исполнении они не могут покинуть стек вызовов, если в нём присутствует другая функция. Обратите на это внимание, поскольку эта концепция помогает понять утверждение «JavaScript является однопоточным».<br/>
+<br/>
+Но вернёмся к нашему примеру. <b>При вызове функции движок отправляет её в стек вызовов</b>:<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/getpro/habr/post_images/b79/118/a43/b79118a430d9daa8af3491138c0cfd2b.png"/><br/>
+<br/>
+Мне нравится представлять стек вызовов в виде стопки чипсов Pringles. Мы не можем съесть чипс снизу стопки, пока не съедим те, что лежат сверху. К счастью, наша функция является синхронной: это всего лишь умножение, которое быстро вычисляется.<br/>
+<br/>
+В то же самое время движок размещает в памяти <b>глобальный контекст исполнения</b>, это глобальная среда, в которой исполняется JavaScript-код. Вот как это выглядит:<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/getpro/habr/post_images/ea8/a33/9c1/ea8a339c120638632b57eb0fb3161254.png"/><br/>
+<br/>
+Представьте глобальный контекст исполнения в виде моря, в котором глобальные JavaScript-функции плавают, словно рыбы. Как мило! Но это лишь половина всей истории. Что, если наша функция имеет вложенные переменные или внутренние функции?<br/>
+<br/>
+Даже в простом случае, как показано ниже, JavaScript-движок создаёт <b>локальный контекст исполнения</b>:<br/>
+<br/>
+<pre><code class="javascript">var num = 2;
+
+function pow(num) {
+    var fixed = 89;
+    return num * num;
+}
+
+pow(num);</code></pre><br/>
+Обратите внимание, что я добавил в функцию <code>pow</code> переменную <code>fixed</code>. В этом случае локальный контекст исполнения будет содержать раздел для <code>fixed</code>. Я не очень хорошо рисую маленькие прямоугольники внутри других маленьких маленьких прямоугольников, так что используйте своё воображение.<br/>
+<br/>
+Рядом с <code>pow</code> появится локальный контекст исполнения, внутри зелёного раздела-прямоугольника, расположенного внутри глобального контекста исполнения. Представьте также, как для каждой вложенной функции внутри вложенной функции движок создаёт другие локальные контексты исполнения. Все эти разделы-прямоугольники появляются очень быстро! Как матрёшка!<br/>
+<br/>
+Давайте теперь вернёмся к истории с однопоточностью. Что это означает?<br/>
+<br/>
+<a name="3"></a><h2>3. JavaScript является однопоточным, и другие забавные истории</h2><br/>
+Мы говорим, что <b>JavaScript является однопоточным, потому что наши функции обрабатывает лишь один стек вызовов</b>. Напомню, что функции не могут покинуть стек вызовов, если исполнения ожидают другие функции.<br/>
+<br/>
+Это не проблема, если мы работаем с синхронным кодом. К примеру, сложение двух чисел является синхронным и вычисляется за микросекунды. А что насчёт сетевых вызовов и других взаимодействий с внешним миром?<br/>
+<br/>
+К счастью, <b>JavaScript-движки спроектированы так, чтобы по умолчанию работать асинхронно</b>. Даже если они могут исполнять только по одной функции за раз, более медленные функции могут исполняться внешней сущностью — в нашем случае это браузер. Об этом мы поговорим ниже.<br/>
+<br/>
+В то же время вы знаете, что когда браузер загружает какой-то JavaScript-код, движок считывает этот код строка за строкой и выполняет следующие шаги:<br/>
+<br/>
+<ul>
+<li>Помещает в глобальную память (кучу) переменные и объявления функций.<br/>
+</li>
+<li>Отправляет вызов каждой функции в стек вызовов.<br/>
+</li>
+<li>Создаёт глобальный контекст исполнения, в котором исполняются глобальные функции.<br/>
+</li>
+<li>Создаёт много маленьких локальных контекстов исполнения (если есть внутренние переменные или вложенные функции).<br/>
+</li>
+</ul><br/>
+Теперь у вас есть общее представление о механике синхронности, лежащей в основе всех JavaScript-движков. В следующей главе мы поговорим о том, как в JavaScript работает асинхронный код и почему он работает именно так.<br/>
+<br/>
+<a name="4"></a><h2>4. Асинхронный JavaScript, очередь обратных вызовов и цикл событий</h2><br/>
+Благодаря глобальной памяти, контексту исполнения и стеку вызовов синхронный JavaScript-код исполняется в наших браузерах. Но мы кое о чём забыли. Что происходит, если нужно исполнить какую-нибудь асинхронную функцию?<br/>
+<br/>
+Под асинхронной функцией я подразумеваю каждое взаимодействие с внешним миром, для завершения которого может потребоваться какое-то время. Вызов REST API или таймера — асинхронны, потому что на их выполнение могут уйти секунды. Благодаря имеющимся в движке элементам мы можем обрабатывать такие функции без блокирования стека вызовов и браузера. Не забывайте, стек вызовов может исполнять одновременно только одну функцию, и <b>даже одна блокирующая функция может буквально остановить браузер</b>. К счастью, JavaScript-движки «умны», и с небольшой помощью браузера могут такие вещи отсортировывать.<br/>
+<br/>
+Когда мы исполняем асинхронную функцию, браузер берёт её и выполняет для нас. Возьмём такой таймер:<br/>
+<br/>
+<pre><code class="javascript">setTimeout(callback, 10000);
+
+function callback(){
+    console.log('hello timer!');
+}</code></pre><br/>
+Уверен, что хоть вы и видели <code>setTimeout</code> уже сотни раз, однако можете не знать, что <b>эта функция не встроена в JavaScript</b>. Вот так, когда JavaScript появился, в нём не было функции <code>setTimeout</code>. По сути, она является частью так называемых браузерных API, коллекции удобных инструментов, которые нам предоставляет браузер. Чудесно! Но что это означает на практике? Поскольку <code>setTimeout</code> относится к браузерным API, эта функция исполняется самим браузером (на мгновение она появляется в стеке вызовов, но сразу оттуда удаляется).<br/>
+<br/>
+Через 10 секунд браузер берёт callback-функцию, которую мы ему передали, и кладёт её в <b>очередь обратных вызовов</b>. В данный момент в JavaScript-движке появилось ещё два раздела-прямоугольника. Посмотрите на этот код:<br/>
+<br/>
+<pre><code class="javascript">var num = 2;
+
+function pow(num) {
+    return num * num;
+}
+
+pow(num);
+
+setTimeout(callback, 10000);
+
+function callback(){
+    console.log('hello timer!');
+}</code></pre><br/>
+Теперь наша схема выглядит так:<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/getpro/habr/post_images/00f/8e2/b33/00f8e2b33a47490117a9e8f6abad23f5.png"/><br/>
+<br/>
+<code>setTimeout</code> исполняется внутри контекста браузера. Через 10 секунд таймер запускается и callback-функция готова к исполнению. Но для начала она должна пройти через очередь обратных вызовов. Это структура данных в виде очереди, и, как свидетельствует её название, представляет собой упорядоченную очередь из функций.<br/>
+<br/>
+Каждая асинхронная функция должна пройти через очередь обратных вызовов, прежде чем попасть в стек вызовов. Но кто отправляет функции дальше? Это делает компонент под названием <b>цикл событий</b>.<br/>
+<br/>
+Пока что цикл событий занимается только одним: проверяет, пуст ли стек вызовов. Если в очереди обратных вызовов есть какая-нибудь функция и если стек вызовов свободен, тогда пора отправлять callback в стек вызовов.<br/>
+<br/>
+После этого функция считается исполненной. Так выглядит общая схема обработки асинхронного и синхронного кода JavaScript-движком:<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/getpro/habr/post_images/eba/ec9/fec/ebaec9fec5dc1931176371fd4a9f3cbd.png"/><br/>
+<br/>
+Допустим, <code>callback()</code> готова к исполнению. После завершения исполнения <code>pow()</code> <b>стек вызовов освобождается и цикл событий отправляет в него</b> <code>callback()</code>. И всё! Хотя я немного всё упростил, если вы поняли приведённую выше схему, то можете понять и весь JavaScript.<br/>
+<br/>
+Помните: <b>браузерные API, очередь обратных вызовов и цикл событий являются столпами асинхронного JavaScript</b>.<br/>
+<br/>
+И если интересно, можете посмотреть любопытное видео «What the heck is the event loop anyway» Филипа Робертса. Это одно из лучших объяснений цикла событий.<br/>
+<br/>
+Но мы ещё не закончили с темой асинхронного JavaScript. В следующих главах мы рассмотрим ES6-промисы.<br/>
+<br/>
+<a name="5"></a><h2>5. Callback hell и ES6-промисы</h2><br/>
+Callback-функции используются в JavaScript везде, и в синхронном, и в асинхронном коде. Рассмотрим этот метод:<br/>
+<br/>
+<pre><code class="javascript">function mapper(element){
+    return element * 2;
+}
+
+[1, 2, 3, 4, 5].map(mapper);
+</code></pre><br/>
+<code>mapper</code> — это callback-функция, которая передаётся внутри <code>map</code>. Приведённый код является синхронным. А теперь рассмотрим этот интервал:<br/>
+<br/>
+<pre><code class="javascript">function runMeEvery(){
+    console.log('Ran!');
+}
+
+setInterval(runMeEvery, 5000);</code></pre><br/>
+Этот код асинхронный, поскольку внутри <code>setInterval</code> мы передаём обратный вызов <code>runMeEvery</code>. Обратные вызовы применяются по всему JavaScript, так что у нас годами существует проблема, получившая название «callback hell» — «ад обратных вызовов».<br/>
+<br/>
+Термин <b>Callback hell</b> в JavaScript применяют к «стилю» программирования, при котором callback’и вкладывают в другие callback’и, которые вложены в другие callback’и… Из-за асинхронной природы JavaScript-программисты уже давно попадают в эту ловушку.<br/>
+<br/>
+Если честно, я никогда не создавал большие пирамиды callback’ов. Возможно, потому что я ценю читабельный код и всегда стараюсь придерживаться его принципов. Если вы попали в callback hell, это говорит о том, что ваша функция делает слишком много. <br/>
+<br/>
+Я не буду подробно говорить о callback hell, если вам интересно, то сходите на сайт <a href="http://callbackhell.com/">callbackhell.com</a>, там эта проблема подробно исследована и предложены разные решения. А мы поговорим о <b>ES6-промисах</b>. Это аддон к JavaScript, призванное решить проблему ада обратных вызовов. Но что такое «промисы»?<br/>
+<br/>
+<b>Промис в JavaScript — это представление будущего события</b>. Промис может завершиться успешно, или на жаргоне программистов промис будет «разрешён» (resolved, исполнен). Но если промис завершается с ошибкой, то мы говорим, что он в состоянии «отклонён» (rejected). Также у промисов есть состояние по умолчанию: каждый новый промис начинается в состоянии «ожидания решения» (pending). Можно ли создать собственный промис? Да. Об этом мы поговорим в следующей главе.<br/>
+<br/>
+<a name="6"></a><h2>6. Создание и работа с JavaScript-промисами</h2><br/>
+Для создания нового промиса нужно вызвать конструктор, передав в него callback-функцию. Она может принимать только два параметра: <code>resolve</code> и <code>reject</code>. Давайте создадим новый промис, который будет разрешён через 5 секунд (можете протестировать примеры в браузерной консоли):<br/>
+<br/>
+<pre><code class="javascript">const myPromise = new Promise(function(resolve){
+    setTimeout(function(){
+        resolve()
+    }, 5000)
+});</code></pre><br/>
+Как видите, <code>resolve</code> — это функция, которую мы вызываем, чтобы промис успешно завершился. А <code>reject</code> создаст отклонённый промис:<br/>
+<br/>
+<pre><code class="javascript">const myPromise = new Promise(function(resolve, reject){
+    setTimeout(function(){
+        reject()
+    }, 5000)
+});</code></pre><br/>
+Обратите внимание, что вы можете игнорировать <code>reject</code>, потому что это второй параметр. Но если вы намерены воспользоваться <code>reject</code>, то <b>не сможете проигнорировать <code>resolve</code></b>. То есть следующий код не будет работать и закончится разрешённым промисом:<br/>
+<br/>
+<pre><code class="javascript">// Can't omit resolve !
+
+const myPromise = new Promise(function(reject){
+    setTimeout(function(){
+        reject()
+    }, 5000)
+});</code></pre><br/>
+Сейчас промисы не выглядят такими полезными, верно? Эти примеры ничего не выводят для пользователя. Давайте кое-что добавим. И разрешённые, от отклонённые промисы могут возвращать данные. Например:<br/>
+<br/>
+<pre><code class="javascript">const myPromise = new Promise(function(resolve) {
+  resolve([{ name: "Chris" }]);
+});</code></pre><br/>
+Но мы всё ещё ничего не видим. <b>Для извлечения данных из промиса вам нужно связать промис с методом <code>then</code></b>. Он берёт callback (какая ирония!), который получает актуальные данные:<br/>
+<br/>
+<pre><code class="javascript">const myPromise = new Promise(function(resolve, reject) {
+  resolve([{ name: "Chris" }]);
+});
+
+myPromise.then(function(data) {
+    console.log(data);
+});</code></pre><br/>
+Как JavaScript-разработчик и потребитель чужого кода вы по большей части взаимодействуете с внешними промисами. Создатели библиотек чаще всего обёртывают legacy-код в конструктор промисов, таким образом:<br/>
+<br/>
+<pre><code class="javascript">const shinyNewUtil = new Promise(function(resolve, reject) {
+  // do stuff and resolve
+  // or reject
+});</code></pre><br/>
+И при необходимости мы также можем создать и разрешить промис, вызвав <code>Promise.resolve()</code>:<br/>
+<br/>
+<pre><code class="javascript">Promise.resolve({ msg: 'Resolve!'})
+.then(msg => console.log(msg));</code></pre><br/>
+Итак, напомню: промисы в JavaScript — это закладка на событие, которое произойдёт в будущем. Событие начинается в состоянии «ожидание решения», и может быть успешным (разрешённым, исполненным) или неуспешным (отклонённым). Промис может возвращать данные, которые можно извлечь, прикрепив к промису <code>then</code>. В следующей главе мы обсудим, как работать с ошибками, приходящими из промисов.<br/>
+<br/>
+<a name="7"></a><h2>7. Обработка ошибок в ES6-промисах</h2><br/>
+Обрабатывать ошибки в JavaScript всегда было просто, как минимум в синхронном коде. Взгляните на пример:<br/>
+<br/>
+<pre><code class="javascript">function makeAnError() {
+  throw Error("Sorry mate!");
+}
+
+try {
+  makeAnError();
+} catch (error) {
+  console.log("Catching the error! " + error);
+}</code></pre><br/>
+Результатом будет:<br/>
+<br/>
+<pre><code class="javascript">Catching the error! Error: Sorry mate!</code></pre><br/>
+Как и ожидалась, ошибка попала в блок <code>catch</code>. Теперь попробуем асинхронную функцию:<br/>
+<br/>
+<pre><code class="javascript">function makeAnError() {
+  throw Error("Sorry mate!");
+}
+
+try {
+  setTimeout(makeAnError, 5000);
+} catch (error) {
+  console.log("Catching the error! " + error);
+}</code></pre><br/>
+Этот код является асинхронным из-за <code>setTimeout</code>. Что будет, если мы его исполним?<br/>
+<br/>
+<pre><code class="javascript"> throw Error("Sorry mate!");
+  ^
+
+Error: Sorry mate!
+    at Timeout.makeAnError [as _onTimeout] (/home/valentino/Code/piccolo-javascript/async.js:2:9)</code></pre><br/>
+Теперь результат другой. Ошибка не была поймана блоком <code>catch</code>, а свободно поднялась выше по стеку. Причина в том, что <code>try/catch</code> работает только с синхронным кодом. Если хотите узнать больше, то эта проблема подробно рассмотрена <a href="https://www.joyent.com/node-js/production/design/errors">здесь</a>.<br/>
+<br/>
+К счастью, с промисами мы можем обрабатывать асинхронные ошибки, словно они синхронные. В прошлой главе я говорил, что вызов <code>reject</code> приводит к отклонению промиса:<br/>
+<br/>
+<pre><code class="javascript">const myPromise = new Promise(function(resolve, reject) {
+  reject('Errored, sorry!');
+});</code></pre><br/>
+В этом случае мы можем обрабатывать ошибки с помощью обработчика <code>catch</code>, дёргая (опять) обратный вызов:<br/>
+<br/>
+<pre><code class="javascript">const myPromise = new Promise(function(resolve, reject) {
+  reject('Errored, sorry!');
+});
+
+myPromise.catch(err => console.log(err));</code></pre><br/>
+Кроме того, чтобы для создания и отклонения промиса в нужном месте можно вызывать <code>Promise.reject()</code>:<br/>
+<br/>
+<pre><code class="javascript">Promise.reject({msg: 'Rejected!'}).catch(err => console.log(err));</code></pre><br/>
+Напомню: обработчик <code>then</code> исполняется, когда промис выполнен, а обработчик <code>catch </code>выполняется для отклонённых промисов. Но это ещё не конец истории. Ниже мы увидим, как <code>async/await</code> замечательно работают с <code>try/catch</code>.<br/>
+<br/>
+<a name="8"></a><h2>8. Комбинаторы ES6-промисов: Promise.all, Promise.allSettled, Promise.any и другие</h2><br/>
+Промисы не предназначены для работы по одиночке. Promise API предлагает ряд методов для <b>комбинирования промисов</b>. Один из самых полезных<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/all"> — Promise.all</a>, он берёт массив из промисов и возвращает один промис. Только проблема в том, что Promise.all отклоняется, если отклонен хотя бы один промис в массиве.<br/>
+<br/>
+<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/race">Promise.race</a> разрешает или отклоняет, как только один из промисов в массиве получает соответствующий статус.<br/>
+<br/>
+В более свежих версиях V8 также будут внедрены два новых комбинатора: <code>Promise.allSettled</code> и <code>Promise.any</code>.<a href="https://github.com/tc39/proposal-promise-any"> Promise.any</a> пока на ранней стадии предложенной функциональности, на момент написания статьи не поддерживается. Однако, в теории, он сможет сигнализировать, был ли исполнен какой-либо промис. Отличие от <code>Promise.race</code> в том, что <b>Promise.any не отклоняется, даже если отклонён один из промисов</b>.<br/>
+<br/>
+<code>Promise.allSettled</code> ещё интереснее. Он тоже берёт массив промисов, но не «коротит», если один из промисов отклоняется. Он полезен, когда нужно проверить, все ли промисы в массиве перешли в какую-то стадию, вне зависимости от наличия отклонённых промисов. Его можно считать противоположностью <code>Promise.all</code>.<br/>
+<br/>
+<a name="9"></a><h2>9. ES6-промисы и очередь микрозадач</h2><br/>
+Если помните из предыдущей главы, каждая асинхронная callback-функция в JavaScript оказывается в очереди обратных вызовов, прежде чем попадает в стек вызовов. Но у callback-функций, переданных в промис, иная судьба: они обрабатываются очередью микрозадач (Microtask Queue), а не очередью задач.<br/>
+<br/>
+И здесь вам нужно быть внимательными: <b>очередь микрозадач предшествует очереди вызовов</b>. Обратные вызовы из очереди микрозадач имеют приоритет, когда цикл событий проверяет, готовы ли новые callback’и перейти в стек вызовов.<br/>
+<br/>
+Подробнее эта механика описана Джейком Арчибальдом в <a href="https://jakearchibald.com/2015/tasks-microtasks-queues-and-schedules/">Tasks, microtasks, queues and schedules</a>, замечательное чтиво.<br/>
+<br/>
+<a name="10"></a><h2>10. JavaScript-движки: как они работают? Асинхронная эволюция: от промисов до async/await</h2><br/>
+JavaScript быстро развивается и мы каждый год получаем постоянные улучшения. Промисы выглядели как финал, но <b>с ECMAScript 2017 (ES8) появился новый синтаксис: <code>async/await</code></b>.<br/>
+<br/>
+<code>async/await</code> — всего лишь стилистическое улучшение, которое мы называем синтаксическим сахаром. <code>async/await</code> никак не меняет JavaScript (не забывайте, язык должен быть обратно совместим со старыми браузерами и не должен ломать существующий код). Это лишь новый способ написания асинхронного кода на основе промисов. Рассмотрим пример. Выше мы уже сохранили промис в соответствующем <code>then</code>:<br/>
+<br/>
+<pre><code class="javascript">const myPromise = new Promise(function(resolve, reject) {
+  resolve([{ name: "Chris" }]);
+});
+
+myPromise.then((data) => console.log(data))</code></pre><br/>
+Теперь <b>с помощью <code>async/await</code> мы можем обработать асинхронный код так, чтобы для читающего наш листинг код выглядел синхронным</b>. Вместо применения <code>then</code> мы можем обернуть промис в функцию, помеченную как <code>async</code>, и затем будем ожидать (<code>await</code>) результат:<br/>
+<br/>
+<pre><code class="javascript">const myPromise = new Promise(function(resolve, reject) {
+  resolve([{ name: "Chris" }]);
+});
+
+async function getData() {
+  const data = await myPromise;
+  console.log(data);
+}
+
+getData();</code></pre><br/>
+Выглядит здраво, верно? Забавно, что async-функция всегда возвращает промис, и никто не может ей в этом помешать:<br/>
+<br/>
+<pre><code class="javascript">async function getData() {
+  const data = await myPromise;
+  return data;
+}
+
+getData().then(data => console.log(data));</code></pre><br/>
+А что насчёт ошибок? Одно из преимуществ <code>async/await</code> в том, что эта конструкция может позволить нам воспользоваться <code><b>try/catch</b></code>. Почитайте<a href="https://www.valentinog.com/blog/throw-async/"> введение в обработку ошибок в async-функциях и их тестирование</a>. <br/>
+<br/>
+Давайте снова взглянем на промис, в котором мы обрабатываем ошибки с помощью обработчика <code>catch</code>:<br/>
+<br/>
+<pre><code class="javascript">const myPromise = new Promise(function(resolve, reject) {
+  reject('Errored, sorry!');
+});
+
+myPromise.catch(err => console.log(err));</code></pre><br/>
+С асинхронными функциями мы можем отрефакторить вот так:<br/>
+<br/>
+<pre><code class="javascript">async function getData() {
+  try {
+    const data = await myPromise;
+    console.log(data);
+    // or return the data with return data
+  } catch (error) {
+    console.log(error);
+  }
+}
+
+getData();</code></pre><br/>
+Однако ещё не все перешли на этот стиль. <code>try/catch</code> может усложнить ваш код. При этом нужно учитывать ещё кое-что. Посмотрите, как в этом коде возникает ошибка внутри блока <code>try</code>:<br/>
+<br/>
+<pre><code class="javascript">async function getData() {
+  try {
+    if (true) {
+      throw Error("Catch me if you can");
+    }
+  } catch (err) {
+    console.log(err.message);
+  }
+}
+
+getData()
+  .then(() => console.log("I will run no matter what!"))
+  .catch(() => console.log("Catching err"));</code></pre><br/>
+Что насчёт двух строк, которые выводятся в консоли? Не забывайте, что <b><code>try/catch</code> — синхронная конструкция, а наша асинхронная функция генерирует промис</b>. Они идут по двум разным путям, словно поезда. Но они никогда не встретятся! Поэтому ошибка, которую подняла <code>throw</code>, никогда не активирует обработчик <code>catch</code> в <code>getData()</code>. Исполнение этого кода приведёт к тому, что сначала появится надпись «Catch me if you can», а за ней «I will run no matter what!».<br/>
+<br/>
+В реальном мире нам не нужно, чтобы <code>throw</code> запускал обработчик <code>then</code>. Решить это можно, скажем, возвращая <code>Promise.reject()</code> из функции:<br/>
+<br/>
+<pre><code class="javascript">async function getData() {
+  try {
+    if (true) {
+      return Promise.reject("Catch me if you can");
+    }
+  } catch (err) {
+    console.log(err.message);
+  }
+}
+Now the error will be handled as expected:
+getData()
+  .then(() => console.log("I will NOT run no matter what!"))
+  .catch(() => console.log("Catching err"));
+
+"Catching err" // output</code></pre><br/>
+Помимо этого <code>async/await</code> выглядит лучшим способом структурирования асинхронного кода в JavaScript. Мы лучше управляем обработкой ошибок и код выглядит чище.<br/>
+<br/>
+В любом случае, я не рекомендую рефакторить весь ваш JS-код под <code>async/await</code>. Обсудите это с командой. Но если вы работаете самостоятельно, то выбор между чистыми промисами и <code>async/await</code> — лишь дело вкуса.<br/>
+<br/>
+<a name="11"></a><h2>11. JavaScript-движки: как они работают? Итоги</h2><br/>
+JavaScript — это скриптовый язык для веба, он сначала компилируется, а затем интерпретируется движком. Самые популярные JS-движки: V8, применяется в Google Chrome и Node.js; SpiderMonkey, разработан для Firefox; JavaScriptCore, используется в Safari.<br/>
+<br/>
+JavaScript-движки имеют много «движущихся» частей: стек вызовов, глобальная память, цикл событий, очередь обратных вызовов. Все эти части идеально работают вместе, обеспечивая обработку синхронного и асинхронного кода.<br/>
+<br/>
+JavaScript-движки являются однопоточными, то есть для исполнения функций применяется единственный стек вызовов. Это ограничение лежит в основе асинхронной природы JavaScript: все операции, для выполнения которых требуется какое-то время, должны управляться внешней сущностью (например, браузером) или функцией обратного вызова.<br/>
+<br/>
+Для упрощения работы асинхронного кода в ECMAScript 2015 были внедрены промисы. Промис — это асинхронный объект, используемый для представления успешности или неуспешности любой асинхронной операции. Но улучшения на этом не прекратились. В 2017-м появились <code>async/await</code>: стилистическое улучшение для промисов, позволяющее писать асинхронный код, как если бы он был синхронным.</div></div> <!----> <!----></div> <div class="tm-article-presenter__meta"><div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Теги:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bjs%5D" class="tm-tags-list__link">js</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bnodejs%5D" class="tm-tags-list__link">nodejs</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5B%D0%B1%D1%80%D0%B0%D1%83%D0%B7%D0%B5%D1%80%D1%8B%5D" class="tm-tags-list__link">браузеры</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5B%D0%BD%D0%B8%D0%BA%D1%82%D0%BE%20%D0%BD%D0%B5%20%D1%87%D0%B8%D1%82%D0%B0%D0%B5%D1%82%20%D1%82%D0%B5%D0%B3%D0%B8%5D" class="tm-tags-list__link">никто не читает теги</a></li></ul></div> <div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Хабы:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/company/vk/blog/" class="tm-hubs-list__link router-link-active">
+    Блог компании VK
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/javascript/" class="tm-hubs-list__link">
+    JavaScript
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/programming/" class="tm-hubs-list__link">
+    Программирование
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/nodejs/" class="tm-hubs-list__link">
+    Node.JS
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/browsers/" class="tm-hubs-list__link">
+    Браузеры
+  </a></li></ul></div></div></article></div> <!----></div> <div class="tm-article-sticky-panel"><div class="tm-data-icons tm-article-sticky-panel__icons"><div class="tm-article-rating tm-data-icons__item"><div class="tm-votes-meter tm-article-rating__votes-switcher"><svg height="16" width="16" class="tm-svg-img tm-votes-meter__icon tm-votes-meter__icon_medium"><title>Всего голосов 73: ↑68 и ↓5</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-rating"></use></svg> <span title="Всего голосов 73: ↑68 и ↓5" class="tm-votes-meter__value tm-votes-meter__value_positive tm-votes-meter__value_medium">+63</span></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----> <span title="Количество просмотров" class="tm-icon-counter tm-data-icons__item"><svg height="16" width="16" class="tm-svg-img tm-icon-counter__icon"><title>Просмотры</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-views"></use></svg> <span class="tm-icon-counter__value">52K</span></span> <button title="Добавить в закладки" type="button" class="bookmarks-button tm-data-icons__item"><span title="Добавить в закладки" class="tm-svg-icon__wrapper bookmarks-button__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Добавить в закладки</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-favorite"></use></svg></span> <span title="Количество пользователей, добавивших публикацию в закладки" class="bookmarks-button__counter">
+    432
+  </span></button> <!----> <div title="Поделиться" class="tm-sharing tm-data-icons__item"><button type="button" class="tm-sharing__button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="tm-sharing__icon"><path fill="currentColor" d="M10.33.275l9.047 7.572a.2.2 0 010 .306l-9.048 7.572a.2.2 0 01-.328-.153V11c-8 0-9.94 6-9.94 6S-1 5 10 5V.428a.2.2 0 01.328-.153z"></path></svg></button> <!----></div> <DIV class="v-portal" style="display:none;"></DIV></div> </div></div> <!----> <!----> <div class="tm-article-presenter__footer"><div class="tm-article-blocks"><!----> <section class="tm-block tm-block_spacing-bottom"><!----> <div class="tm-block__body tm-block__body_variant-balanced"><div class="tm-article-author"><div class="tm-article-author__company"><div class="tm-article-author__company-card"><div class="tm-company-snippet"><a href="/ru/company/vk/profile/" class="tm-company-snippet__logo-link"><div class="tm-entity-image"><img alt="" height="40" src="//habrastorage.org/getpro/habr/company/9ed/c74/6b4/9edc746b484c805ecad1f941b5f7068a.png" width="40" class="tm-entity-image__pic"></div></a> <div class="tm-company-snippet__info"><a href="/ru/company/vk/profile/" class="tm-company-snippet__title">VK</a> <div class="tm-company-snippet__description">Технологии, которые объединяют</div></div></div> <div class="tm-article-author__buttons"><!----> <!----></div></div> <div class="tm-article-author__company-contacts"><a href="https://facebook.com/insidevk" rel="noopener" target="_blank" class="tm-article-author__contact">
+      Facebook
+    </a><a href="https://twitter.com/inside_vk" rel="noopener" target="_blank" class="tm-article-author__contact">
+      Twitter
+    </a><a href="https://vk.com/insidevk" rel="noopener" target="_blank" class="tm-article-author__contact">
+      ВКонтакте
+    </a><a href="https://instagram.com/inside.vk" rel="noopener" target="_blank" class="tm-article-author__contact">
+      Instagram
+    </a><a href="https://telegram.me/inside_vk" rel="noopener" target="_blank" class="tm-article-author__contact">
+      Telegram
+    </a></div> <div class="tm-article-author__separator"></div></div> <div class="tm-user-card tm-article-author__user-card tm-user-card_variant-article"><div class="tm-user-card__info-container"><div class="tm-user-card__header"><div class="tm-user-card__header-data"><a href="/ru/users/AloneCoder/" class="tm-user-card__userpic tm-user-card__userpic_size-40"><div class="tm-entity-image"><img alt="" src="//habrastorage.org/getpro/habr/avatars/741/45e/bea/74145ebeab7f222cce402aed2683f9d7.png" class="tm-entity-image__pic"></div></a> <div class="tm-user-card__meta"><div title=" 569 голосов " class="tm-karma tm-user-card__karma"><div class="tm-karma__votes tm-karma__votes_positive">
+    353.7
+  </div> <div class="tm-karma__text">
+    Карма
+  </div></div> <div title="Рейтинг пользователя" class="tm-rating tm-user-card__rating"><div class="tm-rating__header"> <div class="tm-rating__counter">0</div></div> <div class="tm-rating__text">
+    Рейтинг
+  </div></div></div></div></div> <div class="tm-user-card__info tm-user-card__info_variant-article"><div class="tm-user-card__title tm-user-card__title_variant-article"><span class="tm-user-card__name tm-user-card__name_variant-article">Макс</span> <a href="/ru/users/AloneCoder/" class="tm-user-card__nickname tm-user-card__nickname_variant-article">
+          @AloneCoder
+        </a> <!----></div> <p class="tm-user-card__short-info tm-user-card__short-info_variant-article">¯\_(ツ)_/¯</p></div></div> <div class="tm-user-card__buttons tm-user-card__buttons_variant-article"><!----> <!----> <!----> <!----> <!----></div></div> <!----></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----></section> <div class="tm-article-blocks__comments"><div class="tm-article-page-comments"><div class="tm-article-comments-counter-link tm-article-comments-counter-button"><a href="/ru/company/vk/blog/452906/comments/" class="tm-article-comments-counter-link__link tm-article-comments-counter-link__link_button-style"><svg height="16" width="16" class="tm-svg-img tm-article-comments-counter-link__icon tm-article-comments-counter-link__icon_contrasted"><title>Комментарии</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-comments"></use></svg> <span class="tm-article-comments-counter-link__value tm-article-comments-counter-link__value_contrasted">
+       Комментарии 16 
+    </span></a> <!----></div></div></div>  <!---->  <!----> <!----></div></div></div></div></div> <div class="tm-page__sidebar"><div class="tm-layout-sidebar"><div class="tm-layout-sidebar__placeholder_initial"></div> <div class="tm-sexy-sidebar tm-sexy-sidebar_initial" style="margin-top:0px;"><!----> <section class="tm-block tm-block_spacing-bottom"><header class="tm-block__header"><h2 class="tm-block__title">Информация</h2> <!----></header> <div class="tm-block__body"><div class="tm-company-basic-info"><dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Дата основания</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><time datetime="1998-10-14T20:00:00.000Z" title="1998-10-15, 00:00">15  октября  1998</time></dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Местоположение</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap">
+    Россия
+  </dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Сайт</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><a href="https://vk.com/vkteam" target="_blank" class="tm-company-basic-info__link">
+      vk.com
+    </a></dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Численность</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap">
+    5 001–10 000 человек
+  </dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Дата регистрации</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><time datetime="2008-08-09T07:42:32.000Z" title="2008-08-09, 11:42">9  августа  2008</time></dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Представитель</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><a href="/ru/users/somuchmich/" class="tm-company-basic-info__link">
+      Миша Буданов
+    </a></dd></dl></div></div> <!----></section> <div class="tm-company-widgets"></div> <!----></div></div></div></div></div></div></main> <!----></div> <div class="tm-footer-menu"><div class="tm-page-width"><div class="tm-footer-menu__container"><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Ваш аккаунт
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr/?back=/ru/company/vk/blog/452906/&amp;hl=ru" rel="nofollow" target="_self">
+                Войти
+              </a></li><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr-register/?back=/ru/company/vk/blog/452906/&amp;hl=ru" rel="nofollow" target="_self">
+                Регистрация
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Разделы
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/" class="footer-menu__item-link router-link-active">
+                Публикации
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/news/" class="footer-menu__item-link">
+                Новости
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/hubs/" class="footer-menu__item-link">
+                Хабы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/companies/" class="footer-menu__item-link">
+                Компании
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/users/" class="footer-menu__item-link">
+                Авторы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/sandbox/" class="footer-menu__item-link">
+                Песочница
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Информация
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/docs/help/" class="footer-menu__item-link">
+                Устройство сайта
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/authors/codex/" class="footer-menu__item-link">
+                Для авторов
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/companies/corpblogs/" class="footer-menu__item-link">
+                Для компаний
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/docs/transparency/" class="footer-menu__item-link">
+                Документы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/agreement" target="_blank">
+                Соглашение
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/confidential/" target="_blank">
+                Конфиденциальность
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Услуги
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQLwRfQmXibiUlWaRg-BAc38s7oM3lJiaPju7qmdJsp8ysIvZ_G-Npem0njJLMozE2bPHMpDqiI5hhy/pub?start=false&amp;loop=false&amp;delayms=60000&amp;slide=id.g91a03369cd_4_297" target="_blank">
+                Реклама
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://habrastorage.org/storage/stuff/habr/service_price.pdf" target="_blank">
+                Тарифы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQJJds8-Di7BQSP_guHxICN7woVYoN5NP_22ra-BIo4bqnTT9FR6fB-Ku2P0AoRpX0Ds-LRkDeAoD8F/pub?start=false&amp;loop=false&amp;delayms=60000" target="_blank">
+                Контент
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://tmtm.timepad.ru/" target="_blank">
+                Семинары
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/megaprojects/" class="footer-menu__item-link">
+                Мегапроекты
+              </a></li></ul></div></div></div></div></div> <div class="tm-footer"><div class="tm-page-width"><div class="tm-footer__container"><!----> <div class="tm-footer__social"><a href="https://www.facebook.com/habrahabr.ru" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Facebook</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-facebook"></use></svg></a><a href="https://twitter.com/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Twitter</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-twitter"></use></svg></a><a href="https://vk.com/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>VK</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-vkontakte"></use></svg></a><a href="https://telegram.me/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Telegram</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-telegram"></use></svg></a><a href="https://www.youtube.com/channel/UCd_sTwKqVrweTt4oAKY5y4w" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Youtube</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-youtube"></use></svg></a><a href="https://zen.yandex.ru/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Яндекс Дзен</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-zen"></use></svg></a></div> <DIV class="v-portal" style="display:none;"></DIV> <button class="tm-footer__link"><!---->
+        Настройка языка
+      </button> <a href="/ru/about" class="tm-footer__link">
+        О сайте
+      </a> <a href="/ru/feedback/" class="tm-footer__link">
+        Техническая поддержка
+      </a> <!----> <a href="/berserk-mode-nope" class="tm-footer__link">
+        Вернуться на старую версию
+      </a> <div class="tm-footer-copyright"><span class="tm-copyright"><span class="tm-copyright__years">© 2006–2021 </span> <span class="tm-copyright__name">«<a href="https://company.habr.com/" rel="noopener" target="_blank" class="tm-copyright__link">Habr</a>»</span></span></div></div></div></div> <!----> <!----></div> <div class="vue-portal-target"></div></div>
+<script>window.__INITIAL_STATE__={"adblock":{"hasAcceptableAdsFilter":false,"hasAdblock":false},"articlesList":{"articlesList":{"452906":{"id":"452906","timePublished":"2019-05-22T13:14:57+00:00","isCorporative":true,"lang":"ru","titleHtml":"JavaScript-движки: как они работают? От стека вызовов до промисов — (почти) всё, что вам нужно знать","leadData":{"textHtml":"\u003Cdiv style=\"text-align:center;\"\u003E\u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fsd\u002Fnm\u002Fn6\u002Fsdnmn6cuvwusvk4fysdkzvnw9rg.jpeg\"\u003E\u003C\u002Fdiv\u003E\u003Cbr\u003E\r\nВы когда-нибудь задумывались, как браузеры читают и исполняют JavaScript-код? Это выглядит таинственно, но в этом посте вы можете получить представление, что же происходит под капотом.\u003Cbr\u003E\r\n\u003Cbr\u003E\r\nНачнём наше путешествие в язык с экскурсии в удивительный мир JavaScript-движков.\u003Cbr\u003E","imageUrl":null,"buttonTextHtml":"Читать дальше →","image":null},"editorVersion":"1.0","postType":"article","postLabels":[{"type":"translation","data":{"originalAuthorName":"Valentino Gagliardi","originalUrl":"https:\u002F\u002Fwww.valentinog.com\u002Fblog\u002Fengines\u002F"}}],"author":{"scoreStats":{"score":353.7,"votesCount":569},"rating":0,"relatedData":null,"contacts":[],"authorContacts":[],"paymentDetails":{"paymentYandexMoney":null,"paymentPayPalMe":null,"paymentWebmoney":null},"id":"63394","alias":"AloneCoder","fullname":"Макс","avatarUrl":"\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Favatars\u002F741\u002F45e\u002Fbea\u002F74145ebeab7f222cce402aed2683f9d7.png","speciality":"¯\\_(ツ)_\u002F¯"},"statistics":{"commentsCount":16,"favoritesCount":432,"readingCount":51992,"score":63,"votesCount":73},"hubs":[{"relatedData":null,"id":"4992","alias":"vk","type":"corporative","title":"Блог компании VK","titleHtml":"Блог компании VK","isProfiled":false},{"relatedData":null,"id":"357","alias":"javascript","type":"collective","title":"JavaScript","titleHtml":"JavaScript","isProfiled":true},{"relatedData":null,"id":"359","alias":"programming","type":"collective","title":"Программирование","titleHtml":"Программирование","isProfiled":true},{"relatedData":null,"id":"17110","alias":"nodejs","type":"collective","title":"Node.JS","titleHtml":"Node.JS","isProfiled":true},{"relatedData":null,"id":"19257","alias":"browsers","type":"collective","title":"Браузеры","titleHtml":"Браузеры","isProfiled":false}],"flows":[{"id":"1","alias":"develop","title":"Разработка"}],"relatedData":null,"textHtml":"\u003Cdiv xmlns=\"http:\u002F\u002Fwww.w3.org\u002F1999\u002Fxhtml\"\u003E\u003Cdiv style=\"text-align:center;\"\u003E\u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fr\u002Fw780q1\u002Fwebt\u002Fsd\u002Fnm\u002Fn6\u002Fsdnmn6cuvwusvk4fysdkzvnw9rg.jpeg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fsd\u002Fnm\u002Fn6\u002Fsdnmn6cuvwusvk4fysdkzvnw9rg.jpeg\" data-blurred=\"true\"\u002F\u003E\u003C\u002Fdiv\u003E\u003Cbr\u002F\u003E\r\nВы когда-нибудь задумывались, как браузеры читают и исполняют JavaScript-код? Это выглядит таинственно, но в этом посте вы можете получить представление, что же происходит под капотом.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nНачнём наше путешествие в язык с экскурсии в удивительный мир JavaScript-движков.\u003Cbr\u002F\u003E\r\n\u003Ca name=\"habracut\"\u003E\u003C\u002Fa\u003E\u003Cbr\u002F\u003E\r\nОткройте консоль в Chrome и перейдите на вкладку Sources. Вы увидите несколько разделов, и один из самых интересных называется \u003Cb\u003ECall Stack\u003C\u002Fb\u003E (в Firefox вы увидите Call Stack, когда поставите брейкпоинт в коде):\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fpost_images\u002Fd34\u002F46f\u002Fa81\u002Fd3446fa81bf753ff80d32e39bcf5778c.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЧто такое Call Stack? Похоже, тут много чего происходит, даже ради исполнения пары строк кода. На самом деле JavaScript не поставляется в коробке с каждым браузером. Существует большой компонент, который компилирует и интерпретирует наш JavaScript-код — это JavaScript-движок. Самыми популярными являются V8, он используется в Google Chrome и Node.js, SpiderMonkey в Firefox, JavaScriptCore в Safari\u002FWebKit.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nСегодня JavaScript-движки представляют собой прекрасные образцы программной инженерии, и будет практически невозможно рассказать обо всех аспектах. Однако основную работу по исполнению кода делают для нас лишь несколько компонентов движков: Call Stack (стек вызовов), Global Memory (глобальная память) и Execution Context (контекст исполнения). Готовы с ними познакомиться?\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nСодержание:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Col\u003E\r\n\u003Cli\u003E\u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fmailru\u002Fblog\u002F452906\u002F#1\"\u003EJavaScript-движки и глобальная память\u003C\u002Fa\u003E\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fmailru\u002Fblog\u002F452906\u002F#2\"\u003EJavaScript-движки: как они работают? Глобальный контекст исполнения и стек вызовов\u003C\u002Fa\u003E\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fmailru\u002Fblog\u002F452906\u002F#3\"\u003EJavaScript является однопоточным, и другие забавные истории\u003C\u002Fa\u003E\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fmailru\u002Fblog\u002F452906\u002F#4\"\u003EАсинхронный JavaScript, очередь обратных вызовов и цикл событий\u003C\u002Fa\u003E\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fmailru\u002Fblog\u002F452906\u002F#5\"\u003ECallback hell и промисы ES6\u003C\u002Fa\u003E\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fmailru\u002Fblog\u002F452906\u002F#6\"\u003EСоздание и работа с JavaScript-промисами\u003C\u002Fa\u003E\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fmailru\u002Fblog\u002F452906\u002F#7\"\u003EОбработка ошибок в ES6-промисах\u003C\u002Fa\u003E\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fmailru\u002Fblog\u002F452906\u002F#8\"\u003EКомбинаторы ES6-промисов: Promise.all, Promise.allSettled, Promise.any и другие\u003C\u002Fa\u003E\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fmailru\u002Fblog\u002F452906\u002F#9\"\u003EES6-промисы и очередь микрозадач\u003C\u002Fa\u003E\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fmailru\u002Fblog\u002F452906\u002F#10\"\u003EJavaScript-движки: как они работают? Асинхронная эволюция: от промисов до async\u002Fawait\u003C\u002Fa\u003E\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fmailru\u002Fblog\u002F452906\u002F#11\"\u003EJavaScript-движки: как они работают? Итоги\u003C\u002Fa\u003E\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003C\u002Fol\u003E\u003Cbr\u002F\u003E\r\n\u003Ca name=\"1\"\u003E\u003C\u002Fa\u003E\u003Ch2\u003E1. JavaScript-движки и глобальная память\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nЯ говорил, что JavaScript является одновременно компилируемым и интерпретируемым языком. Хотите верьте, хотите нет, но на самом деле JavaScript-движки компилируют ваш код за микросекунды до его исполнения.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВолшебство какое-то, да? Это волшебство называется JIT (Just in time compilation). Она сама по себе является большой темой для обсуждения, даже книги будет мало, чтобы описать работу JIT. Но пока что мы пропустим теорию и сосредоточимся на фазе исполнения, которая не менее интересна.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nДля начала посмотрите на этот код:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"javascript\"\u003Evar num = 2;\n\nfunction pow(num) {\n    return num * num;\n}\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nДопустим, я спрошу вас, как этот код обрабатывается в браузере? Что вы ответите? Вы можете сказать: «браузер читает код» или «браузер исполняет код». В реальности всё не так просто. Во-первых, код считывает не браузер, а движок. \u003Cb\u003EJavaScript-движок считывает код\u003C\u002Fb\u003E, и как только он определяет первую строку, то кладёт пару ссылок в \u003Cb\u003Eглобальную память\u003C\u002Fb\u003E.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nГлобальная память (которую также называют кучей (heap)) — это область, в которой JavaScript-движок хранит переменные и объявления функций. И когда он прочитает приведённый выше код, то в глобальной памяти появятся два биндинга:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fpost_images\u002F11b\u002F0a8\u002Fa90\u002F11b0a8a904acef9ee7bde8b84cb76873.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nДаже если в примере содержится лишь переменная и функция, представьте, что ваш JavaScript-код исполняется в более крупной среде: в браузере или в Node.js. В таких средах есть много заранее определённых функций и переменных, которые называют глобальными. Поэтому глобальная память будет содержать гораздо больше данных, чем просто \u003Ccode\u003Enum\u003C\u002Fcode\u003E и \u003Ccode\u003Epow\u003C\u002Fcode\u003E, имейте в виду.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВ данный момент ничего не исполняется. Давайте теперь попробуем исполнить нашу функцию:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"javascript\"\u003Evar num = 2;\n\nfunction pow(num) {\n    return num * num;\n}\n\npow(num);\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nЧто произойдёт? А произойдёт кое-что интересное. При вызове функции JavaScript-движок выделит два раздела:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003EГлобальный контекст исполнения (Global Execution Context)\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003Cli\u003EСтек вызовов (Call Stack)\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\nЧто они собой представляют?\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ca name=\"2\"\u003E\u003C\u002Fa\u003E\u003Ch2\u003E2. JavaScript-движки: как они работают? Глобальный контекст исполнения и стек вызовов\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nВы узнали, как JavaScript-движок читает переменные и объявления функций. Они попадают в глобальную память (кучу).\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nНо теперь мы исполняем JavaScript-функцию, и движок должен об этом позаботиться. Каким образом? У каждого JavaScript-движка есть \u003Cb\u003Eключевой компонент, который называется стек вызовов\u003C\u002Fb\u003E.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ca href=\"https:\u002F\u002Fen.wikibooks.org\u002Fwiki\u002FData_Structures\u002FStacks_and_Queues\"\u003EЭто стековая структура данных\u003C\u002Fa\u003E: элементы могут добавляться в неё сверху, но они не могут исключаться из структуры, пока над ними есть другие элементы. Именно так устроены JavaScript-функции. При исполнении они не могут покинуть стек вызовов, если в нём присутствует другая функция. Обратите на это внимание, поскольку эта концепция помогает понять утверждение «JavaScript является однопоточным».\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nНо вернёмся к нашему примеру. \u003Cb\u003EПри вызове функции движок отправляет её в стек вызовов\u003C\u002Fb\u003E:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fpost_images\u002Fb79\u002F118\u002Fa43\u002Fb79118a430d9daa8af3491138c0cfd2b.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nМне нравится представлять стек вызовов в виде стопки чипсов Pringles. Мы не можем съесть чипс снизу стопки, пока не съедим те, что лежат сверху. К счастью, наша функция является синхронной: это всего лишь умножение, которое быстро вычисляется.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВ то же самое время движок размещает в памяти \u003Cb\u003Eглобальный контекст исполнения\u003C\u002Fb\u003E, это глобальная среда, в которой исполняется JavaScript-код. Вот как это выглядит:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fpost_images\u002Fea8\u002Fa33\u002F9c1\u002Fea8a339c120638632b57eb0fb3161254.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПредставьте глобальный контекст исполнения в виде моря, в котором глобальные JavaScript-функции плавают, словно рыбы. Как мило! Но это лишь половина всей истории. Что, если наша функция имеет вложенные переменные или внутренние функции?\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nДаже в простом случае, как показано ниже, JavaScript-движок создаёт \u003Cb\u003Eлокальный контекст исполнения\u003C\u002Fb\u003E:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"javascript\"\u003Evar num = 2;\n\nfunction pow(num) {\n    var fixed = 89;\n    return num * num;\n}\n\npow(num);\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nОбратите внимание, что я добавил в функцию \u003Ccode\u003Epow\u003C\u002Fcode\u003E переменную \u003Ccode\u003Efixed\u003C\u002Fcode\u003E. В этом случае локальный контекст исполнения будет содержать раздел для \u003Ccode\u003Efixed\u003C\u002Fcode\u003E. Я не очень хорошо рисую маленькие прямоугольники внутри других маленьких маленьких прямоугольников, так что используйте своё воображение.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nРядом с \u003Ccode\u003Epow\u003C\u002Fcode\u003E появится локальный контекст исполнения, внутри зелёного раздела-прямоугольника, расположенного внутри глобального контекста исполнения. Представьте также, как для каждой вложенной функции внутри вложенной функции движок создаёт другие локальные контексты исполнения. Все эти разделы-прямоугольники появляются очень быстро! Как матрёшка!\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nДавайте теперь вернёмся к истории с однопоточностью. Что это означает?\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ca name=\"3\"\u003E\u003C\u002Fa\u003E\u003Ch2\u003E3. JavaScript является однопоточным, и другие забавные истории\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nМы говорим, что \u003Cb\u003EJavaScript является однопоточным, потому что наши функции обрабатывает лишь один стек вызовов\u003C\u002Fb\u003E. Напомню, что функции не могут покинуть стек вызовов, если исполнения ожидают другие функции.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЭто не проблема, если мы работаем с синхронным кодом. К примеру, сложение двух чисел является синхронным и вычисляется за микросекунды. А что насчёт сетевых вызовов и других взаимодействий с внешним миром?\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nК счастью, \u003Cb\u003EJavaScript-движки спроектированы так, чтобы по умолчанию работать асинхронно\u003C\u002Fb\u003E. Даже если они могут исполнять только по одной функции за раз, более медленные функции могут исполняться внешней сущностью — в нашем случае это браузер. Об этом мы поговорим ниже.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВ то же время вы знаете, что когда браузер загружает какой-то JavaScript-код, движок считывает этот код строка за строкой и выполняет следующие шаги:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003EПомещает в глобальную память (кучу) переменные и объявления функций.\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003Cli\u003EОтправляет вызов каждой функции в стек вызовов.\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003Cli\u003EСоздаёт глобальный контекст исполнения, в котором исполняются глобальные функции.\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003Cli\u003EСоздаёт много маленьких локальных контекстов исполнения (если есть внутренние переменные или вложенные функции).\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\nТеперь у вас есть общее представление о механике синхронности, лежащей в основе всех JavaScript-движков. В следующей главе мы поговорим о том, как в JavaScript работает асинхронный код и почему он работает именно так.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ca name=\"4\"\u003E\u003C\u002Fa\u003E\u003Ch2\u003E4. Асинхронный JavaScript, очередь обратных вызовов и цикл событий\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nБлагодаря глобальной памяти, контексту исполнения и стеку вызовов синхронный JavaScript-код исполняется в наших браузерах. Но мы кое о чём забыли. Что происходит, если нужно исполнить какую-нибудь асинхронную функцию?\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПод асинхронной функцией я подразумеваю каждое взаимодействие с внешним миром, для завершения которого может потребоваться какое-то время. Вызов REST API или таймера — асинхронны, потому что на их выполнение могут уйти секунды. Благодаря имеющимся в движке элементам мы можем обрабатывать такие функции без блокирования стека вызовов и браузера. Не забывайте, стек вызовов может исполнять одновременно только одну функцию, и \u003Cb\u003Eдаже одна блокирующая функция может буквально остановить браузер\u003C\u002Fb\u003E. К счастью, JavaScript-движки «умны», и с небольшой помощью браузера могут такие вещи отсортировывать.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nКогда мы исполняем асинхронную функцию, браузер берёт её и выполняет для нас. Возьмём такой таймер:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"javascript\"\u003EsetTimeout(callback, 10000);\n\nfunction callback(){\n    console.log('hello timer!');\n}\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nУверен, что хоть вы и видели \u003Ccode\u003EsetTimeout\u003C\u002Fcode\u003E уже сотни раз, однако можете не знать, что \u003Cb\u003Eэта функция не встроена в JavaScript\u003C\u002Fb\u003E. Вот так, когда JavaScript появился, в нём не было функции \u003Ccode\u003EsetTimeout\u003C\u002Fcode\u003E. По сути, она является частью так называемых браузерных API, коллекции удобных инструментов, которые нам предоставляет браузер. Чудесно! Но что это означает на практике? Поскольку \u003Ccode\u003EsetTimeout\u003C\u002Fcode\u003E относится к браузерным API, эта функция исполняется самим браузером (на мгновение она появляется в стеке вызовов, но сразу оттуда удаляется).\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЧерез 10 секунд браузер берёт callback-функцию, которую мы ему передали, и кладёт её в \u003Cb\u003Eочередь обратных вызовов\u003C\u002Fb\u003E. В данный момент в JavaScript-движке появилось ещё два раздела-прямоугольника. Посмотрите на этот код:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"javascript\"\u003Evar num = 2;\n\nfunction pow(num) {\n    return num * num;\n}\n\npow(num);\n\nsetTimeout(callback, 10000);\n\nfunction callback(){\n    console.log('hello timer!');\n}\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nТеперь наша схема выглядит так:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fpost_images\u002F00f\u002F8e2\u002Fb33\u002F00f8e2b33a47490117a9e8f6abad23f5.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ccode\u003EsetTimeout\u003C\u002Fcode\u003E исполняется внутри контекста браузера. Через 10 секунд таймер запускается и callback-функция готова к исполнению. Но для начала она должна пройти через очередь обратных вызовов. Это структура данных в виде очереди, и, как свидетельствует её название, представляет собой упорядоченную очередь из функций.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nКаждая асинхронная функция должна пройти через очередь обратных вызовов, прежде чем попасть в стек вызовов. Но кто отправляет функции дальше? Это делает компонент под названием \u003Cb\u003Eцикл событий\u003C\u002Fb\u003E.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПока что цикл событий занимается только одним: проверяет, пуст ли стек вызовов. Если в очереди обратных вызовов есть какая-нибудь функция и если стек вызовов свободен, тогда пора отправлять callback в стек вызовов.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПосле этого функция считается исполненной. Так выглядит общая схема обработки асинхронного и синхронного кода JavaScript-движком:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fpost_images\u002Feba\u002Fec9\u002Ffec\u002Febaec9fec5dc1931176371fd4a9f3cbd.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nДопустим, \u003Ccode\u003Ecallback()\u003C\u002Fcode\u003E готова к исполнению. После завершения исполнения \u003Ccode\u003Epow()\u003C\u002Fcode\u003E \u003Cb\u003Eстек вызовов освобождается и цикл событий отправляет в него\u003C\u002Fb\u003E \u003Ccode\u003Ecallback()\u003C\u002Fcode\u003E. И всё! Хотя я немного всё упростил, если вы поняли приведённую выше схему, то можете понять и весь JavaScript.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПомните: \u003Cb\u003Eбраузерные API, очередь обратных вызовов и цикл событий являются столпами асинхронного JavaScript\u003C\u002Fb\u003E.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nИ если интересно, можете посмотреть любопытное видео «What the heck is the event loop anyway» Филипа Робертса. Это одно из лучших объяснений цикла событий.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nНо мы ещё не закончили с темой асинхронного JavaScript. В следующих главах мы рассмотрим ES6-промисы.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ca name=\"5\"\u003E\u003C\u002Fa\u003E\u003Ch2\u003E5. Callback hell и ES6-промисы\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nCallback-функции используются в JavaScript везде, и в синхронном, и в асинхронном коде. Рассмотрим этот метод:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"javascript\"\u003Efunction mapper(element){\n    return element * 2;\n}\n\n[1, 2, 3, 4, 5].map(mapper);\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Ccode\u003Emapper\u003C\u002Fcode\u003E — это callback-функция, которая передаётся внутри \u003Ccode\u003Emap\u003C\u002Fcode\u003E. Приведённый код является синхронным. А теперь рассмотрим этот интервал:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"javascript\"\u003Efunction runMeEvery(){\n    console.log('Ran!');\n}\n\nsetInterval(runMeEvery, 5000);\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nЭтот код асинхронный, поскольку внутри \u003Ccode\u003EsetInterval\u003C\u002Fcode\u003E мы передаём обратный вызов \u003Ccode\u003ErunMeEvery\u003C\u002Fcode\u003E. Обратные вызовы применяются по всему JavaScript, так что у нас годами существует проблема, получившая название «callback hell» — «ад обратных вызовов».\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nТермин \u003Cb\u003ECallback hell\u003C\u002Fb\u003E в JavaScript применяют к «стилю» программирования, при котором callback’и вкладывают в другие callback’и, которые вложены в другие callback’и… Из-за асинхронной природы JavaScript-программисты уже давно попадают в эту ловушку.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЕсли честно, я никогда не создавал большие пирамиды callback’ов. Возможно, потому что я ценю читабельный код и всегда стараюсь придерживаться его принципов. Если вы попали в callback hell, это говорит о том, что ваша функция делает слишком много. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЯ не буду подробно говорить о callback hell, если вам интересно, то сходите на сайт \u003Ca href=\"http:\u002F\u002Fcallbackhell.com\u002F\"\u003Ecallbackhell.com\u003C\u002Fa\u003E, там эта проблема подробно исследована и предложены разные решения. А мы поговорим о \u003Cb\u003EES6-промисах\u003C\u002Fb\u003E. Это аддон к JavaScript, призванное решить проблему ада обратных вызовов. Но что такое «промисы»?\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cb\u003EПромис в JavaScript — это представление будущего события\u003C\u002Fb\u003E. Промис может завершиться успешно, или на жаргоне программистов промис будет «разрешён» (resolved, исполнен). Но если промис завершается с ошибкой, то мы говорим, что он в состоянии «отклонён» (rejected). Также у промисов есть состояние по умолчанию: каждый новый промис начинается в состоянии «ожидания решения» (pending). Можно ли создать собственный промис? Да. Об этом мы поговорим в следующей главе.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ca name=\"6\"\u003E\u003C\u002Fa\u003E\u003Ch2\u003E6. Создание и работа с JavaScript-промисами\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nДля создания нового промиса нужно вызвать конструктор, передав в него callback-функцию. Она может принимать только два параметра: \u003Ccode\u003Eresolve\u003C\u002Fcode\u003E и \u003Ccode\u003Ereject\u003C\u002Fcode\u003E. Давайте создадим новый промис, который будет разрешён через 5 секунд (можете протестировать примеры в браузерной консоли):\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"javascript\"\u003Econst myPromise = new Promise(function(resolve){\n    setTimeout(function(){\n        resolve()\n    }, 5000)\n});\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nКак видите, \u003Ccode\u003Eresolve\u003C\u002Fcode\u003E — это функция, которую мы вызываем, чтобы промис успешно завершился. А \u003Ccode\u003Ereject\u003C\u002Fcode\u003E создаст отклонённый промис:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"javascript\"\u003Econst myPromise = new Promise(function(resolve, reject){\n    setTimeout(function(){\n        reject()\n    }, 5000)\n});\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nОбратите внимание, что вы можете игнорировать \u003Ccode\u003Ereject\u003C\u002Fcode\u003E, потому что это второй параметр. Но если вы намерены воспользоваться \u003Ccode\u003Ereject\u003C\u002Fcode\u003E, то \u003Cb\u003Eне сможете проигнорировать \u003Ccode\u003Eresolve\u003C\u002Fcode\u003E\u003C\u002Fb\u003E. То есть следующий код не будет работать и закончится разрешённым промисом:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"javascript\"\u003E\u002F\u002F Can't omit resolve !\n\nconst myPromise = new Promise(function(reject){\n    setTimeout(function(){\n        reject()\n    }, 5000)\n});\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nСейчас промисы не выглядят такими полезными, верно? Эти примеры ничего не выводят для пользователя. Давайте кое-что добавим. И разрешённые, от отклонённые промисы могут возвращать данные. Например:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"javascript\"\u003Econst myPromise = new Promise(function(resolve) {\n  resolve([{ name: \"Chris\" }]);\n});\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nНо мы всё ещё ничего не видим. \u003Cb\u003EДля извлечения данных из промиса вам нужно связать промис с методом \u003Ccode\u003Ethen\u003C\u002Fcode\u003E\u003C\u002Fb\u003E. Он берёт callback (какая ирония!), который получает актуальные данные:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"javascript\"\u003Econst myPromise = new Promise(function(resolve, reject) {\n  resolve([{ name: \"Chris\" }]);\n});\n\nmyPromise.then(function(data) {\n    console.log(data);\n});\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nКак JavaScript-разработчик и потребитель чужого кода вы по большей части взаимодействуете с внешними промисами. Создатели библиотек чаще всего обёртывают legacy-код в конструктор промисов, таким образом:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"javascript\"\u003Econst shinyNewUtil = new Promise(function(resolve, reject) {\n  \u002F\u002F do stuff and resolve\n  \u002F\u002F or reject\n});\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nИ при необходимости мы также можем создать и разрешить промис, вызвав \u003Ccode\u003EPromise.resolve()\u003C\u002Fcode\u003E:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"javascript\"\u003EPromise.resolve({ msg: 'Resolve!'})\n.then(msg =\u003E console.log(msg));\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nИтак, напомню: промисы в JavaScript — это закладка на событие, которое произойдёт в будущем. Событие начинается в состоянии «ожидание решения», и может быть успешным (разрешённым, исполненным) или неуспешным (отклонённым). Промис может возвращать данные, которые можно извлечь, прикрепив к промису \u003Ccode\u003Ethen\u003C\u002Fcode\u003E. В следующей главе мы обсудим, как работать с ошибками, приходящими из промисов.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ca name=\"7\"\u003E\u003C\u002Fa\u003E\u003Ch2\u003E7. Обработка ошибок в ES6-промисах\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nОбрабатывать ошибки в JavaScript всегда было просто, как минимум в синхронном коде. Взгляните на пример:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"javascript\"\u003Efunction makeAnError() {\n  throw Error(\"Sorry mate!\");\n}\n\ntry {\n  makeAnError();\n} catch (error) {\n  console.log(\"Catching the error! \" + error);\n}\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nРезультатом будет:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"javascript\"\u003ECatching the error! Error: Sorry mate!\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nКак и ожидалась, ошибка попала в блок \u003Ccode\u003Ecatch\u003C\u002Fcode\u003E. Теперь попробуем асинхронную функцию:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"javascript\"\u003Efunction makeAnError() {\n  throw Error(\"Sorry mate!\");\n}\n\ntry {\n  setTimeout(makeAnError, 5000);\n} catch (error) {\n  console.log(\"Catching the error! \" + error);\n}\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nЭтот код является асинхронным из-за \u003Ccode\u003EsetTimeout\u003C\u002Fcode\u003E. Что будет, если мы его исполним?\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"javascript\"\u003E throw Error(\"Sorry mate!\");\n  ^\n\nError: Sorry mate!\n    at Timeout.makeAnError [as _onTimeout] (\u002Fhome\u002Fvalentino\u002FCode\u002Fpiccolo-javascript\u002Fasync.js:2:9)\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nТеперь результат другой. Ошибка не была поймана блоком \u003Ccode\u003Ecatch\u003C\u002Fcode\u003E, а свободно поднялась выше по стеку. Причина в том, что \u003Ccode\u003Etry\u002Fcatch\u003C\u002Fcode\u003E работает только с синхронным кодом. Если хотите узнать больше, то эта проблема подробно рассмотрена \u003Ca href=\"https:\u002F\u002Fwww.joyent.com\u002Fnode-js\u002Fproduction\u002Fdesign\u002Ferrors\"\u003Eздесь\u003C\u002Fa\u003E.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nК счастью, с промисами мы можем обрабатывать асинхронные ошибки, словно они синхронные. В прошлой главе я говорил, что вызов \u003Ccode\u003Ereject\u003C\u002Fcode\u003E приводит к отклонению промиса:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"javascript\"\u003Econst myPromise = new Promise(function(resolve, reject) {\n  reject('Errored, sorry!');\n});\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nВ этом случае мы можем обрабатывать ошибки с помощью обработчика \u003Ccode\u003Ecatch\u003C\u002Fcode\u003E, дёргая (опять) обратный вызов:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"javascript\"\u003Econst myPromise = new Promise(function(resolve, reject) {\n  reject('Errored, sorry!');\n});\n\nmyPromise.catch(err =\u003E console.log(err));\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nКроме того, чтобы для создания и отклонения промиса в нужном месте можно вызывать \u003Ccode\u003EPromise.reject()\u003C\u002Fcode\u003E:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"javascript\"\u003EPromise.reject({msg: 'Rejected!'}).catch(err =\u003E console.log(err));\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nНапомню: обработчик \u003Ccode\u003Ethen\u003C\u002Fcode\u003E исполняется, когда промис выполнен, а обработчик \u003Ccode\u003Ecatch \u003C\u002Fcode\u003Eвыполняется для отклонённых промисов. Но это ещё не конец истории. Ниже мы увидим, как \u003Ccode\u003Easync\u002Fawait\u003C\u002Fcode\u003E замечательно работают с \u003Ccode\u003Etry\u002Fcatch\u003C\u002Fcode\u003E.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ca name=\"8\"\u003E\u003C\u002Fa\u003E\u003Ch2\u003E8. Комбинаторы ES6-промисов: Promise.all, Promise.allSettled, Promise.any и другие\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nПромисы не предназначены для работы по одиночке. Promise API предлагает ряд методов для \u003Cb\u003Eкомбинирования промисов\u003C\u002Fb\u003E. Один из самых полезных\u003Ca href=\"https:\u002F\u002Fdeveloper.mozilla.org\u002Fen-US\u002Fdocs\u002FWeb\u002FJavaScript\u002FReference\u002FGlobal_Objects\u002FPromise\u002Fall\"\u003E — Promise.all\u003C\u002Fa\u003E, он берёт массив из промисов и возвращает один промис. Только проблема в том, что Promise.all отклоняется, если отклонен хотя бы один промис в массиве.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ca href=\"https:\u002F\u002Fdeveloper.mozilla.org\u002Fen-US\u002Fdocs\u002FWeb\u002FJavaScript\u002FReference\u002FGlobal_Objects\u002FPromise\u002Frace\"\u003EPromise.race\u003C\u002Fa\u003E разрешает или отклоняет, как только один из промисов в массиве получает соответствующий статус.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВ более свежих версиях V8 также будут внедрены два новых комбинатора: \u003Ccode\u003EPromise.allSettled\u003C\u002Fcode\u003E и \u003Ccode\u003EPromise.any\u003C\u002Fcode\u003E.\u003Ca href=\"https:\u002F\u002Fgithub.com\u002Ftc39\u002Fproposal-promise-any\"\u003E Promise.any\u003C\u002Fa\u003E пока на ранней стадии предложенной функциональности, на момент написания статьи не поддерживается. Однако, в теории, он сможет сигнализировать, был ли исполнен какой-либо промис. Отличие от \u003Ccode\u003EPromise.race\u003C\u002Fcode\u003E в том, что \u003Cb\u003EPromise.any не отклоняется, даже если отклонён один из промисов\u003C\u002Fb\u003E.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ccode\u003EPromise.allSettled\u003C\u002Fcode\u003E ещё интереснее. Он тоже берёт массив промисов, но не «коротит», если один из промисов отклоняется. Он полезен, когда нужно проверить, все ли промисы в массиве перешли в какую-то стадию, вне зависимости от наличия отклонённых промисов. Его можно считать противоположностью \u003Ccode\u003EPromise.all\u003C\u002Fcode\u003E.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ca name=\"9\"\u003E\u003C\u002Fa\u003E\u003Ch2\u003E9. ES6-промисы и очередь микрозадач\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nЕсли помните из предыдущей главы, каждая асинхронная callback-функция в JavaScript оказывается в очереди обратных вызовов, прежде чем попадает в стек вызовов. Но у callback-функций, переданных в промис, иная судьба: они обрабатываются очередью микрозадач (Microtask Queue), а не очередью задач.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nИ здесь вам нужно быть внимательными: \u003Cb\u003Eочередь микрозадач предшествует очереди вызовов\u003C\u002Fb\u003E. Обратные вызовы из очереди микрозадач имеют приоритет, когда цикл событий проверяет, готовы ли новые callback’и перейти в стек вызовов.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПодробнее эта механика описана Джейком Арчибальдом в \u003Ca href=\"https:\u002F\u002Fjakearchibald.com\u002F2015\u002Ftasks-microtasks-queues-and-schedules\u002F\"\u003ETasks, microtasks, queues and schedules\u003C\u002Fa\u003E, замечательное чтиво.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ca name=\"10\"\u003E\u003C\u002Fa\u003E\u003Ch2\u003E10. JavaScript-движки: как они работают? Асинхронная эволюция: от промисов до async\u002Fawait\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nJavaScript быстро развивается и мы каждый год получаем постоянные улучшения. Промисы выглядели как финал, но \u003Cb\u003Eс ECMAScript 2017 (ES8) появился новый синтаксис: \u003Ccode\u003Easync\u002Fawait\u003C\u002Fcode\u003E\u003C\u002Fb\u003E.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ccode\u003Easync\u002Fawait\u003C\u002Fcode\u003E — всего лишь стилистическое улучшение, которое мы называем синтаксическим сахаром. \u003Ccode\u003Easync\u002Fawait\u003C\u002Fcode\u003E никак не меняет JavaScript (не забывайте, язык должен быть обратно совместим со старыми браузерами и не должен ломать существующий код). Это лишь новый способ написания асинхронного кода на основе промисов. Рассмотрим пример. Выше мы уже сохранили промис в соответствующем \u003Ccode\u003Ethen\u003C\u002Fcode\u003E:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"javascript\"\u003Econst myPromise = new Promise(function(resolve, reject) {\n  resolve([{ name: \"Chris\" }]);\n});\n\nmyPromise.then((data) =\u003E console.log(data))\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nТеперь \u003Cb\u003Eс помощью \u003Ccode\u003Easync\u002Fawait\u003C\u002Fcode\u003E мы можем обработать асинхронный код так, чтобы для читающего наш листинг код выглядел синхронным\u003C\u002Fb\u003E. Вместо применения \u003Ccode\u003Ethen\u003C\u002Fcode\u003E мы можем обернуть промис в функцию, помеченную как \u003Ccode\u003Easync\u003C\u002Fcode\u003E, и затем будем ожидать (\u003Ccode\u003Eawait\u003C\u002Fcode\u003E) результат:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"javascript\"\u003Econst myPromise = new Promise(function(resolve, reject) {\n  resolve([{ name: \"Chris\" }]);\n});\n\nasync function getData() {\n  const data = await myPromise;\n  console.log(data);\n}\n\ngetData();\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nВыглядит здраво, верно? Забавно, что async-функция всегда возвращает промис, и никто не может ей в этом помешать:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"javascript\"\u003Easync function getData() {\n  const data = await myPromise;\n  return data;\n}\n\ngetData().then(data =\u003E console.log(data));\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nА что насчёт ошибок? Одно из преимуществ \u003Ccode\u003Easync\u002Fawait\u003C\u002Fcode\u003E в том, что эта конструкция может позволить нам воспользоваться \u003Ccode\u003E\u003Cb\u003Etry\u002Fcatch\u003C\u002Fb\u003E\u003C\u002Fcode\u003E. Почитайте\u003Ca href=\"https:\u002F\u002Fwww.valentinog.com\u002Fblog\u002Fthrow-async\u002F\"\u003E введение в обработку ошибок в async-функциях и их тестирование\u003C\u002Fa\u003E. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nДавайте снова взглянем на промис, в котором мы обрабатываем ошибки с помощью обработчика \u003Ccode\u003Ecatch\u003C\u002Fcode\u003E:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"javascript\"\u003Econst myPromise = new Promise(function(resolve, reject) {\n  reject('Errored, sorry!');\n});\n\nmyPromise.catch(err =\u003E console.log(err));\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nС асинхронными функциями мы можем отрефакторить вот так:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"javascript\"\u003Easync function getData() {\n  try {\n    const data = await myPromise;\n    console.log(data);\n    \u002F\u002F or return the data with return data\n  } catch (error) {\n    console.log(error);\n  }\n}\n\ngetData();\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nОднако ещё не все перешли на этот стиль. \u003Ccode\u003Etry\u002Fcatch\u003C\u002Fcode\u003E может усложнить ваш код. При этом нужно учитывать ещё кое-что. Посмотрите, как в этом коде возникает ошибка внутри блока \u003Ccode\u003Etry\u003C\u002Fcode\u003E:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"javascript\"\u003Easync function getData() {\n  try {\n    if (true) {\n      throw Error(\"Catch me if you can\");\n    }\n  } catch (err) {\n    console.log(err.message);\n  }\n}\n\ngetData()\n  .then(() =\u003E console.log(\"I will run no matter what!\"))\n  .catch(() =\u003E console.log(\"Catching err\"));\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nЧто насчёт двух строк, которые выводятся в консоли? Не забывайте, что \u003Cb\u003E\u003Ccode\u003Etry\u002Fcatch\u003C\u002Fcode\u003E — синхронная конструкция, а наша асинхронная функция генерирует промис\u003C\u002Fb\u003E. Они идут по двум разным путям, словно поезда. Но они никогда не встретятся! Поэтому ошибка, которую подняла \u003Ccode\u003Ethrow\u003C\u002Fcode\u003E, никогда не активирует обработчик \u003Ccode\u003Ecatch\u003C\u002Fcode\u003E в \u003Ccode\u003EgetData()\u003C\u002Fcode\u003E. Исполнение этого кода приведёт к тому, что сначала появится надпись «Catch me if you can», а за ней «I will run no matter what!».\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВ реальном мире нам не нужно, чтобы \u003Ccode\u003Ethrow\u003C\u002Fcode\u003E запускал обработчик \u003Ccode\u003Ethen\u003C\u002Fcode\u003E. Решить это можно, скажем, возвращая \u003Ccode\u003EPromise.reject()\u003C\u002Fcode\u003E из функции:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"javascript\"\u003Easync function getData() {\n  try {\n    if (true) {\n      return Promise.reject(\"Catch me if you can\");\n    }\n  } catch (err) {\n    console.log(err.message);\n  }\n}\nNow the error will be handled as expected:\ngetData()\n  .then(() =\u003E console.log(\"I will NOT run no matter what!\"))\n  .catch(() =\u003E console.log(\"Catching err\"));\n\n\"Catching err\" \u002F\u002F output\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nПомимо этого \u003Ccode\u003Easync\u002Fawait\u003C\u002Fcode\u003E выглядит лучшим способом структурирования асинхронного кода в JavaScript. Мы лучше управляем обработкой ошибок и код выглядит чище.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВ любом случае, я не рекомендую рефакторить весь ваш JS-код под \u003Ccode\u003Easync\u002Fawait\u003C\u002Fcode\u003E. Обсудите это с командой. Но если вы работаете самостоятельно, то выбор между чистыми промисами и \u003Ccode\u003Easync\u002Fawait\u003C\u002Fcode\u003E — лишь дело вкуса.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ca name=\"11\"\u003E\u003C\u002Fa\u003E\u003Ch2\u003E11. JavaScript-движки: как они работают? Итоги\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nJavaScript — это скриптовый язык для веба, он сначала компилируется, а затем интерпретируется движком. Самые популярные JS-движки: V8, применяется в Google Chrome и Node.js; SpiderMonkey, разработан для Firefox; JavaScriptCore, используется в Safari.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nJavaScript-движки имеют много «движущихся» частей: стек вызовов, глобальная память, цикл событий, очередь обратных вызовов. Все эти части идеально работают вместе, обеспечивая обработку синхронного и асинхронного кода.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nJavaScript-движки являются однопоточными, то есть для исполнения функций применяется единственный стек вызовов. Это ограничение лежит в основе асинхронной природы JavaScript: все операции, для выполнения которых требуется какое-то время, должны управляться внешней сущностью (например, браузером) или функцией обратного вызова.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nДля упрощения работы асинхронного кода в ECMAScript 2015 были внедрены промисы. Промис — это асинхронный объект, используемый для представления успешности или неуспешности любой асинхронной операции. Но улучшения на этом не прекратились. В 2017-м появились \u003Ccode\u003Easync\u002Fawait\u003C\u002Fcode\u003E: стилистическое улучшение для промисов, позволяющее писать асинхронный код, как если бы он был синхронным.\u003C\u002Fdiv\u003E","tags":[{"titleHtml":"js"},{"titleHtml":"nodejs"},{"titleHtml":"браузеры"},{"titleHtml":"никто не читает теги"}],"metadata":{"stylesUrls":[],"scriptUrls":[],"shareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F452906\u002F933deb4ce7d3e1e14b5c6a791713937f\u002F","shareImageWidth":1200,"shareImageHeight":630,"vkShareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F452906\u002F933deb4ce7d3e1e14b5c6a791713937f\u002F?format=vk","schemaJsonLd":"{\"@context\":\"http:\\\u002F\\\u002Fschema.org\",\"@type\":\"Article\",\"mainEntityOfPage\":{\"@type\":\"WebPage\",\"@id\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fru\\\u002Fcompany\\\u002Fvk\\\u002Fblog\\\u002F452906\\\u002F\"},\"headline\":\"JavaScript-движки: как они работают? От стека вызовов до промисов — (почти) всё, что вам нужно знать\",\"datePublished\":\"2019-05-22T16:14:57+03:00\",\"dateModified\":\"2019-09-09T10:49:36+03:00\",\"author\":{\"@type\":\"Person\",\"name\":\"Макс\"},\"publisher\":{\"@type\":\"Organization\",\"name\":\"Habr\",\"logo\":{\"@type\":\"ImageObject\",\"url\":\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fa_\\\u002Flk\\\u002F9m\\\u002Fa_lk9mjkccjox-zccjrpfolmkmq.png\"}},\"description\":\"Вы когда-нибудь задумывались, как браузеры читают и исполняют JavaScript-код? Это выглядит таинственно, но в этом посте вы можете получить представление, что же...\",\"url\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fru\\\u002Fcompany\\\u002Fvk\\\u002Fblog\\\u002F452906\\\u002F#post-content-body\",\"about\":[\"c_vk\",\"h_javascript\",\"h_programming\",\"h_nodejs\",\"h_browsers\",\"f_develop\"],\"image\":[\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fsd\\\u002Fnm\\\u002Fn6\\\u002Fsdnmn6cuvwusvk4fysdkzvnw9rg.jpeg\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fgetpro\\\u002Fhabr\\\u002Fpost_images\\\u002Fd34\\\u002F46f\\\u002Fa81\\\u002Fd3446fa81bf753ff80d32e39bcf5778c.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fgetpro\\\u002Fhabr\\\u002Fpost_images\\\u002F11b\\\u002F0a8\\\u002Fa90\\\u002F11b0a8a904acef9ee7bde8b84cb76873.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fgetpro\\\u002Fhabr\\\u002Fpost_images\\\u002Fb79\\\u002F118\\\u002Fa43\\\u002Fb79118a430d9daa8af3491138c0cfd2b.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fgetpro\\\u002Fhabr\\\u002Fpost_images\\\u002Fea8\\\u002Fa33\\\u002F9c1\\\u002Fea8a339c120638632b57eb0fb3161254.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fgetpro\\\u002Fhabr\\\u002Fpost_images\\\u002F00f\\\u002F8e2\\\u002Fb33\\\u002F00f8e2b33a47490117a9e8f6abad23f5.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fgetpro\\\u002Fhabr\\\u002Fpost_images\\\u002Feba\\\u002Fec9\\\u002Ffec\\\u002Febaec9fec5dc1931176371fd4a9f3cbd.png\"]}","metaDescription":"Вы когда-нибудь задумывались, как браузеры читают и исполняют JavaScript-код? Это выглядит таинственно, но в этом посте вы можете получить представление, что же происходит под капотом.\r\n\r\nНачнём...","mainImageUrl":null,"amp":false},"polls":[],"commentsEnabled":true,"rulesRemindEnabled":false,"votesEnabled":true,"status":"published","plannedPublishTime":null,"checked":null,"isEditorial":false}},"articlesIds":{},"isLoading":false,"pagesCount":{},"route":{},"reasonsList":null,"view":"cards","lastVisitedRoute":{},"ssrCommentsArticleIds":[""],"karma":{}},"authorContribution":{"authors":{}},"betaTest":{"currentAnnouncement":null,"announcements":{},"announcementCards":null,"announcementComments":{},"announcementCommentThreads":{},"announcementCommentingStatuses":{},"archivedList":[]},"authorStatistics":{"articleRefs":{},"articleIds":{},"pagesCount":{},"route":{},"viewsCount":[],"maxStatsCount":{}},"career":{"seoLandings":[],"hubs":""},"comments":{"articleComments":{},"searchCommentsResults":null,"previewComment":null,"pagesCount":null,"commentAccess":{},"scrollParents":{},"pageArticleComments":{"lastViewedComment":0,"postId":null,"lastCommentTimestamp":"","moderated":[],"moderatedIds":[],"commentRoute":""}},"companies":{"companyRefs":{"vk":{"alias":"vk","imageUrl":"\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fcompany\u002F9ed\u002Fc74\u002F6b4\u002F9edc746b484c805ecad1f941b5f7068a.png","titleHtml":"VK","descriptionHtml":"Технологии, которые объединяют","relatedData":null,"statistics":{"postsCount":2250,"newsCount":142,"vacanciesCount":24,"employeesCount":693,"careerRating":4.37,"subscribersCount":124428,"rating":331.84,"invest":null},"foundationDate":{"year":"1998","month":"10","day":"15"},"location":{"city":{"id":"447159","title":"Москва"},"region":{"id":"1885","title":"Москва и Московская обл."},"country":{"id":"168","title":"Россия"}},"siteUrl":"https:\u002F\u002Fvk.com\u002Fvkteam","staffNumber":"5 001–10 000 человек","registrationDate":"2008-08-09T07:42:32+00:00","representativeUser":{"alias":"somuchmich","fullname":"Миша Буданов"},"contacts":[{"title":"Facebook","url":"https:\u002F\u002Ffacebook.com\u002Finsidevk"},{"title":"Twitter","url":"https:\u002F\u002Ftwitter.com\u002Finside_vk"},{"title":"ВКонтакте","url":"https:\u002F\u002Fvk.com\u002Finsidevk"},{"title":"Instagram","url":"https:\u002F\u002Finstagram.com\u002Finside.vk"},{"title":"Telegram","url":"https:\u002F\u002Ftelegram.me\u002Finside_vk"}],"settings":{"analyticsSettings":[{"type":"ga","trackingId":"UA-16546458-6"}],"branding":{"imageUrl":"\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fbranding\u002F174\u002F2c4\u002F3a5\u002F1742c43a5b504987a0fadf577a0bd4de.png","linkUrl":"https:\u002F\u002Fvk.com\u002Fvkteam","pixelUrl":""},"status":"active"},"metadata":{"titleHtml":"VK, Москва - Технологии, которые объединяют с 15 октября 1998 г.","title":"VK, Москва - Технологии, которые объединяют с 15 октября 1998 г.","keywords":["Программирование","DevOps","Kubernetes","Облачные вычисления","Tarantool"],"descriptionHtml":"2 250 статей от авторов компании VK","description":"2 250 статей от авторов компании VK"},"aDeskSettings":null,"careerAlias":"vk","maxCustomTrackerLinks":3}},"companyIds":{},"companyTopIds":{},"pagesCount":{},"companyProfiles":{},"companiesCategories":[],"companiesCategoriesTotalCount":0,"companiesWidgets":{},"companiesWorkers":{},"companiesFans":{},"route":{},"isLoading":false,"companyWorkersLoading":false,"companyFansLoading":false,"vacancies":{}},"companiesContribution":{"hubs":{},"flows":{},"companyRefs":{}},"companyHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"conversation":{"messages":[],"respondent":null,"isLoadMore":false},"conversations":{"conversations":[],"unreadCount":0,"pagesCount":0,"isLoadMore":false},"desktopState":{"desktopFl":null,"desktopHl":null,"isChecked":false,"isLoginDemanded":false},"dfp":{"slotsDict":{}},"docs":{"menu":{},"articles":{},"mainMenu":[],"loading":{"main":false,"dropdown":false,"article":false}},"feature":{"isProbablyVisible":"true"},"flows":{"flows":[{"alias":"develop","id":1,"route":{"name":"FLOW_PAGE","params":{"flowName":"develop"}}},{"alias":"admin","id":6,"route":{"name":"FLOW_PAGE","params":{"flowName":"admin"}}},{"alias":"design","id":2,"route":{"name":"FLOW_PAGE","params":{"flowName":"design"}}},{"alias":"management","id":3,"route":{"name":"FLOW_PAGE","params":{"flowName":"management"}}},{"alias":"marketing","id":4,"route":{"name":"FLOW_PAGE","params":{"flowName":"marketing"}}},{"alias":"popsci","id":7,"route":{"name":"FLOW_PAGE","params":{"flowName":"popsci"}}}]},"global":{"isPwa":false,"device":"desktop","isHabrCom":true},"hubs":{"hubRefs":{},"hubIds":{},"pagesCount":{},"isLoading":false,"route":{}},"hubsBlock":{"hubRefs":{},"hubIds":{}},"i18n":{"fl":"ru","hl":"ru"},"info":{"infoPage":{},"isLoading":true},"location":{"urlStruct":{"protocol":null,"slashes":null,"auth":null,"host":null,"port":null,"hostname":null,"hash":null,"search":null,"query":{},"pathname":null,"path":null,"href":""},"searchQuery":null},"me":{"user":null,"ppgDemanded":false,"karmaResetInfo":{"canReincarnate":null,"wasReincarnated":null,"currentScore":null},"notes":null},"mostReadingList":{"mostReadingListIds":[],"mostReadingListRefs":null,"promoPost":null},"pinnedPost":{"pinnedPost":null},"ppa":{"articles":{},"card":null,"transactions":null,"totalTransactions":null,"isAccessible":null},"projectsBlocks":{"activeBlocks":{}},"pullRefresh":{"shouldRefresh":false},"sandbox":{"articleIds":[],"articleRefs":{},"pagesCount":null,"route":{},"lastVisitedRoute":{},"isLoading":false},"settingsOther":{"inputs":{"uiLang":{"errors":[],"ref":null,"value":""},"articlesLangEnglish":{"errors":[],"ref":null,"value":false},"articlesLangRussian":{"errors":[],"ref":null,"value":false},"agreement":{"errors":[],"ref":null,"value":false},"email":{"errors":[],"ref":null,"value":true},"digest":{"errors":[],"ref":null,"value":true}}},"similarList":{"similarListIds":[],"similarListRefs":null},"ssr":{"error":null,"isDataLoaded":false,"isDataLoading":false,"isHydrationFailed":false,"isServer":false},"userHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"userInvites":{"availableInvites":0,"usedInvitesIds":[],"usedInvitesRefs":{},"usedInvitesPagesCount":0,"unusedInvitesIds":[],"unusedInvitesRefs":{},"unusedInvitesPagesCount":0},"users":{"authorRefs":{},"authorIds":{},"pagesCount":{},"authorProfiles":{},"userHubs":{},"userInvitations":{},"authorFollowers":{},"authorFollowed":{},"karmaStats":[],"statistics":null,"isLoading":false,"authorFollowersLoading":false,"authorFollowedLoading":false,"userHubsLoading":false,"userInvitationsLoading":false,"route":{}},"viewport":{"prevScrollY":{},"scrollY":0,"width":0},"tracker":{"items":{},"pagesCache":{},"markedViewedSilently":{},"markedRead":{},"unreadCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null},"unviewedCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null}}};(function(){var s;(s=document.currentScript||document.scripts[document.scripts.length-1]).parentNode.removeChild(s);}());</script>
+<script src="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" defer></script><script src="https://assets.habr.com/habr-web/js/app.c0af73e7.js" defer></script>
+
+
+
+    <script>
+      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+        (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+        m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+      })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+    </script>
+  
+  <script type="text/javascript" >
+    (function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+    m[i].l=1*new Date();k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})
+    (window, document, "script", "https://mc.yandex.ru/metrika/tag.js", "ym");
+
+    ym(24049213, "init", {
+      defer:true,
+      trackLinks:true,
+      accurateTrackBounce:true,
+      webvisor:false,
+    });
+  </script>
+  <noscript>
+    <div>
+      <img src="https://mc.yandex.ru/watch/24049213" style="position:absolute; left:-9999px;" alt="" />
+    </div>
+  </noscript>
+  
+    <script type="text/javascript">
+      window.addEventListener('load', function () {
+        setTimeout(() => {
+          const img = new Image();
+          img.src = 'https://vk.com/rtrg?p=VK-RTRG-421343-57vKE';
+        }, 0);
+      });
+    </script>
+  
+</body>
+</html>

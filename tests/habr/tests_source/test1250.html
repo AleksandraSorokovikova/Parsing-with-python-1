@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="ru" data-vue-meta="%7B%22lang%22:%7B%22ssr%22:%22ru%22%7D%7D">
+<head >
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
+  <title>Анализ производительности виртуальной машины в VMware vSphere. Часть 1: CPU / Хабр</title>
+  <style>
+    /* cyrillic-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSxf6TF0.woff2) format('woff2');
+      unicode-range: U+0460-052F, U+1C80-1C88, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+    }
+
+    /* cyrillic */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveQhf6TF0.woff2) format('woff2');
+      unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+    }
+
+    /* latin-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSBf6TF0.woff2) format('woff2');
+      unicode-range: U+0100-024F, U+0259, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20CF, U+2113, U+2C60-2C7F, U+A720-A7FF;
+    }
+
+    /* latin */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveRhf6.woff2) format('woff2');
+      unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+    }
+  </style>
+  <link rel="preload" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" as="script"><link rel="preload" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/app.c0af73e7.js" as="script">
+  <link rel="stylesheet" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css"><link rel="stylesheet" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css">
+  <script>window.i18nFetch = new Promise((res, rej) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open('GET', '/js/i18n/ru-compiled.85eb77f0b17c8235e7b64b9f81ea5ec2.json');
+          xhr.responseType = 'json';
+          xhr.onload = function(e) {
+            if (this.status === 200) {
+              res({ru: xhr.response});
+            } else {
+              rej(e);
+            }
+          };
+          xhr.send();
+        });</script>
+  
+  <script data-vue-meta="ssr" src="/js/ads.js" onload="window['zhY4i4nJ9K'] = true" data-vmid="checkad"></script><script data-vue-meta="ssr" type="application/ld+json" data-vmid="ldjson-schema">{"@context":"http:\/\/schema.org","@type":"Article","mainEntityOfPage":{"@type":"WebPage","@id":"https:\/\/habr.com\/ru\/company\/dataline\/blog\/452884\/"},"headline":"Анализ производительности виртуальной машины в VMware vSphere. Часть 1: CPU","datePublished":"2019-05-23T11:10:49+03:00","dateModified":"2019-06-13T10:25:00+03:00","author":{"@type":"Person","name":"adarchenkov"},"publisher":{"@type":"Organization","name":"Habr","logo":{"@type":"ImageObject","url":"https:\/\/habrastorage.org\/webt\/a_\/lk\/9m\/a_lk9mjkccjox-zccjrpfolmkmq.png"}},"description":"Если вы администрируете виртуальную инфраструктуру на базе VMware vSphere (или любого другого стека технологий), то наверняка часто слышите от пользователей жа...","url":"https:\/\/habr.com\/ru\/company\/dataline\/blog\/452884\/#post-content-body","about":["c_dataline","h_it-infrastructure","h_virtualization","h_cloud_computing","h_cloud_services","f_admin"],"image":["https:\/\/habrastorage.org\/webt\/m9\/sx\/3b\/m9sx3brt_zkyowlzywiwyoobc60.png","https:\/\/habrastorage.org\/webt\/zf\/rh\/dx\/zfrhdxqi6ys3wgdgzs0m5ibk96i.png","https:\/\/habrastorage.org\/webt\/ly\/ad\/rg\/lyadrgztwkrkipbfnzllfcjtrq4.png","https:\/\/habrastorage.org\/webt\/6a\/pr\/b9\/6aprb9vc1gwbtioocqpjdm7jzhk.png","https:\/\/habrastorage.org\/webt\/6p\/pm\/w8\/6ppmw8d5vqe2gepkiahzqx9tfms.png","https:\/\/habrastorage.org\/webt\/uq\/ov\/-o\/uqov-ooazq0fetmazbwzhvxlgeg.png","https:\/\/habrastorage.org\/getpro\/habr\/formulas\/2bc\/78b\/283\/2bc78b2839923e44229ce95af9b77b81.svg","https:\/\/habrastorage.org\/webt\/oq\/ma\/1u\/oqma1u-x4wdruct6jqgvlak9ia0.png","https:\/\/habrastorage.org\/webt\/_m\/qe\/cc\/_mqeccs8ivn_r-zrogedc_ofw9a.png","https:\/\/habrastorage.org\/webt\/pz\/y8\/sr\/pzy8sr12hk1z2yosm9devw7knvs.png","https:\/\/habrastorage.org\/webt\/5x\/8g\/-o\/5x8g-ovkxsc4xsuuvvk6guv3t0u.png","https:\/\/habrastorage.org\/webt\/tu\/fn\/jz\/tufnjzwauierg5thzwsij3elpca.png","https:\/\/habrastorage.org\/webt\/cr\/zn\/bb\/crznbbcz3ifhippyvvrpqaotvps.png","https:\/\/habrastorage.org\/webt\/-v\/x0\/gz\/-vx0gzuta3wskstyrmu8ylixqla.png","https:\/\/habrastorage.org\/webt\/gk\/il\/nh\/gkilnhtdazgv5nxiwbydkhda-oe.png","https:\/\/habrastorage.org\/webt\/cd\/qv\/he\/cdqvhelnmce9qeseanbqzl3qsqs.png"]}</script>
+  <script src="//www.googletagservices.com/tag/js/gpt.js" async></script>
+  <style>.grecaptcha-badge{visibility: hidden;}</style>
+  <meta name="habr-version" content="2.49.0">
+  
+  <meta data-vue-meta="ssr" property="fb:app_id" content="444736788986613"><meta data-vue-meta="ssr" property="fb:pages" content="472597926099084"><meta data-vue-meta="ssr" name="twitter:card" content="summary_large_image"><meta data-vue-meta="ssr" name="twitter:site" content="@habr_eng"><meta data-vue-meta="ssr" property="og:title" content="Анализ производительности виртуальной машины в VMware vSphere. Часть 1: CPU" data-vmid="og:title"><meta data-vue-meta="ssr" name="twitter:title" content="Анализ производительности виртуальной машины в VMware vSphere. Часть 1: CPU" data-vmid="twitter:title"><meta data-vue-meta="ssr" name="aiturec:title" content="Анализ производительности виртуальной машины в VMware vSphere. Часть 1: CPU" data-vmid="aiturec:title"><meta data-vue-meta="ssr" name="description" content="Если вы администрируете виртуальную инфраструктуру на базе VMware vSphere (или любого другого стека технологий), то наверняка часто слышите от пользователей жалобы: «Виртуальная машина работает..." data-vmid="description"><meta data-vue-meta="ssr" itemprop="description" content="Если вы администрируете виртуальную инфраструктуру на базе VMware vSphere (или любого другого стека технологий), то наверняка часто слышите от пользователей жалобы: «Виртуальная машина работает..." data-vmid="description:itemprop"><meta data-vue-meta="ssr" property="og:description" content="Если вы администрируете виртуальную инфраструктуру на базе VMware vSphere (или любого другого стека технологий), то наверняка часто слышите от пользователей жалобы: «Виртуальная машина работает..." data-vmid="og:description"><meta data-vue-meta="ssr" name="twitter:description" content="Если вы администрируете виртуальную инфраструктуру на базе VMware vSphere (или любого другого стека технологий), то наверняка часто слышите от пользователей жалобы: «Виртуальная машина работает..." data-vmid="twitter:description"><meta data-vue-meta="ssr" property="aiturec:description" content="Если вы администрируете виртуальную инфраструктуру на базе VMware vSphere (или любого другого стека технологий), то наверняка часто слышите от пользователей жалобы: «Виртуальная машина работает..." data-vmid="aiturec:description"><meta data-vue-meta="ssr" itemprop="image" content="https://habr.com/share/publication/452884/3a6359b70e137d0e7fac7d462934cfe1/" data-vmid="image:itemprop"><meta data-vue-meta="ssr" property="og:image" content="https://habr.com/share/publication/452884/3a6359b70e137d0e7fac7d462934cfe1/" data-vmid="og:image"><meta data-vue-meta="ssr" property="aiturec:image" content="https://habr.com/share/publication/452884/3a6359b70e137d0e7fac7d462934cfe1/" data-vmid="aiturec:image"><meta data-vue-meta="ssr" name="twitter:image" content="https://habr.com/share/publication/452884/3a6359b70e137d0e7fac7d462934cfe1/" data-vmid="twitter:image"><meta data-vue-meta="ssr" property="vk:image" content="https://habr.com/share/publication/452884/3a6359b70e137d0e7fac7d462934cfe1/" data-vmid="vk:image"><meta data-vue-meta="ssr" property="aiturec:item_id" content="452884" data-vmid="aiturec:item_id"><meta data-vue-meta="ssr" property="aiturec:datetime" content="2019-05-23T08:10:49.000Z" data-vmid="aiturec:datetime"><meta data-vue-meta="ssr" property="og:type" content="article" data-vmid="og:type"><meta data-vue-meta="ssr" property="og:locale" content="ru_RU" data-vmid="og:locale"><meta data-vue-meta="ssr" property="og:image:width" content="1200" data-vmid="og:image:width"><meta data-vue-meta="ssr" property="og:image:height" content="630" data-vmid="og:image:height">
+  <link data-vue-meta="ssr" href="https://habr.com/ru/rss/post/452884/?fl=ru" type="application/rss+xml" title="" rel="alternate" name="rss"><link data-vue-meta="ssr" href="https://habr.com/ru/company/dataline/blog/452884/" rel="canonical" data-vmid="canonical"><link data-vue-meta="ssr" data-vmid="hreflang"><link data-vue-meta="ssr" image_src="image" href="https://habr.com/share/publication/452884/3a6359b70e137d0e7fac7d462934cfe1/" data-vmid="image:href">
+  <meta name="apple-mobile-web-app-status-bar-style" content="#303b44">
+  <meta name="msapplication-TileColor" content="#629FBC">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="16x16"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-16.png"
+  >
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="32x32"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-32.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="76x76"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-76.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="120x120"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="152x152"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-152.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="180x180"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-180.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="256x256"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-256.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1136x640.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2436x1125.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1792x828.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_828x1792.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1334x750.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2208x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1125x2436.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2208.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2732x2048.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2688x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2224x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_750x1334.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x2732.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2388x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2224.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_640x1136.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2388.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x1536.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1536x2048.png"
+  >
+  <link
+    rel="mask-icon"
+    color="#77a2b6"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.svg"
+  >
+  <link
+    crossorigin="use-credentials"
+    href="/manifest.webmanifest"
+    rel="manifest"
+  >
+</head>
+<body>
+
+
+<div id="app" data-server-rendered="true" data-async-called="true"><div class="tm-layout__wrapper"><!----> <div></div> <!----> <header class="tm-header"><div class="tm-page-width"><div class="tm-header__container"><!----> <span class="tm-header__logo-wrap"><a href="/ru/" class="tm-header__logo tm-header__logo_ru"><svg height="16" width="16" class="tm-svg-img tm-header__icon"><title>Хабр</title> <use xlink:href="/img/habr-logo-ru.svg#logo"></use></svg></a> <span class="tm-header__beta-sign" style="display:none;">β</span></span> <div class="tm-dropdown tm-header__projects"><div class="tm-dropdown__head"><button class="tm-header__dropdown-toggle"><svg height="16" width="16" class="tm-svg-img tm-header__icon tm-header__icon_dropdown"><title>Открыть список</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#arrow-down"></use></svg></button></div> <!----></div> <a href="/ru/sandbox/start/" class="tm-header__become-author-btn">
+            Как стать автором
+          </a> <div class="tm-feature tm-header__feature tm-feature_variant-inline"><!----></div> <!----> <!----></div></div></header> <div class="tm-layout"><div class="tm-page-progress-bar"></div> <div data-menu-sticky="true" class="tm-base-layout__header tm-base-layout__header_is-sticky"><div class="tm-page-width"><div class="tm-base-layout__header-wrapper"><div class="tm-main-menu"><div class="tm-main-menu__section"><nav class="tm-main-menu__section-content"><!----> <a href="/ru/all/" class="tm-main-menu__item">
+        Все потоки
+      </a> <a href="/ru/flows/develop/" class="tm-main-menu__item">
+          Разработка
+        </a><a href="/ru/flows/admin/" class="tm-main-menu__item">
+          Администрирование
+        </a><a href="/ru/flows/design/" class="tm-main-menu__item">
+          Дизайн
+        </a><a href="/ru/flows/management/" class="tm-main-menu__item">
+          Менеджмент
+        </a><a href="/ru/flows/marketing/" class="tm-main-menu__item">
+          Маркетинг
+        </a><a href="/ru/flows/popsci/" class="tm-main-menu__item">
+          Научпоп
+        </a></nav></div></div> <div class="tm-header-user-menu tm-base-layout__user-menu"><a href="/ru/search/" class="tm-header-user-menu__item tm-header-user-menu__search"><svg height="24" width="24" class="tm-svg-img tm-header-user-menu__icon tm-header-user-menu__icon_search tm-header-user-menu__icon_dark"><title>Поиск</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#search"></use></svg></a> <!----> <!----> <!----> <div class="tm-header-user-menu__item tm-header-user-menu__user_desktop"><div class="tm-dropdown"><div class="tm-dropdown__head"><svg height="24" width="24" data-test-id="menu-toggle-guest" class="tm-svg-img tm-header-user-menu__icon"><title>Профиль</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#header-user"></use></svg> <!----></div> <!----></div> <!----></div> <!----></div></div></div></div> <!----> <div class="tm-page-width"></div> <main class="tm-layout__container"><div hl="ru" companyName="dataline" data-async-called="true" class="tm-page"><div class="tm-page-width"><div class="tm-page__header"><!----></div> <div class="tm-page__wrapper"><div class="tm-page__main tm-page__main_has-sidebar"><div class="pull-down"><div class="pull-down__header" style="height:0px;"><div class="pull-down__content" style="bottom:10px;"><svg height="24" width="24" class="tm-svg-img pull-down__arrow"><title>Обновить</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#pull-arrow"></use></svg></div></div> <div class="tm-article-presenter"><div class="tm-company-card tm-company-article__company-card"><div class="tm-company-card__info"><div class="tm-company-card__header"><a href="/ru/company/dataline/profile/" class="tm-company-card__avatar"><div class="tm-entity-image"><img alt="" height="48" src="//habrastorage.org/getpro/habr/company/e1b/ff9/809/e1bff98097e89d63bdcd7cf1f2e3d800.jpg" width="48" class="tm-entity-image__pic"></div></a> <!----> <div class="tm-rating tm-company-card__rating"><div class="tm-rating__header"> <div class="tm-rating__counter">115.23</div></div> <div class="tm-rating__text">
+    Рейтинг
+  </div></div></div> <div class="tm-company-card__info"><a href="/ru/company/dataline/profile/" class="tm-company-card__name">
+        DataLine
+      </a> <div class="tm-company-card__description">Экосистема ИТ-сервисов</div></div></div> <div class="tm-company-card__buttons"><!----> <!----></div></div> <div class="tm-article-presenter__body"><div class="tm-misprint-area"><div class="tm-misprint-area__wrapper"><article class="tm-article-presenter__content tm-article-presenter__content_narrow"><div class="tm-article-presenter__header"> <div class="tm-article-snippet tm-article-presenter__snippet"><div class="tm-article-snippet__meta-container"><div class="tm-article-snippet__meta"><span class="tm-user-info tm-article-snippet__author"><a href="/ru/users/adarchenkov/" title="adarchenkov" class="tm-user-info__userpic"><div class="tm-entity-image"><svg height="24" width="24" class="tm-svg-img tm-image-placeholder tm-image-placeholder_lilac"><!----> <use xlink:href="/img/megazord-v24.ce74655c.svg#placeholder-user"></use></svg></div></a> <span class="tm-user-info__user"><a href="/ru/users/adarchenkov/" class="tm-user-info__username">
+      adarchenkov
+    </a> </span></span> <span class="tm-article-snippet__datetime-published"><time datetime="2019-05-23T08:10:49.000Z" title="2019-05-23, 11:10">23  мая  2019 в 11:10</time></span></div> <!----></div> <h1 lang="ru" class="tm-article-snippet__title tm-article-snippet__title_h1"><span>Анализ производительности виртуальной машины в VMware vSphere. Часть 1: CPU</span></h1> <div class="tm-article-snippet__hubs"><span class="tm-article-snippet__hubs-item"><a href="/ru/company/dataline/blog/" class="tm-article-snippet__hubs-item-link router-link-active"><span>Блог компании DataLine</span> <!----></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/it-infrastructure/" class="tm-article-snippet__hubs-item-link"><span>IT-инфраструктура</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/virtualization/" class="tm-article-snippet__hubs-item-link"><span>Виртуализация</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/cloud_computing/" class="tm-article-snippet__hubs-item-link"><span>Облачные вычисления</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/cloud_services/" class="tm-article-snippet__hubs-item-link"><span>Облачные сервисы</span> <!----></a></span></div> <div class="tm-article-snippet__labels"><div class="tm-article-snippet__label"><span>
+        Tutorial
+      </span></div></div> <!----> <!----></div></div> <!----> <div data-gallery-root="" lang="ru" class="tm-article-body"><div id="post-content-body" class="article-formatted-body article-formatted-body_version-1"><div xmlns="http://www.w3.org/1999/xhtml"><img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/m9/sx/3b/m9sx3brt_zkyowlzywiwyoobc60.png"/><br/>
+<br/>
+Если вы администрируете виртуальную инфраструктуру на базе VMware vSphere (или любого другого стека технологий), то наверняка часто слышите от пользователей жалобы: «Виртуальная машина работает медленно!». В этом цикле статей разберу метрики производительности и расскажу, что и почему «тормозит» и как сделать так, чтобы не «тормозило».<br/>
+<br/>
+Буду рассматривать следующие аспекты производительности виртуальных машин:<br/>
+<br/>
+<ul>
+<li>CPU,</li>
+<li>RAM,</li>
+<li>DISK,</li>
+<li>Network.</li>
+</ul><br/>
+Начну с CPU.<br/>
+<br/>
+Для анализа производительности нам понадобятся:<br/>
+<br/>
+<ul>
+<li><b>vCenter Performance Counters</b> – счетчики производительности, графики которых можно посмотреть через vSphere Client. Информация по данным счетчикам доступна в любой версии клиента (“толстый” клиент на C#, web-клиент на Flex и web-клиент на HTML5). В данных статьях мы будем использовать скриншоты из С#-клиента, только потому, что они лучше смотрятся в миниатюре:)</li>
+<li><b>ESXTOP</b> – утилита, которая запускается из командной строки ESXi. С ее помощью можно получить значения счетчиков производительности в реальном времени или выгрузить эти значения за определенный период в .csv файл для дальнейшего анализа. Далее расскажу про этот инструмент подробнее и приведу несколько полезных ссылок на документацию и статьи по теме.</li>
+</ul><br/>
+<a name="habracut"></a><br/>
+<h3>Немного теории</h3><br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/zf/rh/dx/zfrhdxqi6ys3wgdgzs0m5ibk96i.png"/><br/>
+<br/>
+В ESXi за работу каждого vCPU (ядра виртуальной машины) отвечает отдельный процесс – world в терминологии VMware. Также есть служебные процессы, но с точки зрения анализа производительности ВМ они менее интересны.<br/>
+<br/>
+Процесс в ESXi может находиться в одном из четырех состояний:<br/>
+<br/>
+<ul>
+<li><b>Run</b> – процесс выполняет какую-то полезную работу.</li>
+<li><b>Wait</b> – процесс не выполняет никакой работы (idle) либо ждет ввода/вывода.</li>
+<li><b>Costop</b> – состояние, которое возникает в многоядерных виртуальных машинах. Оно возникает, когда планировщик CPU гипервизора (ESXi CPU Scheduler) не может запланировать одновременное исполнение на физических ядрах сервера всех активных ядер виртуальной машины. В физическом мире все ядра процессора работают параллельно, гостевая ОС внутри ВМ рассчитывает на аналогичное поведение, поэтому гипервизору приходится замедлять ядра ВМ, у которых есть возможность закончить такт быстрее. В современных версиях ESXi планировщик CPU использует механизм, который называется relaxed co-scheduling: гипервизор считает разрыв между самым «быстрым» и самым “медленным" ядром виртуальной машины (skew). Если разрыв превышает определенный порог, «быстрое» ядро переходит в состояние costop. Если ядра ВМ проводят много времени в этом состоянии, это может вызвать проблемы с производительностью.</li>
+<li><b>Ready</b> – процесс переходит в данное состояние, когда у гипервизора нет возможности выделить ресурсы для его исполнения. Высокие значения ready могут вызвать проблемы с производительностью ВМ.</li>
+</ul><br/>
+<h3>Основные счетчики производительности CPU виртуальной машины</h3><br/>
+<b>CPU Usage, %.</b> Показывает процент использования CPU за заданный период.<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/ly/ad/rg/lyadrgztwkrkipbfnzllfcjtrq4.png"/><br/>
+<br/>
+<b>Как анализировать?</b> Если ВМ стабильно использует CPU на 90% или есть пики до 100%, то у нас проблемы. Проблемы могут выражаться не только в «медленной» работе приложения внутри ВМ, но и в недоступности ВМ по сети. Если система мониторинга показывает, что ВМ периодически отваливается, обратите внимание на пики на графике CPU Usage.<br/>
+<br/>
+Есть стандартный Аlarm, который показывает загрузку CPU виртуальной машины:<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/6a/pr/b9/6aprb9vc1gwbtioocqpjdm7jzhk.png"/><br/>
+<br/>
+<b>Что делать?</b> Если у ВМ постоянно зашкаливает CPU Usage, то можно задуматься об увеличении количества vCPU (к сожалению, это не всегда помогает) или переносе ВМ на сервер с более производительными процессорами.<br/>
+<br/>
+<h3>CPU Usage in Mhz</h3><br/>
+В графиках на vCenter Usage в % можно посмотреть только по всей виртуальной машине, графиков по отдельным ядрам нет (в Esxtop значения в % по ядрам есть). По каждому ядру можно посмотреть Usage in MHz.<br/>
+ <br/>
+<b>Как анализировать?</b> Бывает, что приложение не оптимизировано под многоядерную архитектуру: использует на 100% только одно ядро, а остальные простаивают без нагрузки. Например, при дефолтных настройках бэкапа MS SQL запускает процесс только на одном ядре. В итоге резервное копирование тормозит не из-за медленной скорости дисков (именно на это изначально пожаловался пользователь), а из-за того, что не справляется процессор. Проблема была решена изменением параметров: резервное копирование стало запускаться параллельно в несколько файлов (соответственно, в несколько процессов).<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/6p/pm/w8/6ppmw8d5vqe2gepkiahzqx9tfms.png"/><br/>
+<i>Пример неравномерной нагрузки ядер.</i><br/>
+<br/>
+Также бывает ситуация (как на графике выше), когда ядра нагружены неравномерно и на некоторых из них есть пики в 100%. Как и при загрузке только одного ядра, alarm по CPU Usage не сработает (он по всей ВМ), но проблемы с производительностью будут.<br/>
+<br/>
+<b>Что делать? </b>Если ПО в виртуальной машине нагружает ядра неравномерно (использует только одно ядро или часть ядер), нет смысла увеличивать их количество. В таком случае лучше переместить ВМ на сервер с более производительными процессорами.<br/>
+<br/>
+Также можно попробовать проверить настройки энергопотребления в BIOS сервера. Многие администраторы включают в BIOS режим High Performance и тем самым отключают технологии энергосбережения C-states и P-states. В современных процессорах Intel используется технология Turbo Boost, которая увеличивает частоту отдельных ядер процессора за счет других ядер. Но она работает только при включенных технологиях энергосбережения. Если мы их отключаем, то процессор не может уменьшить энергопотребление ядер, которые не нагружены. <br/>
+<br/>
+VMware рекомендует не отключать технологии энергосбережения на серверах, а выбирать режимы, которые максимально отдают управление энергопотреблением гипервизору. При этом в настройках энергопотребления гипервизора нужно выбрать High Performance. <br/>
+<br/>
+Если у вас в инфраструктуре отдельные ВМ (или ядра ВМ) требуют повышенную частоту CPU, корректная настройка энергопотребления может значительно улучшить их производительность.<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/uq/ov/-o/uqov-ooazq0fetmazbwzhvxlgeg.png"/><br/>
+<br/>
+<h3>CPU Ready (Readiness) </h3><br/>
+Если ядро ВМ (vCPU) находится в состоянии Ready, оно не выполняет полезную работу. Такое состояние возникает, когда гипервизор не находит свободное физическое ядро, на которое можно назначить процесс vCPU виртуальной машины.<br/>
+<br/>
+<b>Как анализировать?</b> Обычно если ядра виртуальной машины находятся в состоянии Ready больше 10% времени, то вы заметите проблемы с производительностью. Проще говоря, больше 10% времени ВМ ждет доступности физических ресурсов.<br/>
+<br/>
+В vCenter можно посмотреть 2 счетчика, связанных с CPU Ready:<br/>
+<br/>
+<ul>
+<li>Readiness,</li>
+<li>Ready.</li>
+</ul><br/>
+Значения обоих счетчиков можно посмотреть как по всей ВМ, так и по отдельным ядрам.<br/>
+Readiness показывает значение сразу в процентах, но только в Real-time (данные за последний час, интервал измерений 20 секунд). Этот счетчик лучше использовать только для поиска проблем «по горячим следам».<br/>
+<br/>
+Значения счетчика Ready можно посмотреть также в исторической перспективе. Это полезно для установления закономерностей и для более глубокого анализа проблемы. Например, если у виртуальной машины начинаются проблемы с производительностью в какое-то определенное время, можно сопоставить интервалы повешенного значения CPU Ready с общей нагрузкой на сервер, где данная ВМ работает, и принять меры по снижению нагрузки (если DRS не справился).<br/>
+<br/>
+Ready в отличие от Readiness показывается не в процентах, а миллисекундах. Это счетчик типа Summation, то есть он показывает, сколько времени за период измерения ядро ВМ находилось в состоянии Ready. Перевести данное значение в проценты можно по несложной формуле:<br/>
+<br/>
+(CPU ready summation value / (chart default update interval in seconds * 1000)) * 100 = CPU ready %<br/>
+<br/>
+Например, для ВМ на графике ниже пиковое значение Ready на всю виртуальную машину получится следующим: <br/>
+<br/>
+<img src="https://habrastorage.org/getpro/habr/formulas/2bc/78b/283/2bc78b2839923e44229ce95af9b77b81.svg" alt="$(4286/(20*1000))*100 = 21%(4286/(20*1000))*100 = 21%$" data-tex="inline"/> <br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/oq/ma/1u/oqma1u-x4wdruct6jqgvlak9ia0.png"/><br/>
+<br/>
+При подсчете значения Ready в процентах стоит обращать внимание на два момента:<br/>
+<br/>
+<ul>
+<li>Значение Ready по всей ВМ – это сумма Ready по ядрам.</li>
+<li>Интервал измерения. Для Real-time – это 20 секунд, а, например, на дневных графиках – это 300 секунд.</li>
+</ul><br/>
+При активном траблшутинге эти простые моменты можно легко упустить и потратить ценное время на решение несуществующих проблем. <br/>
+<br/>
+Рассчитаем Ready на основе данных из графика ниже. (324474/(20*1000))*100 = 1622% на всю ВМ. Если смотреть по ядрам получится уже не так страшно: 1622/64 = 25% на ядро. В данном случае обнаружить подвох довольно просто: значение Ready нереалистичное. Но если речь идет о 10–20% на всю ВМ с несколькими ядрами, то по каждому ядру значение может быть в пределах нормы.<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/_m/qe/cc/_mqeccs8ivn_r-zrogedc_ofw9a.png"/><br/>
+<br/>
+<b>Что делать? </b>Высокое значение Ready говорит о том, что серверу не хватает ресурсов процессора для нормальной работы виртуальных машин. В такой ситуации остается только уменьшить переподписку по процессору (vCPU:pCPU). Очевидно, этого можно добиться, уменьшив параметры существующих ВМ или путем миграции части ВМ на другие серверы.<br/>
+<br/>
+<h3>Co-stop</h3><br/>
+<b>Как анализировать?</b> Данный счетчик также имеет тип Summation и переводится в проценты аналогично Ready:<br/>
+<br/>
+(CPU co-stop summation value / (chart default update interval in seconds * 1000)) * 100 = CPU co-stop %<br/>
+<br/>
+Здесь также нужно обращать внимание на количество ядер на ВМ и на интервал измерения.<br/>
+В состоянии сostop ядро не выполняет полезную работу. При правильном подборе размера ВМ и нормальной нагрузке на сервер счетчик со-stop должен быть близок к нулю.<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/pz/y8/sr/pzy8sr12hk1z2yosm9devw7knvs.png"/><br/>
+<i>В данном случае нагрузка явно ненормальная:)</i><br/>
+<br/>
+<b>Что делать?</b> Если на одном гипервизоре работают несколько ВМ с большим количеством ядер и есть переподписка по CPU, то счетчик co-stop может вырасти, что приведет к проблемам с производительностью данных ВМ. <br/>
+<br/>
+Также co-stop вырастет, если для активных ядер одной ВМ используются треды на одном физическом ядре сервера со включенным hyper-treading. Такая ситуация может возникнуть, например, если у ВМ больше ядер, чем физически есть на сервере, где она работает, или если для ВМ включена настройка «preferHT». Про эту настройку можно прочитать <a href="https://blogs.vmware.com/vsphere/2014/03/perferht-use-2.html">здесь</a>. <br/>
+<br/>
+Чтобы избежать проблем с производительностью ВМ из-за высокого сo-stop, выбирайте размер ВМ в соответствии с рекомендациями производителя ПО, которое работает на этой ВМ, и с возможностями физического сервера, где работает ВМ. <br/>
+<br/>
+Не добавляйте ядра про запас, это может вызвать проблемы с производительностью не только самой ВМ, но и ее соседей по серверу.<br/>
+<br/>
+<h3>Другие полезные метрики CPU</h3><br/>
+<b>Run</b> – сколько времени (мс) за период измерения vCPU находился в состоянии RUN, то есть собственно выполнял полезную работу.<br/>
+<br/>
+<b>Idle</b> – сколько времени (мс) за период измерения vCPU находился в состоянии бездействия. Высокие значения Idle – это не проблема, просто vCPU было «нечего делать».<br/>
+<br/>
+<b>Wait</b> – сколько времени (мс) за период измерения vCPU находился в состоянии Wait. Так как в данный счетчик включается IDLE, высокие значения Wait также не говорят о наличии проблемы. А вот если при высоком Wait IDLE низкий, значит ВМ ждала завершения операций ввода/вывода, а это, в свою очередь, может говорить о наличии проблемы с производительностью жесткого диска или каких-либо виртуальных устройств ВМ.<br/>
+<br/>
+<b>Max limited</b> – сколько времени (мс) за период измерения vCPU находился в состоянии Ready из-за установленного лимита по ресурсам. Если производительность необъяснимо низкая, то полезно проверить значение данного счетчика и лимит по CPU в настройках ВМ. У ВМ действительно могут оказаться выставлены лимиты, о которых вы не знаете. Например, так происходит, когда ВМ была склонирована из шаблона, на котором был установлен лимит по CPU.<br/>
+<br/>
+<b>Swap wait</b> – сколько времени за период измерения vCPU ждал операции с VMkernel Swap. Если значения данного счетчика выше нуля, то у ВМ точно есть проблемы с производительностью. Подробнее про SWAP поговорим в статье про счетчики оперативной памяти.<br/>
+<br/>
+<h3>ESXTOP</h3><br/>
+Если счетчики производительности в vCenter хороши для анализа исторических данных, то оперативный анализ проблемы лучше производить в ESXTOP. Здесь все значения представлены в готовом виде (не нужно ничего переводить), а минимальный период измерения 2 секунды.<br/>
+Экран ESXTOP по CPU вызывается клавишей «c» и выглядит следующим образом:<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/5x/8g/-o/5x8g-ovkxsc4xsuuvvk6guv3t0u.png"/><br/>
+<br/>
+Для удобства можно оставить только процессы виртуальных машин, нажав Shift-V.<br/>
+Чтобы посмотреть метрики по отдельным ядрам ВМ, нажмите «e» и вбейте GID интересующей ВМ (30919 на скриншоте ниже):<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/tu/fn/jz/tufnjzwauierg5thzwsij3elpca.png"/><br/>
+<br/>
+Кратко пройдусь по столбцам, которые представлены по умолчанию. Дополнительные столбцы можно добавить, нажав «f».<br/>
+ <br/>
+<b>NWLD (Number of Worlds)</b> – количество процессов в группе. Чтобы раскрыть группу и увидеть метрики для каждого процесса (например, для каждого ядра многоядерной ВМ), нажмите “e”. Если в группе больше одного процесса, то значения метрик для группы равны сумме метрик для отдельных процессов.<br/>
+<br/>
+<b>%USED</b> – сколько циклов CPU сервера использует процесс или группа процессов.<br/>
+<br/>
+<b>%RUN</b> – сколько времени за период измерения процесс находился в состоянии RUN, т.е. выполнял полезную работу. Отличается от %USED тем, что не учитывает hyper-threading, frequency scaling и время, затраченное на системные задачи (%SYS).<br/>
+<br/>
+<b>%SYS</b> – время, затраченное на системные задачи, например: обработку прерываний, ввода/вывода, работу сети и пр. Значение может быть высоким, если на ВМ большой ввод/вывод.<br/>
+<br/>
+<b>%OVRLP</b> – сколько времени физическое ядро, на котором выполняется процесс ВМ, потратило на задачи других процессов.<br/>
+<br/>
+Данные метрики соотносятся между собой следующим образом:<br/>
+<br/>
+%USED = %RUN + %SYS — %OVRLP.<br/>
+<br/>
+Обычно метрика %USED является более информативной.<br/>
+<br/>
+<b>%WAIT</b> – сколько времени за период измерения процесс находился в состоянии Wait. Включает IDLE.<br/>
+<br/>
+<b>%IDLE</b> – сколько времени за период измерения процесс находился в состоянии IDLE.<br/>
+<br/>
+<b>%SWPWT</b> – сколько времени за период измерения vCPU ждал операции с VMkernel Swap.<br/>
+<br/>
+<b>%VMWAIT</b> – сколько времени за период измерения vCPU находилось в состояния ожидания события (обычно ввода/вывода). Аналогичного счетчика нет в vCenter. Высокие значения говорят о проблемах с вводом/выводом на ВМ.<br/>
+<br/>
+%WAIT = %VMWAIT + %IDLE + %SWPWT.<br/>
+<br/>
+Если ВМ не использует VMkernel Swap, то при анализе проблем с производительностью целесообразно смотреть на %VMWAIT, так как данная метрика не учитывает время, когда ВМ ничего не делала (%IDLE).<br/>
+<br/>
+<b>%RDY</b> – сколько времени за период измерения процесс находился в состоянии Ready.<br/>
+<br/>
+<b>%CSTP</b> – сколько времени за период измерения процесс находился в состоянии сostop.<br/>
+<br/>
+<b>%MLMTD</b> – сколько времени за период измерения vCPU находился в состоянии Ready из-за установленного лимита по ресурсам.<br/>
+<br/>
+%WAIT + %RDY + %CSTP + %RUN = 100% – ядро ВМ все время находится в каком-то из этих четырех состояний.<br/>
+<br/>
+<h3>CPU на гипервизоре</h3><br/>
+В vCenter есть также счетчики производительности CPU для гипервизора, но они не представляют из себя ничего интересного – это просто сумма счетчиков по всем ВМ на сервере.<br/>
+Удобнее всего смотреть состояние CPU на сервере на вкладке Summary:<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/cr/zn/bb/crznbbcz3ifhippyvvrpqaotvps.png"/><br/>
+<br/>
+Для сервера, как и для виртуальной машины, есть стандартный Alarm:<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/-v/x0/gz/-vx0gzuta3wskstyrmu8ylixqla.png"/><br/>
+<br/>
+При высокой нагрузке на CPU сервера у ВМ, работающих на нем, начинаются проблемы с производительностью.<br/>
+<br/>
+В ESXTOP данные о загрузке CPU сервера представлены в верхней части экрана. Помимо стандартного CPU load, который малоинформативен для гипервизоров, есть еще три метрики:<br/>
+<br/>
+<b>CORE UTIL(%)</b> – загрузка ядра физического сервера. Данный счетчик показывает, сколько времени за период измерения ядро выполняло работу.<br/>
+<br/>
+<b>PCPU UTIL(%)</b> – если включен hyper-threading, то на каждое физическое ядро приходится два потока (PCPU). Данная метрика показывает, сколько времени каждый поток выполнял работу.<br/>
+<br/>
+<b>PCPU USED(%)</b> – то же, что PCPU UTIL(%), но учитывает frequency scaling (либо снижение частоты ядра в целях энергосбережения, либо повышение частоты ядра за счет технологии Turbo Boost) и hyper-threading.<br/>
+<br/>
+PCPU_USED% = PCPU_UTIL% * эффективную частоту ядра / номинальную частоту ядра.<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/gk/il/nh/gkilnhtdazgv5nxiwbydkhda-oe.png"/><br/>
+<i>На этом скриншоте для некоторых ядер из-за работы Turbo Boost’а значение USED больше 100%, так как частота ядра выше номинальной.</i><br/>
+<br/>
+Пара слов о том, как учитывается hyper-threading. Если процессы исполняются 100% времени на обоих потоках физического ядра сервера, при этом ядро работает на номинальной частоте, то:<br/>
+<br/>
+<ul>
+<li>CORE UTIL для ядра будет 100%,</li>
+<li>PCPU UTIL для обоих потоков будет 100%,</li>
+<li>PCPU USED для обоих потоков будет 50%.</li>
+</ul><br/>
+Если оба потока не работали 100% времени за период измерения, то в те периоды, когда потоки работали параллельно, PCPU USED для ядер делится пополам.<br/>
+<br/>
+В ESXTOP также есть экран с параметрами энергопотребления CPU сервера. Здесь можно посмотреть, используются ли сервером технологии энергосбережения: C-states и P-states. Вызывается клавишей «p»:<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/cd/qv/he/cdqvhelnmce9qeseanbqzl3qsqs.png"/><br/>
+<br/>
+<h3>Стандартные проблемы производительности CPU</h3><br/>
+Напоследок пробегусь по типичным причинам возникновения проблем с производительностью CPU ВМ и дам короткие советы их решению:<br/>
+<br/>
+<b>Не хватает тактовой частоты ядра.</b> Если нет возможности перевести ВМ на более производительные ядра, можно попробовать изменить настройки энергопотребления, чтобы Turbo Boost работал эффективнее.<br/>
+<br/>
+<b>Неправильный сайзинг ВМ (слишком много/мало ядер).</b> Если поставить мало ядер, будет высокая загрузка CPU ВМ. Если много, словите высокий co-stop.<br/>
+<br/>
+<b>Большая переподписка по CPU на сервере.</b> Если на ВМ высокий Ready, снизьте переподписку по CPU.<br/>
+<br/>
+<b>Неправильная NUMA-топология на больших ВМ.</b> NUMA-топология, которую видит ВМ (vNUMA), должна соответствовать NUMA-топологии сервера (pNUMA). Про диагностику и возможные варианты решения данной проблемы написано, например, в книге <a href="https://pages.rubrik.com/host-resources-deep-dive_request.html">«VMware vSphere 6.5 Host Resources Deep Dive»</a>. Если не хотите углубляться и у вас нет лицензионных ограничений по ОС, установленной на ВМ, делайте на ВМ много виртуальных сокетов по одному ядру. Много не потеряете :)<br/>
+<br/>
+На этом про CPU у меня все. Задавайте вопросы. В <a href="https://habr.com/ru/company/dataline/blog/455820/">следующей части</a> расскажу про оперативную память.<br/>
+<br/>
+<div class="spoiler"><b class="spoiler_title">Полезные ссылки</b><div class="spoiler_text"><a href="http://virtual-red-dot.info/vm-cpu-counters-vsphere/">http://virtual-red-dot.info/vm-cpu-counters-vsphere/</a><br/>
+<a href="https://kb.vmware.com/kb/1017926">https://kb.vmware.com/kb/1017926</a><br/>
+<a href="http://www.yellow-bricks.com/2012/07/17/why-is-wait-so-high/">http://www.yellow-bricks.com/2012/07/17/why-is-wait-so-high/</a><br/>
+<a href="https://communities.vmware.com/docs/DOC-9279">https://communities.vmware.com/docs/DOC-9279</a><br/>
+<a href="https://www.vmware.com/content/dam/digitalmarketing/vmware/en/pdf/techpaper/performance/whats-new-vsphere65-perf.pdf">https://www.vmware.com/content/dam/digitalmarketing/vmware/en/pdf/techpaper/performance/whats-new-vsphere65-perf.pdf</a><br/>
+<a href="https://pages.rubrik.com/host-resources-deep-dive_request.html">https://pages.rubrik.com/host-resources-deep-dive_request.html</a></div></div></div></div> <!----> <!----></div> <div class="tm-article-presenter__meta"><div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Теги:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bvmware%20vsphere%5D" class="tm-tags-list__link">vmware vsphere</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bvmware%20esxi%5D" class="tm-tags-list__link">vmware esxi</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bvcenter%5D" class="tm-tags-list__link">vcenter</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Besxtop%5D" class="tm-tags-list__link">esxtop</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bperfomance%20counters%5D" class="tm-tags-list__link">perfomance counters</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bperformance%5D" class="tm-tags-list__link">performance</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5B%D0%BF%D1%80%D0%BE%D0%B8%D0%B7%D0%B2%D0%BE%D0%B4%D0%B8%D1%82%D0%B5%D0%BB%D1%8C%D0%BD%D0%BE%D1%81%D1%82%D1%8C%5D" class="tm-tags-list__link">производительность</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5B%D0%B2%D0%B8%D1%80%D1%82%D1%83%D0%B0%D0%BB%D1%8C%D0%BD%D0%B0%D1%8F%20%D0%BC%D0%B0%D1%88%D0%B8%D0%BD%D0%B0%5D" class="tm-tags-list__link">виртуальная машина</a></li></ul></div> <div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Хабы:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/company/dataline/blog/" class="tm-hubs-list__link router-link-active">
+    Блог компании DataLine
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/it-infrastructure/" class="tm-hubs-list__link">
+    IT-инфраструктура
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/virtualization/" class="tm-hubs-list__link">
+    Виртуализация
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/cloud_computing/" class="tm-hubs-list__link">
+    Облачные вычисления
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/cloud_services/" class="tm-hubs-list__link">
+    Облачные сервисы
+  </a></li></ul></div></div></article></div> <!----></div> <div class="tm-article-sticky-panel"><div class="tm-data-icons tm-article-sticky-panel__icons"><div class="tm-article-rating tm-data-icons__item"><div class="tm-votes-meter tm-article-rating__votes-switcher"><svg height="16" width="16" class="tm-svg-img tm-votes-meter__icon tm-votes-meter__icon_medium"><title>Всего голосов 29: ↑29 и ↓0</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-rating"></use></svg> <span title="Всего голосов 29: ↑29 и ↓0" class="tm-votes-meter__value tm-votes-meter__value_positive tm-votes-meter__value_medium">+29</span></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----> <span title="Количество просмотров" class="tm-icon-counter tm-data-icons__item"><svg height="16" width="16" class="tm-svg-img tm-icon-counter__icon"><title>Просмотры</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-views"></use></svg> <span class="tm-icon-counter__value">44K</span></span> <button title="Добавить в закладки" type="button" class="bookmarks-button tm-data-icons__item"><span title="Добавить в закладки" class="tm-svg-icon__wrapper bookmarks-button__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Добавить в закладки</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-favorite"></use></svg></span> <span title="Количество пользователей, добавивших публикацию в закладки" class="bookmarks-button__counter">
+    211
+  </span></button> <!----> <div title="Поделиться" class="tm-sharing tm-data-icons__item"><button type="button" class="tm-sharing__button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="tm-sharing__icon"><path fill="currentColor" d="M10.33.275l9.047 7.572a.2.2 0 010 .306l-9.048 7.572a.2.2 0 01-.328-.153V11c-8 0-9.94 6-9.94 6S-1 5 10 5V.428a.2.2 0 01.328-.153z"></path></svg></button> <!----></div> <DIV class="v-portal" style="display:none;"></DIV></div> </div></div> <!----> <!----> <div class="tm-article-presenter__footer"><div class="tm-article-blocks"><!----> <section class="tm-block tm-block_spacing-bottom"><!----> <div class="tm-block__body tm-block__body_variant-balanced"><div class="tm-article-author"><div class="tm-article-author__company"><div class="tm-article-author__company-card"><div class="tm-company-snippet"><a href="/ru/company/dataline/profile/" class="tm-company-snippet__logo-link"><div class="tm-entity-image"><img alt="" height="40" src="//habrastorage.org/getpro/habr/company/e1b/ff9/809/e1bff98097e89d63bdcd7cf1f2e3d800.jpg" width="40" class="tm-entity-image__pic"></div></a> <div class="tm-company-snippet__info"><a href="/ru/company/dataline/profile/" class="tm-company-snippet__title">DataLine</a> <div class="tm-company-snippet__description">Экосистема ИТ-сервисов</div></div></div> <div class="tm-article-author__buttons"><!----> <!----></div></div> <div class="tm-article-author__company-contacts"><a href="http://www.dtln.ru/" rel="noopener" target="_blank" class="tm-article-author__contact">
+      Сайт
+    </a><a href="https://facebook.com/ilikedataline" rel="noopener" target="_blank" class="tm-article-author__contact">
+      Facebook
+    </a><a href="https://vk.com/ilikedataline" rel="noopener" target="_blank" class="tm-article-author__contact">
+      ВКонтакте
+    </a><a href="https://instagram.com/ilikedataline" rel="noopener" target="_blank" class="tm-article-author__contact">
+      Instagram
+    </a><a href="https://telegram.me/unidataline" rel="noopener" target="_blank" class="tm-article-author__contact">
+      Telegram
+    </a></div> <div class="tm-article-author__separator"></div></div> <div class="tm-user-card tm-article-author__user-card tm-user-card_variant-article"><div class="tm-user-card__info-container"><div class="tm-user-card__header"><div class="tm-user-card__header-data"><a href="/ru/users/adarchenkov/" class="tm-user-card__userpic tm-user-card__userpic_size-40"><div class="tm-entity-image"><svg class="tm-svg-img tm-image-placeholder tm-image-placeholder_lilac"><!----> <use xlink:href="/img/megazord-v24.ce74655c.svg#placeholder-user"></use></svg></div></a> <div class="tm-user-card__meta"><div title=" 14 голосов " class="tm-karma tm-user-card__karma"><div class="tm-karma__votes tm-karma__votes_positive">
+    14
+  </div> <div class="tm-karma__text">
+    Карма
+  </div></div> <div title="Рейтинг пользователя" class="tm-rating tm-user-card__rating"><div class="tm-rating__header"> <div class="tm-rating__counter">0</div></div> <div class="tm-rating__text">
+    Рейтинг
+  </div></div></div></div></div> <div class="tm-user-card__info tm-user-card__info_variant-article"><div class="tm-user-card__title tm-user-card__title_variant-article"><!----> <a href="/ru/users/adarchenkov/" class="tm-user-card__nickname tm-user-card__nickname_variant-article">
+          @adarchenkov
+        </a> <!----></div> <p class="tm-user-card__short-info tm-user-card__short-info_variant-article">Пользователь</p></div></div> <div class="tm-user-card__buttons tm-user-card__buttons_variant-article"><!----> <!----> <!----> <!----> <!----></div></div> <!----></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----></section> <div class="tm-article-blocks__comments"><div class="tm-article-page-comments"><div class="tm-article-comments-counter-link tm-article-comments-counter-button"><a href="/ru/company/dataline/blog/452884/comments/" class="tm-article-comments-counter-link__link tm-article-comments-counter-link__link_button-style"><svg height="16" width="16" class="tm-svg-img tm-article-comments-counter-link__icon tm-article-comments-counter-link__icon_contrasted"><title>Комментарии</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-comments"></use></svg> <span class="tm-article-comments-counter-link__value tm-article-comments-counter-link__value_contrasted">
+       Комментарии 13 
+    </span></a> <!----></div></div></div>  <!---->  <!----> <!----></div></div></div></div></div> <div class="tm-page__sidebar"><div class="tm-layout-sidebar"><div class="tm-layout-sidebar__placeholder_initial"></div> <div class="tm-sexy-sidebar tm-sexy-sidebar_initial" style="margin-top:0px;"><!----> <section class="tm-block tm-block_spacing-bottom"><header class="tm-block__header"><h2 class="tm-block__title">Информация</h2> <!----></header> <div class="tm-block__body"><div class="tm-company-basic-info"><dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Дата основания</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><time datetime="2007-10-01T20:00:00.000Z" title="2007-10-02, 00:00">2  октября  2007</time></dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Местоположение</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap">
+    Россия
+  </dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Сайт</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><a href="http://dtln.ru/" target="_blank" class="tm-company-basic-info__link">
+      dtln.ru
+    </a></dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Численность</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap">
+    201–500 человек
+  </dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Дата регистрации</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><time datetime="2009-03-24T14:32:02.000Z" title="2009-03-24, 17:32">24  марта  2009</time></dd></dl> <!----></div></div> <!----></section> <div class="tm-company-widgets"></div> <!----></div></div></div></div></div></div></main> <!----></div> <div class="tm-footer-menu"><div class="tm-page-width"><div class="tm-footer-menu__container"><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Ваш аккаунт
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr/?back=/ru/company/dataline/blog/452884/&amp;hl=ru" rel="nofollow" target="_self">
+                Войти
+              </a></li><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr-register/?back=/ru/company/dataline/blog/452884/&amp;hl=ru" rel="nofollow" target="_self">
+                Регистрация
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Разделы
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/" class="footer-menu__item-link router-link-active">
+                Публикации
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/news/" class="footer-menu__item-link">
+                Новости
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/hubs/" class="footer-menu__item-link">
+                Хабы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/companies/" class="footer-menu__item-link">
+                Компании
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/users/" class="footer-menu__item-link">
+                Авторы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/sandbox/" class="footer-menu__item-link">
+                Песочница
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Информация
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/docs/help/" class="footer-menu__item-link">
+                Устройство сайта
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/authors/codex/" class="footer-menu__item-link">
+                Для авторов
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/companies/corpblogs/" class="footer-menu__item-link">
+                Для компаний
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/docs/transparency/" class="footer-menu__item-link">
+                Документы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/agreement" target="_blank">
+                Соглашение
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/confidential/" target="_blank">
+                Конфиденциальность
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Услуги
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQLwRfQmXibiUlWaRg-BAc38s7oM3lJiaPju7qmdJsp8ysIvZ_G-Npem0njJLMozE2bPHMpDqiI5hhy/pub?start=false&amp;loop=false&amp;delayms=60000&amp;slide=id.g91a03369cd_4_297" target="_blank">
+                Реклама
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://habrastorage.org/storage/stuff/habr/service_price.pdf" target="_blank">
+                Тарифы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQJJds8-Di7BQSP_guHxICN7woVYoN5NP_22ra-BIo4bqnTT9FR6fB-Ku2P0AoRpX0Ds-LRkDeAoD8F/pub?start=false&amp;loop=false&amp;delayms=60000" target="_blank">
+                Контент
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://tmtm.timepad.ru/" target="_blank">
+                Семинары
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/megaprojects/" class="footer-menu__item-link">
+                Мегапроекты
+              </a></li></ul></div></div></div></div></div> <div class="tm-footer"><div class="tm-page-width"><div class="tm-footer__container"><!----> <div class="tm-footer__social"><a href="https://www.facebook.com/habrahabr.ru" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Facebook</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-facebook"></use></svg></a><a href="https://twitter.com/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Twitter</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-twitter"></use></svg></a><a href="https://vk.com/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>VK</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-vkontakte"></use></svg></a><a href="https://telegram.me/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Telegram</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-telegram"></use></svg></a><a href="https://www.youtube.com/channel/UCd_sTwKqVrweTt4oAKY5y4w" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Youtube</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-youtube"></use></svg></a><a href="https://zen.yandex.ru/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Яндекс Дзен</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-zen"></use></svg></a></div> <DIV class="v-portal" style="display:none;"></DIV> <button class="tm-footer__link"><!---->
+        Настройка языка
+      </button> <a href="/ru/about" class="tm-footer__link">
+        О сайте
+      </a> <a href="/ru/feedback/" class="tm-footer__link">
+        Техническая поддержка
+      </a> <!----> <a href="/berserk-mode-nope" class="tm-footer__link">
+        Вернуться на старую версию
+      </a> <div class="tm-footer-copyright"><span class="tm-copyright"><span class="tm-copyright__years">© 2006–2021 </span> <span class="tm-copyright__name">«<a href="https://company.habr.com/" rel="noopener" target="_blank" class="tm-copyright__link">Habr</a>»</span></span></div></div></div></div> <!----> <!----></div> <div class="vue-portal-target"></div></div>
+<script>window.__INITIAL_STATE__={"adblock":{"hasAcceptableAdsFilter":false,"hasAdblock":false},"articlesList":{"articlesList":{"452884":{"id":"452884","timePublished":"2019-05-23T08:10:49+00:00","isCorporative":true,"lang":"ru","titleHtml":"Анализ производительности виртуальной машины в VMware vSphere. Часть 1: CPU","leadData":{"textHtml":"\u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fm9\u002Fsx\u002F3b\u002Fm9sx3brt_zkyowlzywiwyoobc60.png\"\u003E\u003Cbr\u003E\r\n\u003Cbr\u003E\r\nЕсли вы администрируете виртуальную инфраструктуру на базе VMware vSphere (или любого другого стека технологий), то наверняка часто слышите от пользователей жалобы: «Виртуальная машина работает медленно!». В этом цикле статей разберу метрики производительности и расскажу, что и почему «тормозит» и как сделать так, чтобы не «тормозило».\u003Cbr\u003E\r\n\u003Cbr\u003E\r\nБуду рассматривать следующие аспекты производительности виртуальных машин:\u003Cbr\u003E\r\n\u003Cbr\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003ECPU,\u003C\u002Fli\u003E\r\n\u003Cli\u003ERAM,\u003C\u002Fli\u003E\r\n\u003Cli\u003EDISK,\u003C\u002Fli\u003E\r\n\u003Cli\u003ENetwork.\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u003E\r\nНачну с CPU.\u003Cbr\u003E\r\n\u003Cbr\u003E\r\nДля анализа производительности нам понадобятся:\u003Cbr\u003E\r\n\u003Cbr\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003E\u003Cb\u003EvCenter Performance Counters\u003C\u002Fb\u003E – счетчики производительности, графики которых можно посмотреть через vSphere Client. Информация по данным счетчикам доступна в любой версии клиента (“толстый” клиент на C#, web-клиент на Flex и web-клиент на HTML5). В данных статьях мы будем использовать скриншоты из С#-клиента, только потому, что они лучше смотрятся в миниатюре:)\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Cb\u003EESXTOP\u003C\u002Fb\u003E – утилита, которая запускается из командной строки ESXi. С ее помощью можно получить значения счетчиков производительности в реальном времени или выгрузить эти значения за определенный период в .csv файл для дальнейшего анализа. Далее расскажу про этот инструмент подробнее и приведу несколько полезных ссылок на документацию и статьи по теме.\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u003E","imageUrl":null,"buttonTextHtml":"Читать дальше →","image":null},"editorVersion":"1.0","postType":"article","postLabels":[{"type":"tutorial","data":null}],"author":{"scoreStats":{"score":14,"votesCount":14},"rating":0,"relatedData":null,"contacts":[],"authorContacts":[],"paymentDetails":{"paymentYandexMoney":null,"paymentPayPalMe":null,"paymentWebmoney":null},"id":"2059477","alias":"adarchenkov","fullname":null,"avatarUrl":null,"speciality":null},"statistics":{"commentsCount":13,"favoritesCount":211,"readingCount":43701,"score":29,"votesCount":29},"hubs":[{"relatedData":null,"id":"9406","alias":"dataline","type":"corporative","title":"Блог компании DataLine","titleHtml":"Блог компании DataLine","isProfiled":false},{"relatedData":null,"id":"6398","alias":"it-infrastructure","type":"collective","title":"IT-инфраструктура","titleHtml":"IT-инфраструктура","isProfiled":true},{"relatedData":null,"id":"7312","alias":"virtualization","type":"collective","title":"Виртуализация","titleHtml":"Виртуализация","isProfiled":true},{"relatedData":null,"id":"16120","alias":"cloud_computing","type":"collective","title":"Облачные вычисления","titleHtml":"Облачные вычисления","isProfiled":true},{"relatedData":null,"id":"21470","alias":"cloud_services","type":"collective","title":"Облачные сервисы","titleHtml":"Облачные сервисы","isProfiled":false}],"flows":[{"id":"6","alias":"admin","title":"Администрирование"}],"relatedData":null,"textHtml":"\u003Cdiv xmlns=\"http:\u002F\u002Fwww.w3.org\u002F1999\u002Fxhtml\"\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fm9\u002Fsx\u002F3b\u002Fm9sx3brt_zkyowlzywiwyoobc60.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЕсли вы администрируете виртуальную инфраструктуру на базе VMware vSphere (или любого другого стека технологий), то наверняка часто слышите от пользователей жалобы: «Виртуальная машина работает медленно!». В этом цикле статей разберу метрики производительности и расскажу, что и почему «тормозит» и как сделать так, чтобы не «тормозило».\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nБуду рассматривать следующие аспекты производительности виртуальных машин:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003ECPU,\u003C\u002Fli\u003E\r\n\u003Cli\u003ERAM,\u003C\u002Fli\u003E\r\n\u003Cli\u003EDISK,\u003C\u002Fli\u003E\r\n\u003Cli\u003ENetwork.\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\nНачну с CPU.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nДля анализа производительности нам понадобятся:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003E\u003Cb\u003EvCenter Performance Counters\u003C\u002Fb\u003E – счетчики производительности, графики которых можно посмотреть через vSphere Client. Информация по данным счетчикам доступна в любой версии клиента (“толстый” клиент на C#, web-клиент на Flex и web-клиент на HTML5). В данных статьях мы будем использовать скриншоты из С#-клиента, только потому, что они лучше смотрятся в миниатюре:)\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Cb\u003EESXTOP\u003C\u002Fb\u003E – утилита, которая запускается из командной строки ESXi. С ее помощью можно получить значения счетчиков производительности в реальном времени или выгрузить эти значения за определенный период в .csv файл для дальнейшего анализа. Далее расскажу про этот инструмент подробнее и приведу несколько полезных ссылок на документацию и статьи по теме.\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\n\u003Ca name=\"habracut\"\u003E\u003C\u002Fa\u003E\u003Cbr\u002F\u003E\r\n\u003Ch3\u003EНемного теории\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fzf\u002Frh\u002Fdx\u002Fzfrhdxqi6ys3wgdgzs0m5ibk96i.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВ ESXi за работу каждого vCPU (ядра виртуальной машины) отвечает отдельный процесс – world в терминологии VMware. Также есть служебные процессы, но с точки зрения анализа производительности ВМ они менее интересны.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПроцесс в ESXi может находиться в одном из четырех состояний:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003E\u003Cb\u003ERun\u003C\u002Fb\u003E – процесс выполняет какую-то полезную работу.\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Cb\u003EWait\u003C\u002Fb\u003E – процесс не выполняет никакой работы (idle) либо ждет ввода\u002Fвывода.\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Cb\u003ECostop\u003C\u002Fb\u003E – состояние, которое возникает в многоядерных виртуальных машинах. Оно возникает, когда планировщик CPU гипервизора (ESXi CPU Scheduler) не может запланировать одновременное исполнение на физических ядрах сервера всех активных ядер виртуальной машины. В физическом мире все ядра процессора работают параллельно, гостевая ОС внутри ВМ рассчитывает на аналогичное поведение, поэтому гипервизору приходится замедлять ядра ВМ, у которых есть возможность закончить такт быстрее. В современных версиях ESXi планировщик CPU использует механизм, который называется relaxed co-scheduling: гипервизор считает разрыв между самым «быстрым» и самым “медленным\" ядром виртуальной машины (skew). Если разрыв превышает определенный порог, «быстрое» ядро переходит в состояние costop. Если ядра ВМ проводят много времени в этом состоянии, это может вызвать проблемы с производительностью.\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Cb\u003EReady\u003C\u002Fb\u003E – процесс переходит в данное состояние, когда у гипервизора нет возможности выделить ресурсы для его исполнения. Высокие значения ready могут вызвать проблемы с производительностью ВМ.\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\n\u003Ch3\u003EОсновные счетчики производительности CPU виртуальной машины\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\n\u003Cb\u003ECPU Usage, %.\u003C\u002Fb\u003E Показывает процент использования CPU за заданный период.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fly\u002Fad\u002Frg\u002Flyadrgztwkrkipbfnzllfcjtrq4.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cb\u003EКак анализировать?\u003C\u002Fb\u003E Если ВМ стабильно использует CPU на 90% или есть пики до 100%, то у нас проблемы. Проблемы могут выражаться не только в «медленной» работе приложения внутри ВМ, но и в недоступности ВМ по сети. Если система мониторинга показывает, что ВМ периодически отваливается, обратите внимание на пики на графике CPU Usage.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЕсть стандартный Аlarm, который показывает загрузку CPU виртуальной машины:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002F6a\u002Fpr\u002Fb9\u002F6aprb9vc1gwbtioocqpjdm7jzhk.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cb\u003EЧто делать?\u003C\u002Fb\u003E Если у ВМ постоянно зашкаливает CPU Usage, то можно задуматься об увеличении количества vCPU (к сожалению, это не всегда помогает) или переносе ВМ на сервер с более производительными процессорами.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch3\u003ECPU Usage in Mhz\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\nВ графиках на vCenter Usage в % можно посмотреть только по всей виртуальной машине, графиков по отдельным ядрам нет (в Esxtop значения в % по ядрам есть). По каждому ядру можно посмотреть Usage in MHz.\u003Cbr\u002F\u003E\r\n \u003Cbr\u002F\u003E\r\n\u003Cb\u003EКак анализировать?\u003C\u002Fb\u003E Бывает, что приложение не оптимизировано под многоядерную архитектуру: использует на 100% только одно ядро, а остальные простаивают без нагрузки. Например, при дефолтных настройках бэкапа MS SQL запускает процесс только на одном ядре. В итоге резервное копирование тормозит не из-за медленной скорости дисков (именно на это изначально пожаловался пользователь), а из-за того, что не справляется процессор. Проблема была решена изменением параметров: резервное копирование стало запускаться параллельно в несколько файлов (соответственно, в несколько процессов).\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002F6p\u002Fpm\u002Fw8\u002F6ppmw8d5vqe2gepkiahzqx9tfms.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Ci\u003EПример неравномерной нагрузки ядер.\u003C\u002Fi\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nТакже бывает ситуация (как на графике выше), когда ядра нагружены неравномерно и на некоторых из них есть пики в 100%. Как и при загрузке только одного ядра, alarm по CPU Usage не сработает (он по всей ВМ), но проблемы с производительностью будут.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cb\u003EЧто делать? \u003C\u002Fb\u003EЕсли ПО в виртуальной машине нагружает ядра неравномерно (использует только одно ядро или часть ядер), нет смысла увеличивать их количество. В таком случае лучше переместить ВМ на сервер с более производительными процессорами.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nТакже можно попробовать проверить настройки энергопотребления в BIOS сервера. Многие администраторы включают в BIOS режим High Performance и тем самым отключают технологии энергосбережения C-states и P-states. В современных процессорах Intel используется технология Turbo Boost, которая увеличивает частоту отдельных ядер процессора за счет других ядер. Но она работает только при включенных технологиях энергосбережения. Если мы их отключаем, то процессор не может уменьшить энергопотребление ядер, которые не нагружены. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nVMware рекомендует не отключать технологии энергосбережения на серверах, а выбирать режимы, которые максимально отдают управление энергопотреблением гипервизору. При этом в настройках энергопотребления гипервизора нужно выбрать High Performance. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЕсли у вас в инфраструктуре отдельные ВМ (или ядра ВМ) требуют повышенную частоту CPU, корректная настройка энергопотребления может значительно улучшить их производительность.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fuq\u002Fov\u002F-o\u002Fuqov-ooazq0fetmazbwzhvxlgeg.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch3\u003ECPU Ready (Readiness) \u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\nЕсли ядро ВМ (vCPU) находится в состоянии Ready, оно не выполняет полезную работу. Такое состояние возникает, когда гипервизор не находит свободное физическое ядро, на которое можно назначить процесс vCPU виртуальной машины.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cb\u003EКак анализировать?\u003C\u002Fb\u003E Обычно если ядра виртуальной машины находятся в состоянии Ready больше 10% времени, то вы заметите проблемы с производительностью. Проще говоря, больше 10% времени ВМ ждет доступности физических ресурсов.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВ vCenter можно посмотреть 2 счетчика, связанных с CPU Ready:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003EReadiness,\u003C\u002Fli\u003E\r\n\u003Cli\u003EReady.\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\nЗначения обоих счетчиков можно посмотреть как по всей ВМ, так и по отдельным ядрам.\u003Cbr\u002F\u003E\r\nReadiness показывает значение сразу в процентах, но только в Real-time (данные за последний час, интервал измерений 20 секунд). Этот счетчик лучше использовать только для поиска проблем «по горячим следам».\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЗначения счетчика Ready можно посмотреть также в исторической перспективе. Это полезно для установления закономерностей и для более глубокого анализа проблемы. Например, если у виртуальной машины начинаются проблемы с производительностью в какое-то определенное время, можно сопоставить интервалы повешенного значения CPU Ready с общей нагрузкой на сервер, где данная ВМ работает, и принять меры по снижению нагрузки (если DRS не справился).\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nReady в отличие от Readiness показывается не в процентах, а миллисекундах. Это счетчик типа Summation, то есть он показывает, сколько времени за период измерения ядро ВМ находилось в состоянии Ready. Перевести данное значение в проценты можно по несложной формуле:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n(CPU ready summation value \u002F (chart default update interval in seconds * 1000)) * 100 = CPU ready %\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nНапример, для ВМ на графике ниже пиковое значение Ready на всю виртуальную машину получится следующим: \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fformulas\u002F2bc\u002F78b\u002F283\u002F2bc78b2839923e44229ce95af9b77b81.svg\" alt=\"$(4286\u002F(20*1000))*100 = 21%(4286\u002F(20*1000))*100 = 21%$\" data-tex=\"inline\"\u002F\u003E \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Foq\u002Fma\u002F1u\u002Foqma1u-x4wdruct6jqgvlak9ia0.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПри подсчете значения Ready в процентах стоит обращать внимание на два момента:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003EЗначение Ready по всей ВМ – это сумма Ready по ядрам.\u003C\u002Fli\u003E\r\n\u003Cli\u003EИнтервал измерения. Для Real-time – это 20 секунд, а, например, на дневных графиках – это 300 секунд.\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\nПри активном траблшутинге эти простые моменты можно легко упустить и потратить ценное время на решение несуществующих проблем. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nРассчитаем Ready на основе данных из графика ниже. (324474\u002F(20*1000))*100 = 1622% на всю ВМ. Если смотреть по ядрам получится уже не так страшно: 1622\u002F64 = 25% на ядро. В данном случае обнаружить подвох довольно просто: значение Ready нереалистичное. Но если речь идет о 10–20% на всю ВМ с несколькими ядрами, то по каждому ядру значение может быть в пределах нормы.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002F_m\u002Fqe\u002Fcc\u002F_mqeccs8ivn_r-zrogedc_ofw9a.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cb\u003EЧто делать? \u003C\u002Fb\u003EВысокое значение Ready говорит о том, что серверу не хватает ресурсов процессора для нормальной работы виртуальных машин. В такой ситуации остается только уменьшить переподписку по процессору (vCPU:pCPU). Очевидно, этого можно добиться, уменьшив параметры существующих ВМ или путем миграции части ВМ на другие серверы.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch3\u003ECo-stop\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\n\u003Cb\u003EКак анализировать?\u003C\u002Fb\u003E Данный счетчик также имеет тип Summation и переводится в проценты аналогично Ready:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n(CPU co-stop summation value \u002F (chart default update interval in seconds * 1000)) * 100 = CPU co-stop %\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЗдесь также нужно обращать внимание на количество ядер на ВМ и на интервал измерения.\u003Cbr\u002F\u003E\r\nВ состоянии сostop ядро не выполняет полезную работу. При правильном подборе размера ВМ и нормальной нагрузке на сервер счетчик со-stop должен быть близок к нулю.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fpz\u002Fy8\u002Fsr\u002Fpzy8sr12hk1z2yosm9devw7knvs.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Ci\u003EВ данном случае нагрузка явно ненормальная:)\u003C\u002Fi\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cb\u003EЧто делать?\u003C\u002Fb\u003E Если на одном гипервизоре работают несколько ВМ с большим количеством ядер и есть переподписка по CPU, то счетчик co-stop может вырасти, что приведет к проблемам с производительностью данных ВМ. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nТакже co-stop вырастет, если для активных ядер одной ВМ используются треды на одном физическом ядре сервера со включенным hyper-treading. Такая ситуация может возникнуть, например, если у ВМ больше ядер, чем физически есть на сервере, где она работает, или если для ВМ включена настройка «preferHT». Про эту настройку можно прочитать \u003Ca href=\"https:\u002F\u002Fblogs.vmware.com\u002Fvsphere\u002F2014\u002F03\u002Fperferht-use-2.html\"\u003Eздесь\u003C\u002Fa\u003E. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЧтобы избежать проблем с производительностью ВМ из-за высокого сo-stop, выбирайте размер ВМ в соответствии с рекомендациями производителя ПО, которое работает на этой ВМ, и с возможностями физического сервера, где работает ВМ. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nНе добавляйте ядра про запас, это может вызвать проблемы с производительностью не только самой ВМ, но и ее соседей по серверу.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch3\u003EДругие полезные метрики CPU\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\n\u003Cb\u003ERun\u003C\u002Fb\u003E – сколько времени (мс) за период измерения vCPU находился в состоянии RUN, то есть собственно выполнял полезную работу.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cb\u003EIdle\u003C\u002Fb\u003E – сколько времени (мс) за период измерения vCPU находился в состоянии бездействия. Высокие значения Idle – это не проблема, просто vCPU было «нечего делать».\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cb\u003EWait\u003C\u002Fb\u003E – сколько времени (мс) за период измерения vCPU находился в состоянии Wait. Так как в данный счетчик включается IDLE, высокие значения Wait также не говорят о наличии проблемы. А вот если при высоком Wait IDLE низкий, значит ВМ ждала завершения операций ввода\u002Fвывода, а это, в свою очередь, может говорить о наличии проблемы с производительностью жесткого диска или каких-либо виртуальных устройств ВМ.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cb\u003EMax limited\u003C\u002Fb\u003E – сколько времени (мс) за период измерения vCPU находился в состоянии Ready из-за установленного лимита по ресурсам. Если производительность необъяснимо низкая, то полезно проверить значение данного счетчика и лимит по CPU в настройках ВМ. У ВМ действительно могут оказаться выставлены лимиты, о которых вы не знаете. Например, так происходит, когда ВМ была склонирована из шаблона, на котором был установлен лимит по CPU.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cb\u003ESwap wait\u003C\u002Fb\u003E – сколько времени за период измерения vCPU ждал операции с VMkernel Swap. Если значения данного счетчика выше нуля, то у ВМ точно есть проблемы с производительностью. Подробнее про SWAP поговорим в статье про счетчики оперативной памяти.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch3\u003EESXTOP\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\nЕсли счетчики производительности в vCenter хороши для анализа исторических данных, то оперативный анализ проблемы лучше производить в ESXTOP. Здесь все значения представлены в готовом виде (не нужно ничего переводить), а минимальный период измерения 2 секунды.\u003Cbr\u002F\u003E\r\nЭкран ESXTOP по CPU вызывается клавишей «c» и выглядит следующим образом:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002F5x\u002F8g\u002F-o\u002F5x8g-ovkxsc4xsuuvvk6guv3t0u.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nДля удобства можно оставить только процессы виртуальных машин, нажав Shift-V.\u003Cbr\u002F\u003E\r\nЧтобы посмотреть метрики по отдельным ядрам ВМ, нажмите «e» и вбейте GID интересующей ВМ (30919 на скриншоте ниже):\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Ftu\u002Ffn\u002Fjz\u002Ftufnjzwauierg5thzwsij3elpca.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nКратко пройдусь по столбцам, которые представлены по умолчанию. Дополнительные столбцы можно добавить, нажав «f».\u003Cbr\u002F\u003E\r\n \u003Cbr\u002F\u003E\r\n\u003Cb\u003ENWLD (Number of Worlds)\u003C\u002Fb\u003E – количество процессов в группе. Чтобы раскрыть группу и увидеть метрики для каждого процесса (например, для каждого ядра многоядерной ВМ), нажмите “e”. Если в группе больше одного процесса, то значения метрик для группы равны сумме метрик для отдельных процессов.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cb\u003E%USED\u003C\u002Fb\u003E – сколько циклов CPU сервера использует процесс или группа процессов.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cb\u003E%RUN\u003C\u002Fb\u003E – сколько времени за период измерения процесс находился в состоянии RUN, т.е. выполнял полезную работу. Отличается от %USED тем, что не учитывает hyper-threading, frequency scaling и время, затраченное на системные задачи (%SYS).\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cb\u003E%SYS\u003C\u002Fb\u003E – время, затраченное на системные задачи, например: обработку прерываний, ввода\u002Fвывода, работу сети и пр. Значение может быть высоким, если на ВМ большой ввод\u002Fвывод.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cb\u003E%OVRLP\u003C\u002Fb\u003E – сколько времени физическое ядро, на котором выполняется процесс ВМ, потратило на задачи других процессов.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nДанные метрики соотносятся между собой следующим образом:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n%USED = %RUN + %SYS — %OVRLP.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nОбычно метрика %USED является более информативной.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cb\u003E%WAIT\u003C\u002Fb\u003E – сколько времени за период измерения процесс находился в состоянии Wait. Включает IDLE.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cb\u003E%IDLE\u003C\u002Fb\u003E – сколько времени за период измерения процесс находился в состоянии IDLE.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cb\u003E%SWPWT\u003C\u002Fb\u003E – сколько времени за период измерения vCPU ждал операции с VMkernel Swap.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cb\u003E%VMWAIT\u003C\u002Fb\u003E – сколько времени за период измерения vCPU находилось в состояния ожидания события (обычно ввода\u002Fвывода). Аналогичного счетчика нет в vCenter. Высокие значения говорят о проблемах с вводом\u002Fвыводом на ВМ.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n%WAIT = %VMWAIT + %IDLE + %SWPWT.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЕсли ВМ не использует VMkernel Swap, то при анализе проблем с производительностью целесообразно смотреть на %VMWAIT, так как данная метрика не учитывает время, когда ВМ ничего не делала (%IDLE).\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cb\u003E%RDY\u003C\u002Fb\u003E – сколько времени за период измерения процесс находился в состоянии Ready.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cb\u003E%CSTP\u003C\u002Fb\u003E – сколько времени за период измерения процесс находился в состоянии сostop.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cb\u003E%MLMTD\u003C\u002Fb\u003E – сколько времени за период измерения vCPU находился в состоянии Ready из-за установленного лимита по ресурсам.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n%WAIT + %RDY + %CSTP + %RUN = 100% – ядро ВМ все время находится в каком-то из этих четырех состояний.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch3\u003ECPU на гипервизоре\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\nВ vCenter есть также счетчики производительности CPU для гипервизора, но они не представляют из себя ничего интересного – это просто сумма счетчиков по всем ВМ на сервере.\u003Cbr\u002F\u003E\r\nУдобнее всего смотреть состояние CPU на сервере на вкладке Summary:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fcr\u002Fzn\u002Fbb\u002Fcrznbbcz3ifhippyvvrpqaotvps.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nДля сервера, как и для виртуальной машины, есть стандартный Alarm:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002F-v\u002Fx0\u002Fgz\u002F-vx0gzuta3wskstyrmu8ylixqla.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПри высокой нагрузке на CPU сервера у ВМ, работающих на нем, начинаются проблемы с производительностью.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВ ESXTOP данные о загрузке CPU сервера представлены в верхней части экрана. Помимо стандартного CPU load, который малоинформативен для гипервизоров, есть еще три метрики:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cb\u003ECORE UTIL(%)\u003C\u002Fb\u003E – загрузка ядра физического сервера. Данный счетчик показывает, сколько времени за период измерения ядро выполняло работу.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cb\u003EPCPU UTIL(%)\u003C\u002Fb\u003E – если включен hyper-threading, то на каждое физическое ядро приходится два потока (PCPU). Данная метрика показывает, сколько времени каждый поток выполнял работу.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cb\u003EPCPU USED(%)\u003C\u002Fb\u003E – то же, что PCPU UTIL(%), но учитывает frequency scaling (либо снижение частоты ядра в целях энергосбережения, либо повышение частоты ядра за счет технологии Turbo Boost) и hyper-threading.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nPCPU_USED% = PCPU_UTIL% * эффективную частоту ядра \u002F номинальную частоту ядра.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fgk\u002Fil\u002Fnh\u002Fgkilnhtdazgv5nxiwbydkhda-oe.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Ci\u003EНа этом скриншоте для некоторых ядер из-за работы Turbo Boost’а значение USED больше 100%, так как частота ядра выше номинальной.\u003C\u002Fi\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПара слов о том, как учитывается hyper-threading. Если процессы исполняются 100% времени на обоих потоках физического ядра сервера, при этом ядро работает на номинальной частоте, то:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003ECORE UTIL для ядра будет 100%,\u003C\u002Fli\u003E\r\n\u003Cli\u003EPCPU UTIL для обоих потоков будет 100%,\u003C\u002Fli\u003E\r\n\u003Cli\u003EPCPU USED для обоих потоков будет 50%.\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\nЕсли оба потока не работали 100% времени за период измерения, то в те периоды, когда потоки работали параллельно, PCPU USED для ядер делится пополам.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВ ESXTOP также есть экран с параметрами энергопотребления CPU сервера. Здесь можно посмотреть, используются ли сервером технологии энергосбережения: C-states и P-states. Вызывается клавишей «p»:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fcd\u002Fqv\u002Fhe\u002Fcdqvhelnmce9qeseanbqzl3qsqs.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch3\u003EСтандартные проблемы производительности CPU\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\nНапоследок пробегусь по типичным причинам возникновения проблем с производительностью CPU ВМ и дам короткие советы их решению:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cb\u003EНе хватает тактовой частоты ядра.\u003C\u002Fb\u003E Если нет возможности перевести ВМ на более производительные ядра, можно попробовать изменить настройки энергопотребления, чтобы Turbo Boost работал эффективнее.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cb\u003EНеправильный сайзинг ВМ (слишком много\u002Fмало ядер).\u003C\u002Fb\u003E Если поставить мало ядер, будет высокая загрузка CPU ВМ. Если много, словите высокий co-stop.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cb\u003EБольшая переподписка по CPU на сервере.\u003C\u002Fb\u003E Если на ВМ высокий Ready, снизьте переподписку по CPU.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cb\u003EНеправильная NUMA-топология на больших ВМ.\u003C\u002Fb\u003E NUMA-топология, которую видит ВМ (vNUMA), должна соответствовать NUMA-топологии сервера (pNUMA). Про диагностику и возможные варианты решения данной проблемы написано, например, в книге \u003Ca href=\"https:\u002F\u002Fpages.rubrik.com\u002Fhost-resources-deep-dive_request.html\"\u003E«VMware vSphere 6.5 Host Resources Deep Dive»\u003C\u002Fa\u003E. Если не хотите углубляться и у вас нет лицензионных ограничений по ОС, установленной на ВМ, делайте на ВМ много виртуальных сокетов по одному ядру. Много не потеряете :)\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nНа этом про CPU у меня все. Задавайте вопросы. В \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fdataline\u002Fblog\u002F455820\u002F\"\u003Eследующей части\u003C\u002Fa\u003E расскажу про оперативную память.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cdiv class=\"spoiler\"\u003E\u003Cb class=\"spoiler_title\"\u003EПолезные ссылки\u003C\u002Fb\u003E\u003Cdiv class=\"spoiler_text\"\u003E\u003Ca href=\"http:\u002F\u002Fvirtual-red-dot.info\u002Fvm-cpu-counters-vsphere\u002F\"\u003Ehttp:\u002F\u002Fvirtual-red-dot.info\u002Fvm-cpu-counters-vsphere\u002F\u003C\u002Fa\u003E\u003Cbr\u002F\u003E\r\n\u003Ca href=\"https:\u002F\u002Fkb.vmware.com\u002Fkb\u002F1017926\"\u003Ehttps:\u002F\u002Fkb.vmware.com\u002Fkb\u002F1017926\u003C\u002Fa\u003E\u003Cbr\u002F\u003E\r\n\u003Ca href=\"http:\u002F\u002Fwww.yellow-bricks.com\u002F2012\u002F07\u002F17\u002Fwhy-is-wait-so-high\u002F\"\u003Ehttp:\u002F\u002Fwww.yellow-bricks.com\u002F2012\u002F07\u002F17\u002Fwhy-is-wait-so-high\u002F\u003C\u002Fa\u003E\u003Cbr\u002F\u003E\r\n\u003Ca href=\"https:\u002F\u002Fcommunities.vmware.com\u002Fdocs\u002FDOC-9279\"\u003Ehttps:\u002F\u002Fcommunities.vmware.com\u002Fdocs\u002FDOC-9279\u003C\u002Fa\u003E\u003Cbr\u002F\u003E\r\n\u003Ca href=\"https:\u002F\u002Fwww.vmware.com\u002Fcontent\u002Fdam\u002Fdigitalmarketing\u002Fvmware\u002Fen\u002Fpdf\u002Ftechpaper\u002Fperformance\u002Fwhats-new-vsphere65-perf.pdf\"\u003Ehttps:\u002F\u002Fwww.vmware.com\u002Fcontent\u002Fdam\u002Fdigitalmarketing\u002Fvmware\u002Fen\u002Fpdf\u002Ftechpaper\u002Fperformance\u002Fwhats-new-vsphere65-perf.pdf\u003C\u002Fa\u003E\u003Cbr\u002F\u003E\r\n\u003Ca href=\"https:\u002F\u002Fpages.rubrik.com\u002Fhost-resources-deep-dive_request.html\"\u003Ehttps:\u002F\u002Fpages.rubrik.com\u002Fhost-resources-deep-dive_request.html\u003C\u002Fa\u003E\u003C\u002Fdiv\u003E\u003C\u002Fdiv\u003E\u003C\u002Fdiv\u003E","tags":[{"titleHtml":"vmware vsphere"},{"titleHtml":"vmware esxi"},{"titleHtml":"vcenter"},{"titleHtml":"esxtop"},{"titleHtml":"perfomance counters"},{"titleHtml":"performance"},{"titleHtml":"производительность"},{"titleHtml":"виртуальная машина"}],"metadata":{"stylesUrls":[],"scriptUrls":[],"shareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F452884\u002F3a6359b70e137d0e7fac7d462934cfe1\u002F","shareImageWidth":1200,"shareImageHeight":630,"vkShareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F452884\u002F3a6359b70e137d0e7fac7d462934cfe1\u002F?format=vk","schemaJsonLd":"{\"@context\":\"http:\\\u002F\\\u002Fschema.org\",\"@type\":\"Article\",\"mainEntityOfPage\":{\"@type\":\"WebPage\",\"@id\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fru\\\u002Fcompany\\\u002Fdataline\\\u002Fblog\\\u002F452884\\\u002F\"},\"headline\":\"Анализ производительности виртуальной машины в VMware vSphere. Часть 1: CPU\",\"datePublished\":\"2019-05-23T11:10:49+03:00\",\"dateModified\":\"2019-06-13T10:25:00+03:00\",\"author\":{\"@type\":\"Person\",\"name\":\"adarchenkov\"},\"publisher\":{\"@type\":\"Organization\",\"name\":\"Habr\",\"logo\":{\"@type\":\"ImageObject\",\"url\":\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fa_\\\u002Flk\\\u002F9m\\\u002Fa_lk9mjkccjox-zccjrpfolmkmq.png\"}},\"description\":\"Если вы администрируете виртуальную инфраструктуру на базе VMware vSphere (или любого другого стека технологий), то наверняка часто слышите от пользователей жа...\",\"url\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fru\\\u002Fcompany\\\u002Fdataline\\\u002Fblog\\\u002F452884\\\u002F#post-content-body\",\"about\":[\"c_dataline\",\"h_it-infrastructure\",\"h_virtualization\",\"h_cloud_computing\",\"h_cloud_services\",\"f_admin\"],\"image\":[\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fm9\\\u002Fsx\\\u002F3b\\\u002Fm9sx3brt_zkyowlzywiwyoobc60.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fzf\\\u002Frh\\\u002Fdx\\\u002Fzfrhdxqi6ys3wgdgzs0m5ibk96i.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fly\\\u002Fad\\\u002Frg\\\u002Flyadrgztwkrkipbfnzllfcjtrq4.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002F6a\\\u002Fpr\\\u002Fb9\\\u002F6aprb9vc1gwbtioocqpjdm7jzhk.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002F6p\\\u002Fpm\\\u002Fw8\\\u002F6ppmw8d5vqe2gepkiahzqx9tfms.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fuq\\\u002Fov\\\u002F-o\\\u002Fuqov-ooazq0fetmazbwzhvxlgeg.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fgetpro\\\u002Fhabr\\\u002Fformulas\\\u002F2bc\\\u002F78b\\\u002F283\\\u002F2bc78b2839923e44229ce95af9b77b81.svg\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Foq\\\u002Fma\\\u002F1u\\\u002Foqma1u-x4wdruct6jqgvlak9ia0.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002F_m\\\u002Fqe\\\u002Fcc\\\u002F_mqeccs8ivn_r-zrogedc_ofw9a.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fpz\\\u002Fy8\\\u002Fsr\\\u002Fpzy8sr12hk1z2yosm9devw7knvs.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002F5x\\\u002F8g\\\u002F-o\\\u002F5x8g-ovkxsc4xsuuvvk6guv3t0u.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Ftu\\\u002Ffn\\\u002Fjz\\\u002Ftufnjzwauierg5thzwsij3elpca.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fcr\\\u002Fzn\\\u002Fbb\\\u002Fcrznbbcz3ifhippyvvrpqaotvps.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002F-v\\\u002Fx0\\\u002Fgz\\\u002F-vx0gzuta3wskstyrmu8ylixqla.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fgk\\\u002Fil\\\u002Fnh\\\u002Fgkilnhtdazgv5nxiwbydkhda-oe.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fcd\\\u002Fqv\\\u002Fhe\\\u002Fcdqvhelnmce9qeseanbqzl3qsqs.png\"]}","metaDescription":"Если вы администрируете виртуальную инфраструктуру на базе VMware vSphere (или любого другого стека технологий), то наверняка часто слышите от пользователей жалобы: «Виртуальная машина работает...","mainImageUrl":null,"amp":false},"polls":[],"commentsEnabled":true,"rulesRemindEnabled":false,"votesEnabled":true,"status":"published","plannedPublishTime":null,"checked":null,"isEditorial":false}},"articlesIds":{},"isLoading":false,"pagesCount":{},"route":{},"reasonsList":null,"view":"cards","lastVisitedRoute":{},"ssrCommentsArticleIds":[""],"karma":{}},"authorContribution":{"authors":{}},"betaTest":{"currentAnnouncement":null,"announcements":{},"announcementCards":null,"announcementComments":{},"announcementCommentThreads":{},"announcementCommentingStatuses":{},"archivedList":[]},"authorStatistics":{"articleRefs":{},"articleIds":{},"pagesCount":{},"route":{},"viewsCount":[],"maxStatsCount":{}},"career":{"seoLandings":[],"hubs":""},"comments":{"articleComments":{},"searchCommentsResults":null,"previewComment":null,"pagesCount":null,"commentAccess":{},"scrollParents":{},"pageArticleComments":{"lastViewedComment":0,"postId":null,"lastCommentTimestamp":"","moderated":[],"moderatedIds":[],"commentRoute":""}},"companies":{"companyRefs":{"dataline":{"alias":"dataline","imageUrl":"\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fcompany\u002Fe1b\u002Fff9\u002F809\u002Fe1bff98097e89d63bdcd7cf1f2e3d800.jpg","titleHtml":"DataLine","descriptionHtml":"Экосистема ИТ-сервисов","relatedData":null,"statistics":{"postsCount":199,"newsCount":13,"vacanciesCount":0,"employeesCount":41,"careerRating":null,"subscribersCount":30932,"rating":115.23,"invest":null},"foundationDate":{"year":"2007","month":"10","day":"02"},"location":{"city":{"id":"447159","title":"Москва"},"region":{"id":"1885","title":"Москва и Московская обл."},"country":{"id":"168","title":"Россия"}},"siteUrl":"http:\u002F\u002Fdtln.ru\u002F","staffNumber":"201–500 человек","registrationDate":"2009-03-24T14:32:02+00:00","representativeUser":null,"contacts":[{"title":"Сайт","url":"http:\u002F\u002Fwww.dtln.ru\u002F"},{"title":"Facebook","url":"https:\u002F\u002Ffacebook.com\u002Filikedataline"},{"title":"ВКонтакте","url":"https:\u002F\u002Fvk.com\u002Filikedataline"},{"title":"Instagram","url":"https:\u002F\u002Finstagram.com\u002Filikedataline"},{"title":"Telegram","url":"https:\u002F\u002Ftelegram.me\u002Funidataline"}],"settings":{"analyticsSettings":[{"type":"ym","trackingId":"56550142"}],"branding":null,"status":"active"},"metadata":{"titleHtml":"DataLine, Москва - Экосистема ИТ-сервисов с 2 октября 2007 г.","title":"DataLine, Москва - Экосистема ИТ-сервисов с 2 октября 2007 г.","keywords":["IT-инфраструктура","Облачные сервисы","Информационная безопасность","Хранилища данных","Хранение данных"],"descriptionHtml":"199 статей от авторов компании DataLine","description":"199 статей от авторов компании DataLine"},"aDeskSettings":null,"careerAlias":"dtln","maxCustomTrackerLinks":0}},"companyIds":{},"companyTopIds":{},"pagesCount":{},"companyProfiles":{},"companiesCategories":[],"companiesCategoriesTotalCount":0,"companiesWidgets":{},"companiesWorkers":{},"companiesFans":{},"route":{},"isLoading":false,"companyWorkersLoading":false,"companyFansLoading":false,"vacancies":{}},"companiesContribution":{"hubs":{},"flows":{},"companyRefs":{}},"companyHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"conversation":{"messages":[],"respondent":null,"isLoadMore":false},"conversations":{"conversations":[],"unreadCount":0,"pagesCount":0,"isLoadMore":false},"desktopState":{"desktopFl":null,"desktopHl":null,"isChecked":false,"isLoginDemanded":false},"dfp":{"slotsDict":{}},"docs":{"menu":{},"articles":{},"mainMenu":[],"loading":{"main":false,"dropdown":false,"article":false}},"feature":{"isProbablyVisible":"true"},"flows":{"flows":[{"alias":"develop","id":1,"route":{"name":"FLOW_PAGE","params":{"flowName":"develop"}}},{"alias":"admin","id":6,"route":{"name":"FLOW_PAGE","params":{"flowName":"admin"}}},{"alias":"design","id":2,"route":{"name":"FLOW_PAGE","params":{"flowName":"design"}}},{"alias":"management","id":3,"route":{"name":"FLOW_PAGE","params":{"flowName":"management"}}},{"alias":"marketing","id":4,"route":{"name":"FLOW_PAGE","params":{"flowName":"marketing"}}},{"alias":"popsci","id":7,"route":{"name":"FLOW_PAGE","params":{"flowName":"popsci"}}}]},"global":{"isPwa":false,"device":"desktop","isHabrCom":true},"hubs":{"hubRefs":{},"hubIds":{},"pagesCount":{},"isLoading":false,"route":{}},"hubsBlock":{"hubRefs":{},"hubIds":{}},"i18n":{"fl":"ru","hl":"ru"},"info":{"infoPage":{},"isLoading":true},"location":{"urlStruct":{"protocol":null,"slashes":null,"auth":null,"host":null,"port":null,"hostname":null,"hash":null,"search":null,"query":{},"pathname":null,"path":null,"href":""},"searchQuery":null},"me":{"user":null,"ppgDemanded":false,"karmaResetInfo":{"canReincarnate":null,"wasReincarnated":null,"currentScore":null},"notes":null},"mostReadingList":{"mostReadingListIds":[],"mostReadingListRefs":null,"promoPost":null},"pinnedPost":{"pinnedPost":null},"ppa":{"articles":{},"card":null,"transactions":null,"totalTransactions":null,"isAccessible":null},"projectsBlocks":{"activeBlocks":{}},"pullRefresh":{"shouldRefresh":false},"sandbox":{"articleIds":[],"articleRefs":{},"pagesCount":null,"route":{},"lastVisitedRoute":{},"isLoading":false},"settingsOther":{"inputs":{"uiLang":{"errors":[],"ref":null,"value":""},"articlesLangEnglish":{"errors":[],"ref":null,"value":false},"articlesLangRussian":{"errors":[],"ref":null,"value":false},"agreement":{"errors":[],"ref":null,"value":false},"email":{"errors":[],"ref":null,"value":true},"digest":{"errors":[],"ref":null,"value":true}}},"similarList":{"similarListIds":[],"similarListRefs":null},"ssr":{"error":null,"isDataLoaded":false,"isDataLoading":false,"isHydrationFailed":false,"isServer":false},"userHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"userInvites":{"availableInvites":0,"usedInvitesIds":[],"usedInvitesRefs":{},"usedInvitesPagesCount":0,"unusedInvitesIds":[],"unusedInvitesRefs":{},"unusedInvitesPagesCount":0},"users":{"authorRefs":{},"authorIds":{},"pagesCount":{},"authorProfiles":{},"userHubs":{},"userInvitations":{},"authorFollowers":{},"authorFollowed":{},"karmaStats":[],"statistics":null,"isLoading":false,"authorFollowersLoading":false,"authorFollowedLoading":false,"userHubsLoading":false,"userInvitationsLoading":false,"route":{}},"viewport":{"prevScrollY":{},"scrollY":0,"width":0},"tracker":{"items":{},"pagesCache":{},"markedViewedSilently":{},"markedRead":{},"unreadCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null},"unviewedCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null}}};(function(){var s;(s=document.currentScript||document.scripts[document.scripts.length-1]).parentNode.removeChild(s);}());</script>
+<script src="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" defer></script><script src="https://assets.habr.com/habr-web/js/app.c0af73e7.js" defer></script>
+
+
+
+    <script>
+      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+        (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+        m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+      })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+    </script>
+  
+  <script type="text/javascript" >
+    (function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+    m[i].l=1*new Date();k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})
+    (window, document, "script", "https://mc.yandex.ru/metrika/tag.js", "ym");
+
+    ym(24049213, "init", {
+      defer:true,
+      trackLinks:true,
+      accurateTrackBounce:true,
+      webvisor:false,
+    });
+  </script>
+  <noscript>
+    <div>
+      <img src="https://mc.yandex.ru/watch/24049213" style="position:absolute; left:-9999px;" alt="" />
+    </div>
+  </noscript>
+  
+    <script type="text/javascript">
+      window.addEventListener('load', function () {
+        setTimeout(() => {
+          const img = new Image();
+          img.src = 'https://vk.com/rtrg?p=VK-RTRG-421343-57vKE';
+        }, 0);
+      });
+    </script>
+  
+</body>
+</html>

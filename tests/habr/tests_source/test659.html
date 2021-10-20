@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="ru" data-vue-meta="%7B%22lang%22:%7B%22ssr%22:%22ru%22%7D%7D">
+<head >
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
+  <title>Как разобрать сетевой протокол мобильной MMORPG / Хабр</title>
+  <style>
+    /* cyrillic-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSxf6TF0.woff2) format('woff2');
+      unicode-range: U+0460-052F, U+1C80-1C88, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+    }
+
+    /* cyrillic */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveQhf6TF0.woff2) format('woff2');
+      unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+    }
+
+    /* latin-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSBf6TF0.woff2) format('woff2');
+      unicode-range: U+0100-024F, U+0259, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20CF, U+2113, U+2C60-2C7F, U+A720-A7FF;
+    }
+
+    /* latin */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveRhf6.woff2) format('woff2');
+      unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+    }
+  </style>
+  <link rel="preload" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" as="script"><link rel="preload" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/app.c0af73e7.js" as="script">
+  <link rel="stylesheet" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css"><link rel="stylesheet" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css">
+  <script>window.i18nFetch = new Promise((res, rej) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open('GET', '/js/i18n/ru-compiled.85eb77f0b17c8235e7b64b9f81ea5ec2.json');
+          xhr.responseType = 'json';
+          xhr.onload = function(e) {
+            if (this.status === 200) {
+              res({ru: xhr.response});
+            } else {
+              rej(e);
+            }
+          };
+          xhr.send();
+        });</script>
+  
+  <script data-vue-meta="ssr" src="/js/ads.js" onload="window['zhY4i4nJ9K'] = true" data-vmid="checkad"></script><script data-vue-meta="ssr" type="application/ld+json" data-vmid="ldjson-schema">{"@context":"http:\/\/schema.org","@type":"Article","mainEntityOfPage":{"@type":"WebPage","@id":"https:\/\/habr.com\/ru\/post\/451512\/"},"headline":"Как разобрать сетевой протокол мобильной MMORPG","datePublished":"2019-05-13T10:38:04+03:00","dateModified":"2019-06-25T12:03:23+03:00","author":{"@type":"Person","name":"lOlbas"},"publisher":{"@type":"Organization","name":"Habr","logo":{"@type":"ImageObject","url":"https:\/\/habrastorage.org\/webt\/a_\/lk\/9m\/a_lk9mjkccjox-zccjrpfolmkmq.png"}},"description":"За годы игры в одну мобильную ММОRPG у меня накопился некоторый опыт по ее реверс-инжинирингу, которым я хотел бы поделиться в цикле статей. Примерные темы:   Ра...","url":"https:\/\/habr.com\/ru\/post\/451512\/#post-content-body","about":["h_gamedev","h_reverse-engineering","f_develop"],"image":["https:\/\/habrastorage.org\/webt\/in\/ye\/61\/inye619dyp2vh8iq8nvncdb25u0.png","https:\/\/habrastorage.org\/webt\/u-\/n9\/su\/u-n9sutlnqod9lbgttfuon6g1ue.png","https:\/\/habrastorage.org\/webt\/v3\/z9\/3e\/v3z93eejzkii_hh6di5dwvbowfi.png","https:\/\/habrastorage.org\/webt\/y7\/7r\/qs\/y77rqsd0mxecueorqwdip3ow3r8.png","https:\/\/habrastorage.org\/webt\/8f\/zk\/vs\/8fzkvsleifr5b1yodx6a77ggx_g.png","https:\/\/habrastorage.org\/webt\/ex\/sl\/y1\/exsly1e_f3_3dtj4mhyzryehzou.png","https:\/\/habrastorage.org\/webt\/aw\/wn\/rz\/awwnrzzruq2wtcnmwbpkho3q1x8.png"]}</script>
+  <script src="//www.googletagservices.com/tag/js/gpt.js" async></script>
+  <style>.grecaptcha-badge{visibility: hidden;}</style>
+  <meta name="habr-version" content="2.49.0">
+  
+  <meta data-vue-meta="ssr" property="fb:app_id" content="444736788986613"><meta data-vue-meta="ssr" property="fb:pages" content="472597926099084"><meta data-vue-meta="ssr" name="twitter:card" content="summary_large_image"><meta data-vue-meta="ssr" name="twitter:site" content="@habr_eng"><meta data-vue-meta="ssr" property="og:title" content="Как разобрать сетевой протокол мобильной MMORPG" data-vmid="og:title"><meta data-vue-meta="ssr" name="twitter:title" content="Как разобрать сетевой протокол мобильной MMORPG" data-vmid="twitter:title"><meta data-vue-meta="ssr" name="aiturec:title" content="Как разобрать сетевой протокол мобильной MMORPG" data-vmid="aiturec:title"><meta data-vue-meta="ssr" name="description" content="За годы игры в одну мобильную ММОRPG у меня накопился некоторый опыт по ее реверс-инжинирингу, которым я хотел бы поделиться в цикле статей. Примерные темы:
+
+
+Разбор формата сообщений между..." data-vmid="description"><meta data-vue-meta="ssr" itemprop="description" content="За годы игры в одну мобильную ММОRPG у меня накопился некоторый опыт по ее реверс-инжинирингу, которым я хотел бы поделиться в цикле статей. Примерные темы:
+
+
+Разбор формата сообщений между..." data-vmid="description:itemprop"><meta data-vue-meta="ssr" property="og:description" content="За годы игры в одну мобильную ММОRPG у меня накопился некоторый опыт по ее реверс-инжинирингу, которым я хотел бы поделиться в цикле статей. Примерные темы:
+
+
+Разбор формата сообщений между..." data-vmid="og:description"><meta data-vue-meta="ssr" name="twitter:description" content="За годы игры в одну мобильную ММОRPG у меня накопился некоторый опыт по ее реверс-инжинирингу, которым я хотел бы поделиться в цикле статей. Примерные темы:
+
+
+Разбор формата сообщений между..." data-vmid="twitter:description"><meta data-vue-meta="ssr" property="aiturec:description" content="За годы игры в одну мобильную ММОRPG у меня накопился некоторый опыт по ее реверс-инжинирингу, которым я хотел бы поделиться в цикле статей. Примерные темы:
+
+
+Разбор формата сообщений между..." data-vmid="aiturec:description"><meta data-vue-meta="ssr" itemprop="image" content="https://habr.com/share/publication/451512/7757a2f02807ea1435909ef876056500/" data-vmid="image:itemprop"><meta data-vue-meta="ssr" property="og:image" content="https://habr.com/share/publication/451512/7757a2f02807ea1435909ef876056500/" data-vmid="og:image"><meta data-vue-meta="ssr" property="aiturec:image" content="https://habr.com/share/publication/451512/7757a2f02807ea1435909ef876056500/" data-vmid="aiturec:image"><meta data-vue-meta="ssr" name="twitter:image" content="https://habr.com/share/publication/451512/7757a2f02807ea1435909ef876056500/" data-vmid="twitter:image"><meta data-vue-meta="ssr" property="vk:image" content="https://habr.com/share/publication/451512/7757a2f02807ea1435909ef876056500/" data-vmid="vk:image"><meta data-vue-meta="ssr" property="aiturec:item_id" content="451512" data-vmid="aiturec:item_id"><meta data-vue-meta="ssr" property="aiturec:datetime" content="2019-05-13T07:38:04.000Z" data-vmid="aiturec:datetime"><meta data-vue-meta="ssr" property="og:type" content="article" data-vmid="og:type"><meta data-vue-meta="ssr" property="og:locale" content="ru_RU" data-vmid="og:locale"><meta data-vue-meta="ssr" property="og:image:width" content="1200" data-vmid="og:image:width"><meta data-vue-meta="ssr" property="og:image:height" content="630" data-vmid="og:image:height">
+  <link data-vue-meta="ssr" href="https://habr.com/ru/rss/post/451512/?fl=ru" type="application/rss+xml" title="" rel="alternate" name="rss"><link data-vue-meta="ssr" href="https://habr.com/ru/post/451512/" rel="canonical" data-vmid="canonical"><link data-vue-meta="ssr" data-vmid="hreflang"><link data-vue-meta="ssr" image_src="image" href="https://habr.com/share/publication/451512/7757a2f02807ea1435909ef876056500/" data-vmid="image:href">
+  <meta name="apple-mobile-web-app-status-bar-style" content="#303b44">
+  <meta name="msapplication-TileColor" content="#629FBC">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="16x16"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-16.png"
+  >
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="32x32"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-32.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="76x76"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-76.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="120x120"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="152x152"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-152.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="180x180"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-180.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="256x256"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-256.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1136x640.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2436x1125.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1792x828.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_828x1792.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1334x750.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2208x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1125x2436.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2208.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2732x2048.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2688x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2224x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_750x1334.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x2732.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2388x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2224.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_640x1136.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2388.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x1536.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1536x2048.png"
+  >
+  <link
+    rel="mask-icon"
+    color="#77a2b6"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.svg"
+  >
+  <link
+    crossorigin="use-credentials"
+    href="/manifest.webmanifest"
+    rel="manifest"
+  >
+</head>
+<body>
+
+
+<div id="app" data-server-rendered="true" data-async-called="true"><div class="tm-layout__wrapper"><!----> <div></div> <!----> <header class="tm-header"><div class="tm-page-width"><div class="tm-header__container"><!----> <span class="tm-header__logo-wrap"><a href="/ru/" class="tm-header__logo tm-header__logo_ru"><svg height="16" width="16" class="tm-svg-img tm-header__icon"><title>Хабр</title> <use xlink:href="/img/habr-logo-ru.svg#logo"></use></svg></a> <span class="tm-header__beta-sign" style="display:none;">β</span></span> <div class="tm-dropdown tm-header__projects"><div class="tm-dropdown__head"><button class="tm-header__dropdown-toggle"><svg height="16" width="16" class="tm-svg-img tm-header__icon tm-header__icon_dropdown"><title>Открыть список</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#arrow-down"></use></svg></button></div> <!----></div> <a href="/ru/sandbox/start/" class="tm-header__become-author-btn">
+            Как стать автором
+          </a> <div class="tm-feature tm-header__feature tm-feature_variant-inline"><!----></div> <!----> <!----></div></div></header> <div class="tm-layout"><div class="tm-page-progress-bar"></div> <div data-menu-sticky="true" class="tm-base-layout__header tm-base-layout__header_is-sticky"><div class="tm-page-width"><div class="tm-base-layout__header-wrapper"><div class="tm-main-menu"><div class="tm-main-menu__section"><nav class="tm-main-menu__section-content"><!----> <a href="/ru/all/" class="tm-main-menu__item">
+        Все потоки
+      </a> <a href="/ru/flows/develop/" class="tm-main-menu__item">
+          Разработка
+        </a><a href="/ru/flows/admin/" class="tm-main-menu__item">
+          Администрирование
+        </a><a href="/ru/flows/design/" class="tm-main-menu__item">
+          Дизайн
+        </a><a href="/ru/flows/management/" class="tm-main-menu__item">
+          Менеджмент
+        </a><a href="/ru/flows/marketing/" class="tm-main-menu__item">
+          Маркетинг
+        </a><a href="/ru/flows/popsci/" class="tm-main-menu__item">
+          Научпоп
+        </a></nav></div></div> <div class="tm-header-user-menu tm-base-layout__user-menu"><a href="/ru/search/" class="tm-header-user-menu__item tm-header-user-menu__search"><svg height="24" width="24" class="tm-svg-img tm-header-user-menu__icon tm-header-user-menu__icon_search tm-header-user-menu__icon_dark"><title>Поиск</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#search"></use></svg></a> <!----> <!----> <!----> <div class="tm-header-user-menu__item tm-header-user-menu__user_desktop"><div class="tm-dropdown"><div class="tm-dropdown__head"><svg height="24" width="24" data-test-id="menu-toggle-guest" class="tm-svg-img tm-header-user-menu__icon"><title>Профиль</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#header-user"></use></svg> <!----></div> <!----></div> <!----></div> <!----></div></div></div></div> <!----> <div class="tm-page-width"></div> <main class="tm-layout__container"><div hl="ru" data-async-called="true" class="tm-page"><div class="tm-page-width"><!----> <div class="tm-page__wrapper"><div class="tm-page__main tm-page__main_has-sidebar"><div class="pull-down"><div class="pull-down__header" style="height:0px;"><div class="pull-down__content" style="bottom:10px;"><svg height="24" width="24" class="tm-svg-img pull-down__arrow"><title>Обновить</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#pull-arrow"></use></svg></div></div> <div class="tm-article-presenter"> <div class="tm-article-presenter__body"><div class="tm-misprint-area"><div class="tm-misprint-area__wrapper"><article class="tm-article-presenter__content tm-article-presenter__content_narrow"><div class="tm-article-presenter__header"> <div class="tm-article-snippet tm-article-presenter__snippet"><div class="tm-article-snippet__meta-container"><div class="tm-article-snippet__meta"><span class="tm-user-info tm-article-snippet__author"><a href="/ru/users/lOlbas/" title="lOlbas" class="tm-user-info__userpic"><div class="tm-entity-image"><svg height="24" width="24" class="tm-svg-img tm-image-placeholder tm-image-placeholder_pink"><!----> <use xlink:href="/img/megazord-v24.ce74655c.svg#placeholder-user"></use></svg></div></a> <span class="tm-user-info__user"><a href="/ru/users/lOlbas/" class="tm-user-info__username">
+      lOlbas
+    </a> </span></span> <span class="tm-article-snippet__datetime-published"><time datetime="2019-05-13T07:38:04.000Z" title="2019-05-13, 10:38">13  мая  2019 в 10:38</time></span></div> <!----></div> <h1 lang="ru" class="tm-article-snippet__title tm-article-snippet__title_h1"><span>Как разобрать сетевой протокол мобильной MMORPG</span></h1> <div class="tm-article-snippet__hubs"><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/gamedev/" class="tm-article-snippet__hubs-item-link"><span>Разработка игр</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/reverse-engineering/" class="tm-article-snippet__hubs-item-link"><span>Реверс-инжиниринг</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span></div> <div class="tm-article-snippet__labels"><div class="tm-article-snippet__label"><span>
+        Из песочницы
+      </span></div></div> <!----> <!----></div></div> <!----> <div data-gallery-root="" lang="ru" class="tm-article-body"><div id="post-content-body" class="article-formatted-body article-formatted-body_version-1"><div xmlns="http://www.w3.org/1999/xhtml">За годы игры в одну мобильную ММОRPG у меня накопился некоторый опыт по ее реверс-инжинирингу, которым я хотел бы поделиться в цикле статей. Примерные темы:<br/>
+<br/>
+<ol>
+<li>Разбор формата сообщений между сервером и клиентом.</li>
+<li><a href="https://m.habr.com/ru/post/457480/">Написание прослушивающего приложения для просмотра трафика игры в удобном виде.</a></li>
+<li>Перехват трафика и его модификация при помощи не-HTTP прокси-сервера.</li>
+<li>Первые шаги к собственному («пиратскому») серверу.</li>
+</ol><br/>
+В данной статье я рассмотрю <b>разбор формата сообщений между сервером и клиентом</b>. Заинтересовавшихся прошу под кат.<br/>
+<a name="habracut"></a><br/>
+<h3>Требуемые инструменты</h3><br/>
+Для возможности повторения шагов, описанных ниже, потребуются:<br/>
+<br/>
+<ul>
+<li>ПК (я делал на Windows 7/10, но MacOS тоже может подойти, если пункты ниже там доступны);</li>
+<li>Wireshark для анализа пакетов;</li>
+<li>010Editor для парсинга пакетов по шаблону (не обязательно, но позволяет быстро и легко описывать формат сообщений);</li>
+<li>само мобильное устройство с игрой.</li>
+</ul><br/>
+Дополнительно очень желательно наличие под руками данных из игры в читабельном виде, такие как список предметов, существ и др. с их идентификаторами. Это значительно упрощает поиск ключевых моментов в пакетах, а порой позволяет отфильтровать нужное сообщение в постоянном потоке данных.<br/>
+<br/>
+<h3><anchor>Разбор</anchor> формата сообщений между сервером и клиентом</h3><br/>
+Для начала, нам необходимо видеть трафик мобильного устройства. Сделать это достаточно просто (хотя я очень долго доходил до этого очевидного решения): на нашем ПК создаем точку доступа Wi-Fi, подключаемся к ней с мобильного устройства, выбираем в Wireshark нужный интерфейс — и весь мобильный трафик у нас перед глазами.<br/>
+<br/>
+Зайдя в игру и подождав некоторое время, чтобы запросы, не связанные с самим игровым сервером, прекратились, можно наблюдать следующую картину:<br/>
+<br/>
+<div style="text-align:center;"><img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/in/ye/61/inye619dyp2vh8iq8nvncdb25u0.png"/></div><br/>
+На данном этапе мы уже можем использовать фильтры Wireshark, чтобы видеть только пакеты между игрой и сервером, а также только с полезной нагрузкой:<br/>
+<br/>
+<pre><code class="plaintext">tcp &amp;&amp; tcp.payload &amp;&amp; tcp.port == 44325
+</code></pre><br/>
+Если встать в тихом месте, вдали от других игроков и NPC, и ничего не делать, можно увидеть постоянно повторяющиеся сообщения от сервера и клиента (размером 76 и 84 байт соответственно). В моем случае минимальное количество разнообразных пакетов посылалось на экране выбора персонажа.<br/>
+<br/>
+<div style="text-align:center;"><img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/u-/n9/su/u-n9sutlnqod9lbgttfuon6g1ue.png"/></div><br/>
+Периодичность запроса от клиента очень похожа на пингование. Возьмем несколько сообщений для проверки (3 группы, сверху — запрос с клиента, под ним — ответ сервера):<br/>
+<br/>
+<div style="text-align:center;"><img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/v3/z9/3e/v3z93eejzkii_hh6di5dwvbowfi.png"/></div><br/>
+Первым делом бросается в глаза идентичность пакетов. 8 дополнительных байт у ответа при переводе в десятичную систему очень похожи на метку времени в секундах: <code>5CD008F8<sub>16</sub> = 1557137656<sub>10</sub></code> (из первой пары). <a href="https://www.epochconverter.com/">Сверяем часы</a> — да, так и есть. Предыдущие 4 байта совпадают с последними 4 байтами в запросе. При переводе получаем: <code>A4BB<sub>16</sub> = 42171<sub>10</sub></code>, что также очень похоже на время, но уже в милисекундах. Оно примерно совпадает со временем с момента запуска игры, и скорее всего так и есть.<br/>
+<br/>
+Осталось рассмотреть первые 6 байт запроса и ответа. Легко заметить зависимость значения первых четырех байт сообщения (назовем этот параметр <code>L</code>) от размера сообщения: ответ от сервера больше на 8 байт, значение <code>L</code> тоже увеличилось на 8, однако размер пакета больше на 6 байт значения <code>L</code> в обоих случаях. Также можно заметить что два байта после <code>L</code> сохраняют свое значение как в запросах от клиента, так и от сервера, а учитывая, что их значение отличается на один, можно с уверенностью сказать, что это код сообщения <code>C</code> (связанные коды сообщений скорее всего будут определены последовательно). Общая структура понятна достаточно, чтобы написать минимальный шаблон для 010Editor:<br/>
+<br/>
+<ul>
+<li>первые 4 байта — <code>L</code> — размер полезной нагрузки сообщения;</li>
+<li>следующие 2 байта — <code>C</code> — код сообщения;</li>
+<li>сама полезная нагрузка.</li>
+</ul><br/>
+<pre><code class="cpp">struct Event {
+    uint payload_length &lt;bgcolor=0xFFFF00, name="Payload Length">;
+    ushort event_code &lt;bgcolor=0xFF9988, name="Event Code">;
+    byte payload[payload_length] &lt;name="Event Payload">;
+};
+</code></pre><br/>
+Значит, формат сообщения пинга клиента: послать локальное время пинга; формат ответа сервера: послать то же время и время отправки ответа в секундах. Вроде не сложно, да?<br/>
+<br/>
+Попробуем разобрать пример посложнее. Стоя в тихом месте и спрятав пакеты пинга, можно найти сообщения телепорта и создания предмета (craft). Начнем с первого. Владея данными игры я знал какое значение точки телепорта искать. Для тестов я использовал точки со значениями <code>0x2B</code>, <code>0x67</code>, <code>0x6B</code> и <code>0x1AF</code>. Сравним со значениями в сообщениях: <code>0x2B</code>, <code>0x67</code>, <code>0x6B</code> и <code>0x3AF</code>:<br/>
+<br/>
+<div style="text-align:center;"><img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/y7/7r/qs/y77rqsd0mxecueorqwdip3ow3r8.png"/></div><br/>
+Непорядок. Видны две проблемы:<br/>
+<br/>
+<ol>
+<li>значения не 4-х байтовые, а разного размера;</li>
+<li>не все значения совпадают с данными из файлов, причем в данном случае разница равна 128.</li>
+</ol><br/>
+Дополнительно, сравнивая с форматом пинга можно заметить некоторую разницу:<br/>
+<br/>
+<ul>
+<li>непонятное <code>0x08</code> перед ожидаемым значением;</li>
+<li>4-х байтовое значение, на 4 меньшее <code>L</code> (назовем его <code>D</code>. Это поле появляется далеко не во всех сообщениях, что немного странно, но там, где оно есть, зависимость <code>L - 4 = D</code> сохраняется. С одной стороны, для сообщений с простой структурой (как пинг) оно не требуется, но с другой — выглядит оно бесполезным).</li>
+</ul><br/>
+Некоторые из вас, думаю, уже могли догадаться про причину несовпадения ожидамых значений, но я продолжу. Посмотрим что творится в крафте:<br/>
+<br/>
+<div style="text-align:center;"><img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/8f/zk/vs/8fzkvsleifr5b1yodx6a77ggx_g.png"/></div><br/>
+Ожидаемые значения 14183 и 14285 тоже не соответствуют действительным 28391 и 28621, но разница тут уже намного больше 128. Проведя много тестов (в том числе и с другими типами сообщений) выяснилось, что чем больше ожидаемое число, тем больше разница между значением в пакете. Что было странно, так это то, что значения до 128 оставались сами собой. Поняли, в чем дело? Очевидная ситуация для тех, кто уже сталкивался с этим, а мне, по незнанию, пришлось два дня разбирать этот «шифр» (в конечном итоге во «взломе» помог анализ значений в бинарном виде). Описанное выше поведение называется <i><a href="https://en.wikipedia.org/wiki/Variable-length_quantity">Variable Length Quantity</a> (значение переменной длины)</i> — представление числа, в котором используется неопределенное количество байт, где восьмой бит байта (бит продолжения) определяет наличие следующего байта. Из описания очевидно, что чтение VLQ возможно только в порядке Little-Endian. По совпадению все значения в пакетах в таком порядке.<br/>
+<br/>
+Теперь, когда мы знаем как получить исходное значение, можно написать шаблон для типа:<br/>
+<br/>
+<pre><code class="cpp">struct VLQ {
+    local char size = 1;
+    while(true) {
+        byte obf_byte;
+        if ((obf_byte &amp; 0x80) == 0x80) {
+            size++;
+        } else {
+            break;
+        }
+    }
+    FSeek(FTell() - size);
+    byte bytes[size];
+    local uint64 _ = FromVLQ(bytes, size);
+};
+</code></pre><br/>
+И функцию преобразования массива байтов в целочисленное значение:<br/>
+<br/>
+<pre><code class="cpp">uint64 FromVLQ(byte bytes[], char size) {
+    local uint64 source = 0;
+    local int i = 0;
+    local byte x;
+    for (i = 0; i &lt; size; i++) {
+        x = bytes[i];
+        source |= (x &amp; 0x7F) * Pow(2, i * 7); // Бинарный сдвиг &lt;&lt; здесь не работает, т.к. он возможен только для значений, меньше uint32, в то время как нам надо получить uint64
+        if ((x &amp; 0x80) != 0x80) {
+            break;
+        }
+    }
+    
+    return source;
+};
+</code></pre><br/>
+Но вернемся к созданию предмета. Опять появляется <code>D</code> и снова <code>0x08</code> перед меняющимся значением. Последние два байта сообщения <code>0x10 0x01</code> подозрительно похожи на количество предметов крафта, где <code>0x10</code> имеет роль, схожую с <code>0x08</code>, но по-прежнему непонятную. Зато теперь можно написать шаблон для этого события:<br/>
+<br/>
+<pre><code class="cpp">struct CraftEvent {
+    uint data_length &lt;bgcolor=0x00FF00, name="Data Length">;
+    byte marker1;
+    VLQ craft_id &lt;bgcolor=0x00FF00, name="Craft ID">;
+    byte marker2;
+    VLQ quantity &lt;bgcolor=0x00FF00, name="Craft Quantity">;
+};
+</code></pre><br/>
+Который будет выглядеть вот так:<br/>
+<br/>
+<div style="text-align:center;"><img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/ex/sl/y1/exsly1e_f3_3dtj4mhyzryehzou.png"/></div><br/>
+И все равно это были простые примеры. Посложнее будет разобрать событие движения персонажа. Какую информацию мы ожидаем увидеть? Как минимум координаты персонажа, куда он смотрит, скорость движения и состояние (стоит, бежит, прыгает и т.д.). Так как строк в сообщении не видно, состояние, скорее всего, описывается через <code>enum</code>. Путем перебора вариантов, попутно сравнивая их с данными из файлов игры, а также через множество тестов, можно найти три XYZ вектора при помощи вот такого громоздкого шаблона:<br/>
+<br/>
+<pre><code class="cpp">struct MoveEvent {
+    uint data_length &lt;bgcolor=0x00FF00, name="Data Length">;
+    byte marker;
+    VLQ move_time &lt;bgcolor=0x00FFFF>;
+    
+    FSkip(2);
+    byte marker;
+    float position_x &lt;bgcolor=0x00FF00>;
+    byte marker;
+    float position_y &lt;bgcolor=0x00FF00>;
+    byte marker;
+    float position_z &lt;bgcolor=0x00FF00>;
+
+    FSkip(2);
+    byte marker;
+    float direction_x &lt;bgcolor=0x00FFFF>;
+    byte marker;
+    float direction_y &lt;bgcolor=0x00FFFF>;
+    byte marker;
+    float direction_z &lt;bgcolor=0x00FFFF>;
+
+    FSkip(2);
+    byte marker;
+    float speed_x &lt;bgcolor=0x00FFFF>;
+    byte marker;
+    float speed_y &lt;bgcolor=0x00FFFF>;
+    byte marker;
+    float speed_z &lt;bgcolor=0x00FFFF>;
+    
+    byte marker;
+    VLQ character_state &lt;bgcolor=0x00FF00>;
+};
+</code></pre><br/>
+Наглядный результат:<br/>
+<br/>
+<div style="text-align:center;"><img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/aw/wn/rz/awwnrzzruq2wtcnmwbpkho3q1x8.png"/></div><br/>
+Зеленая тройка оказалась координатами местоположения, желтые тройки, скорее всего, показывают куда смотрит персонаж и вектор его скорости, а последнее одиночное — состояние персонажа. Можно заметить постоянные байты (маркеры) между значениями координат (<code>0x0D</code> перед значением <code>X</code>, <code>0x015</code> перед <code>Y</code> и <code>0x1D</code> перед <code>Z</code>) и перед состоянием (<code>0x30</code>), которые подозрительно похожи по смыслу на <code>0x08</code> и <code>0x10</code>. Проанализировав много маркеров из других событий оказалось, что он определяет тип следующего за ним значения (первыми тремя битами) и семантическмй смысл, т.е. в примере выше если поменять местами вектора, сохранив при этом их маркеры (<code>0x120F</code> перед координатами и т.д.), игра (теоретически) должна нормально распарсить сообщение. С учетом этой информации, можно добавить пару новых типов:<br/>
+<br/>
+<pre><code class="cpp">struct Packed {
+    VLQ marker &lt;bgcolor=0xFFBB00>; // Маркер тоже оказался VLQ!
+    local uint size = marker.size; // Некоторые сообщения не содержат значения смещения (в списках, например) и там приходится использовать вот такой вычисленный размер структуры
+    switch (marker._ &amp; 0x7) {
+        case 1: double v; size += 8; break; // Из анализа других событий
+        case 5: float v; size += 4; break;
+        default: VLQ v; size += v.size; break;
+    }
+};
+
+struct PackedVector3 {
+    Packed marker &lt;name="Marker">;
+    
+    Packed x &lt;name="X">;
+    Packed y &lt;name="Y">;
+    Packed z &lt;name="Z">;
+};
+</code></pre><br/>
+Теперь наш шаблон сообщения движения значительно сократился:<br/>
+<br/>
+<pre><code class="cpp">struct MoveEvent {
+    uint data_length &lt;bgcolor=0x00FF00, name="Data Length">;
+    Packed move_time &lt;bgcolor=0x00FFFF>;
+    
+    PackedVector3 position &lt;bgcolor=0x00FF00>;
+    PackedVector3 direction &lt;bgcolor=0x00FF00>;
+    PackedVector3 speed &lt;bgcolor=0x00FF00>;
+    
+    Packed state &lt;bgcolor=0x00FF00>;
+};
+</code></pre><br/>
+Еще один тип, который может нам понадобиться в следующей статье, это строки, которым предшествует <code>Packed</code>-значение их размера:<br/>
+<br/>
+<pre><code class="cpp">struct PackedString {
+    Packed length;
+    char str[length.v._];
+};
+</code></pre><br/>
+Теперь, зная примерный формат сообщений, можно написать свое прослушивающее приложение для удобства фильтрации и анализа сообщений, но это уже тема для следующей статьи.<br/>
+<br/>
+<b>Upd:</b> спасибо <a href="https://habr.com/ru/users/aml/" class="user_link">aml</a> за подсказку, что описанная выше структура сообщений является <a href="https://developers.google.com/protocol-buffers/docs/encoding">Protocol Buffer</a>, а также <a href="https://habr.com/ru/users/tatikoma/" class="user_link">Tatikoma</a> за ссылку на полезную соответствующую <a href="https://habr.com/ru/post/321790/">статью</a>.</div></div> <!----> <!----></div> <div class="tm-article-presenter__meta"><div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Теги:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Breverse-engineering%5D" class="tm-tags-list__link">reverse-engineering</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Btcp%5D" class="tm-tags-list__link">tcp</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bwireshark%5D" class="tm-tags-list__link">wireshark</a></li></ul></div> <div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Хабы:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/hub/gamedev/" class="tm-hubs-list__link">
+    Разработка игр
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/reverse-engineering/" class="tm-hubs-list__link">
+    Реверс-инжиниринг
+  </a></li></ul></div></div></article></div> <!----></div> <div class="tm-article-sticky-panel"><div class="tm-data-icons tm-article-sticky-panel__icons"><div class="tm-article-rating tm-data-icons__item"><div class="tm-votes-meter tm-article-rating__votes-switcher"><svg height="16" width="16" class="tm-svg-img tm-votes-meter__icon tm-votes-meter__icon_medium"><title>Всего голосов 28: ↑27 и ↓1</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-rating"></use></svg> <span title="Всего голосов 28: ↑27 и ↓1" class="tm-votes-meter__value tm-votes-meter__value_positive tm-votes-meter__value_medium">+26</span></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----> <span title="Количество просмотров" class="tm-icon-counter tm-data-icons__item"><svg height="16" width="16" class="tm-svg-img tm-icon-counter__icon"><title>Просмотры</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-views"></use></svg> <span class="tm-icon-counter__value">15K</span></span> <button title="Добавить в закладки" type="button" class="bookmarks-button tm-data-icons__item"><span title="Добавить в закладки" class="tm-svg-icon__wrapper bookmarks-button__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Добавить в закладки</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-favorite"></use></svg></span> <span title="Количество пользователей, добавивших публикацию в закладки" class="bookmarks-button__counter">
+    83
+  </span></button> <!----> <div title="Поделиться" class="tm-sharing tm-data-icons__item"><button type="button" class="tm-sharing__button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="tm-sharing__icon"><path fill="currentColor" d="M10.33.275l9.047 7.572a.2.2 0 010 .306l-9.048 7.572a.2.2 0 01-.328-.153V11c-8 0-9.94 6-9.94 6S-1 5 10 5V.428a.2.2 0 01.328-.153z"></path></svg></button> <!----></div> <DIV class="v-portal" style="display:none;"></DIV></div> </div></div> <!----> <!----> <div class="tm-article-presenter__footer"><div class="tm-article-blocks"><!----> <section class="tm-block tm-block_spacing-bottom"><!----> <div class="tm-block__body tm-block__body_variant-balanced"><div class="tm-article-author"> <div class="tm-user-card tm-article-author__user-card tm-user-card_variant-article"><div class="tm-user-card__info-container"><div class="tm-user-card__header"><div class="tm-user-card__header-data"><a href="/ru/users/lOlbas/" class="tm-user-card__userpic tm-user-card__userpic_size-40"><div class="tm-entity-image"><svg class="tm-svg-img tm-image-placeholder tm-image-placeholder_pink"><!----> <use xlink:href="/img/megazord-v24.ce74655c.svg#placeholder-user"></use></svg></div></a> <div class="tm-user-card__meta"><div title=" 13 голосов " class="tm-karma tm-user-card__karma"><div class="tm-karma__votes tm-karma__votes_positive">
+    13
+  </div> <div class="tm-karma__text">
+    Карма
+  </div></div> <div title="Рейтинг пользователя" class="tm-rating tm-user-card__rating"><div class="tm-rating__header"> <div class="tm-rating__counter">0</div></div> <div class="tm-rating__text">
+    Рейтинг
+  </div></div></div></div></div> <div class="tm-user-card__info tm-user-card__info_variant-article"><div class="tm-user-card__title tm-user-card__title_variant-article"><!----> <a href="/ru/users/lOlbas/" class="tm-user-card__nickname tm-user-card__nickname_variant-article">
+          @lOlbas
+        </a> <!----></div> <p class="tm-user-card__short-info tm-user-card__short-info_variant-article">Пользователь</p></div></div> <div class="tm-user-card__buttons tm-user-card__buttons_variant-article"><!----> <!----> <!----> <!----> <!----></div></div> <!----></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----></section> <div class="tm-article-blocks__comments"><div class="tm-article-page-comments"><div class="tm-article-comments-counter-link tm-article-comments-counter-button"><a href="/ru/post/451512/comments/" class="tm-article-comments-counter-link__link tm-article-comments-counter-link__link_button-style"><svg height="16" width="16" class="tm-svg-img tm-article-comments-counter-link__icon tm-article-comments-counter-link__icon_contrasted"><title>Комментарии</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-comments"></use></svg> <span class="tm-article-comments-counter-link__value tm-article-comments-counter-link__value_contrasted">
+       Комментарии 17 
+    </span></a> <!----></div></div></div> <div class="tm-ad-banner__container tm-page-article__banner"><!----> <div id="articleBottomBanner" class="tm-ad-banner"></div></div> <!----> <!----> <!----> <!----> </div></div></div></div></div> <div class="tm-page__sidebar"><div class="tm-layout-sidebar"><div class="tm-layout-sidebar__ads tm-layout-sidebar__ads_initial"><div class="tm-ad-banner__container tm-layout-sidebar__banner"><!----> <div id="sidebarBanner" class="tm-ad-banner"></div></div></div> <div class="tm-sexy-sidebar tm-sexy-sidebar_initial" style="margin-top:0px;"><!----> <!----></div></div></div></div></div></div></main> <!----></div> <div class="tm-footer-menu"><div class="tm-page-width"><div class="tm-footer-menu__container"><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Ваш аккаунт
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr/?back=/ru/post/451512/&amp;hl=ru" rel="nofollow" target="_self">
+                Войти
+              </a></li><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr-register/?back=/ru/post/451512/&amp;hl=ru" rel="nofollow" target="_self">
+                Регистрация
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Разделы
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/" class="footer-menu__item-link router-link-active">
+                Публикации
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/news/" class="footer-menu__item-link">
+                Новости
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/hubs/" class="footer-menu__item-link">
+                Хабы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/companies/" class="footer-menu__item-link">
+                Компании
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/users/" class="footer-menu__item-link">
+                Авторы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/sandbox/" class="footer-menu__item-link">
+                Песочница
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Информация
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/docs/help/" class="footer-menu__item-link">
+                Устройство сайта
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/authors/codex/" class="footer-menu__item-link">
+                Для авторов
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/companies/corpblogs/" class="footer-menu__item-link">
+                Для компаний
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/docs/transparency/" class="footer-menu__item-link">
+                Документы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/agreement" target="_blank">
+                Соглашение
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/confidential/" target="_blank">
+                Конфиденциальность
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Услуги
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQLwRfQmXibiUlWaRg-BAc38s7oM3lJiaPju7qmdJsp8ysIvZ_G-Npem0njJLMozE2bPHMpDqiI5hhy/pub?start=false&amp;loop=false&amp;delayms=60000&amp;slide=id.g91a03369cd_4_297" target="_blank">
+                Реклама
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://habrastorage.org/storage/stuff/habr/service_price.pdf" target="_blank">
+                Тарифы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQJJds8-Di7BQSP_guHxICN7woVYoN5NP_22ra-BIo4bqnTT9FR6fB-Ku2P0AoRpX0Ds-LRkDeAoD8F/pub?start=false&amp;loop=false&amp;delayms=60000" target="_blank">
+                Контент
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://tmtm.timepad.ru/" target="_blank">
+                Семинары
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/megaprojects/" class="footer-menu__item-link">
+                Мегапроекты
+              </a></li></ul></div></div></div></div></div> <div class="tm-footer"><div class="tm-page-width"><div class="tm-footer__container"><!----> <div class="tm-footer__social"><a href="https://www.facebook.com/habrahabr.ru" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Facebook</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-facebook"></use></svg></a><a href="https://twitter.com/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Twitter</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-twitter"></use></svg></a><a href="https://vk.com/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>VK</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-vkontakte"></use></svg></a><a href="https://telegram.me/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Telegram</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-telegram"></use></svg></a><a href="https://www.youtube.com/channel/UCd_sTwKqVrweTt4oAKY5y4w" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Youtube</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-youtube"></use></svg></a><a href="https://zen.yandex.ru/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Яндекс Дзен</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-zen"></use></svg></a></div> <DIV class="v-portal" style="display:none;"></DIV> <button class="tm-footer__link"><!---->
+        Настройка языка
+      </button> <a href="/ru/about" class="tm-footer__link">
+        О сайте
+      </a> <a href="/ru/feedback/" class="tm-footer__link">
+        Техническая поддержка
+      </a> <!----> <a href="/berserk-mode-nope" class="tm-footer__link">
+        Вернуться на старую версию
+      </a> <div class="tm-footer-copyright"><span class="tm-copyright"><span class="tm-copyright__years">© 2006–2021 </span> <span class="tm-copyright__name">«<a href="https://company.habr.com/" rel="noopener" target="_blank" class="tm-copyright__link">Habr</a>»</span></span></div></div></div></div> <!----> <!----></div> <div class="vue-portal-target"></div></div>
+<script>window.__INITIAL_STATE__={"adblock":{"hasAcceptableAdsFilter":false,"hasAdblock":false},"articlesList":{"articlesList":{"451512":{"id":"451512","timePublished":"2019-05-13T07:38:04+00:00","isCorporative":false,"lang":"ru","titleHtml":"Как разобрать сетевой протокол мобильной MMORPG","leadData":{"textHtml":"За годы игры в одну мобильную ММОRPG у меня накопился некоторый опыт по ее реверс-инжинирингу, которым я хотел бы поделиться в цикле статей. Примерные темы:\u003Cbr\u003E\r\n\u003Cbr\u003E\r\n\u003Col\u003E\r\n\u003Cli\u003EРазбор формата сообщений между сервером и клиентом.\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Ca href=\"https:\u002F\u002Fm.habr.com\u002Fru\u002Fpost\u002F457480\u002F\"\u003EНаписание прослушивающего приложения для просмотра трафика игры в удобном виде.\u003C\u002Fa\u003E\u003C\u002Fli\u003E\r\n\u003Cli\u003EПерехват трафика и его модификация при помощи не-HTTP прокси-сервера.\u003C\u002Fli\u003E\r\n\u003Cli\u003EПервые шаги к собственному («пиратскому») серверу.\u003C\u002Fli\u003E\r\n\u003C\u002Fol\u003E\u003Cbr\u003E\r\nВ данной статье я рассмотрю \u003Cb\u003Eразбор формата сообщений между сервером и клиентом\u003C\u002Fb\u003E. Заинтересовавшихся прошу под кат.\u003Cbr\u003E","imageUrl":null,"buttonTextHtml":"Читать дальше →","image":null},"editorVersion":"1.0","postType":"article","postLabels":[{"type":"sandbox","data":null}],"author":{"scoreStats":{"score":13,"votesCount":13},"rating":0,"relatedData":null,"contacts":[],"authorContacts":[],"paymentDetails":{"paymentYandexMoney":null,"paymentPayPalMe":null,"paymentWebmoney":null},"id":"2027209","alias":"lOlbas","fullname":null,"avatarUrl":null,"speciality":null},"statistics":{"commentsCount":17,"favoritesCount":83,"readingCount":14648,"score":26,"votesCount":28},"hubs":[{"relatedData":null,"id":"7773","alias":"gamedev","type":"collective","title":"Разработка игр","titleHtml":"Разработка игр","isProfiled":true},{"relatedData":null,"id":"19011","alias":"reverse-engineering","type":"collective","title":"Реверс-инжиниринг","titleHtml":"Реверс-инжиниринг","isProfiled":true}],"flows":[{"id":"1","alias":"develop","title":"Разработка"}],"relatedData":null,"textHtml":"\u003Cdiv xmlns=\"http:\u002F\u002Fwww.w3.org\u002F1999\u002Fxhtml\"\u003EЗа годы игры в одну мобильную ММОRPG у меня накопился некоторый опыт по ее реверс-инжинирингу, которым я хотел бы поделиться в цикле статей. Примерные темы:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Col\u003E\r\n\u003Cli\u003EРазбор формата сообщений между сервером и клиентом.\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Ca href=\"https:\u002F\u002Fm.habr.com\u002Fru\u002Fpost\u002F457480\u002F\"\u003EНаписание прослушивающего приложения для просмотра трафика игры в удобном виде.\u003C\u002Fa\u003E\u003C\u002Fli\u003E\r\n\u003Cli\u003EПерехват трафика и его модификация при помощи не-HTTP прокси-сервера.\u003C\u002Fli\u003E\r\n\u003Cli\u003EПервые шаги к собственному («пиратскому») серверу.\u003C\u002Fli\u003E\r\n\u003C\u002Fol\u003E\u003Cbr\u002F\u003E\r\nВ данной статье я рассмотрю \u003Cb\u003Eразбор формата сообщений между сервером и клиентом\u003C\u002Fb\u003E. Заинтересовавшихся прошу под кат.\u003Cbr\u002F\u003E\r\n\u003Ca name=\"habracut\"\u003E\u003C\u002Fa\u003E\u003Cbr\u002F\u003E\r\n\u003Ch3\u003EТребуемые инструменты\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\nДля возможности повторения шагов, описанных ниже, потребуются:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003EПК (я делал на Windows 7\u002F10, но MacOS тоже может подойти, если пункты ниже там доступны);\u003C\u002Fli\u003E\r\n\u003Cli\u003EWireshark для анализа пакетов;\u003C\u002Fli\u003E\r\n\u003Cli\u003E010Editor для парсинга пакетов по шаблону (не обязательно, но позволяет быстро и легко описывать формат сообщений);\u003C\u002Fli\u003E\r\n\u003Cli\u003Eсамо мобильное устройство с игрой.\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\nДополнительно очень желательно наличие под руками данных из игры в читабельном виде, такие как список предметов, существ и др. с их идентификаторами. Это значительно упрощает поиск ключевых моментов в пакетах, а порой позволяет отфильтровать нужное сообщение в постоянном потоке данных.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch3\u003E\u003Canchor\u003EРазбор\u003C\u002Fanchor\u003E формата сообщений между сервером и клиентом\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\nДля начала, нам необходимо видеть трафик мобильного устройства. Сделать это достаточно просто (хотя я очень долго доходил до этого очевидного решения): на нашем ПК создаем точку доступа Wi-Fi, подключаемся к ней с мобильного устройства, выбираем в Wireshark нужный интерфейс — и весь мобильный трафик у нас перед глазами.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЗайдя в игру и подождав некоторое время, чтобы запросы, не связанные с самим игровым сервером, прекратились, можно наблюдать следующую картину:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cdiv style=\"text-align:center;\"\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fin\u002Fye\u002F61\u002Finye619dyp2vh8iq8nvncdb25u0.png\"\u002F\u003E\u003C\u002Fdiv\u003E\u003Cbr\u002F\u003E\r\nНа данном этапе мы уже можем использовать фильтры Wireshark, чтобы видеть только пакеты между игрой и сервером, а также только с полезной нагрузкой:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003Etcp &amp;&amp; tcp.payload &amp;&amp; tcp.port == 44325\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nЕсли встать в тихом месте, вдали от других игроков и NPC, и ничего не делать, можно увидеть постоянно повторяющиеся сообщения от сервера и клиента (размером 76 и 84 байт соответственно). В моем случае минимальное количество разнообразных пакетов посылалось на экране выбора персонажа.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cdiv style=\"text-align:center;\"\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fu-\u002Fn9\u002Fsu\u002Fu-n9sutlnqod9lbgttfuon6g1ue.png\"\u002F\u003E\u003C\u002Fdiv\u003E\u003Cbr\u002F\u003E\r\nПериодичность запроса от клиента очень похожа на пингование. Возьмем несколько сообщений для проверки (3 группы, сверху — запрос с клиента, под ним — ответ сервера):\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cdiv style=\"text-align:center;\"\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fv3\u002Fz9\u002F3e\u002Fv3z93eejzkii_hh6di5dwvbowfi.png\"\u002F\u003E\u003C\u002Fdiv\u003E\u003Cbr\u002F\u003E\r\nПервым делом бросается в глаза идентичность пакетов. 8 дополнительных байт у ответа при переводе в десятичную систему очень похожи на метку времени в секундах: \u003Ccode\u003E5CD008F8\u003Csub\u003E16\u003C\u002Fsub\u003E = 1557137656\u003Csub\u003E10\u003C\u002Fsub\u003E\u003C\u002Fcode\u003E (из первой пары). \u003Ca href=\"https:\u002F\u002Fwww.epochconverter.com\u002F\"\u003EСверяем часы\u003C\u002Fa\u003E — да, так и есть. Предыдущие 4 байта совпадают с последними 4 байтами в запросе. При переводе получаем: \u003Ccode\u003EA4BB\u003Csub\u003E16\u003C\u002Fsub\u003E = 42171\u003Csub\u003E10\u003C\u002Fsub\u003E\u003C\u002Fcode\u003E, что также очень похоже на время, но уже в милисекундах. Оно примерно совпадает со временем с момента запуска игры, и скорее всего так и есть.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nОсталось рассмотреть первые 6 байт запроса и ответа. Легко заметить зависимость значения первых четырех байт сообщения (назовем этот параметр \u003Ccode\u003EL\u003C\u002Fcode\u003E) от размера сообщения: ответ от сервера больше на 8 байт, значение \u003Ccode\u003EL\u003C\u002Fcode\u003E тоже увеличилось на 8, однако размер пакета больше на 6 байт значения \u003Ccode\u003EL\u003C\u002Fcode\u003E в обоих случаях. Также можно заметить что два байта после \u003Ccode\u003EL\u003C\u002Fcode\u003E сохраняют свое значение как в запросах от клиента, так и от сервера, а учитывая, что их значение отличается на один, можно с уверенностью сказать, что это код сообщения \u003Ccode\u003EC\u003C\u002Fcode\u003E (связанные коды сообщений скорее всего будут определены последовательно). Общая структура понятна достаточно, чтобы написать минимальный шаблон для 010Editor:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003Eпервые 4 байта — \u003Ccode\u003EL\u003C\u002Fcode\u003E — размер полезной нагрузки сообщения;\u003C\u002Fli\u003E\r\n\u003Cli\u003Eследующие 2 байта — \u003Ccode\u003EC\u003C\u002Fcode\u003E — код сообщения;\u003C\u002Fli\u003E\r\n\u003Cli\u003Eсама полезная нагрузка.\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"cpp\"\u003Estruct Event {\n    uint payload_length &lt;bgcolor=0xFFFF00, name=\"Payload Length\"\u003E;\n    ushort event_code &lt;bgcolor=0xFF9988, name=\"Event Code\"\u003E;\n    byte payload[payload_length] &lt;name=\"Event Payload\"\u003E;\n};\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nЗначит, формат сообщения пинга клиента: послать локальное время пинга; формат ответа сервера: послать то же время и время отправки ответа в секундах. Вроде не сложно, да?\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПопробуем разобрать пример посложнее. Стоя в тихом месте и спрятав пакеты пинга, можно найти сообщения телепорта и создания предмета (craft). Начнем с первого. Владея данными игры я знал какое значение точки телепорта искать. Для тестов я использовал точки со значениями \u003Ccode\u003E0x2B\u003C\u002Fcode\u003E, \u003Ccode\u003E0x67\u003C\u002Fcode\u003E, \u003Ccode\u003E0x6B\u003C\u002Fcode\u003E и \u003Ccode\u003E0x1AF\u003C\u002Fcode\u003E. Сравним со значениями в сообщениях: \u003Ccode\u003E0x2B\u003C\u002Fcode\u003E, \u003Ccode\u003E0x67\u003C\u002Fcode\u003E, \u003Ccode\u003E0x6B\u003C\u002Fcode\u003E и \u003Ccode\u003E0x3AF\u003C\u002Fcode\u003E:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cdiv style=\"text-align:center;\"\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fy7\u002F7r\u002Fqs\u002Fy77rqsd0mxecueorqwdip3ow3r8.png\"\u002F\u003E\u003C\u002Fdiv\u003E\u003Cbr\u002F\u003E\r\nНепорядок. Видны две проблемы:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Col\u003E\r\n\u003Cli\u003Eзначения не 4-х байтовые, а разного размера;\u003C\u002Fli\u003E\r\n\u003Cli\u003Eне все значения совпадают с данными из файлов, причем в данном случае разница равна 128.\u003C\u002Fli\u003E\r\n\u003C\u002Fol\u003E\u003Cbr\u002F\u003E\r\nДополнительно, сравнивая с форматом пинга можно заметить некоторую разницу:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003Eнепонятное \u003Ccode\u003E0x08\u003C\u002Fcode\u003E перед ожидаемым значением;\u003C\u002Fli\u003E\r\n\u003Cli\u003E4-х байтовое значение, на 4 меньшее \u003Ccode\u003EL\u003C\u002Fcode\u003E (назовем его \u003Ccode\u003ED\u003C\u002Fcode\u003E. Это поле появляется далеко не во всех сообщениях, что немного странно, но там, где оно есть, зависимость \u003Ccode\u003EL - 4 = D\u003C\u002Fcode\u003E сохраняется. С одной стороны, для сообщений с простой структурой (как пинг) оно не требуется, но с другой — выглядит оно бесполезным).\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\nНекоторые из вас, думаю, уже могли догадаться про причину несовпадения ожидамых значений, но я продолжу. Посмотрим что творится в крафте:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cdiv style=\"text-align:center;\"\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002F8f\u002Fzk\u002Fvs\u002F8fzkvsleifr5b1yodx6a77ggx_g.png\"\u002F\u003E\u003C\u002Fdiv\u003E\u003Cbr\u002F\u003E\r\nОжидаемые значения 14183 и 14285 тоже не соответствуют действительным 28391 и 28621, но разница тут уже намного больше 128. Проведя много тестов (в том числе и с другими типами сообщений) выяснилось, что чем больше ожидаемое число, тем больше разница между значением в пакете. Что было странно, так это то, что значения до 128 оставались сами собой. Поняли, в чем дело? Очевидная ситуация для тех, кто уже сталкивался с этим, а мне, по незнанию, пришлось два дня разбирать этот «шифр» (в конечном итоге во «взломе» помог анализ значений в бинарном виде). Описанное выше поведение называется \u003Ci\u003E\u003Ca href=\"https:\u002F\u002Fen.wikipedia.org\u002Fwiki\u002FVariable-length_quantity\"\u003EVariable Length Quantity\u003C\u002Fa\u003E (значение переменной длины)\u003C\u002Fi\u003E — представление числа, в котором используется неопределенное количество байт, где восьмой бит байта (бит продолжения) определяет наличие следующего байта. Из описания очевидно, что чтение VLQ возможно только в порядке Little-Endian. По совпадению все значения в пакетах в таком порядке.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nТеперь, когда мы знаем как получить исходное значение, можно написать шаблон для типа:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"cpp\"\u003Estruct VLQ {\n    local char size = 1;\n    while(true) {\n        byte obf_byte;\n        if ((obf_byte &amp; 0x80) == 0x80) {\n            size++;\n        } else {\n            break;\n        }\n    }\n    FSeek(FTell() - size);\n    byte bytes[size];\n    local uint64 _ = FromVLQ(bytes, size);\n};\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nИ функцию преобразования массива байтов в целочисленное значение:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"cpp\"\u003Euint64 FromVLQ(byte bytes[], char size) {\n    local uint64 source = 0;\n    local int i = 0;\n    local byte x;\n    for (i = 0; i &lt; size; i++) {\n        x = bytes[i];\n        source |= (x &amp; 0x7F) * Pow(2, i * 7); \u002F\u002F Бинарный сдвиг &lt;&lt; здесь не работает, т.к. он возможен только для значений, меньше uint32, в то время как нам надо получить uint64\n        if ((x &amp; 0x80) != 0x80) {\n            break;\n        }\n    }\n    \n    return source;\n};\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nНо вернемся к созданию предмета. Опять появляется \u003Ccode\u003ED\u003C\u002Fcode\u003E и снова \u003Ccode\u003E0x08\u003C\u002Fcode\u003E перед меняющимся значением. Последние два байта сообщения \u003Ccode\u003E0x10 0x01\u003C\u002Fcode\u003E подозрительно похожи на количество предметов крафта, где \u003Ccode\u003E0x10\u003C\u002Fcode\u003E имеет роль, схожую с \u003Ccode\u003E0x08\u003C\u002Fcode\u003E, но по-прежнему непонятную. Зато теперь можно написать шаблон для этого события:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"cpp\"\u003Estruct CraftEvent {\n    uint data_length &lt;bgcolor=0x00FF00, name=\"Data Length\"\u003E;\n    byte marker1;\n    VLQ craft_id &lt;bgcolor=0x00FF00, name=\"Craft ID\"\u003E;\n    byte marker2;\n    VLQ quantity &lt;bgcolor=0x00FF00, name=\"Craft Quantity\"\u003E;\n};\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nКоторый будет выглядеть вот так:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cdiv style=\"text-align:center;\"\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fex\u002Fsl\u002Fy1\u002Fexsly1e_f3_3dtj4mhyzryehzou.png\"\u002F\u003E\u003C\u002Fdiv\u003E\u003Cbr\u002F\u003E\r\nИ все равно это были простые примеры. Посложнее будет разобрать событие движения персонажа. Какую информацию мы ожидаем увидеть? Как минимум координаты персонажа, куда он смотрит, скорость движения и состояние (стоит, бежит, прыгает и т.д.). Так как строк в сообщении не видно, состояние, скорее всего, описывается через \u003Ccode\u003Eenum\u003C\u002Fcode\u003E. Путем перебора вариантов, попутно сравнивая их с данными из файлов игры, а также через множество тестов, можно найти три XYZ вектора при помощи вот такого громоздкого шаблона:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"cpp\"\u003Estruct MoveEvent {\n    uint data_length &lt;bgcolor=0x00FF00, name=\"Data Length\"\u003E;\n    byte marker;\n    VLQ move_time &lt;bgcolor=0x00FFFF\u003E;\n    \n    FSkip(2);\n    byte marker;\n    float position_x &lt;bgcolor=0x00FF00\u003E;\n    byte marker;\n    float position_y &lt;bgcolor=0x00FF00\u003E;\n    byte marker;\n    float position_z &lt;bgcolor=0x00FF00\u003E;\n\n    FSkip(2);\n    byte marker;\n    float direction_x &lt;bgcolor=0x00FFFF\u003E;\n    byte marker;\n    float direction_y &lt;bgcolor=0x00FFFF\u003E;\n    byte marker;\n    float direction_z &lt;bgcolor=0x00FFFF\u003E;\n\n    FSkip(2);\n    byte marker;\n    float speed_x &lt;bgcolor=0x00FFFF\u003E;\n    byte marker;\n    float speed_y &lt;bgcolor=0x00FFFF\u003E;\n    byte marker;\n    float speed_z &lt;bgcolor=0x00FFFF\u003E;\n    \n    byte marker;\n    VLQ character_state &lt;bgcolor=0x00FF00\u003E;\n};\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nНаглядный результат:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cdiv style=\"text-align:center;\"\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Faw\u002Fwn\u002Frz\u002Fawwnrzzruq2wtcnmwbpkho3q1x8.png\"\u002F\u003E\u003C\u002Fdiv\u003E\u003Cbr\u002F\u003E\r\nЗеленая тройка оказалась координатами местоположения, желтые тройки, скорее всего, показывают куда смотрит персонаж и вектор его скорости, а последнее одиночное — состояние персонажа. Можно заметить постоянные байты (маркеры) между значениями координат (\u003Ccode\u003E0x0D\u003C\u002Fcode\u003E перед значением \u003Ccode\u003EX\u003C\u002Fcode\u003E, \u003Ccode\u003E0x015\u003C\u002Fcode\u003E перед \u003Ccode\u003EY\u003C\u002Fcode\u003E и \u003Ccode\u003E0x1D\u003C\u002Fcode\u003E перед \u003Ccode\u003EZ\u003C\u002Fcode\u003E) и перед состоянием (\u003Ccode\u003E0x30\u003C\u002Fcode\u003E), которые подозрительно похожи по смыслу на \u003Ccode\u003E0x08\u003C\u002Fcode\u003E и \u003Ccode\u003E0x10\u003C\u002Fcode\u003E. Проанализировав много маркеров из других событий оказалось, что он определяет тип следующего за ним значения (первыми тремя битами) и семантическмй смысл, т.е. в примере выше если поменять местами вектора, сохранив при этом их маркеры (\u003Ccode\u003E0x120F\u003C\u002Fcode\u003E перед координатами и т.д.), игра (теоретически) должна нормально распарсить сообщение. С учетом этой информации, можно добавить пару новых типов:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"cpp\"\u003Estruct Packed {\n    VLQ marker &lt;bgcolor=0xFFBB00\u003E; \u002F\u002F Маркер тоже оказался VLQ!\n    local uint size = marker.size; \u002F\u002F Некоторые сообщения не содержат значения смещения (в списках, например) и там приходится использовать вот такой вычисленный размер структуры\n    switch (marker._ &amp; 0x7) {\n        case 1: double v; size += 8; break; \u002F\u002F Из анализа других событий\n        case 5: float v; size += 4; break;\n        default: VLQ v; size += v.size; break;\n    }\n};\n\nstruct PackedVector3 {\n    Packed marker &lt;name=\"Marker\"\u003E;\n    \n    Packed x &lt;name=\"X\"\u003E;\n    Packed y &lt;name=\"Y\"\u003E;\n    Packed z &lt;name=\"Z\"\u003E;\n};\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nТеперь наш шаблон сообщения движения значительно сократился:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"cpp\"\u003Estruct MoveEvent {\n    uint data_length &lt;bgcolor=0x00FF00, name=\"Data Length\"\u003E;\n    Packed move_time &lt;bgcolor=0x00FFFF\u003E;\n    \n    PackedVector3 position &lt;bgcolor=0x00FF00\u003E;\n    PackedVector3 direction &lt;bgcolor=0x00FF00\u003E;\n    PackedVector3 speed &lt;bgcolor=0x00FF00\u003E;\n    \n    Packed state &lt;bgcolor=0x00FF00\u003E;\n};\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nЕще один тип, который может нам понадобиться в следующей статье, это строки, которым предшествует \u003Ccode\u003EPacked\u003C\u002Fcode\u003E-значение их размера:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"cpp\"\u003Estruct PackedString {\n    Packed length;\n    char str[length.v._];\n};\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nТеперь, зная примерный формат сообщений, можно написать свое прослушивающее приложение для удобства фильтрации и анализа сообщений, но это уже тема для следующей статьи.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cb\u003EUpd:\u003C\u002Fb\u003E спасибо \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fusers\u002Faml\u002F\" class=\"user_link\"\u003Eaml\u003C\u002Fa\u003E за подсказку, что описанная выше структура сообщений является \u003Ca href=\"https:\u002F\u002Fdevelopers.google.com\u002Fprotocol-buffers\u002Fdocs\u002Fencoding\"\u003EProtocol Buffer\u003C\u002Fa\u003E, а также \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fusers\u002Ftatikoma\u002F\" class=\"user_link\"\u003ETatikoma\u003C\u002Fa\u003E за ссылку на полезную соответствующую \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fpost\u002F321790\u002F\"\u003Eстатью\u003C\u002Fa\u003E.\u003C\u002Fdiv\u003E","tags":[{"titleHtml":"reverse-engineering"},{"titleHtml":"tcp"},{"titleHtml":"wireshark"}],"metadata":{"stylesUrls":[],"scriptUrls":[],"shareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F451512\u002F7757a2f02807ea1435909ef876056500\u002F","shareImageWidth":1200,"shareImageHeight":630,"vkShareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F451512\u002F7757a2f02807ea1435909ef876056500\u002F?format=vk","schemaJsonLd":"{\"@context\":\"http:\\\u002F\\\u002Fschema.org\",\"@type\":\"Article\",\"mainEntityOfPage\":{\"@type\":\"WebPage\",\"@id\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fru\\\u002Fpost\\\u002F451512\\\u002F\"},\"headline\":\"Как разобрать сетевой протокол мобильной MMORPG\",\"datePublished\":\"2019-05-13T10:38:04+03:00\",\"dateModified\":\"2019-06-25T12:03:23+03:00\",\"author\":{\"@type\":\"Person\",\"name\":\"lOlbas\"},\"publisher\":{\"@type\":\"Organization\",\"name\":\"Habr\",\"logo\":{\"@type\":\"ImageObject\",\"url\":\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fa_\\\u002Flk\\\u002F9m\\\u002Fa_lk9mjkccjox-zccjrpfolmkmq.png\"}},\"description\":\"За годы игры в одну мобильную ММОRPG у меня накопился некоторый опыт по ее реверс-инжинирингу, которым я хотел бы поделиться в цикле статей. Примерные темы:   Ра...\",\"url\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fru\\\u002Fpost\\\u002F451512\\\u002F#post-content-body\",\"about\":[\"h_gamedev\",\"h_reverse-engineering\",\"f_develop\"],\"image\":[\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fin\\\u002Fye\\\u002F61\\\u002Finye619dyp2vh8iq8nvncdb25u0.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fu-\\\u002Fn9\\\u002Fsu\\\u002Fu-n9sutlnqod9lbgttfuon6g1ue.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fv3\\\u002Fz9\\\u002F3e\\\u002Fv3z93eejzkii_hh6di5dwvbowfi.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fy7\\\u002F7r\\\u002Fqs\\\u002Fy77rqsd0mxecueorqwdip3ow3r8.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002F8f\\\u002Fzk\\\u002Fvs\\\u002F8fzkvsleifr5b1yodx6a77ggx_g.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fex\\\u002Fsl\\\u002Fy1\\\u002Fexsly1e_f3_3dtj4mhyzryehzou.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Faw\\\u002Fwn\\\u002Frz\\\u002Fawwnrzzruq2wtcnmwbpkho3q1x8.png\"]}","metaDescription":"За годы игры в одну мобильную ММОRPG у меня накопился некоторый опыт по ее реверс-инжинирингу, которым я хотел бы поделиться в цикле статей. Примерные темы:\r\n\r\n\r\nРазбор формата сообщений между...","mainImageUrl":null,"amp":false},"polls":[],"commentsEnabled":true,"rulesRemindEnabled":false,"votesEnabled":true,"status":"published","plannedPublishTime":null,"checked":null,"isEditorial":false}},"articlesIds":{},"isLoading":false,"pagesCount":{},"route":{},"reasonsList":null,"view":"cards","lastVisitedRoute":{},"ssrCommentsArticleIds":[""],"karma":{}},"authorContribution":{"authors":{}},"betaTest":{"currentAnnouncement":null,"announcements":{},"announcementCards":null,"announcementComments":{},"announcementCommentThreads":{},"announcementCommentingStatuses":{},"archivedList":[]},"authorStatistics":{"articleRefs":{},"articleIds":{},"pagesCount":{},"route":{},"viewsCount":[],"maxStatsCount":{}},"career":{"seoLandings":[],"hubs":"gamedev,reverse-engineering"},"comments":{"articleComments":{},"searchCommentsResults":null,"previewComment":null,"pagesCount":null,"commentAccess":{},"scrollParents":{},"pageArticleComments":{"lastViewedComment":0,"postId":null,"lastCommentTimestamp":"","moderated":[],"moderatedIds":[],"commentRoute":""}},"companies":{"companyRefs":{},"companyIds":{},"companyTopIds":{},"pagesCount":{},"companyProfiles":{},"companiesCategories":[],"companiesCategoriesTotalCount":0,"companiesWidgets":{},"companiesWorkers":{},"companiesFans":{},"route":{},"isLoading":false,"companyWorkersLoading":false,"companyFansLoading":false,"vacancies":{}},"companiesContribution":{"hubs":{},"flows":{},"companyRefs":{}},"companyHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"conversation":{"messages":[],"respondent":null,"isLoadMore":false},"conversations":{"conversations":[],"unreadCount":0,"pagesCount":0,"isLoadMore":false},"desktopState":{"desktopFl":null,"desktopHl":null,"isChecked":false,"isLoginDemanded":false},"dfp":{"slotsDict":{}},"docs":{"menu":{},"articles":{},"mainMenu":[],"loading":{"main":false,"dropdown":false,"article":false}},"feature":{"isProbablyVisible":"true"},"flows":{"flows":[{"alias":"develop","id":1,"route":{"name":"FLOW_PAGE","params":{"flowName":"develop"}}},{"alias":"admin","id":6,"route":{"name":"FLOW_PAGE","params":{"flowName":"admin"}}},{"alias":"design","id":2,"route":{"name":"FLOW_PAGE","params":{"flowName":"design"}}},{"alias":"management","id":3,"route":{"name":"FLOW_PAGE","params":{"flowName":"management"}}},{"alias":"marketing","id":4,"route":{"name":"FLOW_PAGE","params":{"flowName":"marketing"}}},{"alias":"popsci","id":7,"route":{"name":"FLOW_PAGE","params":{"flowName":"popsci"}}}]},"global":{"isPwa":false,"device":"desktop","isHabrCom":true},"hubs":{"hubRefs":{},"hubIds":{},"pagesCount":{},"isLoading":false,"route":{}},"hubsBlock":{"hubRefs":{},"hubIds":{}},"i18n":{"fl":"ru","hl":"ru"},"info":{"infoPage":{},"isLoading":true},"location":{"urlStruct":{"protocol":null,"slashes":null,"auth":null,"host":null,"port":null,"hostname":null,"hash":null,"search":null,"query":{},"pathname":null,"path":null,"href":""},"searchQuery":null},"me":{"user":null,"ppgDemanded":false,"karmaResetInfo":{"canReincarnate":null,"wasReincarnated":null,"currentScore":null},"notes":null},"mostReadingList":{"mostReadingListIds":[],"mostReadingListRefs":null,"promoPost":null},"pinnedPost":{"pinnedPost":null},"ppa":{"articles":{},"card":null,"transactions":null,"totalTransactions":null,"isAccessible":null},"projectsBlocks":{"activeBlocks":{}},"pullRefresh":{"shouldRefresh":false},"sandbox":{"articleIds":[],"articleRefs":{},"pagesCount":null,"route":{},"lastVisitedRoute":{},"isLoading":false},"settingsOther":{"inputs":{"uiLang":{"errors":[],"ref":null,"value":""},"articlesLangEnglish":{"errors":[],"ref":null,"value":false},"articlesLangRussian":{"errors":[],"ref":null,"value":false},"agreement":{"errors":[],"ref":null,"value":false},"email":{"errors":[],"ref":null,"value":true},"digest":{"errors":[],"ref":null,"value":true}}},"similarList":{"similarListIds":[],"similarListRefs":null},"ssr":{"error":null,"isDataLoaded":false,"isDataLoading":false,"isHydrationFailed":false,"isServer":false},"userHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"userInvites":{"availableInvites":0,"usedInvitesIds":[],"usedInvitesRefs":{},"usedInvitesPagesCount":0,"unusedInvitesIds":[],"unusedInvitesRefs":{},"unusedInvitesPagesCount":0},"users":{"authorRefs":{},"authorIds":{},"pagesCount":{},"authorProfiles":{},"userHubs":{},"userInvitations":{},"authorFollowers":{},"authorFollowed":{},"karmaStats":[],"statistics":null,"isLoading":false,"authorFollowersLoading":false,"authorFollowedLoading":false,"userHubsLoading":false,"userInvitationsLoading":false,"route":{}},"viewport":{"prevScrollY":{},"scrollY":0,"width":0},"tracker":{"items":{},"pagesCache":{},"markedViewedSilently":{},"markedRead":{},"unreadCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null},"unviewedCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null}}};(function(){var s;(s=document.currentScript||document.scripts[document.scripts.length-1]).parentNode.removeChild(s);}());</script>
+<script src="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" defer></script><script src="https://assets.habr.com/habr-web/js/app.c0af73e7.js" defer></script>
+
+
+
+    <script>
+      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+        (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+        m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+      })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+    </script>
+  
+  <script type="text/javascript" >
+    (function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+    m[i].l=1*new Date();k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})
+    (window, document, "script", "https://mc.yandex.ru/metrika/tag.js", "ym");
+
+    ym(24049213, "init", {
+      defer:true,
+      trackLinks:true,
+      accurateTrackBounce:true,
+      webvisor:false,
+    });
+  </script>
+  <noscript>
+    <div>
+      <img src="https://mc.yandex.ru/watch/24049213" style="position:absolute; left:-9999px;" alt="" />
+    </div>
+  </noscript>
+  
+    <script type="text/javascript">
+      window.addEventListener('load', function () {
+        setTimeout(() => {
+          const img = new Image();
+          img.src = 'https://vk.com/rtrg?p=VK-RTRG-421343-57vKE';
+        }, 0);
+      });
+    </script>
+  
+</body>
+</html>

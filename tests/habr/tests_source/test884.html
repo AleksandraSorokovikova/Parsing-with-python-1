@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="ru" data-vue-meta="%7B%22lang%22:%7B%22ssr%22:%22ru%22%7D%7D">
+<head >
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
+  <title>Лучшая приоритизация HTTP/2 для ускорения веба / Хабр</title>
+  <style>
+    /* cyrillic-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSxf6TF0.woff2) format('woff2');
+      unicode-range: U+0460-052F, U+1C80-1C88, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+    }
+
+    /* cyrillic */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveQhf6TF0.woff2) format('woff2');
+      unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+    }
+
+    /* latin-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSBf6TF0.woff2) format('woff2');
+      unicode-range: U+0100-024F, U+0259, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20CF, U+2113, U+2C60-2C7F, U+A720-A7FF;
+    }
+
+    /* latin */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveRhf6.woff2) format('woff2');
+      unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+    }
+  </style>
+  <link rel="preload" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" as="script"><link rel="preload" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/app.c0af73e7.js" as="script">
+  <link rel="stylesheet" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css"><link rel="stylesheet" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css">
+  <script>window.i18nFetch = new Promise((res, rej) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open('GET', '/js/i18n/ru-compiled.85eb77f0b17c8235e7b64b9f81ea5ec2.json');
+          xhr.responseType = 'json';
+          xhr.onload = function(e) {
+            if (this.status === 200) {
+              res({ru: xhr.response});
+            } else {
+              rej(e);
+            }
+          };
+          xhr.send();
+        });</script>
+  
+  <script data-vue-meta="ssr" src="/js/ads.js" onload="window['zhY4i4nJ9K'] = true" data-vmid="checkad"></script><script data-vue-meta="ssr" type="application/ld+json" data-vmid="ldjson-schema">{"@context":"http:\/\/schema.org","@type":"Article","mainEntityOfPage":{"@type":"WebPage","@id":"https:\/\/habr.com\/ru\/post\/452020\/"},"headline":"Лучшая приоритизация HTTP\/2 для ускорения веба","datePublished":"2019-05-15T20:25:52+03:00","dateModified":"2019-05-15T20:32:21+03:00","author":{"@type":"Person","name":"Анатолий Ализар"},"publisher":{"@type":"Organization","name":"Habr","logo":{"@type":"ImageObject","url":"https:\/\/habrastorage.org\/webt\/a_\/lk\/9m\/a_lk9mjkccjox-zccjrpfolmkmq.png"}},"description":"HTTP\/2 обещал заметно ускорить веб, и Cloudflare давным-давно развернула доступ по HTTP\/2 для всех клиентов. Но одна особенность HTTP\/2, приоритизация, не соотв...","url":"https:\/\/habr.com\/ru\/post\/452020\/#post-content-body","about":["h_webdev","h_html5","h_itstandarts","h_browsers","f_develop"],"image":["https:\/\/habrastorage.org\/getpro\/habr\/post_images\/57d\/5cf\/dbe\/57d5cfdbe917c7b464a249fb187b3ffd.png","https:\/\/habrastorage.org\/getpro\/habr\/post_images\/db9\/e18\/fbe\/db9e18fbe00d27755a152a8deabbcaa4.png","https:\/\/habrastorage.org\/getpro\/habr\/post_images\/fbd\/07b\/58a\/fbd07b58a4c8aeff2a758ad1946d8523.png","https:\/\/habrastorage.org\/getpro\/habr\/post_images\/8b2\/6a8\/2cd\/8b26a82cdb5c546e9005200e5528b988.gif","https:\/\/habrastorage.org\/getpro\/habr\/post_images\/e9c\/844\/a65\/e9c844a65472a56d92cb37cd27f2f035.png","https:\/\/habrastorage.org\/getpro\/habr\/post_images\/6c9\/fae\/539\/6c9fae539ae1d3c99570cf53af415be4.gif","https:\/\/habrastorage.org\/getpro\/habr\/post_images\/c75\/a7d\/f05\/c75a7df05716f5706aa4b037774733d2.png","https:\/\/habrastorage.org\/getpro\/habr\/post_images\/f0c\/840\/5a1\/f0c8405a1b6ddc40645ab7985e28a5eb.gif","https:\/\/habrastorage.org\/getpro\/habr\/post_images\/870\/e6d\/83c\/870e6d83c673b9c706dac49c78d3848d.png","https:\/\/habrastorage.org\/getpro\/habr\/post_images\/bd2\/806\/b55\/bd2806b55e830bd4c2a7e08bb1b18ce4.gif","https:\/\/habrastorage.org\/getpro\/habr\/post_images\/e22\/14d\/4e0\/e2214d4e04fab810f0a4398fe02434c1.png","https:\/\/habrastorage.org\/getpro\/habr\/post_images\/91e\/76c\/d1d\/91e76cd1d814aef138b35345eda46d82.gif","https:\/\/habrastorage.org\/getpro\/habr\/post_images\/62e\/2a1\/d5f\/62e2a1d5f10b801af61992517d7f5a5a.gif","https:\/\/habrastorage.org\/getpro\/habr\/post_images\/ba5\/7e5\/efa\/ba57e5efa56119a58bbd39596da3f9ce.png","https:\/\/habrastorage.org\/getpro\/habr\/post_images\/b89\/e96\/e4f\/b89e96e4f4534f5df00d732e97b5db62.png","https:\/\/habrastorage.org\/webt\/u_\/1n\/px\/u_1npxrzhg0svmgdyzelnamxj84.png","https:\/\/habrastorage.org\/getpro\/habr\/post_images\/386\/d53\/276\/386d532767b6396ee628a7e0eb837282.png"]}</script>
+  <script src="//www.googletagservices.com/tag/js/gpt.js" async></script>
+  <style>.grecaptcha-badge{visibility: hidden;}</style>
+  <meta name="habr-version" content="2.49.0">
+  
+  <meta data-vue-meta="ssr" property="fb:app_id" content="444736788986613"><meta data-vue-meta="ssr" property="fb:pages" content="472597926099084"><meta data-vue-meta="ssr" name="twitter:card" content="summary_large_image"><meta data-vue-meta="ssr" name="twitter:site" content="@habr_eng"><meta data-vue-meta="ssr" property="og:title" content="Лучшая приоритизация HTTP/2 для ускорения веба" data-vmid="og:title"><meta data-vue-meta="ssr" name="twitter:title" content="Лучшая приоритизация HTTP/2 для ускорения веба" data-vmid="twitter:title"><meta data-vue-meta="ssr" name="aiturec:title" content="Лучшая приоритизация HTTP/2 для ускорения веба" data-vmid="aiturec:title"><meta data-vue-meta="ssr" name="description" content="HTTP/2 обещал заметно ускорить веб, и Cloudflare давным-давно развернула доступ по HTTP/2 для всех клиентов. Но одна особенность HTTP/2, приоритизация, не соответствовала ожиданиям. Не потому, что..." data-vmid="description"><meta data-vue-meta="ssr" itemprop="description" content="HTTP/2 обещал заметно ускорить веб, и Cloudflare давным-давно развернула доступ по HTTP/2 для всех клиентов. Но одна особенность HTTP/2, приоритизация, не соответствовала ожиданиям. Не потому, что..." data-vmid="description:itemprop"><meta data-vue-meta="ssr" property="og:description" content="HTTP/2 обещал заметно ускорить веб, и Cloudflare давным-давно развернула доступ по HTTP/2 для всех клиентов. Но одна особенность HTTP/2, приоритизация, не соответствовала ожиданиям. Не потому, что..." data-vmid="og:description"><meta data-vue-meta="ssr" name="twitter:description" content="HTTP/2 обещал заметно ускорить веб, и Cloudflare давным-давно развернула доступ по HTTP/2 для всех клиентов. Но одна особенность HTTP/2, приоритизация, не соответствовала ожиданиям. Не потому, что..." data-vmid="twitter:description"><meta data-vue-meta="ssr" property="aiturec:description" content="HTTP/2 обещал заметно ускорить веб, и Cloudflare давным-давно развернула доступ по HTTP/2 для всех клиентов. Но одна особенность HTTP/2, приоритизация, не соответствовала ожиданиям. Не потому, что..." data-vmid="aiturec:description"><meta data-vue-meta="ssr" itemprop="image" content="https://habr.com/share/publication/452020/33e828e091ca427abb36ac4fd4943a66/" data-vmid="image:itemprop"><meta data-vue-meta="ssr" property="og:image" content="https://habr.com/share/publication/452020/33e828e091ca427abb36ac4fd4943a66/" data-vmid="og:image"><meta data-vue-meta="ssr" property="aiturec:image" content="https://habr.com/share/publication/452020/33e828e091ca427abb36ac4fd4943a66/" data-vmid="aiturec:image"><meta data-vue-meta="ssr" name="twitter:image" content="https://habr.com/share/publication/452020/33e828e091ca427abb36ac4fd4943a66/" data-vmid="twitter:image"><meta data-vue-meta="ssr" property="vk:image" content="https://habr.com/share/publication/452020/33e828e091ca427abb36ac4fd4943a66/" data-vmid="vk:image"><meta data-vue-meta="ssr" property="aiturec:item_id" content="452020" data-vmid="aiturec:item_id"><meta data-vue-meta="ssr" property="aiturec:datetime" content="2019-05-15T17:25:52.000Z" data-vmid="aiturec:datetime"><meta data-vue-meta="ssr" property="og:type" content="article" data-vmid="og:type"><meta data-vue-meta="ssr" property="og:locale" content="ru_RU" data-vmid="og:locale"><meta data-vue-meta="ssr" property="og:image:width" content="1200" data-vmid="og:image:width"><meta data-vue-meta="ssr" property="og:image:height" content="630" data-vmid="og:image:height">
+  <link data-vue-meta="ssr" href="https://habr.com/ru/rss/post/452020/?fl=ru" type="application/rss+xml" title="" rel="alternate" name="rss"><link data-vue-meta="ssr" href="https://habr.com/ru/post/452020/" rel="canonical" data-vmid="canonical"><link data-vue-meta="ssr" data-vmid="hreflang"><link data-vue-meta="ssr" image_src="image" href="https://habr.com/share/publication/452020/33e828e091ca427abb36ac4fd4943a66/" data-vmid="image:href">
+  <meta name="apple-mobile-web-app-status-bar-style" content="#303b44">
+  <meta name="msapplication-TileColor" content="#629FBC">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="16x16"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-16.png"
+  >
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="32x32"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-32.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="76x76"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-76.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="120x120"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="152x152"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-152.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="180x180"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-180.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="256x256"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-256.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1136x640.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2436x1125.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1792x828.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_828x1792.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1334x750.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2208x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1125x2436.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2208.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2732x2048.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2688x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2224x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_750x1334.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x2732.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2388x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2224.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_640x1136.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2388.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x1536.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1536x2048.png"
+  >
+  <link
+    rel="mask-icon"
+    color="#77a2b6"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.svg"
+  >
+  <link
+    crossorigin="use-credentials"
+    href="/manifest.webmanifest"
+    rel="manifest"
+  >
+</head>
+<body>
+
+
+<div id="app" data-server-rendered="true" data-async-called="true"><div class="tm-layout__wrapper"><!----> <div></div> <!----> <header class="tm-header"><div class="tm-page-width"><div class="tm-header__container"><!----> <span class="tm-header__logo-wrap"><a href="/ru/" class="tm-header__logo tm-header__logo_ru"><svg height="16" width="16" class="tm-svg-img tm-header__icon"><title>Хабр</title> <use xlink:href="/img/habr-logo-ru.svg#logo"></use></svg></a> <span class="tm-header__beta-sign" style="display:none;">β</span></span> <div class="tm-dropdown tm-header__projects"><div class="tm-dropdown__head"><button class="tm-header__dropdown-toggle"><svg height="16" width="16" class="tm-svg-img tm-header__icon tm-header__icon_dropdown"><title>Открыть список</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#arrow-down"></use></svg></button></div> <!----></div> <a href="/ru/sandbox/start/" class="tm-header__become-author-btn">
+            Как стать автором
+          </a> <div class="tm-feature tm-header__feature tm-feature_variant-inline"><!----></div> <!----> <!----></div></div></header> <div class="tm-layout"><div class="tm-page-progress-bar"></div> <div data-menu-sticky="true" class="tm-base-layout__header tm-base-layout__header_is-sticky"><div class="tm-page-width"><div class="tm-base-layout__header-wrapper"><div class="tm-main-menu"><div class="tm-main-menu__section"><nav class="tm-main-menu__section-content"><!----> <a href="/ru/all/" class="tm-main-menu__item">
+        Все потоки
+      </a> <a href="/ru/flows/develop/" class="tm-main-menu__item">
+          Разработка
+        </a><a href="/ru/flows/admin/" class="tm-main-menu__item">
+          Администрирование
+        </a><a href="/ru/flows/design/" class="tm-main-menu__item">
+          Дизайн
+        </a><a href="/ru/flows/management/" class="tm-main-menu__item">
+          Менеджмент
+        </a><a href="/ru/flows/marketing/" class="tm-main-menu__item">
+          Маркетинг
+        </a><a href="/ru/flows/popsci/" class="tm-main-menu__item">
+          Научпоп
+        </a></nav></div></div> <div class="tm-header-user-menu tm-base-layout__user-menu"><a href="/ru/search/" class="tm-header-user-menu__item tm-header-user-menu__search"><svg height="24" width="24" class="tm-svg-img tm-header-user-menu__icon tm-header-user-menu__icon_search tm-header-user-menu__icon_dark"><title>Поиск</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#search"></use></svg></a> <!----> <!----> <!----> <div class="tm-header-user-menu__item tm-header-user-menu__user_desktop"><div class="tm-dropdown"><div class="tm-dropdown__head"><svg height="24" width="24" data-test-id="menu-toggle-guest" class="tm-svg-img tm-header-user-menu__icon"><title>Профиль</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#header-user"></use></svg> <!----></div> <!----></div> <!----></div> <!----></div></div></div></div> <!----> <div class="tm-page-width"></div> <main class="tm-layout__container"><div hl="ru" data-async-called="true" class="tm-page"><div class="tm-page-width"><!----> <div class="tm-page__wrapper"><div class="tm-page__main tm-page__main_has-sidebar"><div class="pull-down"><div class="pull-down__header" style="height:0px;"><div class="pull-down__content" style="bottom:10px;"><svg height="24" width="24" class="tm-svg-img pull-down__arrow"><title>Обновить</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#pull-arrow"></use></svg></div></div> <div class="tm-article-presenter"> <div class="tm-article-presenter__body"><div class="tm-misprint-area"><div class="tm-misprint-area__wrapper"><article class="tm-article-presenter__content tm-article-presenter__content_narrow"><div class="tm-article-presenter__header"> <div class="tm-article-snippet tm-article-presenter__snippet"><div class="tm-article-snippet__meta-container"><div class="tm-article-snippet__meta"><span class="tm-user-info tm-article-snippet__author"><a href="/ru/users/m1rko/" title="m1rko" class="tm-user-info__userpic"><div class="tm-entity-image"><img alt="" height="24" loading="lazy" src="//habrastorage.org/r/w32/getpro/habr/avatars/4ec/bd0/85d/4ecbd085d692835a931d03174ff19539.png" width="24" class="tm-entity-image__pic"></div></a> <span class="tm-user-info__user"><a href="/ru/users/m1rko/" class="tm-user-info__username">
+      m1rko
+    </a> </span></span> <span class="tm-article-snippet__datetime-published"><time datetime="2019-05-15T17:25:52.000Z" title="2019-05-15, 20:25">15  мая  2019 в 20:25</time></span></div> <!----></div> <h1 lang="ru" class="tm-article-snippet__title tm-article-snippet__title_h1"><span>Лучшая приоритизация HTTP/2 для ускорения веба</span></h1> <div class="tm-article-snippet__hubs"><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/webdev/" class="tm-article-snippet__hubs-item-link"><span>Разработка веб-сайтов</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/html5/" class="tm-article-snippet__hubs-item-link"><span>HTML</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/itstandarts/" class="tm-article-snippet__hubs-item-link"><span>IT-стандарты</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/browsers/" class="tm-article-snippet__hubs-item-link"><span>Браузеры</span> <!----></a></span></div> <div class="tm-article-snippet__labels"><div class="tm-article-snippet__label"><span>
+        Перевод
+      </span></div></div> <!----> <!----></div></div> <div class="tm-article-presenter__origin"><a href="https://blog.cloudflare.com/better-http-2-prioritization-for-a-faster-web/" target="_blank" class="tm-article-presenter__origin-link">
+                Автор оригинала:
+                <span>
+                  Patrick Meenan
+                </span></a></div> <div data-gallery-root="" lang="ru" class="tm-article-body"><div id="post-content-body" class="article-formatted-body article-formatted-body_version-1"><div xmlns="http://www.w3.org/1999/xhtml"><div style="text-align:center;"><img src="/img/image-loader.svg" data-src="https://habrastorage.org/getpro/habr/post_images/57d/5cf/dbe/57d5cfdbe917c7b464a249fb187b3ffd.png"/></div><br/>
+HTTP/2 обещал заметно ускорить веб, и Cloudflare давным-давно развернула доступ по HTTP/2 для всех клиентов. Но одна особенность HTTP/2, приоритизация, не соответствовала ожиданиям. Не потому, что она принципиально сломана, а из-за реализации в браузерах.<br/>
+<br/>
+Сегодня Cloudflare предлагает изменить приоритизацию HTTP/2, что даёт нашим серверам контроль над решениями о приоритизации, которые действительно заметно ускоряют интернет.<br/>
+<br/>
+Исторически именно браузер контролирует, как и когда загружать веб-контент. Сегодня для всех платных планов мы вносим радикальные изменения в эту модель. Они передают контроль напрямую владельцу сайта. На вкладке «Скорость» в панели мониторинга Cloudflare клиенты могут включить «Расширенную приоритизацию HTTP/2»: она переопределяет настройки браузера по умолчанию на улучшенную схему планирования, что значительно ускоряет доступ для посетителей (в некоторых случаях мы видели ускорение на 50%). С воркерами Cloudflare владельцы сайтов могут пойти ещё дальше и полностью подобрать настройки под свои конкретные нужды.<br/>
+<a name="habracut"></a><br/>
+<h1>Нынешняя ситуация</h1><br/>
+Веб-страницы состоят из <a href="https://discuss.httparchive.org/t/whats-the-distribution-of-requests-per-page/21/10?u=patmeenan">десятков (иногда сотен)</a> отдельных ресурсов, которые загружаются и собираются браузером в конечный отображаемый контент. Это включает в себя видимый контент, с которым взаимодействует пользователь (HTML, CSS, изображения), а также логику приложения (JavaScript) для самого сайта, рекламу, аналитику и маркетинговые следящие маячки. С точки зрения пользователя очень важна последовательность, в которой загружаются эти ресурсы: это влияет на время, когда он увидит содержимое и сможет взаимодействовать со страницей.<br/>
+<br/>
+Браузер — это, по сути, движок обработки HTML, который проходит через HTML-документ и следует инструкциям по порядку: от начала до конца HTML, выстраивая страницу по мере продвижения. Ссылки на таблицы стилей (CSS) сообщают браузеру, как стилизовать содержимое страницы, и браузер задержит отображение контента до тех пор, пока не загрузит таблицу стилей. У скриптов на странице могут быть разные варианты поведения. Если скрипт помечен как «асинхронный» или «отложенный», браузер может продолжать обработку документа и просто запустить скрипт, когда он станет доступен. Если скрипт не помечен как асинхронный или отложенный, браузер <a href="https://html.spec.whatwg.org/">ДОЛЖЕН</a> прекратить обработку документа до тех пор, пока скрипт не загрузится и не выполнится. Такие скрипты называются «блокирующими», поскольку они блокируют браузеру возможность продолжать обработку документа.<br/>
+<br/>
+HTML-документ делится на две части. Заголовок документа &lt;head> находится в начале и содержит таблицы стилей, скрипты и другие инструкции для браузера, необходимые для отображения содержимого. После заголовка идёт тело документа &lt;body>, оно содержит фактический контент, отображаемый в окне браузера (хотя скрипты и таблицы стилей также могут быть в теле). Пока браузер не доберётся до тела документа, пользователю нечего показывать, и страница останется пустой. Поэтому важно как можно быстрее обработать заголовок. Если вам интересны подробности, на сайте <i>HTML5 Rocks</i> есть <a href="https://www.html5rocks.com/en/tutorials/internals/howbrowserswork/">отличный учебник</a>, как работают браузеры.<br/>
+<br/>
+Браузер обычно отвечает за порядок загрузки различных ресурсов, необходимых для построения страницы и дальнейшей обработки документа. В HTTP/1.x действуют ограничения, сколько объектов браузер может запросить с любого сервера за один раз (обычно 6 подключений и только один ресурс за раз на соединение), поэтому порядок запросов строго контролируется браузером. В HTTP/2 ситуация совершенно иная. Браузер может запросить сразу все ресурсы (по крайней мере, как только узнает о них), и предоставляет серверу подробные инструкции, как доставлять эти ресурсы.<br/>
+<br/>
+<h1>Оптимальный порядок загрузки ресурсов</h1><br/>
+Для большинства частей в цикле загрузки страницы есть оптимальный порядок, который максимально ускоряет доступность страницы для пользователя (а разница между оптимальным и неоптимальным порядком загрузки может достигать 50% и более).<br/>
+<br/>
+Как описано выше, прежде чем браузер сможет отобразить какой-либо контент, его блокируют CSS и JavaScript в разделе <code>&lt;head></code>. На этом этапе выгоднее задействовать 100% канала для загрузки блокирующих ресурсов, а не загружать их по порядку, как они прописаны в HTML-коде. Это позволяет браузеру анализировать и запускать каждый элемент во время загрузки следующего блокирующего ресурса, что создаёт оптимальный конвейер.<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/getpro/habr/post_images/db9/e18/fbe/db9e18fbe00d27755a152a8deabbcaa4.png"/><br/>
+<br/>
+Время загрузки скриптов при параллельной или последовательной загрузке не отличается, но при последовательной загрузке первый скрипт можно обработать и выполнить во время загрузки второго.<br/>
+<br/>
+После загрузки блокирующих ресурсов ситуация становится немного интереснее. Здесь оптимальная загрузка может зависеть от конкретного сайта или даже бизнес-приоритетов (выбор пользовательского контента или рекламы, или аналитики и т. д.). Отдельная проблема со шрифтами, поскольку браузер обнаруживает нужные шрифты после применения таблицы стилей к отображаемому контенту. Поэтому к моменту, когда браузер узнает о шрифте, необходимо отобразить текст, который уже готов к выводу на экран. Любые задержки в загрузке шрифта приводят к отсутствию текста на экране (или текст отображается неправильным шрифтом).<br/>
+<br/>
+Как правило, необходимо учитывать некоторые компромиссы:<br/>
+<br/>
+<ul>
+<li>Пользовательские шрифты и изображения в видимой части страницы (viewport) следует загрузить как можно быстрее. Они напрямую влияют на визуальный опыт пользователя при загрузке страницы.<br/>
+</li>
+<li>Неблокирующий JavaScript следует загружать последовательно относительно других ресурсов JavaScript, чтобы выполнение каждого из них можно было поставить в конвейер. JavaScript может включать пользовательскую логику приложений, а также маячки отслеживания для аналитики и маркетинга, а их задержка может привести к снижению показателей, отслеживаемых бизнесом.<br/>
+</li>
+<li>Изображения можно загружать параллельно. Первые несколько байт файла изображения содержат его размеры, что может понадобиться для макета браузера, а параллельная загрузка прогрессивных изображений может обеспечить визуальную завершённость после передачи примерно всего 50% общего объёма.</li>
+</ul><br/>
+С учётом компромиссов, в большинстве случаев хорошо работает такая стратегия:<br/>
+<br/>
+<ul>
+<li>Пользовательские шрифты загружаются последовательно и делят доступную полосу пропускания с изображениями в области видимости.<br/>
+</li>
+<li>Видимые изображения загружаются параллельно, разделяя между собой часть полосы пропускания, выделенную на них.<br/>
+</li>
+<li>Когда больше нет шрифтов или видимых изображений:<br/>
+<ul>
+<li>Неблокирующие скрипты загружаются последовательно и разделяют доступную полосу пропускания с невидимыми изображениями (которые находятся вне области видимости).<br/>
+</li>
+<li>Невидимые изображения загружаются параллельно, разделяя между собой часть полосы пропускания, выделенную на них.</li>
+</ul></li>
+</ul><br/>
+Таким образом, видимый пользователю контент загружается как можно быстрее, логика приложения задерживается по минимуму, а невидимые изображения загружаются таким образом, чтобы как можно быстрее завершить макет.<br/>
+<br/>
+<h1>Пример</h1><br/>
+Для иллюстрации используем упрощённую страницу категории продукта с типичного сайта электронной коммерции:<br/>
+<br/>
+<ul>
+<li><b>Синий</b> — HTML-файл самой страницы.<br/>
+</li>
+<li><b>Зелёный</b> — Одна внешняя таблица стилей (CSS-файл).<br/>
+</li>
+<li><b>Оранжевый</b> — Четыре внешних скрипта (JavaScript). Два блокирующих скрипта в начале страницы и два асинхронных. Блокирующие скрипты показаны более тёмным оттенком оранжевого.<br/>
+</li>
+<li><b>Красный</b> — один пользовательский веб-шрифт.<br/>
+</li>
+<li><b>Фиолетовый</b> — 13 изображений. В окне просмотра отображаются логотип страницы и четыре изображения продукта, ещё 8 изображений продукта требуют прокрутки. Пять видимых изображениях обозначены более тёмным оттенком фиолетового.</li>
+</ul><br/>
+Для простоты предположим, что у всех ресурсов одинаковый размер и каждый загружается за 1 секунду. Загрузка всех ресурсов занимает в общей сложности 20 секунд, но крайне важны порядок и метод загрузки.<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/getpro/habr/post_images/fbd/07b/58a/fbd07b58a4c8aeff2a758ad1946d8523.png"/><br/>
+<br/>
+Вот как будет выглядеть в браузере оптимальная загрузка ресурсов:<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/getpro/habr/post_images/8b2/6a8/2cd/8b26a82cdb5c546e9005200e5528b988.gif"/><br/>
+<br/>
+<ul>
+<li>Страница пуста в течение первых 4 секунд, пока загружаются HTML, CSS и блокирующие скрипты: все они используют 100% соединения.<br/>
+</li>
+<li>На 4-секундной отметке фон и структура страницы отображаются без текста или изображений.<br/>
+</li>
+<li>Через секунду, на отметке в 5 секунд, отображается текст страницы.<br/>
+</li>
+<li>В промежутке 5−10 секунд загружаются изображения, сначала размытые, но очень быстро они становятся чёткими. Примерно на 7 секунде результат почти неотличим от окончательной версии.<br/>
+</li>
+<li>На отметке 10 секунд завершена загрузка всего визуального содержимого в видимой части страницы.<br/>
+</li>
+<li>В течение следующих двух секунд загружается и выполняется асинхронный JavaScript, выполняя любую некритическую логику (аналитика, маркетинговые теги и т. д.).<br/>
+</li>
+<li>В течение последних 8 секунд загружаются остальные изображения на случай прокрутки страницы пользователем.</li>
+</ul><br/>
+<h1>Текущая приоритизация в браузерах</h1><br/>
+Все текущие браузерные движки реализуют <a href="https://calendar.perfplanet.com/2018/http2-prioritization/">различные стратегии приоритизации</a>, ни одна из которых не является оптимальной.<br/>
+<br/>
+<b>Microsoft Edge и Internet Explorer</b> <a href="https://calendar.perfplanet.com/2018/http2-prioritization/#microsoft_edge_internet_explorer">не поддерживают приоритизацию</a>, поэтому работают с настройками HTTP/2 по умолчанию, который всё загружает параллельно, равномерно распределяя пропускную способность между всеми ресурсами. Microsoft Edge в будущих версиях переходит к использованию движка Chromium, что может улучшить ситуацию. Но пока в нашем примере браузер большую часть времени застрянет в заголовке страницы, так как изображения замедляют передачу блокирующих скриптов и таблиц стилей.<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/getpro/habr/post_images/e9c/844/a65/e9c844a65472a56d92cb37cd27f2f035.png"/><br/>
+<br/>
+Визуально это приводит к довольно болезненному опыту: пользователь в течение 19 секунд смотрит на пустой экран, а затем происходит задержка на 1 секунду для отображения текста. При просмотре анимации внизу будьте терпеливы, потому что в течение 19 секунд может показаться, что на пустом экране ничего не происходит (хотя так и есть):<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/getpro/habr/post_images/6c9/fae/539/6c9fae539ae1d3c99570cf53af415be4.gif"/><br/>
+<br/>
+<b>Safari</b> <a href="https://calendar.perfplanet.com/2018/http2-prioritization/#safari">загружает все ресурсы параллельно</a>, разделяя пропускную способность на основе их важности, по мнению Safari (блокирующие ресурсы, такие как скрипты и таблицы стилей, важнее, чем изображения). Изображения загружаются параллельно, но также одновременно с блокирующим контентом.<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/getpro/habr/post_images/c75/a7d/f05/c75a7df05716f5706aa4b037774733d2.png"/><br/>
+<br/>
+Хотя Safari похож на Edge в том смысле, что всё загружается одновременно, но выделение большей полосы для блокирующих ресурсов позволяет отобразить контент намного раньше:<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/getpro/habr/post_images/f0c/840/5a1/f0c8405a1b6ddc40645ab7985e28a5eb.gif"/><br/>
+<br/>
+<ul>
+<li>Примерно через 8 секунд завершается загрузка таблицы стилей и скриптов, поэтому можно начинать рендеринг страницы. Поскольку изображения загружались параллельно, их тоже можно отобразить частично (размыто для прогрессивных изображений). Это всё ещё в два раза медленнее оптимального сценария, но намного лучше, чем в Edge.<br/>
+</li>
+<li>Примерно через 11 секунд загружается шрифт. Можно отобразить текст. К этому моменту загружается больше данных для изображений, и они становятся немного резче. Это сопоставимо с ситуацией в районе 7-секундной отметки для оптимального сценария загрузки.<br/>
+</li>
+<li>В течение оставшихся 9 секунд изображения становятся более чёткими, поскольку загружается больше данных, пока, наконец, процесс не завершается за 20 секунд.</li>
+</ul><br/>
+<b>Firefox</b> создаёт дерево зависимостей, которое группирует ресурсы, а затем планирует группы либо загружать одну за другой, либо совместно разделить пропускную способность между группами. В пределах данной группы ресурсы совместно используют пропускную способность и загружаются одновременно. Изображения планируется загружать после таблиц стилей, блокирующих рендеринг, и загружать параллельно, но сценарии и таблицы стилей, блокирующие рендеринг, также загружаются параллельно и не получают преимуществ конвейерной обработки.<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/getpro/habr/post_images/870/e6d/83c/870e6d83c673b9c706dac49c78d3848d.png"/><br/>
+<br/>
+В нашем примере это происходит немного быстрее, чем в Safari, так как изображения ждут завершения загрузки таблиц стилей:<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/getpro/habr/post_images/bd2/806/b55/bd2806b55e830bd4c2a7e08bb1b18ce4.gif"/><br/>
+<br/>
+<ul>
+<li>На отметке 6 секунд исходный контент страницы отображается с фоном и размытыми версиями изображений продукта (по сравнению с 8 секундами у Safari и 4 секундами в оптимальном случае).<br/>
+</li>
+<li>На 8 секунде загрузился шрифт, и можно отобразить текст вместе с немного более чёткими изображениями продукта (по сравнению с 11 секундами у Safari и 7 секундами в оптимальном случае).<br/>
+</li>
+<li>В течение оставшихся 12 секунд изображения становятся более чёткими по мере загрузки оставшегося содержимого.</li>
+</ul><br/>
+<b>Chrome</b> (и все браузеры на основе Chromium) приоритизирует ресурсы по <a href="https://calendar.perfplanet.com/2018/http2-prioritization/#chrome">списку</a>. Это очень хорошо работает для блокирующих ресурсов, которые оптимально загружать по порядку, но не так хорошо для изображений. Каждое изображение загружается до 100% перед началом загрузки следующего.<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/getpro/habr/post_images/e22/14d/4e0/e2214d4e04fab810f0a4398fe02434c1.png"/><br/>
+<br/>
+На практике это почти оптимальный сценарий загрузки, с той лишь разницей, что изображения загружаются по одному, а не параллельно:<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/getpro/habr/post_images/91e/76c/d1d/91e76cd1d814aef138b35345eda46d82.gif"/><br/>
+<br/>
+<ul>
+<li>До отметки 5 секунд загрузка Chrome идентична оптимальному сценарию, отображая фон на 4-й секунде и текстовое содержимое на 5-й.<br/>
+</li>
+<li>В течение следующих 5 секунд изображения области видимости загружаются по одному, пока процесс не завершится на отметке 10 секунд (по сравнению с оптимальным сценарием, когда они отображаются в немного размытом виде на отметке 7 секунд и становятся более чёткими в течение оставшихся трёх секунд).<br/>
+</li>
+<li>После завершения визуальной части страницы за 10 секунд (идентично оптимальному сценарию), оставшиеся 10 секунд тратятся на запуск асинхронных скриптов и загрузку скрытых изображений (так же, как и в оптимальном сценарии).</li>
+</ul><br/>
+<h1>Визуальное сравнение</h1><br/>
+Визуальная разница довольно сильно отличается, хотя технически загрузка всего контента занимает одинаковое время:<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/getpro/habr/post_images/62e/2a1/d5f/62e2a1d5f10b801af61992517d7f5a5a.gif"/><br/>
+<br/>
+<h1>Приоритизация на стороне сервера</h1><br/>
+Приоритизация HTTP/2 запрашивается клиентом (браузером), и сервер должен решить, что делать на основе запроса. <a href="https://github.com/andydavies/http2-prioritization-issues">Большое количество серверов не вообще не поддерживают эту функцию</a>, а остальные выполняют запрос клиента. Другой вариант — принять решение о наилучшей приоритизации на стороне сервера с учётом запроса клиента.<br/>
+<br/>
+Согласно <a href="https://http2.github.io/http2-spec/#StreamPriority">спецификации</a>, приоритизация HTTP/2 — это дерево зависимостей, которое требует полного знания всех текущих запросов, чтобы иметь возможность приоритизировать ресурсы друг относительно друга. Это позволяет реализовать невероятно сложные стратегии, но такое трудно хорошо реализовать на стороне браузера или сервера (о чём свидетельствуют различные стратегии браузера и различные уровни поддержки сервера). Чтобы упростить управление приоритизацией, мы разработали более простую схему, которая по-прежнему обладает всей гибкостью, необходимой для оптимального планирования.<br/>
+<br/>
+Схема приоритизации Cloudflare состоит из 64 приоритетных «уровней», а внутри каждого уровня есть группы ресурсов, которые определяют, как разделить между собой соединение:<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/getpro/habr/post_images/ba5/7e5/efa/ba57e5efa56119a58bbd39596da3f9ce.png"/><br/>
+<br/>
+Сначала скачиваются все ресурсы на более высоком уровне приоритета, затем происходит переход на более низкий уровень.<br/>
+<br/>
+В пределах заданного уровня приоритета существует три различных группы параллелизма (concurrency):<br/>
+<br/>
+<ul>
+<li><b>0</b>: все ресурсы в группе “0” отправляются последовательно в том порядке, в котором они были запрошены, используя 100% пропускной способности. Только после загрузки всех ресурсов группы “0” рассматриваются другие группы на том же уровне.<br/>
+</li>
+<li><b>1</b>: все ресурсы в группе параллелизма “1” отправляются последовательно в том порядке, в котором были запрошены. Доступная полоса пропускания равномерно распределяется между группой параллелизма “1” и группой параллелизма “n”.<br/>
+</li>
+<li><b>n</b>: ресурсы в группе параллелизма “n” передаются параллельно, разделяя между собой доступную пропускную способность.</li>
+</ul><br/>
+На практике группа параллелизма “0” полезна для критического контента, который необходимо обрабатывать последовательно (скрипты, CSS и т. д.). Группа “1” полезна для менее важного контента, который может совместно использовать пропускную способность с другими ресурсами, но где сами ресурсы по-прежнему выигрывают от последовательной обработки (асинхронные скрипты, непрогрессивные изображения и т. д.). Группа параллелизма “n” полезна для ресурсов, которые выигрывают от параллельной обработки (прогрессивные изображения, видео, аудио и т. д.).<br/>
+<br/>
+<h1>Приоритизация по умолчанию в Cloudflare</h1><br/>
+При опции расширенной приоритизации реализуется «оптимальный» порядок загрузки ресурсов, описанный выше. Применяемые конкретные приоритеты выглядят следующим образом:<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/getpro/habr/post_images/b89/e96/e4f/b89e96e4f4534f5df00d732e97b5db62.png"/><br/>
+<br/>
+Эта схема позволяет последовательно отправлять ресурсы, блокирующие рендеринг, затем параллельно отправлять видимые изображения, а потом — остальную часть содержимого страницы с некоторым уровнем совместного использования полосы для балансировки загрузки приложения и содержимого. Предостережение <i>* If Detectable</i> заключается в том, что не все браузеры различают различные типы таблиц стилей и скриптов, но всё равно это будет значительно быстрее во всех случаях. Ускорение на 50%, особенно для посетителей Edge и Safari, не станет чем-то необычным:<br/>
+<br/>
+<a href="https://habrastorage.org/webt/u_/1n/px/u_1npxrzhg0svmgdyzelnamxj84.png"><img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/u_/1n/px/u_1npxrzhg0svmgdyzelnamxj84.png"/></a><br/>
+<br/>
+<h1>Настройка приоритизации с воркерами</h1><br/>
+Более быстрая работа по умолчанию — это отлично, но всё становится действительно интересным благодаря возможности настройки приоритизации с поддержкой Cloudflare Workers, так что сайты могут переопределить приоритет по умолчанию для ресурсов или реализовать свои собственные схемы приоритизации.<br/>
+<br/>
+Если воркер добавляет к ответу заголовок <code>cf-priority</code>, то граничные серверы Cloudflare применят указанный приоритет и параллелизм. Формат заголовка — &lt;priority>/&lt;concurrency>, поэтому заголовок <code>response.headers.set('cf-priority', “30/0”);</code> установит для данного ответа приоритет 30 и параллелизм 0. Аналогично, “30/1” установит параллелизм “1”, а “30/n” установит параллелизм на n.<br/>
+<br/>
+С такой гибкостью сайт может настроить произвольный приоритет ресурсов для своих потребностей. Например, повысить приоритет некоторых важных асинхронных скриптов или главных изображений: они скачаются ещё до того, как браузер определил, что они находятся в зоне видимости.<br/>
+<br/>
+Для информирования о решениях приоритизации рантайм воркеров также указывает запрошенную браузером информацию о приоритизации в объекте запроса, который передаётся приёмнику событий воркера (request.cf.requestPriority). Входящие приоритеты представляют собой список атрибутов, разделённых точкой с запятой. Он выглядит примерно так: <code>weight=192;exclusive=0;group=3;group-weight=127</code>.<br/>
+<br/>
+<ul>
+<li><b>weight</b>: вес для приоритизации HTTP/2.<br/>
+</li>
+<li><b>exclusive</b>: эксклюзивный флаг HTTP/2 (1 для браузеров на основе Chromium, 0 для других).<br/>
+</li>
+<li><b>group</b>: идентификатор потока HTTP/2 для группы запросов (ненулевой для Firefox).<br/>
+</li>
+<li><b>group-weight</b>: вес HTTP/2 для группы запросов (ненулевой для Firefox).</li>
+</ul><br/>
+<h1>Это только начало</h1><br/>
+Способность настраивать и контролировать приоритетность ответов является основным строительным блоком для большой будущей работы. Мы намерены внедрять собственные передовые оптимизации поверх этой, но с поддержкой воркеров все сайты и исследователи могут экспериментировать с различными стратегиями приоритизации. Через Apps Marketplace компании также могут создавать новые сервисы оптимизации поверх рабочей платформы и предоставлять их для использования другим сайтам.<br/>
+<br/>
+Если вы находитесь на плане Pro или выше, перейдите на вкладку «Скорость» в панели мониторинга Cloudflare и включите «расширенную приоритизацию HTTP/2» для ускорения своего сайта.<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/getpro/habr/post_images/386/d53/276/386d532767b6396ee628a7e0eb837282.png"/></div></div> <!----> <!----></div> <div class="tm-article-presenter__meta"><div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Теги:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5BHTTP%2F2%5D" class="tm-tags-list__link">HTTP/2</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5B%D0%BF%D1%80%D0%B8%D0%BE%D1%80%D0%B8%D1%82%D0%B8%D0%B7%D0%B0%D1%86%D0%B8%D1%8F%5D" class="tm-tags-list__link">приоритизация</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5B%D0%B1%D0%BB%D0%BE%D0%BA%D0%B8%D1%80%D1%83%D1%8E%D1%89%D0%B8%D0%B9%20%D0%BA%D0%BE%D0%BD%D1%82%D0%B5%D0%BD%D1%82%5D" class="tm-tags-list__link">блокирующий контент</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5B%D0%BF%D0%BE%D1%80%D1%8F%D0%B4%D0%BE%D0%BA%20%D0%B7%D0%B0%D0%B3%D1%80%D1%83%D0%B7%D0%BA%D0%B8%5D" class="tm-tags-list__link">порядок загрузки</a></li></ul></div> <div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Хабы:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/hub/webdev/" class="tm-hubs-list__link">
+    Разработка веб-сайтов
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/html5/" class="tm-hubs-list__link">
+    HTML
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/itstandarts/" class="tm-hubs-list__link">
+    IT-стандарты
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/browsers/" class="tm-hubs-list__link">
+    Браузеры
+  </a></li></ul></div></div></article></div> <!----></div> <div class="tm-article-sticky-panel"><div class="tm-data-icons tm-article-sticky-panel__icons"><div class="tm-article-rating tm-data-icons__item"><div class="tm-votes-meter tm-article-rating__votes-switcher"><svg height="16" width="16" class="tm-svg-img tm-votes-meter__icon tm-votes-meter__icon_medium"><title>Всего голосов 18: ↑18 и ↓0</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-rating"></use></svg> <span title="Всего голосов 18: ↑18 и ↓0" class="tm-votes-meter__value tm-votes-meter__value_positive tm-votes-meter__value_medium">+18</span></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----> <span title="Количество просмотров" class="tm-icon-counter tm-data-icons__item"><svg height="16" width="16" class="tm-svg-img tm-icon-counter__icon"><title>Просмотры</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-views"></use></svg> <span class="tm-icon-counter__value">7.8K</span></span> <button title="Добавить в закладки" type="button" class="bookmarks-button tm-data-icons__item"><span title="Добавить в закладки" class="tm-svg-icon__wrapper bookmarks-button__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Добавить в закладки</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-favorite"></use></svg></span> <span title="Количество пользователей, добавивших публикацию в закладки" class="bookmarks-button__counter">
+    82
+  </span></button> <!----> <div title="Поделиться" class="tm-sharing tm-data-icons__item"><button type="button" class="tm-sharing__button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="tm-sharing__icon"><path fill="currentColor" d="M10.33.275l9.047 7.572a.2.2 0 010 .306l-9.048 7.572a.2.2 0 01-.328-.153V11c-8 0-9.94 6-9.94 6S-1 5 10 5V.428a.2.2 0 01.328-.153z"></path></svg></button> <!----></div> <DIV class="v-portal" style="display:none;"></DIV></div> </div></div> <!----> <!----> <div class="tm-article-presenter__footer"><div class="tm-article-blocks"><!----> <section class="tm-block tm-block_spacing-bottom"><!----> <div class="tm-block__body tm-block__body_variant-balanced"><div class="tm-article-author"> <div class="tm-user-card tm-article-author__user-card tm-user-card_variant-article"><div class="tm-user-card__info-container"><div class="tm-user-card__header"><div class="tm-user-card__header-data"><a href="/ru/users/m1rko/" class="tm-user-card__userpic tm-user-card__userpic_size-40"><div class="tm-entity-image"><img alt="" src="//habrastorage.org/getpro/habr/avatars/4ec/bd0/85d/4ecbd085d692835a931d03174ff19539.png" class="tm-entity-image__pic"></div></a> <div class="tm-user-card__meta"><div title=" 1501 голос " class="tm-karma tm-user-card__karma"><div class="tm-karma__votes tm-karma__votes_positive">
+    1229.5
+  </div> <div class="tm-karma__text">
+    Карма
+  </div></div> <div title="Рейтинг пользователя" class="tm-rating tm-user-card__rating"><div class="tm-rating__header"> <div class="tm-rating__counter">0</div></div> <div class="tm-rating__text">
+    Рейтинг
+  </div></div></div></div></div> <div class="tm-user-card__info tm-user-card__info_variant-article"><div class="tm-user-card__title tm-user-card__title_variant-article"><span class="tm-user-card__name tm-user-card__name_variant-article">Анатолий Ализар</span> <a href="/ru/users/m1rko/" class="tm-user-card__nickname tm-user-card__nickname_variant-article">
+          @m1rko
+        </a> <!----></div> <p class="tm-user-card__short-info tm-user-card__short-info_variant-article">автор, переводчик, редактор</p></div></div> <div class="tm-user-card__buttons tm-user-card__buttons_variant-article"><!----> <!----> <!----> <!----> <!----></div></div> <!----></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----></section> <div class="tm-article-blocks__comments"><div class="tm-article-page-comments"><div class="tm-article-comments-counter-link tm-article-comments-counter-button"><a href="/ru/post/452020/comments/" class="tm-article-comments-counter-link__link tm-article-comments-counter-link__link_button-style"><svg height="16" width="16" class="tm-svg-img tm-article-comments-counter-link__icon tm-article-comments-counter-link__icon_contrasted"><title>Комментарии</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-comments"></use></svg> <span class="tm-article-comments-counter-link__value tm-article-comments-counter-link__value_contrasted">
+       Комментарии 7 
+    </span></a> <!----></div></div></div> <div class="tm-ad-banner__container tm-page-article__banner"><!----> <div id="articleBottomBanner" class="tm-ad-banner"></div></div> <!----> <!----> <!----> <!----> </div></div></div></div></div> <div class="tm-page__sidebar"><div class="tm-layout-sidebar"><div class="tm-layout-sidebar__ads tm-layout-sidebar__ads_initial"><div class="tm-ad-banner__container tm-layout-sidebar__banner"><!----> <div id="sidebarBanner" class="tm-ad-banner"></div></div></div> <div class="tm-sexy-sidebar tm-sexy-sidebar_initial" style="margin-top:0px;"><!----> <!----></div></div></div></div></div></div></main> <!----></div> <div class="tm-footer-menu"><div class="tm-page-width"><div class="tm-footer-menu__container"><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Ваш аккаунт
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr/?back=/ru/post/452020/&amp;hl=ru" rel="nofollow" target="_self">
+                Войти
+              </a></li><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr-register/?back=/ru/post/452020/&amp;hl=ru" rel="nofollow" target="_self">
+                Регистрация
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Разделы
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/" class="footer-menu__item-link router-link-active">
+                Публикации
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/news/" class="footer-menu__item-link">
+                Новости
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/hubs/" class="footer-menu__item-link">
+                Хабы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/companies/" class="footer-menu__item-link">
+                Компании
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/users/" class="footer-menu__item-link">
+                Авторы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/sandbox/" class="footer-menu__item-link">
+                Песочница
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Информация
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/docs/help/" class="footer-menu__item-link">
+                Устройство сайта
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/authors/codex/" class="footer-menu__item-link">
+                Для авторов
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/companies/corpblogs/" class="footer-menu__item-link">
+                Для компаний
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/docs/transparency/" class="footer-menu__item-link">
+                Документы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/agreement" target="_blank">
+                Соглашение
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/confidential/" target="_blank">
+                Конфиденциальность
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Услуги
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQLwRfQmXibiUlWaRg-BAc38s7oM3lJiaPju7qmdJsp8ysIvZ_G-Npem0njJLMozE2bPHMpDqiI5hhy/pub?start=false&amp;loop=false&amp;delayms=60000&amp;slide=id.g91a03369cd_4_297" target="_blank">
+                Реклама
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://habrastorage.org/storage/stuff/habr/service_price.pdf" target="_blank">
+                Тарифы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQJJds8-Di7BQSP_guHxICN7woVYoN5NP_22ra-BIo4bqnTT9FR6fB-Ku2P0AoRpX0Ds-LRkDeAoD8F/pub?start=false&amp;loop=false&amp;delayms=60000" target="_blank">
+                Контент
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://tmtm.timepad.ru/" target="_blank">
+                Семинары
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/megaprojects/" class="footer-menu__item-link">
+                Мегапроекты
+              </a></li></ul></div></div></div></div></div> <div class="tm-footer"><div class="tm-page-width"><div class="tm-footer__container"><!----> <div class="tm-footer__social"><a href="https://www.facebook.com/habrahabr.ru" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Facebook</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-facebook"></use></svg></a><a href="https://twitter.com/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Twitter</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-twitter"></use></svg></a><a href="https://vk.com/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>VK</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-vkontakte"></use></svg></a><a href="https://telegram.me/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Telegram</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-telegram"></use></svg></a><a href="https://www.youtube.com/channel/UCd_sTwKqVrweTt4oAKY5y4w" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Youtube</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-youtube"></use></svg></a><a href="https://zen.yandex.ru/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Яндекс Дзен</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-zen"></use></svg></a></div> <DIV class="v-portal" style="display:none;"></DIV> <button class="tm-footer__link"><!---->
+        Настройка языка
+      </button> <a href="/ru/about" class="tm-footer__link">
+        О сайте
+      </a> <a href="/ru/feedback/" class="tm-footer__link">
+        Техническая поддержка
+      </a> <!----> <a href="/berserk-mode-nope" class="tm-footer__link">
+        Вернуться на старую версию
+      </a> <div class="tm-footer-copyright"><span class="tm-copyright"><span class="tm-copyright__years">© 2006–2021 </span> <span class="tm-copyright__name">«<a href="https://company.habr.com/" rel="noopener" target="_blank" class="tm-copyright__link">Habr</a>»</span></span></div></div></div></div> <!----> <!----></div> <div class="vue-portal-target"></div></div>
+<script>window.__INITIAL_STATE__={"adblock":{"hasAcceptableAdsFilter":false,"hasAdblock":false},"articlesList":{"articlesList":{"452020":{"id":"452020","timePublished":"2019-05-15T17:25:52+00:00","isCorporative":false,"lang":"ru","titleHtml":"Лучшая приоритизация HTTP\u002F2 для ускорения веба","leadData":{"textHtml":"\u003Cdiv style=\"text-align:center;\"\u003E\u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fpost_images\u002F57d\u002F5cf\u002Fdbe\u002F57d5cfdbe917c7b464a249fb187b3ffd.png\"\u003E\u003C\u002Fdiv\u003E\u003Cbr\u003E\r\nHTTP\u002F2 обещал заметно ускорить веб, и Cloudflare давным-давно развернула доступ по HTTP\u002F2 для всех клиентов. Но одна особенность HTTP\u002F2, приоритизация, не соответствовала ожиданиям. Не потому, что она принципиально сломана, а из-за реализации в браузерах.\u003Cbr\u003E\r\n\u003Cbr\u003E\r\nСегодня Cloudflare предлагает изменить приоритизацию HTTP\u002F2, что даёт нашим серверам контроль над решениями о приоритизации, которые действительно заметно ускоряют интернет.\u003Cbr\u003E\r\n\u003Cbr\u003E\r\nИсторически именно браузер контролирует, как и когда загружать веб-контент. Сегодня для всех платных планов мы вносим радикальные изменения в эту модель. Они передают контроль напрямую владельцу сайта. На вкладке «Скорость» в панели мониторинга Cloudflare клиенты могут включить «Расширенную приоритизацию HTTP\u002F2»: она переопределяет настройки браузера по умолчанию на улучшенную схему планирования, что значительно ускоряет доступ для посетителей (в некоторых случаях мы видели ускорение на 50%). С воркерами Cloudflare владельцы сайтов могут пойти ещё дальше и полностью подобрать настройки под свои конкретные нужды.\u003Cbr\u003E","imageUrl":null,"buttonTextHtml":"Читать дальше →","image":null},"editorVersion":"1.0","postType":"article","postLabels":[{"type":"translation","data":{"originalAuthorName":"Patrick Meenan","originalUrl":"https:\u002F\u002Fblog.cloudflare.com\u002Fbetter-http-2-prioritization-for-a-faster-web\u002F"}}],"author":{"scoreStats":{"score":1229.5,"votesCount":1501},"rating":0,"relatedData":null,"contacts":[],"authorContacts":[],"paymentDetails":{"paymentYandexMoney":null,"paymentPayPalMe":null,"paymentWebmoney":null},"id":"1371978","alias":"m1rko","fullname":"Анатолий Ализар","avatarUrl":"\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Favatars\u002F4ec\u002Fbd0\u002F85d\u002F4ecbd085d692835a931d03174ff19539.png","speciality":"автор, переводчик, редактор"},"statistics":{"commentsCount":7,"favoritesCount":82,"readingCount":7843,"score":18,"votesCount":18},"hubs":[{"relatedData":null,"id":"91","alias":"webdev","type":"collective","title":"Разработка веб-сайтов","titleHtml":"Разработка веб-сайтов","isProfiled":true},{"relatedData":null,"id":"17103","alias":"html5","type":"collective","title":"HTML","titleHtml":"HTML","isProfiled":true},{"relatedData":null,"id":"17189","alias":"itstandarts","type":"collective","title":"IT-стандарты","titleHtml":"IT-стандарты","isProfiled":true},{"relatedData":null,"id":"19257","alias":"browsers","type":"collective","title":"Браузеры","titleHtml":"Браузеры","isProfiled":false}],"flows":[{"id":"1","alias":"develop","title":"Разработка"}],"relatedData":null,"textHtml":"\u003Cdiv xmlns=\"http:\u002F\u002Fwww.w3.org\u002F1999\u002Fxhtml\"\u003E\u003Cdiv style=\"text-align:center;\"\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fpost_images\u002F57d\u002F5cf\u002Fdbe\u002F57d5cfdbe917c7b464a249fb187b3ffd.png\"\u002F\u003E\u003C\u002Fdiv\u003E\u003Cbr\u002F\u003E\r\nHTTP\u002F2 обещал заметно ускорить веб, и Cloudflare давным-давно развернула доступ по HTTP\u002F2 для всех клиентов. Но одна особенность HTTP\u002F2, приоритизация, не соответствовала ожиданиям. Не потому, что она принципиально сломана, а из-за реализации в браузерах.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nСегодня Cloudflare предлагает изменить приоритизацию HTTP\u002F2, что даёт нашим серверам контроль над решениями о приоритизации, которые действительно заметно ускоряют интернет.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nИсторически именно браузер контролирует, как и когда загружать веб-контент. Сегодня для всех платных планов мы вносим радикальные изменения в эту модель. Они передают контроль напрямую владельцу сайта. На вкладке «Скорость» в панели мониторинга Cloudflare клиенты могут включить «Расширенную приоритизацию HTTP\u002F2»: она переопределяет настройки браузера по умолчанию на улучшенную схему планирования, что значительно ускоряет доступ для посетителей (в некоторых случаях мы видели ускорение на 50%). С воркерами Cloudflare владельцы сайтов могут пойти ещё дальше и полностью подобрать настройки под свои конкретные нужды.\u003Cbr\u002F\u003E\r\n\u003Ca name=\"habracut\"\u003E\u003C\u002Fa\u003E\u003Cbr\u002F\u003E\r\n\u003Ch1\u003EНынешняя ситуация\u003C\u002Fh1\u003E\u003Cbr\u002F\u003E\r\nВеб-страницы состоят из \u003Ca href=\"https:\u002F\u002Fdiscuss.httparchive.org\u002Ft\u002Fwhats-the-distribution-of-requests-per-page\u002F21\u002F10?u=patmeenan\"\u003Eдесятков (иногда сотен)\u003C\u002Fa\u003E отдельных ресурсов, которые загружаются и собираются браузером в конечный отображаемый контент. Это включает в себя видимый контент, с которым взаимодействует пользователь (HTML, CSS, изображения), а также логику приложения (JavaScript) для самого сайта, рекламу, аналитику и маркетинговые следящие маячки. С точки зрения пользователя очень важна последовательность, в которой загружаются эти ресурсы: это влияет на время, когда он увидит содержимое и сможет взаимодействовать со страницей.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nБраузер — это, по сути, движок обработки HTML, который проходит через HTML-документ и следует инструкциям по порядку: от начала до конца HTML, выстраивая страницу по мере продвижения. Ссылки на таблицы стилей (CSS) сообщают браузеру, как стилизовать содержимое страницы, и браузер задержит отображение контента до тех пор, пока не загрузит таблицу стилей. У скриптов на странице могут быть разные варианты поведения. Если скрипт помечен как «асинхронный» или «отложенный», браузер может продолжать обработку документа и просто запустить скрипт, когда он станет доступен. Если скрипт не помечен как асинхронный или отложенный, браузер \u003Ca href=\"https:\u002F\u002Fhtml.spec.whatwg.org\u002F\"\u003EДОЛЖЕН\u003C\u002Fa\u003E прекратить обработку документа до тех пор, пока скрипт не загрузится и не выполнится. Такие скрипты называются «блокирующими», поскольку они блокируют браузеру возможность продолжать обработку документа.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nHTML-документ делится на две части. Заголовок документа &lt;head\u003E находится в начале и содержит таблицы стилей, скрипты и другие инструкции для браузера, необходимые для отображения содержимого. После заголовка идёт тело документа &lt;body\u003E, оно содержит фактический контент, отображаемый в окне браузера (хотя скрипты и таблицы стилей также могут быть в теле). Пока браузер не доберётся до тела документа, пользователю нечего показывать, и страница останется пустой. Поэтому важно как можно быстрее обработать заголовок. Если вам интересны подробности, на сайте \u003Ci\u003EHTML5 Rocks\u003C\u002Fi\u003E есть \u003Ca href=\"https:\u002F\u002Fwww.html5rocks.com\u002Fen\u002Ftutorials\u002Finternals\u002Fhowbrowserswork\u002F\"\u003Eотличный учебник\u003C\u002Fa\u003E, как работают браузеры.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nБраузер обычно отвечает за порядок загрузки различных ресурсов, необходимых для построения страницы и дальнейшей обработки документа. В HTTP\u002F1.x действуют ограничения, сколько объектов браузер может запросить с любого сервера за один раз (обычно 6 подключений и только один ресурс за раз на соединение), поэтому порядок запросов строго контролируется браузером. В HTTP\u002F2 ситуация совершенно иная. Браузер может запросить сразу все ресурсы (по крайней мере, как только узнает о них), и предоставляет серверу подробные инструкции, как доставлять эти ресурсы.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch1\u003EОптимальный порядок загрузки ресурсов\u003C\u002Fh1\u003E\u003Cbr\u002F\u003E\r\nДля большинства частей в цикле загрузки страницы есть оптимальный порядок, который максимально ускоряет доступность страницы для пользователя (а разница между оптимальным и неоптимальным порядком загрузки может достигать 50% и более).\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nКак описано выше, прежде чем браузер сможет отобразить какой-либо контент, его блокируют CSS и JavaScript в разделе \u003Ccode\u003E&lt;head\u003E\u003C\u002Fcode\u003E. На этом этапе выгоднее задействовать 100% канала для загрузки блокирующих ресурсов, а не загружать их по порядку, как они прописаны в HTML-коде. Это позволяет браузеру анализировать и запускать каждый элемент во время загрузки следующего блокирующего ресурса, что создаёт оптимальный конвейер.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fpost_images\u002Fdb9\u002Fe18\u002Ffbe\u002Fdb9e18fbe00d27755a152a8deabbcaa4.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВремя загрузки скриптов при параллельной или последовательной загрузке не отличается, но при последовательной загрузке первый скрипт можно обработать и выполнить во время загрузки второго.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПосле загрузки блокирующих ресурсов ситуация становится немного интереснее. Здесь оптимальная загрузка может зависеть от конкретного сайта или даже бизнес-приоритетов (выбор пользовательского контента или рекламы, или аналитики и т. д.). Отдельная проблема со шрифтами, поскольку браузер обнаруживает нужные шрифты после применения таблицы стилей к отображаемому контенту. Поэтому к моменту, когда браузер узнает о шрифте, необходимо отобразить текст, который уже готов к выводу на экран. Любые задержки в загрузке шрифта приводят к отсутствию текста на экране (или текст отображается неправильным шрифтом).\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nКак правило, необходимо учитывать некоторые компромиссы:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003EПользовательские шрифты и изображения в видимой части страницы (viewport) следует загрузить как можно быстрее. Они напрямую влияют на визуальный опыт пользователя при загрузке страницы.\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003Cli\u003EНеблокирующий JavaScript следует загружать последовательно относительно других ресурсов JavaScript, чтобы выполнение каждого из них можно было поставить в конвейер. JavaScript может включать пользовательскую логику приложений, а также маячки отслеживания для аналитики и маркетинга, а их задержка может привести к снижению показателей, отслеживаемых бизнесом.\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003Cli\u003EИзображения можно загружать параллельно. Первые несколько байт файла изображения содержат его размеры, что может понадобиться для макета браузера, а параллельная загрузка прогрессивных изображений может обеспечить визуальную завершённость после передачи примерно всего 50% общего объёма.\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\nС учётом компромиссов, в большинстве случаев хорошо работает такая стратегия:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003EПользовательские шрифты загружаются последовательно и делят доступную полосу пропускания с изображениями в области видимости.\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003Cli\u003EВидимые изображения загружаются параллельно, разделяя между собой часть полосы пропускания, выделенную на них.\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003Cli\u003EКогда больше нет шрифтов или видимых изображений:\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003EНеблокирующие скрипты загружаются последовательно и разделяют доступную полосу пропускания с невидимыми изображениями (которые находятся вне области видимости).\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003Cli\u003EНевидимые изображения загружаются параллельно, разделяя между собой часть полосы пропускания, выделенную на них.\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\nТаким образом, видимый пользователю контент загружается как можно быстрее, логика приложения задерживается по минимуму, а невидимые изображения загружаются таким образом, чтобы как можно быстрее завершить макет.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch1\u003EПример\u003C\u002Fh1\u003E\u003Cbr\u002F\u003E\r\nДля иллюстрации используем упрощённую страницу категории продукта с типичного сайта электронной коммерции:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003E\u003Cb\u003EСиний\u003C\u002Fb\u003E — HTML-файл самой страницы.\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Cb\u003EЗелёный\u003C\u002Fb\u003E — Одна внешняя таблица стилей (CSS-файл).\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Cb\u003EОранжевый\u003C\u002Fb\u003E — Четыре внешних скрипта (JavaScript). Два блокирующих скрипта в начале страницы и два асинхронных. Блокирующие скрипты показаны более тёмным оттенком оранжевого.\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Cb\u003EКрасный\u003C\u002Fb\u003E — один пользовательский веб-шрифт.\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Cb\u003EФиолетовый\u003C\u002Fb\u003E — 13 изображений. В окне просмотра отображаются логотип страницы и четыре изображения продукта, ещё 8 изображений продукта требуют прокрутки. Пять видимых изображениях обозначены более тёмным оттенком фиолетового.\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\nДля простоты предположим, что у всех ресурсов одинаковый размер и каждый загружается за 1 секунду. Загрузка всех ресурсов занимает в общей сложности 20 секунд, но крайне важны порядок и метод загрузки.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fpost_images\u002Ffbd\u002F07b\u002F58a\u002Ffbd07b58a4c8aeff2a758ad1946d8523.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВот как будет выглядеть в браузере оптимальная загрузка ресурсов:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fpost_images\u002F8b2\u002F6a8\u002F2cd\u002F8b26a82cdb5c546e9005200e5528b988.gif\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003EСтраница пуста в течение первых 4 секунд, пока загружаются HTML, CSS и блокирующие скрипты: все они используют 100% соединения.\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003Cli\u003EНа 4-секундной отметке фон и структура страницы отображаются без текста или изображений.\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003Cli\u003EЧерез секунду, на отметке в 5 секунд, отображается текст страницы.\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003Cli\u003EВ промежутке 5−10 секунд загружаются изображения, сначала размытые, но очень быстро они становятся чёткими. Примерно на 7 секунде результат почти неотличим от окончательной версии.\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003Cli\u003EНа отметке 10 секунд завершена загрузка всего визуального содержимого в видимой части страницы.\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003Cli\u003EВ течение следующих двух секунд загружается и выполняется асинхронный JavaScript, выполняя любую некритическую логику (аналитика, маркетинговые теги и т. д.).\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003Cli\u003EВ течение последних 8 секунд загружаются остальные изображения на случай прокрутки страницы пользователем.\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\n\u003Ch1\u003EТекущая приоритизация в браузерах\u003C\u002Fh1\u003E\u003Cbr\u002F\u003E\r\nВсе текущие браузерные движки реализуют \u003Ca href=\"https:\u002F\u002Fcalendar.perfplanet.com\u002F2018\u002Fhttp2-prioritization\u002F\"\u003Eразличные стратегии приоритизации\u003C\u002Fa\u003E, ни одна из которых не является оптимальной.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cb\u003EMicrosoft Edge и Internet Explorer\u003C\u002Fb\u003E \u003Ca href=\"https:\u002F\u002Fcalendar.perfplanet.com\u002F2018\u002Fhttp2-prioritization\u002F#microsoft_edge_internet_explorer\"\u003Eне поддерживают приоритизацию\u003C\u002Fa\u003E, поэтому работают с настройками HTTP\u002F2 по умолчанию, который всё загружает параллельно, равномерно распределяя пропускную способность между всеми ресурсами. Microsoft Edge в будущих версиях переходит к использованию движка Chromium, что может улучшить ситуацию. Но пока в нашем примере браузер большую часть времени застрянет в заголовке страницы, так как изображения замедляют передачу блокирующих скриптов и таблиц стилей.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fpost_images\u002Fe9c\u002F844\u002Fa65\u002Fe9c844a65472a56d92cb37cd27f2f035.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВизуально это приводит к довольно болезненному опыту: пользователь в течение 19 секунд смотрит на пустой экран, а затем происходит задержка на 1 секунду для отображения текста. При просмотре анимации внизу будьте терпеливы, потому что в течение 19 секунд может показаться, что на пустом экране ничего не происходит (хотя так и есть):\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fpost_images\u002F6c9\u002Ffae\u002F539\u002F6c9fae539ae1d3c99570cf53af415be4.gif\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cb\u003ESafari\u003C\u002Fb\u003E \u003Ca href=\"https:\u002F\u002Fcalendar.perfplanet.com\u002F2018\u002Fhttp2-prioritization\u002F#safari\"\u003Eзагружает все ресурсы параллельно\u003C\u002Fa\u003E, разделяя пропускную способность на основе их важности, по мнению Safari (блокирующие ресурсы, такие как скрипты и таблицы стилей, важнее, чем изображения). Изображения загружаются параллельно, но также одновременно с блокирующим контентом.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fpost_images\u002Fc75\u002Fa7d\u002Ff05\u002Fc75a7df05716f5706aa4b037774733d2.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nХотя Safari похож на Edge в том смысле, что всё загружается одновременно, но выделение большей полосы для блокирующих ресурсов позволяет отобразить контент намного раньше:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fpost_images\u002Ff0c\u002F840\u002F5a1\u002Ff0c8405a1b6ddc40645ab7985e28a5eb.gif\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003EПримерно через 8 секунд завершается загрузка таблицы стилей и скриптов, поэтому можно начинать рендеринг страницы. Поскольку изображения загружались параллельно, их тоже можно отобразить частично (размыто для прогрессивных изображений). Это всё ещё в два раза медленнее оптимального сценария, но намного лучше, чем в Edge.\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003Cli\u003EПримерно через 11 секунд загружается шрифт. Можно отобразить текст. К этому моменту загружается больше данных для изображений, и они становятся немного резче. Это сопоставимо с ситуацией в районе 7-секундной отметки для оптимального сценария загрузки.\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003Cli\u003EВ течение оставшихся 9 секунд изображения становятся более чёткими, поскольку загружается больше данных, пока, наконец, процесс не завершается за 20 секунд.\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\n\u003Cb\u003EFirefox\u003C\u002Fb\u003E создаёт дерево зависимостей, которое группирует ресурсы, а затем планирует группы либо загружать одну за другой, либо совместно разделить пропускную способность между группами. В пределах данной группы ресурсы совместно используют пропускную способность и загружаются одновременно. Изображения планируется загружать после таблиц стилей, блокирующих рендеринг, и загружать параллельно, но сценарии и таблицы стилей, блокирующие рендеринг, также загружаются параллельно и не получают преимуществ конвейерной обработки.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fpost_images\u002F870\u002Fe6d\u002F83c\u002F870e6d83c673b9c706dac49c78d3848d.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВ нашем примере это происходит немного быстрее, чем в Safari, так как изображения ждут завершения загрузки таблиц стилей:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fpost_images\u002Fbd2\u002F806\u002Fb55\u002Fbd2806b55e830bd4c2a7e08bb1b18ce4.gif\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003EНа отметке 6 секунд исходный контент страницы отображается с фоном и размытыми версиями изображений продукта (по сравнению с 8 секундами у Safari и 4 секундами в оптимальном случае).\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003Cli\u003EНа 8 секунде загрузился шрифт, и можно отобразить текст вместе с немного более чёткими изображениями продукта (по сравнению с 11 секундами у Safari и 7 секундами в оптимальном случае).\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003Cli\u003EВ течение оставшихся 12 секунд изображения становятся более чёткими по мере загрузки оставшегося содержимого.\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\n\u003Cb\u003EChrome\u003C\u002Fb\u003E (и все браузеры на основе Chromium) приоритизирует ресурсы по \u003Ca href=\"https:\u002F\u002Fcalendar.perfplanet.com\u002F2018\u002Fhttp2-prioritization\u002F#chrome\"\u003Eсписку\u003C\u002Fa\u003E. Это очень хорошо работает для блокирующих ресурсов, которые оптимально загружать по порядку, но не так хорошо для изображений. Каждое изображение загружается до 100% перед началом загрузки следующего.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fpost_images\u002Fe22\u002F14d\u002F4e0\u002Fe2214d4e04fab810f0a4398fe02434c1.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nНа практике это почти оптимальный сценарий загрузки, с той лишь разницей, что изображения загружаются по одному, а не параллельно:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fpost_images\u002F91e\u002F76c\u002Fd1d\u002F91e76cd1d814aef138b35345eda46d82.gif\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003EДо отметки 5 секунд загрузка Chrome идентична оптимальному сценарию, отображая фон на 4-й секунде и текстовое содержимое на 5-й.\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003Cli\u003EВ течение следующих 5 секунд изображения области видимости загружаются по одному, пока процесс не завершится на отметке 10 секунд (по сравнению с оптимальным сценарием, когда они отображаются в немного размытом виде на отметке 7 секунд и становятся более чёткими в течение оставшихся трёх секунд).\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003Cli\u003EПосле завершения визуальной части страницы за 10 секунд (идентично оптимальному сценарию), оставшиеся 10 секунд тратятся на запуск асинхронных скриптов и загрузку скрытых изображений (так же, как и в оптимальном сценарии).\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\n\u003Ch1\u003EВизуальное сравнение\u003C\u002Fh1\u003E\u003Cbr\u002F\u003E\r\nВизуальная разница довольно сильно отличается, хотя технически загрузка всего контента занимает одинаковое время:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fpost_images\u002F62e\u002F2a1\u002Fd5f\u002F62e2a1d5f10b801af61992517d7f5a5a.gif\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch1\u003EПриоритизация на стороне сервера\u003C\u002Fh1\u003E\u003Cbr\u002F\u003E\r\nПриоритизация HTTP\u002F2 запрашивается клиентом (браузером), и сервер должен решить, что делать на основе запроса. \u003Ca href=\"https:\u002F\u002Fgithub.com\u002Fandydavies\u002Fhttp2-prioritization-issues\"\u003EБольшое количество серверов не вообще не поддерживают эту функцию\u003C\u002Fa\u003E, а остальные выполняют запрос клиента. Другой вариант — принять решение о наилучшей приоритизации на стороне сервера с учётом запроса клиента.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nСогласно \u003Ca href=\"https:\u002F\u002Fhttp2.github.io\u002Fhttp2-spec\u002F#StreamPriority\"\u003Eспецификации\u003C\u002Fa\u003E, приоритизация HTTP\u002F2 — это дерево зависимостей, которое требует полного знания всех текущих запросов, чтобы иметь возможность приоритизировать ресурсы друг относительно друга. Это позволяет реализовать невероятно сложные стратегии, но такое трудно хорошо реализовать на стороне браузера или сервера (о чём свидетельствуют различные стратегии браузера и различные уровни поддержки сервера). Чтобы упростить управление приоритизацией, мы разработали более простую схему, которая по-прежнему обладает всей гибкостью, необходимой для оптимального планирования.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nСхема приоритизации Cloudflare состоит из 64 приоритетных «уровней», а внутри каждого уровня есть группы ресурсов, которые определяют, как разделить между собой соединение:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fpost_images\u002Fba5\u002F7e5\u002Fefa\u002Fba57e5efa56119a58bbd39596da3f9ce.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nСначала скачиваются все ресурсы на более высоком уровне приоритета, затем происходит переход на более низкий уровень.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВ пределах заданного уровня приоритета существует три различных группы параллелизма (concurrency):\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003E\u003Cb\u003E0\u003C\u002Fb\u003E: все ресурсы в группе “0” отправляются последовательно в том порядке, в котором они были запрошены, используя 100% пропускной способности. Только после загрузки всех ресурсов группы “0” рассматриваются другие группы на том же уровне.\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Cb\u003E1\u003C\u002Fb\u003E: все ресурсы в группе параллелизма “1” отправляются последовательно в том порядке, в котором были запрошены. Доступная полоса пропускания равномерно распределяется между группой параллелизма “1” и группой параллелизма “n”.\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Cb\u003En\u003C\u002Fb\u003E: ресурсы в группе параллелизма “n” передаются параллельно, разделяя между собой доступную пропускную способность.\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\nНа практике группа параллелизма “0” полезна для критического контента, который необходимо обрабатывать последовательно (скрипты, CSS и т. д.). Группа “1” полезна для менее важного контента, который может совместно использовать пропускную способность с другими ресурсами, но где сами ресурсы по-прежнему выигрывают от последовательной обработки (асинхронные скрипты, непрогрессивные изображения и т. д.). Группа параллелизма “n” полезна для ресурсов, которые выигрывают от параллельной обработки (прогрессивные изображения, видео, аудио и т. д.).\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch1\u003EПриоритизация по умолчанию в Cloudflare\u003C\u002Fh1\u003E\u003Cbr\u002F\u003E\r\nПри опции расширенной приоритизации реализуется «оптимальный» порядок загрузки ресурсов, описанный выше. Применяемые конкретные приоритеты выглядят следующим образом:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fpost_images\u002Fb89\u002Fe96\u002Fe4f\u002Fb89e96e4f4534f5df00d732e97b5db62.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЭта схема позволяет последовательно отправлять ресурсы, блокирующие рендеринг, затем параллельно отправлять видимые изображения, а потом — остальную часть содержимого страницы с некоторым уровнем совместного использования полосы для балансировки загрузки приложения и содержимого. Предостережение \u003Ci\u003E* If Detectable\u003C\u002Fi\u003E заключается в том, что не все браузеры различают различные типы таблиц стилей и скриптов, но всё равно это будет значительно быстрее во всех случаях. Ускорение на 50%, особенно для посетителей Edge и Safari, не станет чем-то необычным:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ca href=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fu_\u002F1n\u002Fpx\u002Fu_1npxrzhg0svmgdyzelnamxj84.png\"\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fu_\u002F1n\u002Fpx\u002Fu_1npxrzhg0svmgdyzelnamxj84.png\"\u002F\u003E\u003C\u002Fa\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch1\u003EНастройка приоритизации с воркерами\u003C\u002Fh1\u003E\u003Cbr\u002F\u003E\r\nБолее быстрая работа по умолчанию — это отлично, но всё становится действительно интересным благодаря возможности настройки приоритизации с поддержкой Cloudflare Workers, так что сайты могут переопределить приоритет по умолчанию для ресурсов или реализовать свои собственные схемы приоритизации.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЕсли воркер добавляет к ответу заголовок \u003Ccode\u003Ecf-priority\u003C\u002Fcode\u003E, то граничные серверы Cloudflare применят указанный приоритет и параллелизм. Формат заголовка — &lt;priority\u003E\u002F&lt;concurrency\u003E, поэтому заголовок \u003Ccode\u003Eresponse.headers.set('cf-priority', “30\u002F0”);\u003C\u002Fcode\u003E установит для данного ответа приоритет 30 и параллелизм 0. Аналогично, “30\u002F1” установит параллелизм “1”, а “30\u002Fn” установит параллелизм на n.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nС такой гибкостью сайт может настроить произвольный приоритет ресурсов для своих потребностей. Например, повысить приоритет некоторых важных асинхронных скриптов или главных изображений: они скачаются ещё до того, как браузер определил, что они находятся в зоне видимости.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nДля информирования о решениях приоритизации рантайм воркеров также указывает запрошенную браузером информацию о приоритизации в объекте запроса, который передаётся приёмнику событий воркера (request.cf.requestPriority). Входящие приоритеты представляют собой список атрибутов, разделённых точкой с запятой. Он выглядит примерно так: \u003Ccode\u003Eweight=192;exclusive=0;group=3;group-weight=127\u003C\u002Fcode\u003E.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003E\u003Cb\u003Eweight\u003C\u002Fb\u003E: вес для приоритизации HTTP\u002F2.\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Cb\u003Eexclusive\u003C\u002Fb\u003E: эксклюзивный флаг HTTP\u002F2 (1 для браузеров на основе Chromium, 0 для других).\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Cb\u003Egroup\u003C\u002Fb\u003E: идентификатор потока HTTP\u002F2 для группы запросов (ненулевой для Firefox).\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Cb\u003Egroup-weight\u003C\u002Fb\u003E: вес HTTP\u002F2 для группы запросов (ненулевой для Firefox).\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\n\u003Ch1\u003EЭто только начало\u003C\u002Fh1\u003E\u003Cbr\u002F\u003E\r\nСпособность настраивать и контролировать приоритетность ответов является основным строительным блоком для большой будущей работы. Мы намерены внедрять собственные передовые оптимизации поверх этой, но с поддержкой воркеров все сайты и исследователи могут экспериментировать с различными стратегиями приоритизации. Через Apps Marketplace компании также могут создавать новые сервисы оптимизации поверх рабочей платформы и предоставлять их для использования другим сайтам.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЕсли вы находитесь на плане Pro или выше, перейдите на вкладку «Скорость» в панели мониторинга Cloudflare и включите «расширенную приоритизацию HTTP\u002F2» для ускорения своего сайта.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fpost_images\u002F386\u002Fd53\u002F276\u002F386d532767b6396ee628a7e0eb837282.png\"\u002F\u003E\u003C\u002Fdiv\u003E","tags":[{"titleHtml":"HTTP\u002F2"},{"titleHtml":"приоритизация"},{"titleHtml":"блокирующий контент"},{"titleHtml":"порядок загрузки"}],"metadata":{"stylesUrls":[],"scriptUrls":[],"shareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F452020\u002F33e828e091ca427abb36ac4fd4943a66\u002F","shareImageWidth":1200,"shareImageHeight":630,"vkShareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F452020\u002F33e828e091ca427abb36ac4fd4943a66\u002F?format=vk","schemaJsonLd":"{\"@context\":\"http:\\\u002F\\\u002Fschema.org\",\"@type\":\"Article\",\"mainEntityOfPage\":{\"@type\":\"WebPage\",\"@id\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fru\\\u002Fpost\\\u002F452020\\\u002F\"},\"headline\":\"Лучшая приоритизация HTTP\\\u002F2 для ускорения веба\",\"datePublished\":\"2019-05-15T20:25:52+03:00\",\"dateModified\":\"2019-05-15T20:32:21+03:00\",\"author\":{\"@type\":\"Person\",\"name\":\"Анатолий Ализар\"},\"publisher\":{\"@type\":\"Organization\",\"name\":\"Habr\",\"logo\":{\"@type\":\"ImageObject\",\"url\":\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fa_\\\u002Flk\\\u002F9m\\\u002Fa_lk9mjkccjox-zccjrpfolmkmq.png\"}},\"description\":\"HTTP\\\u002F2 обещал заметно ускорить веб, и Cloudflare давным-давно развернула доступ по HTTP\\\u002F2 для всех клиентов. Но одна особенность HTTP\\\u002F2, приоритизация, не соотв...\",\"url\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fru\\\u002Fpost\\\u002F452020\\\u002F#post-content-body\",\"about\":[\"h_webdev\",\"h_html5\",\"h_itstandarts\",\"h_browsers\",\"f_develop\"],\"image\":[\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fgetpro\\\u002Fhabr\\\u002Fpost_images\\\u002F57d\\\u002F5cf\\\u002Fdbe\\\u002F57d5cfdbe917c7b464a249fb187b3ffd.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fgetpro\\\u002Fhabr\\\u002Fpost_images\\\u002Fdb9\\\u002Fe18\\\u002Ffbe\\\u002Fdb9e18fbe00d27755a152a8deabbcaa4.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fgetpro\\\u002Fhabr\\\u002Fpost_images\\\u002Ffbd\\\u002F07b\\\u002F58a\\\u002Ffbd07b58a4c8aeff2a758ad1946d8523.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fgetpro\\\u002Fhabr\\\u002Fpost_images\\\u002F8b2\\\u002F6a8\\\u002F2cd\\\u002F8b26a82cdb5c546e9005200e5528b988.gif\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fgetpro\\\u002Fhabr\\\u002Fpost_images\\\u002Fe9c\\\u002F844\\\u002Fa65\\\u002Fe9c844a65472a56d92cb37cd27f2f035.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fgetpro\\\u002Fhabr\\\u002Fpost_images\\\u002F6c9\\\u002Ffae\\\u002F539\\\u002F6c9fae539ae1d3c99570cf53af415be4.gif\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fgetpro\\\u002Fhabr\\\u002Fpost_images\\\u002Fc75\\\u002Fa7d\\\u002Ff05\\\u002Fc75a7df05716f5706aa4b037774733d2.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fgetpro\\\u002Fhabr\\\u002Fpost_images\\\u002Ff0c\\\u002F840\\\u002F5a1\\\u002Ff0c8405a1b6ddc40645ab7985e28a5eb.gif\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fgetpro\\\u002Fhabr\\\u002Fpost_images\\\u002F870\\\u002Fe6d\\\u002F83c\\\u002F870e6d83c673b9c706dac49c78d3848d.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fgetpro\\\u002Fhabr\\\u002Fpost_images\\\u002Fbd2\\\u002F806\\\u002Fb55\\\u002Fbd2806b55e830bd4c2a7e08bb1b18ce4.gif\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fgetpro\\\u002Fhabr\\\u002Fpost_images\\\u002Fe22\\\u002F14d\\\u002F4e0\\\u002Fe2214d4e04fab810f0a4398fe02434c1.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fgetpro\\\u002Fhabr\\\u002Fpost_images\\\u002F91e\\\u002F76c\\\u002Fd1d\\\u002F91e76cd1d814aef138b35345eda46d82.gif\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fgetpro\\\u002Fhabr\\\u002Fpost_images\\\u002F62e\\\u002F2a1\\\u002Fd5f\\\u002F62e2a1d5f10b801af61992517d7f5a5a.gif\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fgetpro\\\u002Fhabr\\\u002Fpost_images\\\u002Fba5\\\u002F7e5\\\u002Fefa\\\u002Fba57e5efa56119a58bbd39596da3f9ce.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fgetpro\\\u002Fhabr\\\u002Fpost_images\\\u002Fb89\\\u002Fe96\\\u002Fe4f\\\u002Fb89e96e4f4534f5df00d732e97b5db62.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fu_\\\u002F1n\\\u002Fpx\\\u002Fu_1npxrzhg0svmgdyzelnamxj84.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fgetpro\\\u002Fhabr\\\u002Fpost_images\\\u002F386\\\u002Fd53\\\u002F276\\\u002F386d532767b6396ee628a7e0eb837282.png\"]}","metaDescription":"HTTP\u002F2 обещал заметно ускорить веб, и Cloudflare давным-давно развернула доступ по HTTP\u002F2 для всех клиентов. Но одна особенность HTTP\u002F2, приоритизация, не соответствовала ожиданиям. Не потому, что...","mainImageUrl":null,"amp":false},"polls":[],"commentsEnabled":true,"rulesRemindEnabled":false,"votesEnabled":true,"status":"published","plannedPublishTime":null,"checked":null,"isEditorial":false}},"articlesIds":{},"isLoading":false,"pagesCount":{},"route":{},"reasonsList":null,"view":"cards","lastVisitedRoute":{},"ssrCommentsArticleIds":[""],"karma":{}},"authorContribution":{"authors":{}},"betaTest":{"currentAnnouncement":null,"announcements":{},"announcementCards":null,"announcementComments":{},"announcementCommentThreads":{},"announcementCommentingStatuses":{},"archivedList":[]},"authorStatistics":{"articleRefs":{},"articleIds":{},"pagesCount":{},"route":{},"viewsCount":[],"maxStatsCount":{}},"career":{"seoLandings":[],"hubs":"webdev,html5,itstandarts,browsers"},"comments":{"articleComments":{},"searchCommentsResults":null,"previewComment":null,"pagesCount":null,"commentAccess":{},"scrollParents":{},"pageArticleComments":{"lastViewedComment":0,"postId":null,"lastCommentTimestamp":"","moderated":[],"moderatedIds":[],"commentRoute":""}},"companies":{"companyRefs":{},"companyIds":{},"companyTopIds":{},"pagesCount":{},"companyProfiles":{},"companiesCategories":[],"companiesCategoriesTotalCount":0,"companiesWidgets":{},"companiesWorkers":{},"companiesFans":{},"route":{},"isLoading":false,"companyWorkersLoading":false,"companyFansLoading":false,"vacancies":{}},"companiesContribution":{"hubs":{},"flows":{},"companyRefs":{}},"companyHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"conversation":{"messages":[],"respondent":null,"isLoadMore":false},"conversations":{"conversations":[],"unreadCount":0,"pagesCount":0,"isLoadMore":false},"desktopState":{"desktopFl":null,"desktopHl":null,"isChecked":false,"isLoginDemanded":false},"dfp":{"slotsDict":{}},"docs":{"menu":{},"articles":{},"mainMenu":[],"loading":{"main":false,"dropdown":false,"article":false}},"feature":{"isProbablyVisible":"true"},"flows":{"flows":[{"alias":"develop","id":1,"route":{"name":"FLOW_PAGE","params":{"flowName":"develop"}}},{"alias":"admin","id":6,"route":{"name":"FLOW_PAGE","params":{"flowName":"admin"}}},{"alias":"design","id":2,"route":{"name":"FLOW_PAGE","params":{"flowName":"design"}}},{"alias":"management","id":3,"route":{"name":"FLOW_PAGE","params":{"flowName":"management"}}},{"alias":"marketing","id":4,"route":{"name":"FLOW_PAGE","params":{"flowName":"marketing"}}},{"alias":"popsci","id":7,"route":{"name":"FLOW_PAGE","params":{"flowName":"popsci"}}}]},"global":{"isPwa":false,"device":"desktop","isHabrCom":true},"hubs":{"hubRefs":{},"hubIds":{},"pagesCount":{},"isLoading":false,"route":{}},"hubsBlock":{"hubRefs":{},"hubIds":{}},"i18n":{"fl":"ru","hl":"ru"},"info":{"infoPage":{},"isLoading":true},"location":{"urlStruct":{"protocol":null,"slashes":null,"auth":null,"host":null,"port":null,"hostname":null,"hash":null,"search":null,"query":{},"pathname":null,"path":null,"href":""},"searchQuery":null},"me":{"user":null,"ppgDemanded":false,"karmaResetInfo":{"canReincarnate":null,"wasReincarnated":null,"currentScore":null},"notes":null},"mostReadingList":{"mostReadingListIds":[],"mostReadingListRefs":null,"promoPost":null},"pinnedPost":{"pinnedPost":null},"ppa":{"articles":{},"card":null,"transactions":null,"totalTransactions":null,"isAccessible":null},"projectsBlocks":{"activeBlocks":{}},"pullRefresh":{"shouldRefresh":false},"sandbox":{"articleIds":[],"articleRefs":{},"pagesCount":null,"route":{},"lastVisitedRoute":{},"isLoading":false},"settingsOther":{"inputs":{"uiLang":{"errors":[],"ref":null,"value":""},"articlesLangEnglish":{"errors":[],"ref":null,"value":false},"articlesLangRussian":{"errors":[],"ref":null,"value":false},"agreement":{"errors":[],"ref":null,"value":false},"email":{"errors":[],"ref":null,"value":true},"digest":{"errors":[],"ref":null,"value":true}}},"similarList":{"similarListIds":[],"similarListRefs":null},"ssr":{"error":null,"isDataLoaded":false,"isDataLoading":false,"isHydrationFailed":false,"isServer":false},"userHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"userInvites":{"availableInvites":0,"usedInvitesIds":[],"usedInvitesRefs":{},"usedInvitesPagesCount":0,"unusedInvitesIds":[],"unusedInvitesRefs":{},"unusedInvitesPagesCount":0},"users":{"authorRefs":{},"authorIds":{},"pagesCount":{},"authorProfiles":{},"userHubs":{},"userInvitations":{},"authorFollowers":{},"authorFollowed":{},"karmaStats":[],"statistics":null,"isLoading":false,"authorFollowersLoading":false,"authorFollowedLoading":false,"userHubsLoading":false,"userInvitationsLoading":false,"route":{}},"viewport":{"prevScrollY":{},"scrollY":0,"width":0},"tracker":{"items":{},"pagesCache":{},"markedViewedSilently":{},"markedRead":{},"unreadCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null},"unviewedCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null}}};(function(){var s;(s=document.currentScript||document.scripts[document.scripts.length-1]).parentNode.removeChild(s);}());</script>
+<script src="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" defer></script><script src="https://assets.habr.com/habr-web/js/app.c0af73e7.js" defer></script>
+
+
+
+    <script>
+      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+        (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+        m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+      })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+    </script>
+  
+  <script type="text/javascript" >
+    (function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+    m[i].l=1*new Date();k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})
+    (window, document, "script", "https://mc.yandex.ru/metrika/tag.js", "ym");
+
+    ym(24049213, "init", {
+      defer:true,
+      trackLinks:true,
+      accurateTrackBounce:true,
+      webvisor:false,
+    });
+  </script>
+  <noscript>
+    <div>
+      <img src="https://mc.yandex.ru/watch/24049213" style="position:absolute; left:-9999px;" alt="" />
+    </div>
+  </noscript>
+  
+    <script type="text/javascript">
+      window.addEventListener('load', function () {
+        setTimeout(() => {
+          const img = new Image();
+          img.src = 'https://vk.com/rtrg?p=VK-RTRG-421343-57vKE';
+        }, 0);
+      });
+    </script>
+  
+</body>
+</html>

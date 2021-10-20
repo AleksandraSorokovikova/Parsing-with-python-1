@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="ru" data-vue-meta="%7B%22lang%22:%7B%22ssr%22:%22ru%22%7D%7D">
+<head >
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
+  <title>Selenium WebDriver – Метрика тестов в реальном времени с использованием Grafana и InfluxDB / Хабр</title>
+  <style>
+    /* cyrillic-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSxf6TF0.woff2) format('woff2');
+      unicode-range: U+0460-052F, U+1C80-1C88, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+    }
+
+    /* cyrillic */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveQhf6TF0.woff2) format('woff2');
+      unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+    }
+
+    /* latin-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSBf6TF0.woff2) format('woff2');
+      unicode-range: U+0100-024F, U+0259, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20CF, U+2113, U+2C60-2C7F, U+A720-A7FF;
+    }
+
+    /* latin */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveRhf6.woff2) format('woff2');
+      unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+    }
+  </style>
+  <link rel="preload" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" as="script"><link rel="preload" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/app.c0af73e7.js" as="script">
+  <link rel="stylesheet" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css"><link rel="stylesheet" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css">
+  <script>window.i18nFetch = new Promise((res, rej) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open('GET', '/js/i18n/ru-compiled.85eb77f0b17c8235e7b64b9f81ea5ec2.json');
+          xhr.responseType = 'json';
+          xhr.onload = function(e) {
+            if (this.status === 200) {
+              res({ru: xhr.response});
+            } else {
+              rej(e);
+            }
+          };
+          xhr.send();
+        });</script>
+  
+  <script data-vue-meta="ssr" src="/js/ads.js" onload="window['zhY4i4nJ9K'] = true" data-vmid="checkad"></script><script data-vue-meta="ssr" type="application/ld+json" data-vmid="ldjson-schema">{"@context":"http:\/\/schema.org","@type":"Article","mainEntityOfPage":{"@type":"WebPage","@id":"https:\/\/habr.com\/ru\/company\/otus\/blog\/452908\/"},"headline":"Selenium WebDriver – Метрика тестов в реальном времени с использованием Grafana и InfluxDB","datePublished":"2019-05-22T13:12:39+03:00","dateModified":"2019-05-22T13:25:04+03:00","author":{"@type":"Person","name":"OTUS"},"publisher":{"@type":"Organization","name":"Habr","logo":{"@type":"ImageObject","url":"https:\/\/habrastorage.org\/webt\/a_\/lk\/9m\/a_lk9mjkccjox-zccjrpfolmkmq.png"}},"description":"Всем привет! Уже на следующей неделе стартуют занятия в группе &laquo;Java QA Engineer&raquo;. Этому и будет приурочена нынешняя публикация.    Обзор:  Ежедневное выполнение...","url":"https:\/\/habr.com\/ru\/company\/otus\/blog\/452908\/#post-content-body","about":["c_otus","h_it_testing","h_java","h_web_testing","f_develop"],"image":["https:\/\/habrastorage.org\/webt\/to\/5o\/i2\/to5oi2-xgkntlui71to1n-184sq.png","https:\/\/habrastorage.org\/webt\/ka\/8q\/wu\/ka8qwu3b5ernuxuegvpzgzbadga.png"]}</script>
+  <script src="//www.googletagservices.com/tag/js/gpt.js" async></script>
+  <style>.grecaptcha-badge{visibility: hidden;}</style>
+  <meta name="habr-version" content="2.49.0">
+  
+  <meta data-vue-meta="ssr" property="fb:app_id" content="444736788986613"><meta data-vue-meta="ssr" property="fb:pages" content="472597926099084"><meta data-vue-meta="ssr" name="twitter:card" content="summary_large_image"><meta data-vue-meta="ssr" name="twitter:site" content="@habr_eng"><meta data-vue-meta="ssr" property="og:title" content="Selenium WebDriver – Метрика тестов в реальном времени с использованием Grafana и InfluxDB" data-vmid="og:title"><meta data-vue-meta="ssr" name="twitter:title" content="Selenium WebDriver – Метрика тестов в реальном времени с использованием Grafana и InfluxDB" data-vmid="twitter:title"><meta data-vue-meta="ssr" name="aiturec:title" content="Selenium WebDriver – Метрика тестов в реальном времени с использованием Grafana и InfluxDB" data-vmid="aiturec:title"><meta data-vue-meta="ssr" name="description" content="Всем привет! Уже на следующей неделе стартуют занятия в группе «Java QA Engineer». Этому и будет приурочена нынешняя публикация.
+
+
+
+Обзор:
+ Ежедневное выполнение автоматизированных регрессионных..." data-vmid="description"><meta data-vue-meta="ssr" itemprop="description" content="Всем привет! Уже на следующей неделе стартуют занятия в группе «Java QA Engineer». Этому и будет приурочена нынешняя публикация.
+
+
+
+Обзор:
+ Ежедневное выполнение автоматизированных регрессионных..." data-vmid="description:itemprop"><meta data-vue-meta="ssr" property="og:description" content="Всем привет! Уже на следующей неделе стартуют занятия в группе «Java QA Engineer». Этому и будет приурочена нынешняя публикация.
+
+
+
+Обзор:
+ Ежедневное выполнение автоматизированных регрессионных..." data-vmid="og:description"><meta data-vue-meta="ssr" name="twitter:description" content="Всем привет! Уже на следующей неделе стартуют занятия в группе «Java QA Engineer». Этому и будет приурочена нынешняя публикация.
+
+
+
+Обзор:
+ Ежедневное выполнение автоматизированных регрессионных..." data-vmid="twitter:description"><meta data-vue-meta="ssr" property="aiturec:description" content="Всем привет! Уже на следующей неделе стартуют занятия в группе «Java QA Engineer». Этому и будет приурочена нынешняя публикация.
+
+
+
+Обзор:
+ Ежедневное выполнение автоматизированных регрессионных..." data-vmid="aiturec:description"><meta data-vue-meta="ssr" itemprop="image" content="https://habr.com/share/publication/452908/d7499429071c1ca7cb961c900214764c/" data-vmid="image:itemprop"><meta data-vue-meta="ssr" property="og:image" content="https://habr.com/share/publication/452908/d7499429071c1ca7cb961c900214764c/" data-vmid="og:image"><meta data-vue-meta="ssr" property="aiturec:image" content="https://habr.com/share/publication/452908/d7499429071c1ca7cb961c900214764c/" data-vmid="aiturec:image"><meta data-vue-meta="ssr" name="twitter:image" content="https://habr.com/share/publication/452908/d7499429071c1ca7cb961c900214764c/" data-vmid="twitter:image"><meta data-vue-meta="ssr" property="vk:image" content="https://habr.com/share/publication/452908/d7499429071c1ca7cb961c900214764c/" data-vmid="vk:image"><meta data-vue-meta="ssr" property="aiturec:item_id" content="452908" data-vmid="aiturec:item_id"><meta data-vue-meta="ssr" property="aiturec:datetime" content="2019-05-22T10:12:39.000Z" data-vmid="aiturec:datetime"><meta data-vue-meta="ssr" property="og:type" content="article" data-vmid="og:type"><meta data-vue-meta="ssr" property="og:locale" content="ru_RU" data-vmid="og:locale"><meta data-vue-meta="ssr" property="og:image:width" content="1200" data-vmid="og:image:width"><meta data-vue-meta="ssr" property="og:image:height" content="630" data-vmid="og:image:height">
+  <link data-vue-meta="ssr" href="https://habr.com/ru/rss/post/452908/?fl=ru" type="application/rss+xml" title="" rel="alternate" name="rss"><link data-vue-meta="ssr" href="https://habr.com/ru/company/otus/blog/452908/" rel="canonical" data-vmid="canonical"><link data-vue-meta="ssr" data-vmid="hreflang"><link data-vue-meta="ssr" image_src="image" href="https://habr.com/share/publication/452908/d7499429071c1ca7cb961c900214764c/" data-vmid="image:href">
+  <meta name="apple-mobile-web-app-status-bar-style" content="#303b44">
+  <meta name="msapplication-TileColor" content="#629FBC">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="16x16"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-16.png"
+  >
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="32x32"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-32.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="76x76"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-76.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="120x120"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="152x152"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-152.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="180x180"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-180.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="256x256"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-256.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1136x640.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2436x1125.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1792x828.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_828x1792.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1334x750.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2208x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1125x2436.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2208.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2732x2048.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2688x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2224x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_750x1334.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x2732.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2388x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2224.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_640x1136.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2388.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x1536.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1536x2048.png"
+  >
+  <link
+    rel="mask-icon"
+    color="#77a2b6"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.svg"
+  >
+  <link
+    crossorigin="use-credentials"
+    href="/manifest.webmanifest"
+    rel="manifest"
+  >
+</head>
+<body>
+
+
+<div id="app" data-server-rendered="true" data-async-called="true"><div class="tm-layout__wrapper"><!----> <div></div> <!----> <header class="tm-header"><div class="tm-page-width"><div class="tm-header__container"><!----> <span class="tm-header__logo-wrap"><a href="/ru/" class="tm-header__logo tm-header__logo_ru"><svg height="16" width="16" class="tm-svg-img tm-header__icon"><title>Хабр</title> <use xlink:href="/img/habr-logo-ru.svg#logo"></use></svg></a> <span class="tm-header__beta-sign" style="display:none;">β</span></span> <div class="tm-dropdown tm-header__projects"><div class="tm-dropdown__head"><button class="tm-header__dropdown-toggle"><svg height="16" width="16" class="tm-svg-img tm-header__icon tm-header__icon_dropdown"><title>Открыть список</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#arrow-down"></use></svg></button></div> <!----></div> <a href="/ru/sandbox/start/" class="tm-header__become-author-btn">
+            Как стать автором
+          </a> <div class="tm-feature tm-header__feature tm-feature_variant-inline"><!----></div> <!----> <!----></div></div></header> <div class="tm-layout"><div class="tm-page-progress-bar"></div> <div data-menu-sticky="true" class="tm-base-layout__header tm-base-layout__header_is-sticky"><div class="tm-page-width"><div class="tm-base-layout__header-wrapper"><div class="tm-main-menu"><div class="tm-main-menu__section"><nav class="tm-main-menu__section-content"><!----> <a href="/ru/all/" class="tm-main-menu__item">
+        Все потоки
+      </a> <a href="/ru/flows/develop/" class="tm-main-menu__item">
+          Разработка
+        </a><a href="/ru/flows/admin/" class="tm-main-menu__item">
+          Администрирование
+        </a><a href="/ru/flows/design/" class="tm-main-menu__item">
+          Дизайн
+        </a><a href="/ru/flows/management/" class="tm-main-menu__item">
+          Менеджмент
+        </a><a href="/ru/flows/marketing/" class="tm-main-menu__item">
+          Маркетинг
+        </a><a href="/ru/flows/popsci/" class="tm-main-menu__item">
+          Научпоп
+        </a></nav></div></div> <div class="tm-header-user-menu tm-base-layout__user-menu"><a href="/ru/search/" class="tm-header-user-menu__item tm-header-user-menu__search"><svg height="24" width="24" class="tm-svg-img tm-header-user-menu__icon tm-header-user-menu__icon_search tm-header-user-menu__icon_dark"><title>Поиск</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#search"></use></svg></a> <!----> <!----> <!----> <div class="tm-header-user-menu__item tm-header-user-menu__user_desktop"><div class="tm-dropdown"><div class="tm-dropdown__head"><svg height="24" width="24" data-test-id="menu-toggle-guest" class="tm-svg-img tm-header-user-menu__icon"><title>Профиль</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#header-user"></use></svg> <!----></div> <!----></div> <!----></div> <!----></div></div></div></div> <!----> <div class="tm-page-width"></div> <main class="tm-layout__container"><div hl="ru" companyName="otus" data-async-called="true" class="tm-page"><div class="tm-page-width"><div class="tm-page__header"><!----></div> <div class="tm-page__wrapper"><div class="tm-page__main tm-page__main_has-sidebar"><div class="pull-down"><div class="pull-down__header" style="height:0px;"><div class="pull-down__content" style="bottom:10px;"><svg height="24" width="24" class="tm-svg-img pull-down__arrow"><title>Обновить</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#pull-arrow"></use></svg></div></div> <div class="tm-article-presenter"><div class="tm-company-card tm-company-article__company-card"><div class="tm-company-card__info"><div class="tm-company-card__header"><a href="/ru/company/otus/profile/" class="tm-company-card__avatar"><div class="tm-entity-image"><img alt="" height="48" src="//habrastorage.org/getpro/habr/company/968/422/761/968422761136a38a89fc391fd927f903.jpg" width="48" class="tm-entity-image__pic"></div></a> <!----> <div class="tm-rating tm-company-card__rating"><div class="tm-rating__header"> <div class="tm-rating__counter">418.61</div></div> <div class="tm-rating__text">
+    Рейтинг
+  </div></div></div> <div class="tm-company-card__info"><a href="/ru/company/otus/profile/" class="tm-company-card__name">
+        OTUS
+      </a> <div class="tm-company-card__description">Цифровые навыки от ведущих экспертов</div></div></div> <div class="tm-company-card__buttons"><!----> <!----></div></div> <div class="tm-article-presenter__body"><div class="tm-misprint-area"><div class="tm-misprint-area__wrapper"><article class="tm-article-presenter__content tm-article-presenter__content_narrow"><div class="tm-article-presenter__header"> <div class="tm-article-snippet tm-article-presenter__snippet"><div class="tm-article-snippet__meta-container"><div class="tm-article-snippet__meta"><span class="tm-user-info tm-article-snippet__author"><a href="/ru/users/MaxRokatansky/" title="MaxRokatansky" class="tm-user-info__userpic"><div class="tm-entity-image"><img alt="" height="24" loading="lazy" src="//habrastorage.org/r/w32/getpro/habr/avatars/b9f/baf/5f9/b9fbaf5f96ae52973706a0716bd9216e.jpg" width="24" class="tm-entity-image__pic"></div></a> <span class="tm-user-info__user"><a href="/ru/users/MaxRokatansky/" class="tm-user-info__username">
+      MaxRokatansky
+    </a> </span></span> <span class="tm-article-snippet__datetime-published"><time datetime="2019-05-22T10:12:39.000Z" title="2019-05-22, 13:12">22  мая  2019 в 13:12</time></span></div> <!----></div> <h1 lang="ru" class="tm-article-snippet__title tm-article-snippet__title_h1"><span>Selenium WebDriver – Метрика тестов в реальном времени с использованием Grafana и InfluxDB</span></h1> <div class="tm-article-snippet__hubs"><span class="tm-article-snippet__hubs-item"><a href="/ru/company/otus/blog/" class="tm-article-snippet__hubs-item-link router-link-active"><span>Блог компании OTUS</span> <!----></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/it_testing/" class="tm-article-snippet__hubs-item-link"><span>Тестирование IT-систем</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/java/" class="tm-article-snippet__hubs-item-link"><span>Java</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/web_testing/" class="tm-article-snippet__hubs-item-link"><span>Тестирование веб-сервисов</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span></div> <div class="tm-article-snippet__labels"><div class="tm-article-snippet__label"><span>
+        Перевод
+      </span></div></div> <!----> <!----></div></div> <div class="tm-article-presenter__origin"><a href="http://www.testautomationguru.com/selenium-webdriver-real-time-test-metrics-using-grafana-influxdb/" target="_blank" class="tm-article-presenter__origin-link">
+                Автор оригинала:
+                <span>
+                  TestAutomationGuru
+                </span></a></div> <div data-gallery-root="" lang="ru" class="tm-article-body"><div id="post-content-body" class="article-formatted-body article-formatted-body_version-1"><div xmlns="http://www.w3.org/1999/xhtml">Всем привет! Уже на следующей неделе стартуют занятия в группе <a href="https://otus.pw/x5Eg/">«Java QA Engineer»</a>. Этому и будет приурочена нынешняя публикация.<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/to/5o/i2/to5oi2-xgkntlui71to1n-184sq.png"/><br/>
+<br/>
+<h2>Обзор:</h2><br/>
+ Ежедневное выполнение автоматизированных регрессионных тестов в рамках каждодневной сборки неизбежно на настоящий момент. Приятно находить и сообщать об ошибках, сразу после их нахождения. Одновременно с этим проблематично проводить сотни автоматизированных тестов и удаленное параллельное выполнение. Как только у вас появляется набор автоматизированных регрессионных тестов, вы можете разбить его на несколько наборов по бизнес-модулям и запускать их параллельно, как часть ежедневного автоматизированного регрессионного тестирования. Большинство таких тестовых наборов выполняются на удаленной виртуальной машине, а результаты теста становятся доступны только после его выполнения. В противном случае, вы можете заглянуть в консоль jenkins, чтобы увидеть логи процесса выполнения теста. Иногда это раздражает. Было бы здорово иметь приложение, которое выдавало бы информацию о прохождении теста во время выполнения их на удаленных виртуальных машинах.<a name="habracut"></a><br/>
+<br/>
+Давайте посмотрим, как можно создать простую страницу с результатами выполнения теста и панель мониторинга с помощью InfluxDB и Grafana.<br/>
+<br/>
+<h2>Цель:</h2><br/>
+ Мы будет собирать все доступные тестовые метрики, такие как:<br/>
+<br/>
+<ul>
+<li>Статус теста-метода</li>
+<li>Продолжительность теста-метода</li>
+<li>Статус класса с тестовыми методами</li>
+<li>Время выполнения тестов одного класса</li>
+<li>Статус набора тестов</li>
+<li>Продолжительность выполнения набора тестов</li>
+</ul><br/>
+<br/>
+Некоторые из показателей мы можем получить в режиме реального времени, как показано ниже:<br/>
+<br/>
+<ul>
+<li>Количество методов тестирования, сгруппированных по статусу (например: Pass: 30, Failed: 2, Skipped: 2) в конкретный день.</li>
+<li>Тенденция продолжительности выполнения набора тестов за неделю, месяц, год и т.д.</li>
+</ul><br/>
+<br/>
+<h2>InfluxDB:</h2><br/>
+InfluxDB – это база данных временных рядов, которая используется для сбора всех метрик тестов. InfluxDB имеет REST API для записи данных и отправки запросов. Больше вы можете узнать <a href="https://docs.influxdata.com/influxdb/v1.6/tools/api/">здесь</a>. Ниже я использую команду docker для запуска экземпляра InfluxDB.<br/>
+<br/>
+<pre><code class="java">sudo docker run -p 8086:8086 -v $PWD:/var/lib/influxdb influxdb</code></pre><br/>
+<br/>
+<h2>Создание базы данных:</h2><br/>
+ У нас уже поднята и запущена база данных InfluxDB. Давайте создадим отдельную схему базы данных для сбора результатов тестов Selenium. Ниже я запускаю команду в терминале, чтобы создать в базе данных схему под названием «selenium». (Проверьте URL адрес, замените localhost на hostname/ipaddress, если запускаете не на текущем компьютере).<br/>
+<br/>
+<pre><code class="java">curl -i -XPOST http://localhost:8086/query --data-urlencode "q=CREATE DATABASE selenium"</code></pre><br/>
+<br/>
+<h2>TestNG:</h2><br/>
+ Давайте создадим простой тест testNG: <br/>
+<br/>
+<pre><code class="java">public class SampleTest {
+
+    @Test(description = "login")
+    public void login(){
+
+    }
+
+    @Test(description = "search for flights", dependsOnMethods = "login")
+    public void search(){
+
+    }
+
+    @Test(description = "select flight", dependsOnMethods = "search")
+    public void select(){
+
+    }
+
+    @Test(description = "book flight", dependsOnMethods = "select")
+    public void book(){
+
+    }
+
+    @Test(description = "logout", dependsOnMethods = "book")
+    public void logout(){
+
+    }
+}</code></pre><br/>
+<br/>
+Нашей целью является сбор результатов теста в InfluxDB во время выполнения. Итак, нам понадобится драйвер/библиотека в Java для InfluxDB.<br/>
+ <br/>
+ <h2>Зависимости Maven:</h2><br/>
+ Добавьте зависимости Maven, указанные далее:<br/>
+<br/>
+<pre><code class="java">&lt;dependency>
+            &lt;groupId>org.influxdb&lt;/groupId>
+            &lt;artifactId>influxdb-java&lt;/artifactId>
+            &lt;version>2.12&lt;/version>
+ &lt;/dependency></code></pre><br/>
+ <br/>
+ <h2>Слушатели:</h2><br/>
+ Слушатели (listeners) TestNG отлично подходят для прослушивания событий и могут реагировать в зависимости от произошедшего события. Сначала давайте создадим простой класс, который отвечает за отправку результатов в InfluxDB.<br/>
+<br/>
+<pre><code class="java">import org.influxdb.InfluxDB;
+import org.influxdb.InfluxDBFactory;
+import org.influxdb.dto.Point;
+
+public class ResultSender {
+
+    private static final InfluxDB INFLXUDB = InfluxDBFactory.connect("http://localhost:8086", "root", "root");
+    private static final String DATABASE = "selenium";
+
+    static{
+        INFLXUDB.setDatabase(DATABASE);
+    }
+
+    public static void send(final Point point){
+        INFLXUDB.write(point);
+    }
+
+}</code></pre><br/>
+ <br/>
+ Теперь создадим другой класс, который реализует интерфейс ITestListener.<br/>
+<br/>
+<pre><code class="java">import org.influxdb.dto.Point;
+import org.testng.ITestContext;
+import org.testng.ITestListener;
+import org.testng.ITestResult;
+import java.util.concurrent.TimeUnit;
+
+public class ExecutionListener implements ITestListener {
+
+    public void onTestStart(ITestResult iTestResult) {
+
+    }
+
+    public void onTestSuccess(ITestResult iTestResult) {
+        this.sendTestMethodStatus(iTestResult, "PASS");
+    }
+
+    public void onTestFailure(ITestResult iTestResult) {
+        this.sendTestMethodStatus(iTestResult, "FAIL");
+    }
+
+    public void onTestSkipped(ITestResult iTestResult) {
+        this.sendTestMethodStatus(iTestResult, "SKIPPED");
+    }
+
+    public void onTestFailedButWithinSuccessPercentage(ITestResult iTestResult) {
+
+    }
+
+    public void onStart(ITestContext iTestContext) {
+
+    }
+
+    public void onFinish(ITestContext iTestContext) {
+        this.sendTestClassStatus(iTestContext);
+    }
+
+    private void sendTestMethodStatus(ITestResult iTestResult, String status) {
+        Point point = Point.measurement("testmethod")
+                .time(System.currentTimeMillis(), TimeUnit.MILLISECONDS)
+                .tag("testclass", iTestResult.getTestClass().getName())
+                .tag("name", iTestResult.getName())
+                .tag("description", iTestResult.getMethod().getDescription())
+                .tag("result", status)
+                .addField("duration", (iTestResult.getEndMillis() - iTestResult.getStartMillis()))
+                .build();
+        ResultSender.send(point);
+    }
+
+    private void sendTestClassStatus(ITestContext iTestContext) {
+        Point point = Point.measurement("testclass")
+                .time(System.currentTimeMillis(), TimeUnit.MILLISECONDS)
+                .tag("name", iTestContext.getAllTestMethods()[0].getTestClass().getName())
+                .addField("duration", (iTestContext.getEndDate().getTime() - iTestContext.getStartDate().getTime()))
+                .build();
+        ResultSender.send(point);
+    }
+
+}</code></pre><br/>
+ <br/>
+ <blockquote>Примечание: Используйте дополнительный тег, отвечающий вашим задачам в приведенном выше примере, чтобы классифицировать результаты. Например tag(“scenario”, “login flow”).</blockquote><br/>
+ Слушатель (listener) из примера выше будет мониторить выполнение теста и как только определенный метод/класс теста будет выполнен, он отправит имя, продолжительность и кое-какие дополнительные детали. Моя цель здесь – просто подкинуть вам идею. Меняйте код в соответствии с вашими нуждами.<br/>
+<br/>
+Теперь добавьте слушателя в XML-пакет или в базовый класс TestNG.<br/>
+<br/>
+<pre><code class="java">&lt;suite name="My suite">
+    &lt;listeners>
+        &lt;listener class-name="com.tag.realtime.ExecutionListener" />
+    &lt;/listeners>
+    &lt;test name="Test1">
+        &lt;classes>
+            &lt;class name="com.tag.realtime.SampleTest"/>
+        &lt;/classes>
+    &lt;/test>
+    &lt;test name="Test2">
+        &lt;classes>
+            &lt;class name="com.tag.realtime.Sample2Test"/>
+        &lt;/classes>
+    &lt;/test>
+&lt;/suite></code></pre><br/>
+ <br/>
+ Или же:<br/>
+ <br/>
+<pre><code class="java">@Listeners(ExecutionListener.class)
+public class SampleTest {
+
+    @Test
+    public void test(){
+    
+    }
+
+}</code></pre><br/>
+ <br/>
+ <h2>Grafana:</h2><br/>
+ Мы добились отправки результатов в InfluxDB. Но как запрашивать результаты и визуализировать полученные данные? Для этого мы будет использовать другой бесплатный инструмент под названием “Grafana”.<br/>
+ Grafana является отличным инструментом визуализации для данных временных рядов, она прекрасно взаимодействует с InfluxDB. Ниже приведены команды docker для создания экземпляра Grafana. [плагин piechart является необязательным в команде, его можно удалить, если в нем нет надобности]<br/>
+<br/>
+<pre><code class="java">docker run -d -p 3000:3000
+  --name=grafana \
+  -e "GF_INSTALL_PLUGINS=grafana-piechart-panel" \
+  -v $PWD:/var/lib/grafana \
+  grafana/grafana</code></pre><br/>
+ <br/>
+ <h2>Источник данных для Grafana:</h2><br/>
+ Перейдите в <i>Settings -> Data sources -> Add new data source</i>, как показано на скриншоте. Нажмите на кнопку ‘Save &amp; Test’, чтобы удостовериться, что Grafana может общаться с InfluxDB. <br/>
+ <blockquote>Примечание: Если вы используете Grafana с Docker и пытаетесь получить доступ как ‘Server default’, НЕ ИСПОЛЬЗУЙТЕ localhost в строке подключения к InfluxDB. Все потому, что здесь localhost – это контейнер Grafana, а не физическая машина. Таким образом контейнер Grafana не сможет найти InfluxDB.</blockquote><br/>
+ <br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/ka/8q/wu/ka8qwu3b5ernuxuegvpzgzbadga.png"/><br/>
+ <br/>
+ <h2>Создание панели мониторинга:</h2><br/>
+ Мне бы хотелось, чтобы вы посмотрели это видео, поскольку объяснить в статье все нюансы непросто. Именно для этого я записал отельное видео.<br/>
+<br/>
+<div class="oembed"><div><div style="left: 0; width: 100%; height: 0; position: relative; padding-bottom: 56.2493%;"><div class="tm-iframe_temp" data-src="https://www.youtube.com/embed/zQX8INELrjI?rel=0&amp;showinfo=1&amp;hl=en-US" data-style="border: 0; top: 0; left: 0; width: 100%; height: 100%; position: absolute;" id="" width=""></div></div></div></div><br/>
+<br/>
+<b>Демо 2:</b><br/>
+ <div class="oembed"><div><div style="left: 0; width: 100%; height: 0; position: relative; padding-bottom: 56.2493%;"><div class="tm-iframe_temp" data-src="https://www.youtube.com/embed/zdVcH4LBD2I?rel=0&amp;showinfo=1&amp;hl=en-US" data-style="border: 0; top: 0; left: 0; width: 100%; height: 100%; position: absolute;" id="" width=""></div></div></div></div><br/>
+ <br/>
+ <h2>Подведем итог:</h2><br/>
+ Надеюсь, получение результатов в реальном времени с помощью InfluxDB и Grafana оказалось вам интересно и полезно. Оно требует минимальных изменений в существующей структуре, ведь мы используем слушателей TestNG. Удалить слушателя из файла набора/базового класса достаточно, чтобы отключить эту функцию, если вам она не нужна. Такой подход поможет избежать некой фрустрации в команде, если ее члены только и занимаются тем, что мониторят результаты тестов через консольный ввод/вывод на удаленной машине. В этой статье лишь изложена основная идея. Вы можете улучшить этот подход, добавив больше информации, например, тестовую среду, добавить дополнительные фильтры для обновления данных в диаграммах для конкретной среды/тестов и т.д.<br/>
+<br/>
+Вот такой короткий, но довольно полезный материал. Традиционно ждем ваши комментарии, а также напоминаем о том, что уже сегодня пройдет <a href="https://otus.pw/vIWo/">день открытых дверей</a> по курсу, записаться на который может каждый желающий.</div></div> <!----> <!----></div> <div class="tm-article-presenter__meta"><div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Теги:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bqa%5D" class="tm-tags-list__link">qa</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bjavaqa%5D" class="tm-tags-list__link">javaqa</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Binfluxdb%5D" class="tm-tags-list__link">influxdb</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bgrafana%5D" class="tm-tags-list__link">grafana</a></li></ul></div> <div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Хабы:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/company/otus/blog/" class="tm-hubs-list__link router-link-active">
+    Блог компании OTUS
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/it_testing/" class="tm-hubs-list__link">
+    Тестирование IT-систем
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/java/" class="tm-hubs-list__link">
+    Java
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/web_testing/" class="tm-hubs-list__link">
+    Тестирование веб-сервисов
+  </a></li></ul></div></div></article></div> <!----></div> <div class="tm-article-sticky-panel"><div class="tm-data-icons tm-article-sticky-panel__icons"><div class="tm-article-rating tm-data-icons__item"><div class="tm-votes-meter tm-article-rating__votes-switcher"><svg height="16" width="16" class="tm-svg-img tm-votes-meter__icon tm-votes-meter__icon_medium"><title>Всего голосов 19: ↑16 и ↓3</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-rating"></use></svg> <span title="Всего голосов 19: ↑16 и ↓3" class="tm-votes-meter__value tm-votes-meter__value_positive tm-votes-meter__value_medium">+13</span></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----> <span title="Количество просмотров" class="tm-icon-counter tm-data-icons__item"><svg height="16" width="16" class="tm-svg-img tm-icon-counter__icon"><title>Просмотры</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-views"></use></svg> <span class="tm-icon-counter__value">6.6K</span></span> <button title="Добавить в закладки" type="button" class="bookmarks-button tm-data-icons__item"><span title="Добавить в закладки" class="tm-svg-icon__wrapper bookmarks-button__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Добавить в закладки</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-favorite"></use></svg></span> <span title="Количество пользователей, добавивших публикацию в закладки" class="bookmarks-button__counter">
+    47
+  </span></button> <!----> <div title="Поделиться" class="tm-sharing tm-data-icons__item"><button type="button" class="tm-sharing__button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="tm-sharing__icon"><path fill="currentColor" d="M10.33.275l9.047 7.572a.2.2 0 010 .306l-9.048 7.572a.2.2 0 01-.328-.153V11c-8 0-9.94 6-9.94 6S-1 5 10 5V.428a.2.2 0 01.328-.153z"></path></svg></button> <!----></div> <DIV class="v-portal" style="display:none;"></DIV></div> </div></div> <!----> <!----> <div class="tm-article-presenter__footer"><div class="tm-article-blocks"><!----> <section class="tm-block tm-block_spacing-bottom"><!----> <div class="tm-block__body tm-block__body_variant-balanced"><div class="tm-article-author"><div class="tm-article-author__company"><div class="tm-article-author__company-card"><div class="tm-company-snippet"><a href="/ru/company/otus/profile/" class="tm-company-snippet__logo-link"><div class="tm-entity-image"><img alt="" height="40" src="//habrastorage.org/getpro/habr/company/968/422/761/968422761136a38a89fc391fd927f903.jpg" width="40" class="tm-entity-image__pic"></div></a> <div class="tm-company-snippet__info"><a href="/ru/company/otus/profile/" class="tm-company-snippet__title">OTUS</a> <div class="tm-company-snippet__description">Цифровые навыки от ведущих экспертов</div></div></div> <div class="tm-article-author__buttons"><!----> <!----></div></div> <div class="tm-article-author__company-contacts"><a href="https://otus.ru" rel="noopener" target="_blank" class="tm-article-author__contact">
+      Сайт
+    </a><a href="https://facebook.com/otus.ru" rel="noopener" target="_blank" class="tm-article-author__contact">
+      Facebook
+    </a><a href="https://vk.com/club145052891" rel="noopener" target="_blank" class="tm-article-author__contact">
+      ВКонтакте
+    </a><a href="https://telegram.me/Otusjava" rel="noopener" target="_blank" class="tm-article-author__contact">
+      Telegram
+    </a></div> <div class="tm-article-author__separator"></div></div> <div class="tm-user-card tm-article-author__user-card tm-user-card_variant-article"><div class="tm-user-card__info-container"><div class="tm-user-card__header"><div class="tm-user-card__header-data"><a href="/ru/users/MaxRokatansky/" class="tm-user-card__userpic tm-user-card__userpic_size-40"><div class="tm-entity-image"><img alt="" src="//habrastorage.org/getpro/habr/avatars/b9f/baf/5f9/b9fbaf5f96ae52973706a0716bd9216e.jpg" class="tm-entity-image__pic"></div></a> <div class="tm-user-card__meta"><div title=" 659 голосов " class="tm-karma tm-user-card__karma"><div class="tm-karma__votes tm-karma__votes_positive">
+    26.7
+  </div> <div class="tm-karma__text">
+    Карма
+  </div></div> <div title="Рейтинг пользователя" class="tm-rating tm-user-card__rating"><div class="tm-rating__header"> <div class="tm-rating__counter">-29.4</div></div> <div class="tm-rating__text">
+    Рейтинг
+  </div></div></div></div></div> <div class="tm-user-card__info tm-user-card__info_variant-article"><div class="tm-user-card__title tm-user-card__title_variant-article"><span class="tm-user-card__name tm-user-card__name_variant-article">OTUS</span> <a href="/ru/users/MaxRokatansky/" class="tm-user-card__nickname tm-user-card__nickname_variant-article">
+          @MaxRokatansky
+        </a> <!----></div> <p class="tm-user-card__short-info tm-user-card__short-info_variant-article">Редактор</p></div></div> <div class="tm-user-card__buttons tm-user-card__buttons_variant-article"><!----> <!----> <!----> <!----> <!----></div></div> <!----></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----></section> <div class="tm-article-blocks__comments"><div class="tm-article-page-comments"><div class="tm-article-comments-counter-link tm-article-comments-counter-button"><a href="/ru/company/otus/blog/452908/comments/" class="tm-article-comments-counter-link__link tm-article-comments-counter-link__link_button-style"><svg height="16" width="16" class="tm-svg-img tm-article-comments-counter-link__icon tm-article-comments-counter-link__icon_contrasted"><title>Комментарии</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-comments"></use></svg> <span class="tm-article-comments-counter-link__value tm-article-comments-counter-link__value_contrasted">
+       Комментировать 
+    </span></a> <!----></div></div></div>  <!---->  <!----> <!----></div></div></div></div></div> <div class="tm-page__sidebar"><div class="tm-layout-sidebar"><div class="tm-layout-sidebar__placeholder_initial"></div> <div class="tm-sexy-sidebar tm-sexy-sidebar_initial" style="margin-top:0px;"><!----> <section class="tm-block tm-block_spacing-bottom"><header class="tm-block__header"><h2 class="tm-block__title">Информация</h2> <!----></header> <div class="tm-block__body"><div class="tm-company-basic-info"><dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Дата основания</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><time datetime="2017-03-31T21:00:00.000Z" title="2017-04-01, 00:00">1  апреля  2017</time></dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Местоположение</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap">
+    Россия
+  </dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Сайт</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><a href="https://otus.ru" target="_blank" class="tm-company-basic-info__link">
+      otus.ru
+    </a></dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Численность</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap">
+    51–100 человек
+  </dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Дата регистрации</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><time datetime="2017-03-22T08:17:26.000Z" title="2017-03-22, 11:17">22  марта  2017</time></dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Представитель</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><a href="/ru/users/MaxRokatansky/" class="tm-company-basic-info__link">
+      OTUS
+    </a></dd></dl></div></div> <!----></section> <div class="tm-company-widgets"></div> <!----></div></div></div></div></div></div></main> <!----></div> <div class="tm-footer-menu"><div class="tm-page-width"><div class="tm-footer-menu__container"><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Ваш аккаунт
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr/?back=/ru/company/otus/blog/452908/&amp;hl=ru" rel="nofollow" target="_self">
+                Войти
+              </a></li><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr-register/?back=/ru/company/otus/blog/452908/&amp;hl=ru" rel="nofollow" target="_self">
+                Регистрация
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Разделы
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/" class="footer-menu__item-link router-link-active">
+                Публикации
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/news/" class="footer-menu__item-link">
+                Новости
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/hubs/" class="footer-menu__item-link">
+                Хабы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/companies/" class="footer-menu__item-link">
+                Компании
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/users/" class="footer-menu__item-link">
+                Авторы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/sandbox/" class="footer-menu__item-link">
+                Песочница
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Информация
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/docs/help/" class="footer-menu__item-link">
+                Устройство сайта
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/authors/codex/" class="footer-menu__item-link">
+                Для авторов
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/companies/corpblogs/" class="footer-menu__item-link">
+                Для компаний
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/docs/transparency/" class="footer-menu__item-link">
+                Документы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/agreement" target="_blank">
+                Соглашение
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/confidential/" target="_blank">
+                Конфиденциальность
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Услуги
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQLwRfQmXibiUlWaRg-BAc38s7oM3lJiaPju7qmdJsp8ysIvZ_G-Npem0njJLMozE2bPHMpDqiI5hhy/pub?start=false&amp;loop=false&amp;delayms=60000&amp;slide=id.g91a03369cd_4_297" target="_blank">
+                Реклама
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://habrastorage.org/storage/stuff/habr/service_price.pdf" target="_blank">
+                Тарифы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQJJds8-Di7BQSP_guHxICN7woVYoN5NP_22ra-BIo4bqnTT9FR6fB-Ku2P0AoRpX0Ds-LRkDeAoD8F/pub?start=false&amp;loop=false&amp;delayms=60000" target="_blank">
+                Контент
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://tmtm.timepad.ru/" target="_blank">
+                Семинары
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/megaprojects/" class="footer-menu__item-link">
+                Мегапроекты
+              </a></li></ul></div></div></div></div></div> <div class="tm-footer"><div class="tm-page-width"><div class="tm-footer__container"><!----> <div class="tm-footer__social"><a href="https://www.facebook.com/habrahabr.ru" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Facebook</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-facebook"></use></svg></a><a href="https://twitter.com/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Twitter</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-twitter"></use></svg></a><a href="https://vk.com/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>VK</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-vkontakte"></use></svg></a><a href="https://telegram.me/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Telegram</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-telegram"></use></svg></a><a href="https://www.youtube.com/channel/UCd_sTwKqVrweTt4oAKY5y4w" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Youtube</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-youtube"></use></svg></a><a href="https://zen.yandex.ru/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Яндекс Дзен</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-zen"></use></svg></a></div> <DIV class="v-portal" style="display:none;"></DIV> <button class="tm-footer__link"><!---->
+        Настройка языка
+      </button> <a href="/ru/about" class="tm-footer__link">
+        О сайте
+      </a> <a href="/ru/feedback/" class="tm-footer__link">
+        Техническая поддержка
+      </a> <!----> <a href="/berserk-mode-nope" class="tm-footer__link">
+        Вернуться на старую версию
+      </a> <div class="tm-footer-copyright"><span class="tm-copyright"><span class="tm-copyright__years">© 2006–2021 </span> <span class="tm-copyright__name">«<a href="https://company.habr.com/" rel="noopener" target="_blank" class="tm-copyright__link">Habr</a>»</span></span></div></div></div></div> <!----> <!----></div> <div class="vue-portal-target"></div></div>
+<script>window.__INITIAL_STATE__={"adblock":{"hasAcceptableAdsFilter":false,"hasAdblock":false},"articlesList":{"articlesList":{"452908":{"id":"452908","timePublished":"2019-05-22T10:12:39+00:00","isCorporative":true,"lang":"ru","titleHtml":"Selenium WebDriver – Метрика тестов в реальном времени с использованием Grafana и InfluxDB","leadData":{"textHtml":"Всем привет! Уже на следующей неделе стартуют занятия в группе \u003Ca href=\"https:\u002F\u002Fotus.pw\u002Fx5Eg\u002F\"\u003E«Java QA Engineer»\u003C\u002Fa\u003E. Этому и будет приурочена нынешняя публикация.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fto\u002F5o\u002Fi2\u002Fto5oi2-xgkntlui71to1n-184sq.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EОбзор:\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\n Ежедневное выполнение автоматизированных регрессионных тестов в рамках каждодневной сборки неизбежно на настоящий момент. Приятно находить и сообщать об ошибках, сразу после их нахождения. Одновременно с этим проблематично проводить сотни автоматизированных тестов и удаленное параллельное выполнение. Как только у вас появляется набор автоматизированных регрессионных тестов, вы можете разбить его на несколько наборов по бизнес-модулям и запускать их параллельно, как часть ежедневного автоматизированного регрессионного тестирования. Большинство таких тестовых наборов выполняются на удаленной виртуальной машине, а результаты теста становятся доступны только после его выполнения. В противном случае, вы можете заглянуть в консоль jenkins, чтобы увидеть логи процесса выполнения теста. Иногда это раздражает. Было бы здорово иметь приложение, которое выдавало бы информацию о прохождении теста во время выполнения их на удаленных виртуальных машинах.","imageUrl":null,"buttonTextHtml":null,"image":null},"editorVersion":"1.0","postType":"article","postLabels":[{"type":"translation","data":{"originalAuthorName":"TestAutomationGuru","originalUrl":"http:\u002F\u002Fwww.testautomationguru.com\u002Fselenium-webdriver-real-time-test-metrics-using-grafana-influxdb\u002F"}}],"author":{"scoreStats":{"score":26.7,"votesCount":659},"rating":-29.4,"relatedData":null,"contacts":[],"authorContacts":[],"paymentDetails":{"paymentYandexMoney":null,"paymentPayPalMe":null,"paymentWebmoney":null},"id":"1547287","alias":"MaxRokatansky","fullname":"OTUS","avatarUrl":"\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Favatars\u002Fb9f\u002Fbaf\u002F5f9\u002Fb9fbaf5f96ae52973706a0716bd9216e.jpg","speciality":"Редактор"},"statistics":{"commentsCount":0,"favoritesCount":47,"readingCount":6600,"score":13,"votesCount":19},"hubs":[{"relatedData":null,"id":"21052","alias":"otus","type":"corporative","title":"Блог компании OTUS","titleHtml":"Блог компании OTUS","isProfiled":false},{"relatedData":null,"id":"210","alias":"it_testing","type":"collective","title":"Тестирование IT-систем","titleHtml":"Тестирование IT-систем","isProfiled":true},{"relatedData":null,"id":"375","alias":"java","type":"collective","title":"Java","titleHtml":"Java","isProfiled":true},{"relatedData":null,"id":"19279","alias":"web_testing","type":"collective","title":"Тестирование веб-сервисов","titleHtml":"Тестирование веб-сервисов","isProfiled":true}],"flows":[{"id":"1","alias":"develop","title":"Разработка"}],"relatedData":null,"textHtml":"\u003Cdiv xmlns=\"http:\u002F\u002Fwww.w3.org\u002F1999\u002Fxhtml\"\u003EВсем привет! Уже на следующей неделе стартуют занятия в группе \u003Ca href=\"https:\u002F\u002Fotus.pw\u002Fx5Eg\u002F\"\u003E«Java QA Engineer»\u003C\u002Fa\u003E. Этому и будет приурочена нынешняя публикация.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fto\u002F5o\u002Fi2\u002Fto5oi2-xgkntlui71to1n-184sq.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EОбзор:\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\n Ежедневное выполнение автоматизированных регрессионных тестов в рамках каждодневной сборки неизбежно на настоящий момент. Приятно находить и сообщать об ошибках, сразу после их нахождения. Одновременно с этим проблематично проводить сотни автоматизированных тестов и удаленное параллельное выполнение. Как только у вас появляется набор автоматизированных регрессионных тестов, вы можете разбить его на несколько наборов по бизнес-модулям и запускать их параллельно, как часть ежедневного автоматизированного регрессионного тестирования. Большинство таких тестовых наборов выполняются на удаленной виртуальной машине, а результаты теста становятся доступны только после его выполнения. В противном случае, вы можете заглянуть в консоль jenkins, чтобы увидеть логи процесса выполнения теста. Иногда это раздражает. Было бы здорово иметь приложение, которое выдавало бы информацию о прохождении теста во время выполнения их на удаленных виртуальных машинах.\u003Ca name=\"habracut\"\u003E\u003C\u002Fa\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nДавайте посмотрим, как можно создать простую страницу с результатами выполнения теста и панель мониторинга с помощью InfluxDB и Grafana.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EЦель:\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\n Мы будет собирать все доступные тестовые метрики, такие как:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003EСтатус теста-метода\u003C\u002Fli\u003E\r\n\u003Cli\u003EПродолжительность теста-метода\u003C\u002Fli\u003E\r\n\u003Cli\u003EСтатус класса с тестовыми методами\u003C\u002Fli\u003E\r\n\u003Cli\u003EВремя выполнения тестов одного класса\u003C\u002Fli\u003E\r\n\u003Cli\u003EСтатус набора тестов\u003C\u002Fli\u003E\r\n\u003Cli\u003EПродолжительность выполнения набора тестов\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nНекоторые из показателей мы можем получить в режиме реального времени, как показано ниже:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003EКоличество методов тестирования, сгруппированных по статусу (например: Pass: 30, Failed: 2, Skipped: 2) в конкретный день.\u003C\u002Fli\u003E\r\n\u003Cli\u003EТенденция продолжительности выполнения набора тестов за неделю, месяц, год и т.д.\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EInfluxDB:\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nInfluxDB – это база данных временных рядов, которая используется для сбора всех метрик тестов. InfluxDB имеет REST API для записи данных и отправки запросов. Больше вы можете узнать \u003Ca href=\"https:\u002F\u002Fdocs.influxdata.com\u002Finfluxdb\u002Fv1.6\u002Ftools\u002Fapi\u002F\"\u003Eздесь\u003C\u002Fa\u003E. Ниже я использую команду docker для запуска экземпляра InfluxDB.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"java\"\u003Esudo docker run -p 8086:8086 -v $PWD:\u002Fvar\u002Flib\u002Finfluxdb influxdb\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EСоздание базы данных:\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\n У нас уже поднята и запущена база данных InfluxDB. Давайте создадим отдельную схему базы данных для сбора результатов тестов Selenium. Ниже я запускаю команду в терминале, чтобы создать в базе данных схему под названием «selenium». (Проверьте URL адрес, замените localhost на hostname\u002Fipaddress, если запускаете не на текущем компьютере).\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"java\"\u003Ecurl -i -XPOST http:\u002F\u002Flocalhost:8086\u002Fquery --data-urlencode \"q=CREATE DATABASE selenium\"\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003ETestNG:\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\n Давайте создадим простой тест testNG: \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"java\"\u003Epublic class SampleTest {\n\n    @Test(description = \"login\")\n    public void login(){\n\n    }\n\n    @Test(description = \"search for flights\", dependsOnMethods = \"login\")\n    public void search(){\n\n    }\n\n    @Test(description = \"select flight\", dependsOnMethods = \"search\")\n    public void select(){\n\n    }\n\n    @Test(description = \"book flight\", dependsOnMethods = \"select\")\n    public void book(){\n\n    }\n\n    @Test(description = \"logout\", dependsOnMethods = \"book\")\n    public void logout(){\n\n    }\n}\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nНашей целью является сбор результатов теста в InfluxDB во время выполнения. Итак, нам понадобится драйвер\u002Fбиблиотека в Java для InfluxDB.\u003Cbr\u002F\u003E\r\n \u003Cbr\u002F\u003E\r\n \u003Ch2\u003EЗависимости Maven:\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\n Добавьте зависимости Maven, указанные далее:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"java\"\u003E&lt;dependency\u003E\n            &lt;groupId\u003Eorg.influxdb&lt;\u002FgroupId\u003E\n            &lt;artifactId\u003Einfluxdb-java&lt;\u002FartifactId\u003E\n            &lt;version\u003E2.12&lt;\u002Fversion\u003E\n &lt;\u002Fdependency\u003E\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n \u003Cbr\u002F\u003E\r\n \u003Ch2\u003EСлушатели:\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\n Слушатели (listeners) TestNG отлично подходят для прослушивания событий и могут реагировать в зависимости от произошедшего события. Сначала давайте создадим простой класс, который отвечает за отправку результатов в InfluxDB.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"java\"\u003Eimport org.influxdb.InfluxDB;\nimport org.influxdb.InfluxDBFactory;\nimport org.influxdb.dto.Point;\n\npublic class ResultSender {\n\n    private static final InfluxDB INFLXUDB = InfluxDBFactory.connect(\"http:\u002F\u002Flocalhost:8086\", \"root\", \"root\");\n    private static final String DATABASE = \"selenium\";\n\n    static{\n        INFLXUDB.setDatabase(DATABASE);\n    }\n\n    public static void send(final Point point){\n        INFLXUDB.write(point);\n    }\n\n}\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n \u003Cbr\u002F\u003E\r\n Теперь создадим другой класс, который реализует интерфейс ITestListener.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"java\"\u003Eimport org.influxdb.dto.Point;\nimport org.testng.ITestContext;\nimport org.testng.ITestListener;\nimport org.testng.ITestResult;\nimport java.util.concurrent.TimeUnit;\n\npublic class ExecutionListener implements ITestListener {\n\n    public void onTestStart(ITestResult iTestResult) {\n\n    }\n\n    public void onTestSuccess(ITestResult iTestResult) {\n        this.sendTestMethodStatus(iTestResult, \"PASS\");\n    }\n\n    public void onTestFailure(ITestResult iTestResult) {\n        this.sendTestMethodStatus(iTestResult, \"FAIL\");\n    }\n\n    public void onTestSkipped(ITestResult iTestResult) {\n        this.sendTestMethodStatus(iTestResult, \"SKIPPED\");\n    }\n\n    public void onTestFailedButWithinSuccessPercentage(ITestResult iTestResult) {\n\n    }\n\n    public void onStart(ITestContext iTestContext) {\n\n    }\n\n    public void onFinish(ITestContext iTestContext) {\n        this.sendTestClassStatus(iTestContext);\n    }\n\n    private void sendTestMethodStatus(ITestResult iTestResult, String status) {\n        Point point = Point.measurement(\"testmethod\")\n                .time(System.currentTimeMillis(), TimeUnit.MILLISECONDS)\n                .tag(\"testclass\", iTestResult.getTestClass().getName())\n                .tag(\"name\", iTestResult.getName())\n                .tag(\"description\", iTestResult.getMethod().getDescription())\n                .tag(\"result\", status)\n                .addField(\"duration\", (iTestResult.getEndMillis() - iTestResult.getStartMillis()))\n                .build();\n        ResultSender.send(point);\n    }\n\n    private void sendTestClassStatus(ITestContext iTestContext) {\n        Point point = Point.measurement(\"testclass\")\n                .time(System.currentTimeMillis(), TimeUnit.MILLISECONDS)\n                .tag(\"name\", iTestContext.getAllTestMethods()[0].getTestClass().getName())\n                .addField(\"duration\", (iTestContext.getEndDate().getTime() - iTestContext.getStartDate().getTime()))\n                .build();\n        ResultSender.send(point);\n    }\n\n}\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n \u003Cbr\u002F\u003E\r\n \u003Cblockquote\u003EПримечание: Используйте дополнительный тег, отвечающий вашим задачам в приведенном выше примере, чтобы классифицировать результаты. Например tag(“scenario”, “login flow”).\u003C\u002Fblockquote\u003E\u003Cbr\u002F\u003E\r\n Слушатель (listener) из примера выше будет мониторить выполнение теста и как только определенный метод\u002Fкласс теста будет выполнен, он отправит имя, продолжительность и кое-какие дополнительные детали. Моя цель здесь – просто подкинуть вам идею. Меняйте код в соответствии с вашими нуждами.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nТеперь добавьте слушателя в XML-пакет или в базовый класс TestNG.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"java\"\u003E&lt;suite name=\"My suite\"\u003E\n    &lt;listeners\u003E\n        &lt;listener class-name=\"com.tag.realtime.ExecutionListener\" \u002F\u003E\n    &lt;\u002Flisteners\u003E\n    &lt;test name=\"Test1\"\u003E\n        &lt;classes\u003E\n            &lt;class name=\"com.tag.realtime.SampleTest\"\u002F\u003E\n        &lt;\u002Fclasses\u003E\n    &lt;\u002Ftest\u003E\n    &lt;test name=\"Test2\"\u003E\n        &lt;classes\u003E\n            &lt;class name=\"com.tag.realtime.Sample2Test\"\u002F\u003E\n        &lt;\u002Fclasses\u003E\n    &lt;\u002Ftest\u003E\n&lt;\u002Fsuite\u003E\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n \u003Cbr\u002F\u003E\r\n Или же:\u003Cbr\u002F\u003E\r\n \u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"java\"\u003E@Listeners(ExecutionListener.class)\npublic class SampleTest {\n\n    @Test\n    public void test(){\n    \n    }\n\n}\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n \u003Cbr\u002F\u003E\r\n \u003Ch2\u003EGrafana:\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\n Мы добились отправки результатов в InfluxDB. Но как запрашивать результаты и визуализировать полученные данные? Для этого мы будет использовать другой бесплатный инструмент под названием “Grafana”.\u003Cbr\u002F\u003E\r\n Grafana является отличным инструментом визуализации для данных временных рядов, она прекрасно взаимодействует с InfluxDB. Ниже приведены команды docker для создания экземпляра Grafana. [плагин piechart является необязательным в команде, его можно удалить, если в нем нет надобности]\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"java\"\u003Edocker run -d -p 3000:3000\n  --name=grafana \\\n  -e \"GF_INSTALL_PLUGINS=grafana-piechart-panel\" \\\n  -v $PWD:\u002Fvar\u002Flib\u002Fgrafana \\\n  grafana\u002Fgrafana\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n \u003Cbr\u002F\u003E\r\n \u003Ch2\u003EИсточник данных для Grafana:\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\n Перейдите в \u003Ci\u003ESettings -\u003E Data sources -\u003E Add new data source\u003C\u002Fi\u003E, как показано на скриншоте. Нажмите на кнопку ‘Save &amp; Test’, чтобы удостовериться, что Grafana может общаться с InfluxDB. \u003Cbr\u002F\u003E\r\n \u003Cblockquote\u003EПримечание: Если вы используете Grafana с Docker и пытаетесь получить доступ как ‘Server default’, НЕ ИСПОЛЬЗУЙТЕ localhost в строке подключения к InfluxDB. Все потому, что здесь localhost – это контейнер Grafana, а не физическая машина. Таким образом контейнер Grafana не сможет найти InfluxDB.\u003C\u002Fblockquote\u003E\u003Cbr\u002F\u003E\r\n \u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fka\u002F8q\u002Fwu\u002Fka8qwu3b5ernuxuegvpzgzbadga.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n \u003Cbr\u002F\u003E\r\n \u003Ch2\u003EСоздание панели мониторинга:\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\n Мне бы хотелось, чтобы вы посмотрели это видео, поскольку объяснить в статье все нюансы непросто. Именно для этого я записал отельное видео.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cdiv class=\"oembed\"\u003E\u003Cdiv\u003E\u003Cdiv style=\"left: 0; width: 100%; height: 0; position: relative; padding-bottom: 56.2493%;\"\u003E\u003Cdiv class=\"tm-iframe_temp\" data-src=\"https:\u002F\u002Fwww.youtube.com\u002Fembed\u002FzQX8INELrjI?rel=0&amp;showinfo=1&amp;hl=en-US\" data-style=\"border: 0; top: 0; left: 0; width: 100%; height: 100%; position: absolute;\" id=\"\" width=\"\"\u003E\u003C\u002Fdiv\u003E\u003C\u002Fdiv\u003E\u003C\u002Fdiv\u003E\u003C\u002Fdiv\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cb\u003EДемо 2:\u003C\u002Fb\u003E\u003Cbr\u002F\u003E\r\n \u003Cdiv class=\"oembed\"\u003E\u003Cdiv\u003E\u003Cdiv style=\"left: 0; width: 100%; height: 0; position: relative; padding-bottom: 56.2493%;\"\u003E\u003Cdiv class=\"tm-iframe_temp\" data-src=\"https:\u002F\u002Fwww.youtube.com\u002Fembed\u002FzdVcH4LBD2I?rel=0&amp;showinfo=1&amp;hl=en-US\" data-style=\"border: 0; top: 0; left: 0; width: 100%; height: 100%; position: absolute;\" id=\"\" width=\"\"\u003E\u003C\u002Fdiv\u003E\u003C\u002Fdiv\u003E\u003C\u002Fdiv\u003E\u003C\u002Fdiv\u003E\u003Cbr\u002F\u003E\r\n \u003Cbr\u002F\u003E\r\n \u003Ch2\u003EПодведем итог:\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\n Надеюсь, получение результатов в реальном времени с помощью InfluxDB и Grafana оказалось вам интересно и полезно. Оно требует минимальных изменений в существующей структуре, ведь мы используем слушателей TestNG. Удалить слушателя из файла набора\u002Fбазового класса достаточно, чтобы отключить эту функцию, если вам она не нужна. Такой подход поможет избежать некой фрустрации в команде, если ее члены только и занимаются тем, что мониторят результаты тестов через консольный ввод\u002Fвывод на удаленной машине. В этой статье лишь изложена основная идея. Вы можете улучшить этот подход, добавив больше информации, например, тестовую среду, добавить дополнительные фильтры для обновления данных в диаграммах для конкретной среды\u002Fтестов и т.д.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВот такой короткий, но довольно полезный материал. Традиционно ждем ваши комментарии, а также напоминаем о том, что уже сегодня пройдет \u003Ca href=\"https:\u002F\u002Fotus.pw\u002FvIWo\u002F\"\u003Eдень открытых дверей\u003C\u002Fa\u003E по курсу, записаться на который может каждый желающий.\u003C\u002Fdiv\u003E","tags":[{"titleHtml":"qa"},{"titleHtml":"javaqa"},{"titleHtml":"influxdb"},{"titleHtml":"grafana"}],"metadata":{"stylesUrls":[],"scriptUrls":[],"shareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F452908\u002Fd7499429071c1ca7cb961c900214764c\u002F","shareImageWidth":1200,"shareImageHeight":630,"vkShareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F452908\u002Fd7499429071c1ca7cb961c900214764c\u002F?format=vk","schemaJsonLd":"{\"@context\":\"http:\\\u002F\\\u002Fschema.org\",\"@type\":\"Article\",\"mainEntityOfPage\":{\"@type\":\"WebPage\",\"@id\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fru\\\u002Fcompany\\\u002Fotus\\\u002Fblog\\\u002F452908\\\u002F\"},\"headline\":\"Selenium WebDriver – Метрика тестов в реальном времени с использованием Grafana и InfluxDB\",\"datePublished\":\"2019-05-22T13:12:39+03:00\",\"dateModified\":\"2019-05-22T13:25:04+03:00\",\"author\":{\"@type\":\"Person\",\"name\":\"OTUS\"},\"publisher\":{\"@type\":\"Organization\",\"name\":\"Habr\",\"logo\":{\"@type\":\"ImageObject\",\"url\":\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fa_\\\u002Flk\\\u002F9m\\\u002Fa_lk9mjkccjox-zccjrpfolmkmq.png\"}},\"description\":\"Всем привет! Уже на следующей неделе стартуют занятия в группе &laquo;Java QA Engineer&raquo;. Этому и будет приурочена нынешняя публикация.    Обзор:  Ежедневное выполнение...\",\"url\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fru\\\u002Fcompany\\\u002Fotus\\\u002Fblog\\\u002F452908\\\u002F#post-content-body\",\"about\":[\"c_otus\",\"h_it_testing\",\"h_java\",\"h_web_testing\",\"f_develop\"],\"image\":[\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fto\\\u002F5o\\\u002Fi2\\\u002Fto5oi2-xgkntlui71to1n-184sq.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fka\\\u002F8q\\\u002Fwu\\\u002Fka8qwu3b5ernuxuegvpzgzbadga.png\"]}","metaDescription":"Всем привет! Уже на следующей неделе стартуют занятия в группе «Java QA Engineer». Этому и будет приурочена нынешняя публикация.\r\n\r\n\r\n\r\nОбзор:\r\n Ежедневное выполнение автоматизированных регрессионных...","mainImageUrl":null,"amp":false},"polls":[],"commentsEnabled":true,"rulesRemindEnabled":false,"votesEnabled":true,"status":"published","plannedPublishTime":null,"checked":null,"isEditorial":false}},"articlesIds":{},"isLoading":false,"pagesCount":{},"route":{},"reasonsList":null,"view":"cards","lastVisitedRoute":{},"ssrCommentsArticleIds":[""],"karma":{}},"authorContribution":{"authors":{}},"betaTest":{"currentAnnouncement":null,"announcements":{},"announcementCards":null,"announcementComments":{},"announcementCommentThreads":{},"announcementCommentingStatuses":{},"archivedList":[]},"authorStatistics":{"articleRefs":{},"articleIds":{},"pagesCount":{},"route":{},"viewsCount":[],"maxStatsCount":{}},"career":{"seoLandings":[],"hubs":""},"comments":{"articleComments":{},"searchCommentsResults":null,"previewComment":null,"pagesCount":null,"commentAccess":{},"scrollParents":{},"pageArticleComments":{"lastViewedComment":0,"postId":null,"lastCommentTimestamp":"","moderated":[],"moderatedIds":[],"commentRoute":""}},"companies":{"companyRefs":{"otus":{"alias":"otus","imageUrl":"\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fcompany\u002F968\u002F422\u002F761\u002F968422761136a38a89fc391fd927f903.jpg","titleHtml":"OTUS","descriptionHtml":"Цифровые навыки от ведущих экспертов","relatedData":null,"statistics":{"postsCount":1478,"newsCount":2,"vacanciesCount":1,"employeesCount":46,"careerRating":null,"subscribersCount":66497,"rating":418.61,"invest":null},"foundationDate":{"year":"2017","month":"04","day":"01"},"location":{"city":{"id":"447159","title":"Москва"},"region":{"id":"1885","title":"Москва и Московская обл."},"country":{"id":"168","title":"Россия"}},"siteUrl":"https:\u002F\u002Fotus.ru","staffNumber":"51–100 человек","registrationDate":"2017-03-22T08:17:26+00:00","representativeUser":{"alias":"MaxRokatansky","fullname":"OTUS"},"contacts":[{"title":"Сайт","url":"https:\u002F\u002Fotus.ru"},{"title":"Facebook","url":"https:\u002F\u002Ffacebook.com\u002Fotus.ru"},{"title":"ВКонтакте","url":"https:\u002F\u002Fvk.com\u002Fclub145052891"},{"title":"Telegram","url":"https:\u002F\u002Ftelegram.me\u002FOtusjava"}],"settings":{"analyticsSettings":[],"branding":null,"status":"active"},"metadata":{"titleHtml":"OTUS, Москва - Цифровые навыки от ведущих экспертов с 1 апреля 2017 г.","title":"OTUS, Москва - Цифровые навыки от ведущих экспертов с 1 апреля 2017 г.","keywords":["Программирование","Python","Java","Информационная безопасность","JavaScript"],"descriptionHtml":"1 478 статей от авторов компании OTUS","description":"1 478 статей от авторов компании OTUS"},"aDeskSettings":null,"careerAlias":"otus","maxCustomTrackerLinks":0}},"companyIds":{},"companyTopIds":{},"pagesCount":{},"companyProfiles":{},"companiesCategories":[],"companiesCategoriesTotalCount":0,"companiesWidgets":{},"companiesWorkers":{},"companiesFans":{},"route":{},"isLoading":false,"companyWorkersLoading":false,"companyFansLoading":false,"vacancies":{}},"companiesContribution":{"hubs":{},"flows":{},"companyRefs":{}},"companyHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"conversation":{"messages":[],"respondent":null,"isLoadMore":false},"conversations":{"conversations":[],"unreadCount":0,"pagesCount":0,"isLoadMore":false},"desktopState":{"desktopFl":null,"desktopHl":null,"isChecked":false,"isLoginDemanded":false},"dfp":{"slotsDict":{}},"docs":{"menu":{},"articles":{},"mainMenu":[],"loading":{"main":false,"dropdown":false,"article":false}},"feature":{"isProbablyVisible":"true"},"flows":{"flows":[{"alias":"develop","id":1,"route":{"name":"FLOW_PAGE","params":{"flowName":"develop"}}},{"alias":"admin","id":6,"route":{"name":"FLOW_PAGE","params":{"flowName":"admin"}}},{"alias":"design","id":2,"route":{"name":"FLOW_PAGE","params":{"flowName":"design"}}},{"alias":"management","id":3,"route":{"name":"FLOW_PAGE","params":{"flowName":"management"}}},{"alias":"marketing","id":4,"route":{"name":"FLOW_PAGE","params":{"flowName":"marketing"}}},{"alias":"popsci","id":7,"route":{"name":"FLOW_PAGE","params":{"flowName":"popsci"}}}]},"global":{"isPwa":false,"device":"desktop","isHabrCom":true},"hubs":{"hubRefs":{},"hubIds":{},"pagesCount":{},"isLoading":false,"route":{}},"hubsBlock":{"hubRefs":{},"hubIds":{}},"i18n":{"fl":"ru","hl":"ru"},"info":{"infoPage":{},"isLoading":true},"location":{"urlStruct":{"protocol":null,"slashes":null,"auth":null,"host":null,"port":null,"hostname":null,"hash":null,"search":null,"query":{},"pathname":null,"path":null,"href":""},"searchQuery":null},"me":{"user":null,"ppgDemanded":false,"karmaResetInfo":{"canReincarnate":null,"wasReincarnated":null,"currentScore":null},"notes":null},"mostReadingList":{"mostReadingListIds":[],"mostReadingListRefs":null,"promoPost":null},"pinnedPost":{"pinnedPost":null},"ppa":{"articles":{},"card":null,"transactions":null,"totalTransactions":null,"isAccessible":null},"projectsBlocks":{"activeBlocks":{}},"pullRefresh":{"shouldRefresh":false},"sandbox":{"articleIds":[],"articleRefs":{},"pagesCount":null,"route":{},"lastVisitedRoute":{},"isLoading":false},"settingsOther":{"inputs":{"uiLang":{"errors":[],"ref":null,"value":""},"articlesLangEnglish":{"errors":[],"ref":null,"value":false},"articlesLangRussian":{"errors":[],"ref":null,"value":false},"agreement":{"errors":[],"ref":null,"value":false},"email":{"errors":[],"ref":null,"value":true},"digest":{"errors":[],"ref":null,"value":true}}},"similarList":{"similarListIds":[],"similarListRefs":null},"ssr":{"error":null,"isDataLoaded":false,"isDataLoading":false,"isHydrationFailed":false,"isServer":false},"userHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"userInvites":{"availableInvites":0,"usedInvitesIds":[],"usedInvitesRefs":{},"usedInvitesPagesCount":0,"unusedInvitesIds":[],"unusedInvitesRefs":{},"unusedInvitesPagesCount":0},"users":{"authorRefs":{},"authorIds":{},"pagesCount":{},"authorProfiles":{},"userHubs":{},"userInvitations":{},"authorFollowers":{},"authorFollowed":{},"karmaStats":[],"statistics":null,"isLoading":false,"authorFollowersLoading":false,"authorFollowedLoading":false,"userHubsLoading":false,"userInvitationsLoading":false,"route":{}},"viewport":{"prevScrollY":{},"scrollY":0,"width":0},"tracker":{"items":{},"pagesCache":{},"markedViewedSilently":{},"markedRead":{},"unreadCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null},"unviewedCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null}}};(function(){var s;(s=document.currentScript||document.scripts[document.scripts.length-1]).parentNode.removeChild(s);}());</script>
+<script src="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" defer></script><script src="https://assets.habr.com/habr-web/js/app.c0af73e7.js" defer></script>
+
+
+
+    <script>
+      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+        (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+        m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+      })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+    </script>
+  
+  <script type="text/javascript" >
+    (function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+    m[i].l=1*new Date();k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})
+    (window, document, "script", "https://mc.yandex.ru/metrika/tag.js", "ym");
+
+    ym(24049213, "init", {
+      defer:true,
+      trackLinks:true,
+      accurateTrackBounce:true,
+      webvisor:false,
+    });
+  </script>
+  <noscript>
+    <div>
+      <img src="https://mc.yandex.ru/watch/24049213" style="position:absolute; left:-9999px;" alt="" />
+    </div>
+  </noscript>
+  
+    <script type="text/javascript">
+      window.addEventListener('load', function () {
+        setTimeout(() => {
+          const img = new Image();
+          img.src = 'https://vk.com/rtrg?p=VK-RTRG-421343-57vKE';
+        }, 0);
+      });
+    </script>
+  
+</body>
+</html>

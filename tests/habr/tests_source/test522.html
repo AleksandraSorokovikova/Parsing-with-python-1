@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="ru" data-vue-meta="%7B%22lang%22:%7B%22ssr%22:%22ru%22%7D%7D">
+<head >
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
+  <title>Хранилище LINSTOR и его интеграция с OpenNebula / Хабр</title>
+  <style>
+    /* cyrillic-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSxf6TF0.woff2) format('woff2');
+      unicode-range: U+0460-052F, U+1C80-1C88, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+    }
+
+    /* cyrillic */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveQhf6TF0.woff2) format('woff2');
+      unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+    }
+
+    /* latin-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSBf6TF0.woff2) format('woff2');
+      unicode-range: U+0100-024F, U+0259, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20CF, U+2113, U+2C60-2C7F, U+A720-A7FF;
+    }
+
+    /* latin */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveRhf6.woff2) format('woff2');
+      unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+    }
+  </style>
+  <link rel="preload" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" as="script"><link rel="preload" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/app.c0af73e7.js" as="script">
+  <link rel="stylesheet" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css"><link rel="stylesheet" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css">
+  <script>window.i18nFetch = new Promise((res, rej) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open('GET', '/js/i18n/ru-compiled.85eb77f0b17c8235e7b64b9f81ea5ec2.json');
+          xhr.responseType = 'json';
+          xhr.onload = function(e) {
+            if (this.status === 200) {
+              res({ru: xhr.response});
+            } else {
+              rej(e);
+            }
+          };
+          xhr.send();
+        });</script>
+  
+  <script data-vue-meta="ssr" src="/js/ads.js" onload="window['zhY4i4nJ9K'] = true" data-vmid="checkad"></script><script data-vue-meta="ssr" type="application/ld+json" data-vmid="ldjson-schema">{"@context":"http:\/\/schema.org","@type":"Article","mainEntityOfPage":{"@type":"WebPage","@id":"https:\/\/habr.com\/ru\/post\/451186\/"},"headline":"Хранилище LINSTOR и его интеграция с OpenNebula","datePublished":"2019-05-13T13:16:26+03:00","dateModified":"2020-10-17T17:00:40+03:00","author":{"@type":"Person","name":"Andrei Kvapil"},"publisher":{"@type":"Organization","name":"Habr","logo":{"@type":"ImageObject","url":"https:\/\/habrastorage.org\/webt\/a_\/lk\/9m\/a_lk9mjkccjox-zccjrpfolmkmq.png"}},"description":"Не так давно ребята из LINBIT представили свое новое SDS-решение &mdash; Linstor. Это полностью свободное хранилище в основе которого используются проверенные техноло...","url":"https:\/\/habr.com\/ru\/post\/451186\/#post-content-body","about":["h_sys_admin","h_nix","h_dwh","h_cloud_services","h_distributed_systems","f_admin"],"image":["https:\/\/habrastorage.org\/webt\/e-\/3z\/h-\/e-3zh-bbwjnljyazm68edln7muw.png"]}</script>
+  <script src="//www.googletagservices.com/tag/js/gpt.js" async></script>
+  <style>.grecaptcha-badge{visibility: hidden;}</style>
+  <meta name="habr-version" content="2.49.0">
+  
+  <meta data-vue-meta="ssr" property="fb:app_id" content="444736788986613"><meta data-vue-meta="ssr" property="fb:pages" content="472597926099084"><meta data-vue-meta="ssr" name="twitter:card" content="summary_large_image"><meta data-vue-meta="ssr" name="twitter:site" content="@habr_eng"><meta data-vue-meta="ssr" property="og:title" content="Хранилище LINSTOR и его интеграция с OpenNebula" data-vmid="og:title"><meta data-vue-meta="ssr" name="twitter:title" content="Хранилище LINSTOR и его интеграция с OpenNebula" data-vmid="twitter:title"><meta data-vue-meta="ssr" name="aiturec:title" content="Хранилище LINSTOR и его интеграция с OpenNebula" data-vmid="aiturec:title"><meta data-vue-meta="ssr" name="description" content="Не так давно ребята из LINBIT представили свое новое SDS-решение — Linstor. Это полностью свободное хранилище в основе которого используются проверенные технологии: DRBD, LVM, ZFS. Linstor сочетает..." data-vmid="description"><meta data-vue-meta="ssr" itemprop="description" content="Не так давно ребята из LINBIT представили свое новое SDS-решение — Linstor. Это полностью свободное хранилище в основе которого используются проверенные технологии: DRBD, LVM, ZFS. Linstor сочетает..." data-vmid="description:itemprop"><meta data-vue-meta="ssr" property="og:description" content="Не так давно ребята из LINBIT представили свое новое SDS-решение — Linstor. Это полностью свободное хранилище в основе которого используются проверенные технологии: DRBD, LVM, ZFS. Linstor сочетает..." data-vmid="og:description"><meta data-vue-meta="ssr" name="twitter:description" content="Не так давно ребята из LINBIT представили свое новое SDS-решение — Linstor. Это полностью свободное хранилище в основе которого используются проверенные технологии: DRBD, LVM, ZFS. Linstor сочетает..." data-vmid="twitter:description"><meta data-vue-meta="ssr" property="aiturec:description" content="Не так давно ребята из LINBIT представили свое новое SDS-решение — Linstor. Это полностью свободное хранилище в основе которого используются проверенные технологии: DRBD, LVM, ZFS. Linstor сочетает..." data-vmid="aiturec:description"><meta data-vue-meta="ssr" itemprop="image" content="https://habr.com/share/publication/451186/25599d2adcdbe3279a4e1445dad06158/" data-vmid="image:itemprop"><meta data-vue-meta="ssr" property="og:image" content="https://habr.com/share/publication/451186/25599d2adcdbe3279a4e1445dad06158/" data-vmid="og:image"><meta data-vue-meta="ssr" property="aiturec:image" content="https://habr.com/share/publication/451186/25599d2adcdbe3279a4e1445dad06158/" data-vmid="aiturec:image"><meta data-vue-meta="ssr" name="twitter:image" content="https://habr.com/share/publication/451186/25599d2adcdbe3279a4e1445dad06158/" data-vmid="twitter:image"><meta data-vue-meta="ssr" property="vk:image" content="https://habr.com/share/publication/451186/25599d2adcdbe3279a4e1445dad06158/" data-vmid="vk:image"><meta data-vue-meta="ssr" property="aiturec:item_id" content="451186" data-vmid="aiturec:item_id"><meta data-vue-meta="ssr" property="aiturec:datetime" content="2019-05-13T10:16:26.000Z" data-vmid="aiturec:datetime"><meta data-vue-meta="ssr" property="og:type" content="article" data-vmid="og:type"><meta data-vue-meta="ssr" property="og:locale" content="ru_RU" data-vmid="og:locale"><meta data-vue-meta="ssr" property="og:image:width" content="1200" data-vmid="og:image:width"><meta data-vue-meta="ssr" property="og:image:height" content="630" data-vmid="og:image:height">
+  <link data-vue-meta="ssr" href="https://habr.com/ru/rss/post/451186/?fl=ru" type="application/rss+xml" title="" rel="alternate" name="rss"><link data-vue-meta="ssr" href="https://habr.com/ru/post/451186/" rel="canonical" data-vmid="canonical"><link data-vue-meta="ssr" data-vmid="hreflang"><link data-vue-meta="ssr" image_src="image" href="https://habr.com/share/publication/451186/25599d2adcdbe3279a4e1445dad06158/" data-vmid="image:href">
+  <meta name="apple-mobile-web-app-status-bar-style" content="#303b44">
+  <meta name="msapplication-TileColor" content="#629FBC">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="16x16"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-16.png"
+  >
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="32x32"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-32.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="76x76"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-76.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="120x120"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="152x152"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-152.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="180x180"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-180.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="256x256"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-256.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1136x640.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2436x1125.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1792x828.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_828x1792.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1334x750.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2208x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1125x2436.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2208.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2732x2048.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2688x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2224x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_750x1334.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x2732.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2388x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2224.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_640x1136.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2388.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x1536.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1536x2048.png"
+  >
+  <link
+    rel="mask-icon"
+    color="#77a2b6"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.svg"
+  >
+  <link
+    crossorigin="use-credentials"
+    href="/manifest.webmanifest"
+    rel="manifest"
+  >
+</head>
+<body>
+
+
+<div id="app" data-server-rendered="true" data-async-called="true"><div class="tm-layout__wrapper"><!----> <div></div> <!----> <header class="tm-header"><div class="tm-page-width"><div class="tm-header__container"><!----> <span class="tm-header__logo-wrap"><a href="/ru/" class="tm-header__logo tm-header__logo_ru"><svg height="16" width="16" class="tm-svg-img tm-header__icon"><title>Хабр</title> <use xlink:href="/img/habr-logo-ru.svg#logo"></use></svg></a> <span class="tm-header__beta-sign" style="display:none;">β</span></span> <div class="tm-dropdown tm-header__projects"><div class="tm-dropdown__head"><button class="tm-header__dropdown-toggle"><svg height="16" width="16" class="tm-svg-img tm-header__icon tm-header__icon_dropdown"><title>Открыть список</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#arrow-down"></use></svg></button></div> <!----></div> <a href="/ru/sandbox/start/" class="tm-header__become-author-btn">
+            Как стать автором
+          </a> <div class="tm-feature tm-header__feature tm-feature_variant-inline"><!----></div> <!----> <!----></div></div></header> <div class="tm-layout"><div class="tm-page-progress-bar"></div> <div data-menu-sticky="true" class="tm-base-layout__header tm-base-layout__header_is-sticky"><div class="tm-page-width"><div class="tm-base-layout__header-wrapper"><div class="tm-main-menu"><div class="tm-main-menu__section"><nav class="tm-main-menu__section-content"><!----> <a href="/ru/all/" class="tm-main-menu__item">
+        Все потоки
+      </a> <a href="/ru/flows/develop/" class="tm-main-menu__item">
+          Разработка
+        </a><a href="/ru/flows/admin/" class="tm-main-menu__item">
+          Администрирование
+        </a><a href="/ru/flows/design/" class="tm-main-menu__item">
+          Дизайн
+        </a><a href="/ru/flows/management/" class="tm-main-menu__item">
+          Менеджмент
+        </a><a href="/ru/flows/marketing/" class="tm-main-menu__item">
+          Маркетинг
+        </a><a href="/ru/flows/popsci/" class="tm-main-menu__item">
+          Научпоп
+        </a></nav></div></div> <div class="tm-header-user-menu tm-base-layout__user-menu"><a href="/ru/search/" class="tm-header-user-menu__item tm-header-user-menu__search"><svg height="24" width="24" class="tm-svg-img tm-header-user-menu__icon tm-header-user-menu__icon_search tm-header-user-menu__icon_dark"><title>Поиск</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#search"></use></svg></a> <!----> <!----> <!----> <div class="tm-header-user-menu__item tm-header-user-menu__user_desktop"><div class="tm-dropdown"><div class="tm-dropdown__head"><svg height="24" width="24" data-test-id="menu-toggle-guest" class="tm-svg-img tm-header-user-menu__icon"><title>Профиль</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#header-user"></use></svg> <!----></div> <!----></div> <!----></div> <!----></div></div></div></div> <!----> <div class="tm-page-width"></div> <main class="tm-layout__container"><div hl="ru" data-async-called="true" class="tm-page"><div class="tm-page-width"><!----> <div class="tm-page__wrapper"><div class="tm-page__main tm-page__main_has-sidebar"><div class="pull-down"><div class="pull-down__header" style="height:0px;"><div class="pull-down__content" style="bottom:10px;"><svg height="24" width="24" class="tm-svg-img pull-down__arrow"><title>Обновить</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#pull-arrow"></use></svg></div></div> <div class="tm-article-presenter"> <div class="tm-article-presenter__body"><div class="tm-misprint-area"><div class="tm-misprint-area__wrapper"><article class="tm-article-presenter__content tm-article-presenter__content_narrow"><div class="tm-article-presenter__header"> <div class="tm-article-snippet tm-article-presenter__snippet"><div class="tm-article-snippet__meta-container"><div class="tm-article-snippet__meta"><span class="tm-user-info tm-article-snippet__author"><a href="/ru/users/kvaps/" title="kvaps" class="tm-user-info__userpic"><div class="tm-entity-image"><img alt="" height="24" loading="lazy" src="//habrastorage.org/r/w32/getpro/habr/avatars/6b0/66b/bd0/6b066bbd0dd29407f3204245325adcf1.jpg" width="24" class="tm-entity-image__pic"></div></a> <span class="tm-user-info__user"><a href="/ru/users/kvaps/" class="tm-user-info__username">
+      kvaps
+    </a> </span></span> <span class="tm-article-snippet__datetime-published"><time datetime="2019-05-13T10:16:26.000Z" title="2019-05-13, 13:16">13  мая  2019 в 13:16</time></span></div> <!----></div> <h1 lang="ru" class="tm-article-snippet__title tm-article-snippet__title_h1"><span>Хранилище LINSTOR и его интеграция с OpenNebula</span></h1> <div class="tm-article-snippet__hubs"><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/sys_admin/" class="tm-article-snippet__hubs-item-link"><span>Системное администрирование</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/nix/" class="tm-article-snippet__hubs-item-link"><span>*nix</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/dwh/" class="tm-article-snippet__hubs-item-link"><span>Хранение данных</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/cloud_services/" class="tm-article-snippet__hubs-item-link"><span>Облачные сервисы</span> <!----></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/distributed_systems/" class="tm-article-snippet__hubs-item-link"><span>Распределённые системы</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span></div> <div class="tm-article-snippet__labels"><div class="tm-article-snippet__label"><span>
+        Перевод
+      </span></div></div> <!----> <!----></div></div> <div class="tm-article-presenter__origin"><a href="https://opennebula.org/linstor_un-new-storage-driver-for-opennebula/" target="_blank" class="tm-article-presenter__origin-link">
+                Автор оригинала:
+                <span>
+                  kvaps
+                </span></a></div> <div data-gallery-root="" lang="ru" class="tm-article-body"><div id="post-content-body" class="article-formatted-body article-formatted-body_version-1"><div xmlns="http://www.w3.org/1999/xhtml"><p><img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/e-/3z/h-/e-3zh-bbwjnljyazm68edln7muw.png"/></p><br/>
+<p>Не так давно ребята из LINBIT представили свое новое SDS-решение — Linstor. Это полностью свободное хранилище в основе которого используются проверенные технологии: DRBD, LVM, ZFS. Linstor сочетает в себе простоту и хорошо проработанную архитектуру, что позволяет добиться стабильности и достаточно внушительных результатов.</p><br/>
+<p>Сегодня я хотел бы рассказать про него чуть подробнее и показать насколько просто его можно интегрировать с OpenNebula используя linstor_un — новый драйвер, который я разработал специально для этой цели.</p><br/>
+<p>Linstor в сочетании с OpenNebula позволяет построить быстрое и надежное облако, которое можно без проблем развернуть на собственной инфраструктуре.</p><a name="habracut"></a><br/>
+<h2 id="arhitektura-linstor">Архитектура Linstor</h2><br/>
+<p>Linstor не является ни файловой системой ни блочным хранилищем само по себе, Linstor — это оркестратор, который предоставляет слой абстракции позволяющий автоматизировать создание томов в LVM или ZFS и реплицировать их с помощью DRBD9.</p><br/>
+<h5 id="lomaem-stereotipy">Ломаем стереотипы</h5><br/>
+<p>Но постойте, DRBD? — Зачем его автоматизировать и как вообще это может работать?</p><br/>
+<p>Вспомним прошлое, когда во всю был популярен DRBD8. Стандартное его использование подразумевало создание одного большого блочного устройства и нарезание его на много маленьких кусочков, при помощи того же LVM. Эдакий mdadm RAID-1 но с репликацией по сети.</p><br/>
+<p>Такой подход не лишен недостатков, и поэтому с приходом DRBD9 принципы построения хранилища поменялись, теперь под каждую виртуалку создается отдельное DRBD-устройство.</p><br/>
+<p>Подход с независимыми блочными устройствами позволяет лучше утилизировать пространство в кластере, а так-же добавляет ряд дополнительных возможностей. К примеру для каждого такого устройства можно определять количество реплик, их расположение и индивидуальные настройки. Их легко создавать/удалять, делать снапшоты, изменять размер, включать шифрование и многое другое. Стоит заметить что DRBD9 так же поддерживает кворум, который позволяет избежать split-brain ситуаций.</p><br/>
+<h5 id="resursy-i-bekendy">Ресурсы и бэкенды</h5><br/>
+<p>Создавая новое блочное устройство, Linstor размещает нужное количество реплик на разных нодах в кластере. Каждую такую реплику мы будем называть DRBD-ресурсом.</p><br/>
+<p>Ресурсы бывают двух типов:</p><br/>
+<ul>
+<li><strong>Data-ресурс</strong> — представляют собой DRBD-устройство размещенное на ноде в LVM или ZFS пуле.<br/>
+На данный момент есть поддержка нескольких бэкендов и их количество постоянно растет. Есть поддержка LVM, ThinLVM и ZFS. Последние два позволяют создавать и использовать снапшоты.</li>
+<li><strong>Diskless-ресурс</strong> — представляет собой DRBD-устройство размещенное на ноде без бэкенда, но позволяющее обращаться с ним как с обычным блочным устройством, все операции чтения/записи будут перенаправлены на data-ресурсы. Ближайший аналог diskless-ресурсам — это iSCSI LUN.</li>
+</ul><br/>
+<p>Каждый DRBD-ресурс может иметь до 8 реплик, и только один из них по умолчанию может быть активным — <strong>Primary</strong>, все остальные будут являться <strong>Secondary</strong> и их использование будет невозможно до тех пор, пока есть хотя бы один Primary, то есть они просто будут реплицировать данные между ссобой.</p><br/>
+<p>Монтируя DRBD-устройство в систему, оно автоматически становится <strong>Primary</strong>, таким образом даже Diskless-ресурс, в терминологии DRBD, может быть Primary.</p><br/>
+<h5 id="tak-zachem-nuzhen-linstor">Так зачем нужен Linstor?</h5><br/>
+<p>Доверяя все ресурсоёмкие задачи ядру, Linstor по сути представляет собой обычное Java-приложение которое позволяет без труда автоматизировать создание DRBD-ресурсов.<br/>
+При этом каждый созданный им ресурс будет являть собой независимый DRBD-кластер, который работает самостоятельно, невзирая на состояние control-plane и остальных DRBD-ресурсов.</p><br/>
+<p><strong>Linstor состоит всего из двух компонентов:</strong></p><br/>
+<ul>
+<li><strong>Linstor-controller</strong> — Основной контроллер, который предоставляет API для создания и управления ресурсами. Он так-же общается с сателлитами, проверяя свободное место на них, и отправляет задания для создания и удаления новых ресурсов. Запускается в единичном экземпляре и использует базу данных, которая может быть как внутренней (H2), так и внешней (PostgreSQL, MySQL, MariaDB)</li>
+<li><strong>Linstor-satellite</strong> — Устанавливается на все storage-ноды и предоставляет контроллеру информацию о свободном пространстве, а так же выполняет задачи, полученные от контроллера, для создания и удаления новых томов и DRBD-устройств поверх них.</li>
+</ul><br/>
+<p><strong>Linstor оперирует следующими ключевыми понятиями:</strong></p><br/>
+<ul>
+<li><strong>Node</strong> — физический сервер, на котором будут создаваться и использоваться DRBD-ресурсы.</li>
+<li><strong>Storage Pool</strong> — LVM или ZFS пул, созданный на ноде в котором будут размещаться DRBD-ресурсы. Так же возможен diskless-пул — это пул в котором будут размещаться только diskless-ресурсы.</li>
+<li><strong>Resource Definition</strong> — Определение ресурса, по сути это прототип который описывает имя и все его свойства.</li>
+<li><strong>Volume Definition</strong> — Определение тома. Каждый ресурс может состоять из нескольких томов, каждый том должен иметь размер.</li>
+<li><strong>Resource</strong> — Созданный экземпляр блочного устросва, каждый ресурс должен быть размещен на определенной ноде и в каком-нибудь storage pool.</li>
+</ul><br/>
+<h2 id="ustanovka-linstor">Установка Linstor</h2><br/>
+<p>В качестве системы рекомендую использовать Ubuntu, т.к. для нее существует <a href="https://launchpad.net/~linbit/+archive/ubuntu/linbit-drbd9-stack" rel="nofollow">готовый PPA</a>:</p><br/>
+<pre><code class="bash">add-apt-repository ppa:linbit/linbit-drbd9-stack
+apt-get update</code></pre><br/>
+<p>Либо Debian, где Linstor можно установить из официального репозитория для Proxmox:</p><br/>
+<pre><code class="bash">wget -O- https://packages.linbit.com/package-signing-pubkey.asc | apt-key add -
+PVERS=5 &amp;&amp; echo "deb http://packages.linbit.com/proxmox/ proxmox-$PVERS drbd-9.0" > \
+    /etc/apt/sources.list.d/linbit.list
+apt-get update</code></pre><br/>
+<h5 id="controller">Controller</h5><br/>
+<p>Здесь все просто:</p><br/>
+<pre><code class="bash">apt-get install linstor-controller linstor-client
+systemctl enable linstor-controller
+systemctl start linstor-controller</code></pre><br/>
+<h5 id="storage-nody">Storage-ноды</h5><br/>
+<p>В настоящий момент в ядре Linux поставляется in-tree модуль ядра <strong>DRBD8</strong>, к сожалению он нам не подходит и нам нужно установить <strong>DRBD9</strong>:</p><br/>
+<pre><code class="bash">apt-get install drbd-dkms</code></pre><br/>
+<p>Как показывает практика большинство сложностей возникает именно с тем что в систему загружен модуль DRBD8, а не DRBD9. К счастью это легко проверить выполнив:</p><br/>
+<pre><code class="bash">modprobe drbd
+cat /proc/drbd</code></pre><br/>
+<p>Если увидите <strong>version: 9</strong> — значит все впорядке, если <strong>version: 8</strong> — значит что-то пошло не так и вам необходимо предпринять дополнительные действия для выяснения причин.</p><br/>
+<p>Теперь установим <strong>linstor-satellite</strong> и <strong>drbd-utils</strong>:</p><br/>
+<pre><code class="bash">apt-get install linstor-satellite drbd-utils
+systemctl enable linstor-satellite
+systemctl start linstor-satellite</code></pre><br/>
+<h2 id="sozdanie-klastera">Создание кластера</h2><br/>
+<p><strong>Storage pools и ноды</strong></p><br/>
+<p>В качестве бэкенда мы возьмем <strong>ThinLVM</strong>, т.к. он наиболее простой и поддерживает снапшоты.<br/>
+Установите <strong>lvm2</strong>, если еще этого не сделали и давайте создадим ThinLVM pool на всех наших storage-нодах:</p><br/>
+<pre><code class="bash">sudo vgcreate drbdpool /dev/sdb
+sudo lvcreate -L 800G -T drbdpool/thinpool</code></pre><br/>
+<p>Все дальнейшие действия могут выполняться непосредственно на контроллере:</p><br/>
+<p>Добавим наши ноды:</p><br/>
+<pre><code class="bash">linstor node create node1 127.0.0.11
+linstor node create node2 127.0.0.12
+linstor node create node3 127.0.0.13</code></pre><br/>
+<p>Создадим storage pools:</p><br/>
+<pre><code class="bash">linstor storage-pool create lvmthin node1 data drbdpool/thinpool
+linstor storage-pool create lvmthin node2 data drbdpool/thinpool
+linstor storage-pool create lvmthin node3 data drbdpool/thinpool</code></pre><br/>
+<p>Теперь проверим созданные пулы:</p><br/>
+<pre><code class="bash">linstor storage-pool list</code></pre><br/>
+<p>Если все выполнено правильно, то мы должны увидеть что-то вроде:</p><br/>
+<pre>+-------------------------------------------------------------------------------------------------------+
+| StoragePool | Node  | Driver   | PoolName          | FreeCapacity | TotalCapacity | SupportsSnapshots |
+|-------------------------------------------------------------------------------------------------------|
+| data        | node1 | LVM_THIN | drbdpool/thinpool |       64 GiB |        64 GiB | true              |
+| data        | node2 | LVM_THIN | drbdpool/thinpool |       64 GiB |        64 GiB | true              |
+| data        | node3 | LVM_THIN | drbdpool/thinpool |       64 GiB |        64 GiB | true              |
++-------------------------------------------------------------------------------------------------------+</pre><br/>
+<p><strong>DRBD-ресурсы</strong></p><br/>
+<p>Теперь давайте попробуем создать наш новый DRBD-ресурс:</p><br/>
+<pre><code class="bash">linstor resource-definition create myres
+linstor volume-definition create myres 1G
+linstor resource create myres --auto-place 2</code></pre><br/>
+<p>Прверим созданные ресурсы:</p><br/>
+<pre><code class="bash">linstor volume list</code></pre><br/>
+<pre>+------------------------------------------------------------------------------------------------------+
+| Node  | Resource | StoragePool | VolumeNr | MinorNr | DeviceName    | Allocated  | InUse  |    State |
+|------------------------------------------------------------------------------------------------------|
+| node1 | myres    | data        | 0        | 1084    | /dev/drbd1084 | 52 KiB     | Unused | UpToDate |
+| node2 | myres    | data        | 0        | 1084    | /dev/drbd1084 | 52 KiB     | Unused | UpToDate |
++------------------------------------------------------------------------------------------------------+</pre><br/>
+<p>Отлично! — мы видим, что ресурс создался на первых двух нодах, мы также можем попробовать создать diskless-ресурс на третьей: </p><br/>
+<pre><code class="bash">linstor resource create --diskless node3 myres</code></pre><br/>
+<p>На нодах вы всегда найдете это устройство как <code>/dev/drbd1084</code> или <code>/dev/drbd/by-res/myres/0</code></p><br/>
+<p>Вот так работает Linstor, вы можете получить больше информации из <a href="https://docs.linbit.com/docs/users-guide-9.0/" rel="nofollow">официальной документации</a>.</p><br/>
+<p>Теперь я расскажу о том как интегрировать его с OpenNebula</p><br/>
+<h2 id="nastroyka-opennebula">Настройка OpenNebula</h2><br/>
+<p>Я не буду сильно углубляться в процесс настройки OpenNebula, т.к. все шаги детально описаны в <a href="https://docs.opennebula.org/stable/deployment/opennebula_installation/index.html" rel="nofollow">официальной документации</a>, к которой и рекомендую вам обратиться, расскажу только про интеграцию OpenNebula с Linstor.</p><br/>
+<h5 id="linstor_un">linstor_un</h5><br/>
+<p>Для решения этой задачи я написал собственный драйвер — <a href="https://github.com/OpenNebula/addon-linstor_un" rel="nofollow">linstor_un</a>, на данный момент он доступен в виде плагина и должен устанавливаться отдельно.</p><br/>
+<p>Вся установка осуществляется на frontend OpenNebula-нодах и не требует дополнительных действий на compute-нодах.</p><br/>
+<p>Первым делом нам нужно удостовериться что мы имеем <strong>jq</strong> и <strong>linstor-client</strong>:</p><br/>
+<pre><code class="plaintext">apt-get install jq linstor-client</code></pre><br/>
+<p>Команда <code>linstor node list</code> должна выводить список нод. Все compute-ноды OpenNebula должны быть добавлены в кластер Linstor.</p><br/>
+<p>Скачаем и установим плагин:</p><br/>
+<pre><code class="bash">curl -L https://github.com/OpenNebula/addon-linstor_un/archive/master.tar.gz | tar -xzvf - -C /tmp
+
+mv /tmp/addon-linstor_un-master/vmm/kvm/* /var/lib/one/remotes/vmm/kvm/
+
+mkdir -p /var/lib/one/remotes/etc/datastore/linstor_un
+mv /tmp/addon-linstor_un-master/datastore/linstor_un/linstor_un.conf /var/lib/one/remotes/etc/datastore/linstor_un/linstor_un.conf
+
+mv /tmp/addon-linstor_un-master/datastore/linstor_un /var/lib/one/remotes/datastore/linstor_un
+mv /tmp/addon-linstor_un-master/tm/linstor_un /var/lib/one/remotes/tm/linstor_un
+
+rm -rf /tmp/addon-linstor_un-master</code></pre><br/>
+<p>Теперь нам нужно добавить его в конфиг OpenNebula, для этого выполняем несложные шаги описанные <strong><a href="https://github.com/OpenNebula/addon-linstor_un#update-onedconf" rel="nofollow">здесь</a></strong>.</p><br/>
+<p>После чего перезапустим OpenNebula:</p><br/>
+<pre><code class="bash">systemctl restart opennebula</code></pre><br/>
+<p>И добавим наши datastores, системное:</p><br/>
+<pre><code class="bash">cat > system-ds.conf &lt;&lt;EOT
+NAME="linstor-system"
+TYPE="SYSTEM_DS"
+STORAGE_POOL="data"
+AUTO_PLACE="2"
+CLONE_MODE="snapshot"
+CHECKPOINT_AUTO_PLACE="1"
+BRIDGE_LIST="node1 node2 node3"
+TM_MAD="linstor_un"
+EOT
+
+onedatastore create system-ds.conf</code></pre><br/>
+<p>И хранилище образов:</p><br/>
+<pre><code class="bash">cat > images-ds.conf &lt;&lt;EOT
+NAME="linstor-images"
+TYPE="IMAGE_DS"
+STORAGE_POOL="data"
+AUTO_PLACE="2"
+BRIDGE_LIST="node1 node2 node3"
+DISK_TYPE="BLOCK"
+DS_MAD="linstor_un"
+TM_MAD="linstor_un"
+EOT
+
+onedatastore create images-ds.conf</code></pre><br/>
+<ul>
+<li>Параметр <code>AUTO_PLACE</code> отображает количество data-ресурсов, которое будет созданно для каждого нового образа в OpenNebula.</li>
+<li>Параметр <code>CLONE_MODE</code> указывает на то, как именно будут клонироваться образы при создании новых виртуальных машин, <code>snapshot</code> — будет создавать снапшот образа и из снапшота разворачивать виртуальную машину, <code>copy</code> — будет делать полную копию образа под каждую виртуальную машину.</li>
+<li>В <code>BRIDGE_LIST</code> рекомендуется указать все ноды, которые будут использоваться для выполнения операций по клонированию образов. </li>
+</ul><br/>
+<p>Полный список поддерживаемых параметров приведен в <a href="https://github.com/OpenNebula/addon-linstor_un#opennebula-configuration" rel="nofollow">README</a> проекта.</p><br/>
+<p>На этом настройка завершена, теперь можно загрузить какой-нибудь appliance из официального <a href="https://marketplace.opennebula.systems/appliance" rel="nofollow">OpenNebula Marketplace</a> и создать виртуальные машины из него.</p><br/>
+<p><a href="https://github.com/OpenNebula/addon-linstor_un" rel="nofollow">Ссылка на проект</a></p></div></div> <!----> <!----></div> <div class="tm-article-presenter__meta"><div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Теги:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Blinstor%5D" class="tm-tags-list__link">linstor</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bopennebula%5D" class="tm-tags-list__link">opennebula</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bdrbd9%5D" class="tm-tags-list__link">drbd9</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bdrbd%5D" class="tm-tags-list__link">drbd</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5B%D1%85%D1%80%D0%B0%D0%BD%D0%B8%D0%BB%D0%B8%D1%89%D0%B5%5D" class="tm-tags-list__link">хранилище</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bsds%5D" class="tm-tags-list__link">sds</a></li></ul></div> <div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Хабы:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/hub/sys_admin/" class="tm-hubs-list__link">
+    Системное администрирование
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/nix/" class="tm-hubs-list__link">
+    *nix
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/dwh/" class="tm-hubs-list__link">
+    Хранение данных
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/cloud_services/" class="tm-hubs-list__link">
+    Облачные сервисы
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/distributed_systems/" class="tm-hubs-list__link">
+    Распределённые системы
+  </a></li></ul></div></div></article></div> <!----></div> <div class="tm-article-sticky-panel"><div class="tm-data-icons tm-article-sticky-panel__icons"><div class="tm-article-rating tm-data-icons__item"><div class="tm-votes-meter tm-article-rating__votes-switcher"><svg height="16" width="16" class="tm-svg-img tm-votes-meter__icon tm-votes-meter__icon_medium"><title>Всего голосов 12: ↑12 и ↓0</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-rating"></use></svg> <span title="Всего голосов 12: ↑12 и ↓0" class="tm-votes-meter__value tm-votes-meter__value_positive tm-votes-meter__value_medium">+12</span></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----> <span title="Количество просмотров" class="tm-icon-counter tm-data-icons__item"><svg height="16" width="16" class="tm-svg-img tm-icon-counter__icon"><title>Просмотры</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-views"></use></svg> <span class="tm-icon-counter__value">8.5K</span></span> <button title="Добавить в закладки" type="button" class="bookmarks-button tm-data-icons__item"><span title="Добавить в закладки" class="tm-svg-icon__wrapper bookmarks-button__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Добавить в закладки</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-favorite"></use></svg></span> <span title="Количество пользователей, добавивших публикацию в закладки" class="bookmarks-button__counter">
+    29
+  </span></button> <!----> <div title="Поделиться" class="tm-sharing tm-data-icons__item"><button type="button" class="tm-sharing__button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="tm-sharing__icon"><path fill="currentColor" d="M10.33.275l9.047 7.572a.2.2 0 010 .306l-9.048 7.572a.2.2 0 01-.328-.153V11c-8 0-9.94 6-9.94 6S-1 5 10 5V.428a.2.2 0 01.328-.153z"></path></svg></button> <!----></div> <DIV class="v-portal" style="display:none;"></DIV></div> </div></div> <!----> <!----> <div class="tm-article-presenter__footer"><div class="tm-article-blocks"><!----> <section class="tm-block tm-block_spacing-bottom"><!----> <div class="tm-block__body tm-block__body_variant-balanced"><div class="tm-article-author"> <div class="tm-user-card tm-article-author__user-card tm-user-card_variant-article"><div class="tm-user-card__info-container"><div class="tm-user-card__header"><div class="tm-user-card__header-data"><a href="/ru/users/kvaps/" class="tm-user-card__userpic tm-user-card__userpic_size-40"><div class="tm-entity-image"><img alt="" src="//habrastorage.org/getpro/habr/avatars/6b0/66b/bd0/6b066bbd0dd29407f3204245325adcf1.jpg" class="tm-entity-image__pic"></div></a> <div class="tm-user-card__meta"><div title=" 141 голос " class="tm-karma tm-user-card__karma"><div class="tm-karma__votes tm-karma__votes_positive">
+    99.7
+  </div> <div class="tm-karma__text">
+    Карма
+  </div></div> <div title="Рейтинг пользователя" class="tm-rating tm-user-card__rating"><div class="tm-rating__header"> <div class="tm-rating__counter">0</div></div> <div class="tm-rating__text">
+    Рейтинг
+  </div></div></div></div></div> <div class="tm-user-card__info tm-user-card__info_variant-article"><div class="tm-user-card__title tm-user-card__title_variant-article"><span class="tm-user-card__name tm-user-card__name_variant-article">Andrei Kvapil</span> <a href="/ru/users/kvaps/" class="tm-user-card__nickname tm-user-card__nickname_variant-article">
+          @kvaps
+        </a> <!----></div> <p class="tm-user-card__short-info tm-user-card__short-info_variant-article">Суперпользователь</p></div></div> <div class="tm-user-card__buttons tm-user-card__buttons_variant-article"><!----> <!----> <!----> <!----> <!----></div></div> <!----></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----></section> <div class="tm-article-blocks__comments"><div class="tm-article-page-comments"><div class="tm-article-comments-counter-link tm-article-comments-counter-button"><a href="/ru/post/451186/comments/" class="tm-article-comments-counter-link__link tm-article-comments-counter-link__link_button-style"><svg height="16" width="16" class="tm-svg-img tm-article-comments-counter-link__icon tm-article-comments-counter-link__icon_contrasted"><title>Комментарии</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-comments"></use></svg> <span class="tm-article-comments-counter-link__value tm-article-comments-counter-link__value_contrasted">
+       Комментарии 2 
+    </span></a> <!----></div></div></div> <div class="tm-ad-banner__container tm-page-article__banner"><!----> <div id="articleBottomBanner" class="tm-ad-banner"></div></div> <!----> <!----> <!----> <!----> </div></div></div></div></div> <div class="tm-page__sidebar"><div class="tm-layout-sidebar"><div class="tm-layout-sidebar__ads tm-layout-sidebar__ads_initial"><div class="tm-ad-banner__container tm-layout-sidebar__banner"><!----> <div id="sidebarBanner" class="tm-ad-banner"></div></div></div> <div class="tm-sexy-sidebar tm-sexy-sidebar_initial" style="margin-top:0px;"><!----> <!----></div></div></div></div></div></div></main> <!----></div> <div class="tm-footer-menu"><div class="tm-page-width"><div class="tm-footer-menu__container"><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Ваш аккаунт
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr/?back=/ru/post/451186/&amp;hl=ru" rel="nofollow" target="_self">
+                Войти
+              </a></li><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr-register/?back=/ru/post/451186/&amp;hl=ru" rel="nofollow" target="_self">
+                Регистрация
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Разделы
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/" class="footer-menu__item-link router-link-active">
+                Публикации
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/news/" class="footer-menu__item-link">
+                Новости
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/hubs/" class="footer-menu__item-link">
+                Хабы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/companies/" class="footer-menu__item-link">
+                Компании
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/users/" class="footer-menu__item-link">
+                Авторы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/sandbox/" class="footer-menu__item-link">
+                Песочница
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Информация
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/docs/help/" class="footer-menu__item-link">
+                Устройство сайта
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/authors/codex/" class="footer-menu__item-link">
+                Для авторов
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/companies/corpblogs/" class="footer-menu__item-link">
+                Для компаний
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/docs/transparency/" class="footer-menu__item-link">
+                Документы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/agreement" target="_blank">
+                Соглашение
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/confidential/" target="_blank">
+                Конфиденциальность
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Услуги
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQLwRfQmXibiUlWaRg-BAc38s7oM3lJiaPju7qmdJsp8ysIvZ_G-Npem0njJLMozE2bPHMpDqiI5hhy/pub?start=false&amp;loop=false&amp;delayms=60000&amp;slide=id.g91a03369cd_4_297" target="_blank">
+                Реклама
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://habrastorage.org/storage/stuff/habr/service_price.pdf" target="_blank">
+                Тарифы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQJJds8-Di7BQSP_guHxICN7woVYoN5NP_22ra-BIo4bqnTT9FR6fB-Ku2P0AoRpX0Ds-LRkDeAoD8F/pub?start=false&amp;loop=false&amp;delayms=60000" target="_blank">
+                Контент
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://tmtm.timepad.ru/" target="_blank">
+                Семинары
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/megaprojects/" class="footer-menu__item-link">
+                Мегапроекты
+              </a></li></ul></div></div></div></div></div> <div class="tm-footer"><div class="tm-page-width"><div class="tm-footer__container"><!----> <div class="tm-footer__social"><a href="https://www.facebook.com/habrahabr.ru" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Facebook</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-facebook"></use></svg></a><a href="https://twitter.com/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Twitter</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-twitter"></use></svg></a><a href="https://vk.com/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>VK</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-vkontakte"></use></svg></a><a href="https://telegram.me/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Telegram</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-telegram"></use></svg></a><a href="https://www.youtube.com/channel/UCd_sTwKqVrweTt4oAKY5y4w" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Youtube</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-youtube"></use></svg></a><a href="https://zen.yandex.ru/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Яндекс Дзен</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-zen"></use></svg></a></div> <DIV class="v-portal" style="display:none;"></DIV> <button class="tm-footer__link"><!---->
+        Настройка языка
+      </button> <a href="/ru/about" class="tm-footer__link">
+        О сайте
+      </a> <a href="/ru/feedback/" class="tm-footer__link">
+        Техническая поддержка
+      </a> <!----> <a href="/berserk-mode-nope" class="tm-footer__link">
+        Вернуться на старую версию
+      </a> <div class="tm-footer-copyright"><span class="tm-copyright"><span class="tm-copyright__years">© 2006–2021 </span> <span class="tm-copyright__name">«<a href="https://company.habr.com/" rel="noopener" target="_blank" class="tm-copyright__link">Habr</a>»</span></span></div></div></div></div> <!----> <!----></div> <div class="vue-portal-target"></div></div>
+<script>window.__INITIAL_STATE__={"adblock":{"hasAcceptableAdsFilter":false,"hasAdblock":false},"articlesList":{"articlesList":{"451186":{"id":"451186","timePublished":"2019-05-13T10:16:26+00:00","isCorporative":false,"lang":"ru","titleHtml":"Хранилище LINSTOR и его интеграция с OpenNebula","leadData":{"textHtml":"\u003Cp\u003E\u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fe-\u002F3z\u002Fh-\u002Fe-3zh-bbwjnljyazm68edln7muw.png\"\u003E\u003C\u002Fp\u003E\u003Cbr\u003E\r\n\u003Cp\u003EНе так давно ребята из LINBIT представили свое новое SDS-решение — Linstor. Это полностью свободное хранилище в основе которого используются проверенные технологии: DRBD, LVM, ZFS. Linstor сочетает в себе простоту и хорошо проработанную архитектуру, что позволяет добиться стабильности и достаточно внушительных результатов.\u003C\u002Fp\u003E\u003Cbr\u003E\r\n\u003Cp\u003EСегодня я хотел бы рассказать про него чуть подробнее и показать насколько просто его можно интегрировать с OpenNebula используя linstor_un — новый драйвер, который я разработал специально для этой цели.\u003C\u002Fp\u003E\u003Cbr\u003E\r\n\u003Cp\u003ELinstor в сочетании с OpenNebula позволяет построить быстрое и надежное облако, которое можно без проблем развернуть на собственной инфраструктуре.\u003C\u002Fp\u003E","imageUrl":null,"buttonTextHtml":"Читать дальше &rarr;","image":null},"editorVersion":"1.0","postType":"article","postLabels":[{"type":"translation","data":{"originalAuthorName":"kvaps","originalUrl":"https:\u002F\u002Fopennebula.org\u002Flinstor_un-new-storage-driver-for-opennebula\u002F"}}],"author":{"scoreStats":{"score":99.7,"votesCount":141},"rating":0,"relatedData":null,"contacts":[],"authorContacts":[],"paymentDetails":{"paymentYandexMoney":null,"paymentPayPalMe":null,"paymentWebmoney":null},"id":"22042","alias":"kvaps","fullname":"Andrei Kvapil","avatarUrl":"\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Favatars\u002F6b0\u002F66b\u002Fbd0\u002F6b066bbd0dd29407f3204245325adcf1.jpg","speciality":"Суперпользователь"},"statistics":{"commentsCount":2,"favoritesCount":29,"readingCount":8456,"score":12,"votesCount":12},"hubs":[{"relatedData":null,"id":"221","alias":"sys_admin","type":"collective","title":"Системное администрирование","titleHtml":"Системное администрирование","isProfiled":true},{"relatedData":null,"id":"7289","alias":"nix","type":"collective","title":"*nix","titleHtml":"*nix","isProfiled":true},{"relatedData":null,"id":"19197","alias":"dwh","type":"collective","title":"Хранение данных","titleHtml":"Хранение данных","isProfiled":true},{"relatedData":null,"id":"21470","alias":"cloud_services","type":"collective","title":"Облачные сервисы","titleHtml":"Облачные сервисы","isProfiled":false},{"relatedData":null,"id":"21482","alias":"distributed_systems","type":"collective","title":"Распределённые системы","titleHtml":"Распределённые системы","isProfiled":true}],"flows":[{"id":"6","alias":"admin","title":"Администрирование"}],"relatedData":null,"textHtml":"\u003Cdiv xmlns=\"http:\u002F\u002Fwww.w3.org\u002F1999\u002Fxhtml\"\u003E\u003Cp\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fe-\u002F3z\u002Fh-\u002Fe-3zh-bbwjnljyazm68edln7muw.png\"\u002F\u003E\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EНе так давно ребята из LINBIT представили свое новое SDS-решение — Linstor. Это полностью свободное хранилище в основе которого используются проверенные технологии: DRBD, LVM, ZFS. Linstor сочетает в себе простоту и хорошо проработанную архитектуру, что позволяет добиться стабильности и достаточно внушительных результатов.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EСегодня я хотел бы рассказать про него чуть подробнее и показать насколько просто его можно интегрировать с OpenNebula используя linstor_un — новый драйвер, который я разработал специально для этой цели.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003ELinstor в сочетании с OpenNebula позволяет построить быстрое и надежное облако, которое можно без проблем развернуть на собственной инфраструктуре.\u003C\u002Fp\u003E\u003Ca name=\"habracut\"\u003E\u003C\u002Fa\u003E\u003Cbr\u002F\u003E\r\n\u003Ch2 id=\"arhitektura-linstor\"\u003EАрхитектура Linstor\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003ELinstor не является ни файловой системой ни блочным хранилищем само по себе, Linstor — это оркестратор, который предоставляет слой абстракции позволяющий автоматизировать создание томов в LVM или ZFS и реплицировать их с помощью DRBD9.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Ch5 id=\"lomaem-stereotipy\"\u003EЛомаем стереотипы\u003C\u002Fh5\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EНо постойте, DRBD? — Зачем его автоматизировать и как вообще это может работать?\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EВспомним прошлое, когда во всю был популярен DRBD8. Стандартное его использование подразумевало создание одного большого блочного устройства и нарезание его на много маленьких кусочков, при помощи того же LVM. Эдакий mdadm RAID-1 но с репликацией по сети.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EТакой подход не лишен недостатков, и поэтому с приходом DRBD9 принципы построения хранилища поменялись, теперь под каждую виртуалку создается отдельное DRBD-устройство.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EПодход с независимыми блочными устройствами позволяет лучше утилизировать пространство в кластере, а так-же добавляет ряд дополнительных возможностей. К примеру для каждого такого устройства можно определять количество реплик, их расположение и индивидуальные настройки. Их легко создавать\u002Fудалять, делать снапшоты, изменять размер, включать шифрование и многое другое. Стоит заметить что DRBD9 так же поддерживает кворум, который позволяет избежать split-brain ситуаций.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Ch5 id=\"resursy-i-bekendy\"\u003EРесурсы и бэкенды\u003C\u002Fh5\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EСоздавая новое блочное устройство, Linstor размещает нужное количество реплик на разных нодах в кластере. Каждую такую реплику мы будем называть DRBD-ресурсом.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EРесурсы бывают двух типов:\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003E\u003Cstrong\u003EData-ресурс\u003C\u002Fstrong\u003E — представляют собой DRBD-устройство размещенное на ноде в LVM или ZFS пуле.\u003Cbr\u002F\u003E\r\nНа данный момент есть поддержка нескольких бэкендов и их количество постоянно растет. Есть поддержка LVM, ThinLVM и ZFS. Последние два позволяют создавать и использовать снапшоты.\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Cstrong\u003EDiskless-ресурс\u003C\u002Fstrong\u003E — представляет собой DRBD-устройство размещенное на ноде без бэкенда, но позволяющее обращаться с ним как с обычным блочным устройством, все операции чтения\u002Fзаписи будут перенаправлены на data-ресурсы. Ближайший аналог diskless-ресурсам — это iSCSI LUN.\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EКаждый DRBD-ресурс может иметь до 8 реплик, и только один из них по умолчанию может быть активным — \u003Cstrong\u003EPrimary\u003C\u002Fstrong\u003E, все остальные будут являться \u003Cstrong\u003ESecondary\u003C\u002Fstrong\u003E и их использование будет невозможно до тех пор, пока есть хотя бы один Primary, то есть они просто будут реплицировать данные между ссобой.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EМонтируя DRBD-устройство в систему, оно автоматически становится \u003Cstrong\u003EPrimary\u003C\u002Fstrong\u003E, таким образом даже Diskless-ресурс, в терминологии DRBD, может быть Primary.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Ch5 id=\"tak-zachem-nuzhen-linstor\"\u003EТак зачем нужен Linstor?\u003C\u002Fh5\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EДоверяя все ресурсоёмкие задачи ядру, Linstor по сути представляет собой обычное Java-приложение которое позволяет без труда автоматизировать создание DRBD-ресурсов.\u003Cbr\u002F\u003E\r\nПри этом каждый созданный им ресурс будет являть собой независимый DRBD-кластер, который работает самостоятельно, невзирая на состояние control-plane и остальных DRBD-ресурсов.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003E\u003Cstrong\u003ELinstor состоит всего из двух компонентов:\u003C\u002Fstrong\u003E\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003E\u003Cstrong\u003ELinstor-controller\u003C\u002Fstrong\u003E — Основной контроллер, который предоставляет API для создания и управления ресурсами. Он так-же общается с сателлитами, проверяя свободное место на них, и отправляет задания для создания и удаления новых ресурсов. Запускается в единичном экземпляре и использует базу данных, которая может быть как внутренней (H2), так и внешней (PostgreSQL, MySQL, MariaDB)\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Cstrong\u003ELinstor-satellite\u003C\u002Fstrong\u003E — Устанавливается на все storage-ноды и предоставляет контроллеру информацию о свободном пространстве, а так же выполняет задачи, полученные от контроллера, для создания и удаления новых томов и DRBD-устройств поверх них.\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003E\u003Cstrong\u003ELinstor оперирует следующими ключевыми понятиями:\u003C\u002Fstrong\u003E\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003E\u003Cstrong\u003ENode\u003C\u002Fstrong\u003E — физический сервер, на котором будут создаваться и использоваться DRBD-ресурсы.\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Cstrong\u003EStorage Pool\u003C\u002Fstrong\u003E — LVM или ZFS пул, созданный на ноде в котором будут размещаться DRBD-ресурсы. Так же возможен diskless-пул — это пул в котором будут размещаться только diskless-ресурсы.\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Cstrong\u003EResource Definition\u003C\u002Fstrong\u003E — Определение ресурса, по сути это прототип который описывает имя и все его свойства.\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Cstrong\u003EVolume Definition\u003C\u002Fstrong\u003E — Определение тома. Каждый ресурс может состоять из нескольких томов, каждый том должен иметь размер.\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Cstrong\u003EResource\u003C\u002Fstrong\u003E — Созданный экземпляр блочного устросва, каждый ресурс должен быть размещен на определенной ноде и в каком-нибудь storage pool.\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\n\u003Ch2 id=\"ustanovka-linstor\"\u003EУстановка Linstor\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EВ качестве системы рекомендую использовать Ubuntu, т.к. для нее существует \u003Ca href=\"https:\u002F\u002Flaunchpad.net\u002F~linbit\u002F+archive\u002Fubuntu\u002Flinbit-drbd9-stack\" rel=\"nofollow\"\u003Eготовый PPA\u003C\u002Fa\u003E:\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"bash\"\u003Eadd-apt-repository ppa:linbit\u002Flinbit-drbd9-stack\napt-get update\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EЛибо Debian, где Linstor можно установить из официального репозитория для Proxmox:\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"bash\"\u003Ewget -O- https:\u002F\u002Fpackages.linbit.com\u002Fpackage-signing-pubkey.asc | apt-key add -\nPVERS=5 &amp;&amp; echo \"deb http:\u002F\u002Fpackages.linbit.com\u002Fproxmox\u002F proxmox-$PVERS drbd-9.0\" \u003E \\\n    \u002Fetc\u002Fapt\u002Fsources.list.d\u002Flinbit.list\napt-get update\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Ch5 id=\"controller\"\u003EController\u003C\u002Fh5\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EЗдесь все просто:\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"bash\"\u003Eapt-get install linstor-controller linstor-client\nsystemctl enable linstor-controller\nsystemctl start linstor-controller\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Ch5 id=\"storage-nody\"\u003EStorage-ноды\u003C\u002Fh5\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EВ настоящий момент в ядре Linux поставляется in-tree модуль ядра \u003Cstrong\u003EDRBD8\u003C\u002Fstrong\u003E, к сожалению он нам не подходит и нам нужно установить \u003Cstrong\u003EDRBD9\u003C\u002Fstrong\u003E:\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"bash\"\u003Eapt-get install drbd-dkms\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EКак показывает практика большинство сложностей возникает именно с тем что в систему загружен модуль DRBD8, а не DRBD9. К счастью это легко проверить выполнив:\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"bash\"\u003Emodprobe drbd\ncat \u002Fproc\u002Fdrbd\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EЕсли увидите \u003Cstrong\u003Eversion: 9\u003C\u002Fstrong\u003E — значит все впорядке, если \u003Cstrong\u003Eversion: 8\u003C\u002Fstrong\u003E — значит что-то пошло не так и вам необходимо предпринять дополнительные действия для выяснения причин.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EТеперь установим \u003Cstrong\u003Elinstor-satellite\u003C\u002Fstrong\u003E и \u003Cstrong\u003Edrbd-utils\u003C\u002Fstrong\u003E:\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"bash\"\u003Eapt-get install linstor-satellite drbd-utils\nsystemctl enable linstor-satellite\nsystemctl start linstor-satellite\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Ch2 id=\"sozdanie-klastera\"\u003EСоздание кластера\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003E\u003Cstrong\u003EStorage pools и ноды\u003C\u002Fstrong\u003E\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EВ качестве бэкенда мы возьмем \u003Cstrong\u003EThinLVM\u003C\u002Fstrong\u003E, т.к. он наиболее простой и поддерживает снапшоты.\u003Cbr\u002F\u003E\r\nУстановите \u003Cstrong\u003Elvm2\u003C\u002Fstrong\u003E, если еще этого не сделали и давайте создадим ThinLVM pool на всех наших storage-нодах:\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"bash\"\u003Esudo vgcreate drbdpool \u002Fdev\u002Fsdb\nsudo lvcreate -L 800G -T drbdpool\u002Fthinpool\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EВсе дальнейшие действия могут выполняться непосредственно на контроллере:\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EДобавим наши ноды:\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"bash\"\u003Elinstor node create node1 127.0.0.11\nlinstor node create node2 127.0.0.12\nlinstor node create node3 127.0.0.13\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EСоздадим storage pools:\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"bash\"\u003Elinstor storage-pool create lvmthin node1 data drbdpool\u002Fthinpool\nlinstor storage-pool create lvmthin node2 data drbdpool\u002Fthinpool\nlinstor storage-pool create lvmthin node3 data drbdpool\u002Fthinpool\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EТеперь проверим созданные пулы:\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"bash\"\u003Elinstor storage-pool list\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EЕсли все выполнено правильно, то мы должны увидеть что-то вроде:\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E+-------------------------------------------------------------------------------------------------------+\n| StoragePool | Node  | Driver   | PoolName          | FreeCapacity | TotalCapacity | SupportsSnapshots |\n|-------------------------------------------------------------------------------------------------------|\n| data        | node1 | LVM_THIN | drbdpool\u002Fthinpool |       64 GiB |        64 GiB | true              |\n| data        | node2 | LVM_THIN | drbdpool\u002Fthinpool |       64 GiB |        64 GiB | true              |\n| data        | node3 | LVM_THIN | drbdpool\u002Fthinpool |       64 GiB |        64 GiB | true              |\n+-------------------------------------------------------------------------------------------------------+\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003E\u003Cstrong\u003EDRBD-ресурсы\u003C\u002Fstrong\u003E\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EТеперь давайте попробуем создать наш новый DRBD-ресурс:\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"bash\"\u003Elinstor resource-definition create myres\nlinstor volume-definition create myres 1G\nlinstor resource create myres --auto-place 2\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EПрверим созданные ресурсы:\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"bash\"\u003Elinstor volume list\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E+------------------------------------------------------------------------------------------------------+\n| Node  | Resource | StoragePool | VolumeNr | MinorNr | DeviceName    | Allocated  | InUse  |    State |\n|------------------------------------------------------------------------------------------------------|\n| node1 | myres    | data        | 0        | 1084    | \u002Fdev\u002Fdrbd1084 | 52 KiB     | Unused | UpToDate |\n| node2 | myres    | data        | 0        | 1084    | \u002Fdev\u002Fdrbd1084 | 52 KiB     | Unused | UpToDate |\n+------------------------------------------------------------------------------------------------------+\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EОтлично! — мы видим, что ресурс создался на первых двух нодах, мы также можем попробовать создать diskless-ресурс на третьей: \u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"bash\"\u003Elinstor resource create --diskless node3 myres\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EНа нодах вы всегда найдете это устройство как \u003Ccode\u003E\u002Fdev\u002Fdrbd1084\u003C\u002Fcode\u003E или \u003Ccode\u003E\u002Fdev\u002Fdrbd\u002Fby-res\u002Fmyres\u002F0\u003C\u002Fcode\u003E\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EВот так работает Linstor, вы можете получить больше информации из \u003Ca href=\"https:\u002F\u002Fdocs.linbit.com\u002Fdocs\u002Fusers-guide-9.0\u002F\" rel=\"nofollow\"\u003Eофициальной документации\u003C\u002Fa\u003E.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EТеперь я расскажу о том как интегрировать его с OpenNebula\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Ch2 id=\"nastroyka-opennebula\"\u003EНастройка OpenNebula\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EЯ не буду сильно углубляться в процесс настройки OpenNebula, т.к. все шаги детально описаны в \u003Ca href=\"https:\u002F\u002Fdocs.opennebula.org\u002Fstable\u002Fdeployment\u002Fopennebula_installation\u002Findex.html\" rel=\"nofollow\"\u003Eофициальной документации\u003C\u002Fa\u003E, к которой и рекомендую вам обратиться, расскажу только про интеграцию OpenNebula с Linstor.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Ch5 id=\"linstor_un\"\u003Elinstor_un\u003C\u002Fh5\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EДля решения этой задачи я написал собственный драйвер — \u003Ca href=\"https:\u002F\u002Fgithub.com\u002FOpenNebula\u002Faddon-linstor_un\" rel=\"nofollow\"\u003Elinstor_un\u003C\u002Fa\u003E, на данный момент он доступен в виде плагина и должен устанавливаться отдельно.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EВся установка осуществляется на frontend OpenNebula-нодах и не требует дополнительных действий на compute-нодах.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EПервым делом нам нужно удостовериться что мы имеем \u003Cstrong\u003Ejq\u003C\u002Fstrong\u003E и \u003Cstrong\u003Elinstor-client\u003C\u002Fstrong\u003E:\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003Eapt-get install jq linstor-client\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EКоманда \u003Ccode\u003Elinstor node list\u003C\u002Fcode\u003E должна выводить список нод. Все compute-ноды OpenNebula должны быть добавлены в кластер Linstor.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EСкачаем и установим плагин:\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"bash\"\u003Ecurl -L https:\u002F\u002Fgithub.com\u002FOpenNebula\u002Faddon-linstor_un\u002Farchive\u002Fmaster.tar.gz | tar -xzvf - -C \u002Ftmp\n\nmv \u002Ftmp\u002Faddon-linstor_un-master\u002Fvmm\u002Fkvm\u002F* \u002Fvar\u002Flib\u002Fone\u002Fremotes\u002Fvmm\u002Fkvm\u002F\n\nmkdir -p \u002Fvar\u002Flib\u002Fone\u002Fremotes\u002Fetc\u002Fdatastore\u002Flinstor_un\nmv \u002Ftmp\u002Faddon-linstor_un-master\u002Fdatastore\u002Flinstor_un\u002Flinstor_un.conf \u002Fvar\u002Flib\u002Fone\u002Fremotes\u002Fetc\u002Fdatastore\u002Flinstor_un\u002Flinstor_un.conf\n\nmv \u002Ftmp\u002Faddon-linstor_un-master\u002Fdatastore\u002Flinstor_un \u002Fvar\u002Flib\u002Fone\u002Fremotes\u002Fdatastore\u002Flinstor_un\nmv \u002Ftmp\u002Faddon-linstor_un-master\u002Ftm\u002Flinstor_un \u002Fvar\u002Flib\u002Fone\u002Fremotes\u002Ftm\u002Flinstor_un\n\nrm -rf \u002Ftmp\u002Faddon-linstor_un-master\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EТеперь нам нужно добавить его в конфиг OpenNebula, для этого выполняем несложные шаги описанные \u003Cstrong\u003E\u003Ca href=\"https:\u002F\u002Fgithub.com\u002FOpenNebula\u002Faddon-linstor_un#update-onedconf\" rel=\"nofollow\"\u003Eздесь\u003C\u002Fa\u003E\u003C\u002Fstrong\u003E.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EПосле чего перезапустим OpenNebula:\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"bash\"\u003Esystemctl restart opennebula\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EИ добавим наши datastores, системное:\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"bash\"\u003Ecat \u003E system-ds.conf &lt;&lt;EOT\nNAME=\"linstor-system\"\nTYPE=\"SYSTEM_DS\"\nSTORAGE_POOL=\"data\"\nAUTO_PLACE=\"2\"\nCLONE_MODE=\"snapshot\"\nCHECKPOINT_AUTO_PLACE=\"1\"\nBRIDGE_LIST=\"node1 node2 node3\"\nTM_MAD=\"linstor_un\"\nEOT\n\nonedatastore create system-ds.conf\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EИ хранилище образов:\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"bash\"\u003Ecat \u003E images-ds.conf &lt;&lt;EOT\nNAME=\"linstor-images\"\nTYPE=\"IMAGE_DS\"\nSTORAGE_POOL=\"data\"\nAUTO_PLACE=\"2\"\nBRIDGE_LIST=\"node1 node2 node3\"\nDISK_TYPE=\"BLOCK\"\nDS_MAD=\"linstor_un\"\nTM_MAD=\"linstor_un\"\nEOT\n\nonedatastore create images-ds.conf\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003EПараметр \u003Ccode\u003EAUTO_PLACE\u003C\u002Fcode\u003E отображает количество data-ресурсов, которое будет созданно для каждого нового образа в OpenNebula.\u003C\u002Fli\u003E\r\n\u003Cli\u003EПараметр \u003Ccode\u003ECLONE_MODE\u003C\u002Fcode\u003E указывает на то, как именно будут клонироваться образы при создании новых виртуальных машин, \u003Ccode\u003Esnapshot\u003C\u002Fcode\u003E — будет создавать снапшот образа и из снапшота разворачивать виртуальную машину, \u003Ccode\u003Ecopy\u003C\u002Fcode\u003E — будет делать полную копию образа под каждую виртуальную машину.\u003C\u002Fli\u003E\r\n\u003Cli\u003EВ \u003Ccode\u003EBRIDGE_LIST\u003C\u002Fcode\u003E рекомендуется указать все ноды, которые будут использоваться для выполнения операций по клонированию образов. \u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EПолный список поддерживаемых параметров приведен в \u003Ca href=\"https:\u002F\u002Fgithub.com\u002FOpenNebula\u002Faddon-linstor_un#opennebula-configuration\" rel=\"nofollow\"\u003EREADME\u003C\u002Fa\u003E проекта.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EНа этом настройка завершена, теперь можно загрузить какой-нибудь appliance из официального \u003Ca href=\"https:\u002F\u002Fmarketplace.opennebula.systems\u002Fappliance\" rel=\"nofollow\"\u003EOpenNebula Marketplace\u003C\u002Fa\u003E и создать виртуальные машины из него.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003E\u003Ca href=\"https:\u002F\u002Fgithub.com\u002FOpenNebula\u002Faddon-linstor_un\" rel=\"nofollow\"\u003EСсылка на проект\u003C\u002Fa\u003E\u003C\u002Fp\u003E\u003C\u002Fdiv\u003E","tags":[{"titleHtml":"linstor"},{"titleHtml":"opennebula"},{"titleHtml":"drbd9"},{"titleHtml":"drbd"},{"titleHtml":"хранилище"},{"titleHtml":"sds"}],"metadata":{"stylesUrls":[],"scriptUrls":[],"shareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F451186\u002F25599d2adcdbe3279a4e1445dad06158\u002F","shareImageWidth":1200,"shareImageHeight":630,"vkShareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F451186\u002F25599d2adcdbe3279a4e1445dad06158\u002F?format=vk","schemaJsonLd":"{\"@context\":\"http:\\\u002F\\\u002Fschema.org\",\"@type\":\"Article\",\"mainEntityOfPage\":{\"@type\":\"WebPage\",\"@id\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fru\\\u002Fpost\\\u002F451186\\\u002F\"},\"headline\":\"Хранилище LINSTOR и его интеграция с OpenNebula\",\"datePublished\":\"2019-05-13T13:16:26+03:00\",\"dateModified\":\"2020-10-17T17:00:40+03:00\",\"author\":{\"@type\":\"Person\",\"name\":\"Andrei Kvapil\"},\"publisher\":{\"@type\":\"Organization\",\"name\":\"Habr\",\"logo\":{\"@type\":\"ImageObject\",\"url\":\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fa_\\\u002Flk\\\u002F9m\\\u002Fa_lk9mjkccjox-zccjrpfolmkmq.png\"}},\"description\":\"Не так давно ребята из LINBIT представили свое новое SDS-решение &mdash; Linstor. Это полностью свободное хранилище в основе которого используются проверенные техноло...\",\"url\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fru\\\u002Fpost\\\u002F451186\\\u002F#post-content-body\",\"about\":[\"h_sys_admin\",\"h_nix\",\"h_dwh\",\"h_cloud_services\",\"h_distributed_systems\",\"f_admin\"],\"image\":[\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fe-\\\u002F3z\\\u002Fh-\\\u002Fe-3zh-bbwjnljyazm68edln7muw.png\"]}","metaDescription":"Не так давно ребята из LINBIT представили свое новое SDS-решение — Linstor. Это полностью свободное хранилище в основе которого используются проверенные технологии: DRBD, LVM, ZFS. Linstor сочетает...","mainImageUrl":null,"amp":false},"polls":[],"commentsEnabled":true,"rulesRemindEnabled":false,"votesEnabled":true,"status":"published","plannedPublishTime":null,"checked":null,"isEditorial":false}},"articlesIds":{},"isLoading":false,"pagesCount":{},"route":{},"reasonsList":null,"view":"cards","lastVisitedRoute":{},"ssrCommentsArticleIds":[""],"karma":{}},"authorContribution":{"authors":{}},"betaTest":{"currentAnnouncement":null,"announcements":{},"announcementCards":null,"announcementComments":{},"announcementCommentThreads":{},"announcementCommentingStatuses":{},"archivedList":[]},"authorStatistics":{"articleRefs":{},"articleIds":{},"pagesCount":{},"route":{},"viewsCount":[],"maxStatsCount":{}},"career":{"seoLandings":[],"hubs":"sys_admin,nix,dwh,cloud_services,distributed_systems"},"comments":{"articleComments":{},"searchCommentsResults":null,"previewComment":null,"pagesCount":null,"commentAccess":{},"scrollParents":{},"pageArticleComments":{"lastViewedComment":0,"postId":null,"lastCommentTimestamp":"","moderated":[],"moderatedIds":[],"commentRoute":""}},"companies":{"companyRefs":{},"companyIds":{},"companyTopIds":{},"pagesCount":{},"companyProfiles":{},"companiesCategories":[],"companiesCategoriesTotalCount":0,"companiesWidgets":{},"companiesWorkers":{},"companiesFans":{},"route":{},"isLoading":false,"companyWorkersLoading":false,"companyFansLoading":false,"vacancies":{}},"companiesContribution":{"hubs":{},"flows":{},"companyRefs":{}},"companyHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"conversation":{"messages":[],"respondent":null,"isLoadMore":false},"conversations":{"conversations":[],"unreadCount":0,"pagesCount":0,"isLoadMore":false},"desktopState":{"desktopFl":null,"desktopHl":null,"isChecked":false,"isLoginDemanded":false},"dfp":{"slotsDict":{}},"docs":{"menu":{},"articles":{},"mainMenu":[],"loading":{"main":false,"dropdown":false,"article":false}},"feature":{"isProbablyVisible":"true"},"flows":{"flows":[{"alias":"develop","id":1,"route":{"name":"FLOW_PAGE","params":{"flowName":"develop"}}},{"alias":"admin","id":6,"route":{"name":"FLOW_PAGE","params":{"flowName":"admin"}}},{"alias":"design","id":2,"route":{"name":"FLOW_PAGE","params":{"flowName":"design"}}},{"alias":"management","id":3,"route":{"name":"FLOW_PAGE","params":{"flowName":"management"}}},{"alias":"marketing","id":4,"route":{"name":"FLOW_PAGE","params":{"flowName":"marketing"}}},{"alias":"popsci","id":7,"route":{"name":"FLOW_PAGE","params":{"flowName":"popsci"}}}]},"global":{"isPwa":false,"device":"desktop","isHabrCom":true},"hubs":{"hubRefs":{},"hubIds":{},"pagesCount":{},"isLoading":false,"route":{}},"hubsBlock":{"hubRefs":{},"hubIds":{}},"i18n":{"fl":"ru","hl":"ru"},"info":{"infoPage":{},"isLoading":true},"location":{"urlStruct":{"protocol":null,"slashes":null,"auth":null,"host":null,"port":null,"hostname":null,"hash":null,"search":null,"query":{},"pathname":null,"path":null,"href":""},"searchQuery":null},"me":{"user":null,"ppgDemanded":false,"karmaResetInfo":{"canReincarnate":null,"wasReincarnated":null,"currentScore":null},"notes":null},"mostReadingList":{"mostReadingListIds":[],"mostReadingListRefs":null,"promoPost":null},"pinnedPost":{"pinnedPost":null},"ppa":{"articles":{},"card":null,"transactions":null,"totalTransactions":null,"isAccessible":null},"projectsBlocks":{"activeBlocks":{}},"pullRefresh":{"shouldRefresh":false},"sandbox":{"articleIds":[],"articleRefs":{},"pagesCount":null,"route":{},"lastVisitedRoute":{},"isLoading":false},"settingsOther":{"inputs":{"uiLang":{"errors":[],"ref":null,"value":""},"articlesLangEnglish":{"errors":[],"ref":null,"value":false},"articlesLangRussian":{"errors":[],"ref":null,"value":false},"agreement":{"errors":[],"ref":null,"value":false},"email":{"errors":[],"ref":null,"value":true},"digest":{"errors":[],"ref":null,"value":true}}},"similarList":{"similarListIds":[],"similarListRefs":null},"ssr":{"error":null,"isDataLoaded":false,"isDataLoading":false,"isHydrationFailed":false,"isServer":false},"userHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"userInvites":{"availableInvites":0,"usedInvitesIds":[],"usedInvitesRefs":{},"usedInvitesPagesCount":0,"unusedInvitesIds":[],"unusedInvitesRefs":{},"unusedInvitesPagesCount":0},"users":{"authorRefs":{},"authorIds":{},"pagesCount":{},"authorProfiles":{},"userHubs":{},"userInvitations":{},"authorFollowers":{},"authorFollowed":{},"karmaStats":[],"statistics":null,"isLoading":false,"authorFollowersLoading":false,"authorFollowedLoading":false,"userHubsLoading":false,"userInvitationsLoading":false,"route":{}},"viewport":{"prevScrollY":{},"scrollY":0,"width":0},"tracker":{"items":{},"pagesCache":{},"markedViewedSilently":{},"markedRead":{},"unreadCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null},"unviewedCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null}}};(function(){var s;(s=document.currentScript||document.scripts[document.scripts.length-1]).parentNode.removeChild(s);}());</script>
+<script src="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" defer></script><script src="https://assets.habr.com/habr-web/js/app.c0af73e7.js" defer></script>
+
+
+
+    <script>
+      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+        (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+        m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+      })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+    </script>
+  
+  <script type="text/javascript" >
+    (function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+    m[i].l=1*new Date();k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})
+    (window, document, "script", "https://mc.yandex.ru/metrika/tag.js", "ym");
+
+    ym(24049213, "init", {
+      defer:true,
+      trackLinks:true,
+      accurateTrackBounce:true,
+      webvisor:false,
+    });
+  </script>
+  <noscript>
+    <div>
+      <img src="https://mc.yandex.ru/watch/24049213" style="position:absolute; left:-9999px;" alt="" />
+    </div>
+  </noscript>
+  
+    <script type="text/javascript">
+      window.addEventListener('load', function () {
+        setTimeout(() => {
+          const img = new Image();
+          img.src = 'https://vk.com/rtrg?p=VK-RTRG-421343-57vKE';
+        }, 0);
+      });
+    </script>
+  
+</body>
+</html>

@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="ru" data-vue-meta="%7B%22lang%22:%7B%22ssr%22:%22ru%22%7D%7D">
+<head >
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
+  <title>MVCC-7. Автоочистка / Хабр</title>
+  <style>
+    /* cyrillic-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSxf6TF0.woff2) format('woff2');
+      unicode-range: U+0460-052F, U+1C80-1C88, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+    }
+
+    /* cyrillic */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveQhf6TF0.woff2) format('woff2');
+      unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+    }
+
+    /* latin-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSBf6TF0.woff2) format('woff2');
+      unicode-range: U+0100-024F, U+0259, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20CF, U+2113, U+2C60-2C7F, U+A720-A7FF;
+    }
+
+    /* latin */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveRhf6.woff2) format('woff2');
+      unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+    }
+  </style>
+  <link rel="preload" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" as="script"><link rel="preload" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/app.c0af73e7.js" as="script">
+  <link rel="stylesheet" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css"><link rel="stylesheet" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css">
+  <script>window.i18nFetch = new Promise((res, rej) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open('GET', '/js/i18n/ru-compiled.85eb77f0b17c8235e7b64b9f81ea5ec2.json');
+          xhr.responseType = 'json';
+          xhr.onload = function(e) {
+            if (this.status === 200) {
+              res({ru: xhr.response});
+            } else {
+              rej(e);
+            }
+          };
+          xhr.send();
+        });</script>
+  
+  <script data-vue-meta="ssr" src="/js/ads.js" onload="window['zhY4i4nJ9K'] = true" data-vmid="checkad"></script><script data-vue-meta="ssr" type="application/ld+json" data-vmid="ldjson-schema">{"@context":"http:\/\/schema.org","@type":"Article","mainEntityOfPage":{"@type":"WebPage","@id":"https:\/\/habr.com\/ru\/company\/postgrespro\/blog\/452762\/"},"headline":"MVCC-7. Автоочистка","datePublished":"2019-06-06T13:41:51+03:00","dateModified":"2020-01-29T16:07:02+03:00","author":{"@type":"Person","name":"Егор Рогов"},"publisher":{"@type":"Organization","name":"Habr","logo":{"@type":"ImageObject","url":"https:\/\/habrastorage.org\/webt\/a_\/lk\/9m\/a_lk9mjkccjox-zccjrpfolmkmq.png"}},"description":"Напомню, что мы начали с вопросов, связанных с изоляцией, сделали отступление про организацию данных на низком уровне, подробно поговорили о версиях строк и о то...","url":"https:\/\/habr.com\/ru\/company\/postgrespro\/blog\/452762\/#post-content-body","about":["c_postgrespro","h_postgresql","h_sql","f_develop"],"image":["https:\/\/habr.com\/share\/publication\/452762\/abe6a194066fa7565e7bae6808db970c\/"]}</script>
+  <script src="//www.googletagservices.com/tag/js/gpt.js" async></script>
+  <style>.grecaptcha-badge{visibility: hidden;}</style>
+  <meta name="habr-version" content="2.49.0">
+  
+  <meta data-vue-meta="ssr" property="fb:app_id" content="444736788986613"><meta data-vue-meta="ssr" property="fb:pages" content="472597926099084"><meta data-vue-meta="ssr" name="twitter:card" content="summary_large_image"><meta data-vue-meta="ssr" name="twitter:site" content="@habr_eng"><meta data-vue-meta="ssr" property="og:title" content="MVCC-7. Автоочистка" data-vmid="og:title"><meta data-vue-meta="ssr" name="twitter:title" content="MVCC-7. Автоочистка" data-vmid="twitter:title"><meta data-vue-meta="ssr" name="aiturec:title" content="MVCC-7. Автоочистка" data-vmid="aiturec:title"><meta data-vue-meta="ssr" name="description" content="Напомню, что мы начали с вопросов, связанных с изоляцией, сделали отступление про организацию данных на низком уровне, подробно поговорили о версиях строк и о том, как из версий получаются снимки..." data-vmid="description"><meta data-vue-meta="ssr" itemprop="description" content="Напомню, что мы начали с вопросов, связанных с изоляцией, сделали отступление про организацию данных на низком уровне, подробно поговорили о версиях строк и о том, как из версий получаются снимки..." data-vmid="description:itemprop"><meta data-vue-meta="ssr" property="og:description" content="Напомню, что мы начали с вопросов, связанных с изоляцией, сделали отступление про организацию данных на низком уровне, подробно поговорили о версиях строк и о том, как из версий получаются снимки..." data-vmid="og:description"><meta data-vue-meta="ssr" name="twitter:description" content="Напомню, что мы начали с вопросов, связанных с изоляцией, сделали отступление про организацию данных на низком уровне, подробно поговорили о версиях строк и о том, как из версий получаются снимки..." data-vmid="twitter:description"><meta data-vue-meta="ssr" property="aiturec:description" content="Напомню, что мы начали с вопросов, связанных с изоляцией, сделали отступление про организацию данных на низком уровне, подробно поговорили о версиях строк и о том, как из версий получаются снимки..." data-vmid="aiturec:description"><meta data-vue-meta="ssr" itemprop="image" content="https://habr.com/share/publication/452762/abe6a194066fa7565e7bae6808db970c/" data-vmid="image:itemprop"><meta data-vue-meta="ssr" property="og:image" content="https://habr.com/share/publication/452762/abe6a194066fa7565e7bae6808db970c/" data-vmid="og:image"><meta data-vue-meta="ssr" property="aiturec:image" content="https://habr.com/share/publication/452762/abe6a194066fa7565e7bae6808db970c/" data-vmid="aiturec:image"><meta data-vue-meta="ssr" name="twitter:image" content="https://habr.com/share/publication/452762/abe6a194066fa7565e7bae6808db970c/" data-vmid="twitter:image"><meta data-vue-meta="ssr" property="vk:image" content="https://habr.com/share/publication/452762/abe6a194066fa7565e7bae6808db970c/" data-vmid="vk:image"><meta data-vue-meta="ssr" property="aiturec:item_id" content="452762" data-vmid="aiturec:item_id"><meta data-vue-meta="ssr" property="aiturec:datetime" content="2019-06-06T10:41:51.000Z" data-vmid="aiturec:datetime"><meta data-vue-meta="ssr" property="og:type" content="article" data-vmid="og:type"><meta data-vue-meta="ssr" property="og:locale" content="ru_RU" data-vmid="og:locale"><meta data-vue-meta="ssr" property="og:image:width" content="1200" data-vmid="og:image:width"><meta data-vue-meta="ssr" property="og:image:height" content="630" data-vmid="og:image:height">
+  <link data-vue-meta="ssr" href="https://habr.com/ru/rss/post/452762/?fl=ru" type="application/rss+xml" title="" rel="alternate" name="rss"><link data-vue-meta="ssr" href="https://habr.com/ru/company/postgrespro/blog/452762/" rel="canonical" data-vmid="canonical"><link data-vue-meta="ssr" data-vmid="hreflang"><link data-vue-meta="ssr" image_src="image" href="https://habr.com/share/publication/452762/abe6a194066fa7565e7bae6808db970c/" data-vmid="image:href">
+  <meta name="apple-mobile-web-app-status-bar-style" content="#303b44">
+  <meta name="msapplication-TileColor" content="#629FBC">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="16x16"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-16.png"
+  >
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="32x32"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-32.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="76x76"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-76.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="120x120"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="152x152"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-152.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="180x180"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-180.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="256x256"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-256.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1136x640.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2436x1125.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1792x828.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_828x1792.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1334x750.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2208x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1125x2436.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2208.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2732x2048.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2688x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2224x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_750x1334.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x2732.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2388x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2224.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_640x1136.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2388.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x1536.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1536x2048.png"
+  >
+  <link
+    rel="mask-icon"
+    color="#77a2b6"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.svg"
+  >
+  <link
+    crossorigin="use-credentials"
+    href="/manifest.webmanifest"
+    rel="manifest"
+  >
+</head>
+<body>
+
+
+<div id="app" data-server-rendered="true" data-async-called="true"><div class="tm-layout__wrapper"><!----> <div></div> <!----> <header class="tm-header"><div class="tm-page-width"><div class="tm-header__container"><!----> <span class="tm-header__logo-wrap"><a href="/ru/" class="tm-header__logo tm-header__logo_ru"><svg height="16" width="16" class="tm-svg-img tm-header__icon"><title>Хабр</title> <use xlink:href="/img/habr-logo-ru.svg#logo"></use></svg></a> <span class="tm-header__beta-sign" style="display:none;">β</span></span> <div class="tm-dropdown tm-header__projects"><div class="tm-dropdown__head"><button class="tm-header__dropdown-toggle"><svg height="16" width="16" class="tm-svg-img tm-header__icon tm-header__icon_dropdown"><title>Открыть список</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#arrow-down"></use></svg></button></div> <!----></div> <a href="/ru/sandbox/start/" class="tm-header__become-author-btn">
+            Как стать автором
+          </a> <div class="tm-feature tm-header__feature tm-feature_variant-inline"><!----></div> <!----> <!----></div></div></header> <div class="tm-layout"><div class="tm-page-progress-bar"></div> <div data-menu-sticky="true" class="tm-base-layout__header tm-base-layout__header_is-sticky"><div class="tm-page-width"><div class="tm-base-layout__header-wrapper"><div class="tm-main-menu"><div class="tm-main-menu__section"><nav class="tm-main-menu__section-content"><!----> <a href="/ru/all/" class="tm-main-menu__item">
+        Все потоки
+      </a> <a href="/ru/flows/develop/" class="tm-main-menu__item">
+          Разработка
+        </a><a href="/ru/flows/admin/" class="tm-main-menu__item">
+          Администрирование
+        </a><a href="/ru/flows/design/" class="tm-main-menu__item">
+          Дизайн
+        </a><a href="/ru/flows/management/" class="tm-main-menu__item">
+          Менеджмент
+        </a><a href="/ru/flows/marketing/" class="tm-main-menu__item">
+          Маркетинг
+        </a><a href="/ru/flows/popsci/" class="tm-main-menu__item">
+          Научпоп
+        </a></nav></div></div> <div class="tm-header-user-menu tm-base-layout__user-menu"><a href="/ru/search/" class="tm-header-user-menu__item tm-header-user-menu__search"><svg height="24" width="24" class="tm-svg-img tm-header-user-menu__icon tm-header-user-menu__icon_search tm-header-user-menu__icon_dark"><title>Поиск</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#search"></use></svg></a> <!----> <!----> <!----> <div class="tm-header-user-menu__item tm-header-user-menu__user_desktop"><div class="tm-dropdown"><div class="tm-dropdown__head"><svg height="24" width="24" data-test-id="menu-toggle-guest" class="tm-svg-img tm-header-user-menu__icon"><title>Профиль</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#header-user"></use></svg> <!----></div> <!----></div> <!----></div> <!----></div></div></div></div> <!----> <div class="tm-page-width"></div> <main class="tm-layout__container"><div hl="ru" companyName="postgrespro" data-async-called="true" class="tm-page"><div class="tm-page-width"><div class="tm-page__header"><!----></div> <div class="tm-page__wrapper"><div class="tm-page__main tm-page__main_has-sidebar"><div class="pull-down"><div class="pull-down__header" style="height:0px;"><div class="pull-down__content" style="bottom:10px;"><svg height="24" width="24" class="tm-svg-img pull-down__arrow"><title>Обновить</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#pull-arrow"></use></svg></div></div> <div class="tm-article-presenter"><div class="tm-company-card tm-company-article__company-card"><div class="tm-company-card__info"><div class="tm-company-card__header"><a href="/ru/company/postgrespro/profile/" class="tm-company-card__avatar"><div class="tm-entity-image"><img alt="" height="48" src="//habrastorage.org/getpro/habr/company/4e0/339/621/4e0339621abc865fefb88f9e9f44748f.jpg" width="48" class="tm-entity-image__pic"></div></a> <!----> <div class="tm-rating tm-company-card__rating"><div class="tm-rating__header"> <div class="tm-rating__counter">218.7</div></div> <div class="tm-rating__text">
+    Рейтинг
+  </div></div></div> <div class="tm-company-card__info"><a href="/ru/company/postgrespro/profile/" class="tm-company-card__name">
+        Postgres Professional
+      </a> <div class="tm-company-card__description">Разработчик СУБД Postgres Pro</div></div></div> <div class="tm-company-card__buttons"><!----> <!----></div></div> <div class="tm-article-presenter__body"><div class="tm-misprint-area"><div class="tm-misprint-area__wrapper"><article class="tm-article-presenter__content tm-article-presenter__content_narrow"><div class="tm-article-presenter__header"> <div class="tm-article-snippet tm-article-presenter__snippet"><div class="tm-article-snippet__meta-container"><div class="tm-article-snippet__meta"><span class="tm-user-info tm-article-snippet__author"><a href="/ru/users/erogov/" title="erogov" class="tm-user-info__userpic"><div class="tm-entity-image"><img alt="" height="24" loading="lazy" src="//habrastorage.org/r/w32/getpro/habr/avatars/d16/573/7e4/d165737e421383f77f007015ebd01fb1.jpg" width="24" class="tm-entity-image__pic"></div></a> <span class="tm-user-info__user"><a href="/ru/users/erogov/" class="tm-user-info__username">
+      erogov
+    </a> </span></span> <span class="tm-article-snippet__datetime-published"><time datetime="2019-06-06T10:41:51.000Z" title="2019-06-06, 13:41">6  июня  2019 в 13:41</time></span></div> <!----></div> <h1 lang="ru" class="tm-article-snippet__title tm-article-snippet__title_h1"><span>MVCC-7. Автоочистка</span></h1> <div class="tm-article-snippet__hubs"><span class="tm-article-snippet__hubs-item"><a href="/ru/company/postgrespro/blog/" class="tm-article-snippet__hubs-item-link router-link-active"><span>Блог компании Postgres Professional</span> <!----></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/postgresql/" class="tm-article-snippet__hubs-item-link"><span>PostgreSQL</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/sql/" class="tm-article-snippet__hubs-item-link"><span>SQL</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span></div> <!----> <!----> <!----></div></div> <!----> <div data-gallery-root="" lang="ru" class="tm-article-body"><div id="post-content-body" class="article-formatted-body article-formatted-body_version-1"><div xmlns="http://www.w3.org/1999/xhtml">Напомню, что мы начали с вопросов, связанных с <a href="https://habr.com/ru/company/postgrespro/blog/442804/">изоляцией</a>, сделали отступление про <a href="https://habr.com/ru/company/postgrespro/blog/444536/">организацию данных на низком уровне</a>, подробно поговорили <a href="https://habr.com/ru/company/postgrespro/blog/445820/">о версиях строк</a> и о том, как из версий получаются <a href="https://habr.com/ru/company/postgrespro/blog/446652/">снимки данных</a>.<br/>
+<br/>
+Затем мы рассмотрели <a href="https://habr.com/ru/company/postgrespro/blog/449704/">внутристраничную очистку</a> (и HOT-обновления), <a href="https://habr.com/ru/company/postgrespro/blog/452320/">обычную очистку</a>, ну а сегодня посмотрим на автоматическую очистку.<br/>
+<br/>
+<h1>Автоочистка (autovacuum)</h1><br/>
+Мы уже говорили о том, что обычная очистка в нормальных условиях (когда никто не удерживает надолго горизонт транзакций) должна справляться со своей работой. Вопрос в том, как часто ее вызывать.<br/>
+<br/>
+Если очищать изменяющуюся таблицу слишком редко, она вырастет в размерах больше, чем хотелось бы. Кроме того, для очередной очистки может потребоваться несколько проходов по индексам, если изменений накопилось слишком много.<br/>
+<br/>
+Если очищать таблицу слишком часто, то вместо полезной работы сервер будет постоянно заниматься обслуживанием — тоже нехорошо.<br/>
+<br/>
+Заметим, что запуск обычной очистки по расписанию никак не решает проблему, потому что нагрузка может изменяться со временем. Если таблица стала обновляться активней, то и очищать ее надо чаще.<br/>
+<br/>
+Автоматическая очистка — как раз тот самый механизм, который позволяет запускать очистку в зависимости от активности изменений в таблицах.<br/>
+<a name="habracut"></a><br/>
+При включенной автоочистке (конфигурационный параметр <em>autovacuum</em>) в системе всегда присутствует процесс autovacuum launcher, который планирует работу, а реальной очисткой занимаются рабочие процессы autovacuum worker, несколько экземпляров которых могут работать параллельно.<br/>
+<br/>
+Процесс autovacuum launcher составляет список баз данных, в которых есть какая-либо активность. Активность определяется по статистике, а чтобы она собиралась, должен быть установлен параметр <em>track_counts</em>. Никогда не выключайте <em>autovacuum</em> и <em>track_counts</em>, иначе автоочистка не будет работать.<br/>
+<br/>
+Раз в <em>autovacuum_naptime</em> процесс autovacuum launcher запускает (с помощью процесса postmaster) рабочий процесс для каждой БД из списка. Иными словами, если в базе данных есть какая-то активность, то рабочие процессы будет приходить в нее с интервалом <em>autovacuum_naptime</em>. Для этого, если имеется несколько активных БД (N штук), то рабочие процессы запускаются в N раз чаще, чем <em>autovacuum_naptime</em>. Но при этом общее количество одновременно работающих рабочих процессов ограничено параметром <em>autovacuum_max_workers</em>.<br/>
+<br/>
+Запустившись, рабочий процесс подключается к указанной ему базе данных и начинает с того, что строит список:<br/>
+<br/>
+<ul>
+<li>всех таблиц, материализованных представлений и toast-таблиц, требующих очистки,</li>
+<li>всех таблиц и материализованных представлений, требующих анализа (toast-таблицы не анализируются, потому что обращение к ним всегда происходит по индексу).</li>
+</ul><br/>
+Дальше рабочий процесс по очереди очищает и/или анализирует отобранные объекты и по окончании очистки завершается.<br/>
+<br/>
+Если процесс не успел выполнить всю намеченную работу за <em>autovacuum_naptime</em>, процесс autovacuum launcher пошлет в ту же базу данных еще один рабочий процесс, и они будут работать вместе. «Вместе» просто означает, что второй процесс построит свой список таблиц и пойдет по нему. Таким образом, параллельно будут обрабатываться разные таблицы, но на уровне одной таблицы параллелизма нет — если один из рабочих процессов уже занимается таблицей, другой пропустит ее и пойдет дальше.<br/>
+<br/>
+<blockquote>Обсуждение необходимости параллельной обработки идет уже давно, но <a href="https://commitfest.postgresql.org/23/1774/">патч</a> пока не принят.<br/>
+</blockquote><br/>
+Теперь разберемся детальнее, что значит «требует очистки» и «требует анализа».<br/>
+<br/>
+<h1>Какие таблицы требуют очистки</h1><br/>
+Считается, что очистка необходима, если число «мертвых», то есть неактуальных, версий строк превышает установленное пороговое значение. Число мертвых версий постоянно собирается коллектором статистики и хранится в таблице pg_stat_all_tables. А порог задается двумя параметрами:<br/>
+<br/>
+<ul>
+<li><em>autovacuum_vacuum_threshold</em> определяет абсолютное значение (в штуках),</li>
+<li><em>autovacuum_vacuum_scale_factor</em> определяет долю строк в таблице.</li>
+</ul><br/>
+Итоговая формула такая: очистка требуется, если pg_stat_all_tables.n_dead_tup >= <em>autovacuum_vacuum_threshold</em> + <em>autovacuum_vacuum_scale_factor</em> * pg_class.reltupes.<br/>
+<br/>
+Настройки по умолчанию устанавливают <em>autovacuum_vacuum_threshold</em> = 50 и <br/>
+<em>autovacuum_vacuum_scale_factor</em> = 0.2. Главный параметр здесь, конечно, <em>autovacuum_vacuum_scale_factor</em> — именно он важен для больших таблиц (а именно с ними связаны возможные проблемы). Значение 20% представляется сильно завышенным, скорее всего его потребуется существенно уменьшить.<br/>
+<br/>
+Оптимальные значения параметров могут отличаться для разных таблиц в зависимости от их размера и характера изменений. Имеет смысл установить в целом адекватные значения, и — при необходимости — настроить специальным образом параметры на уровне некоторых таблиц с помощью параметров хранения:<br/>
+<br/>
+<ul>
+<li><em>autovacuum_vacuum_threshold</em> и <em>toast.autovacuum_vacuum_threshold</em>,</li>
+<li><em>autovacuum_vacuum_scale_factor</em> и <em>toast.autovacuum_vacuum_scale_factor</em>.</li>
+</ul><br/>
+Чтобы не запутаться, это стоит делать только для небольшого числа таблиц, которые выделяются среди прочих объемом или интенсивностью изменений, и только в том случае, когда глобально установленные значения не подходят.<br/>
+<br/>
+Кроме того, автоочистку можно отключать на уровне таблиц (хотя сложно придумать причину, по которой это было бы необходимо):<br/>
+<br/>
+<ul>
+<li><em>autovacuum_enabled</em> и <em>toast.autovacuum_enabled</em>.</li>
+</ul><br/>
+Например, в прошлый раз мы создавали таблицу vac с отключенной автоочисткой, чтобы — для целей демонстрации — управлять очисткой вручную. Параметр хранения можно изменить следующим образом:<br/>
+<br/>
+<pre><code class="pgsql">=> ALTER TABLE vac SET (autovacuum_enabled = off);
+</code></pre><br/>
+Чтобы формализовать все сказанное выше, создадим представление, показывающее, какие таблицы в данный момент нуждаются в очистке. Оно будет использовать функцию, возвращающую текущее значение параметра с учетом того, что оно может быть переопределено на уровне таблицы:<br/>
+<br/>
+<pre><code class="pgsql">=> CREATE FUNCTION get_value(param text, reloptions text[], relkind "char")
+RETURNS float
+AS $$
+  SELECT coalesce(
+    -- если параметр хранения задан, то берем его
+    (SELECT option_value
+     FROM   pg_options_to_table(reloptions)
+     WHERE  option_name = CASE
+              -- для toast-таблиц имя параметра отличается
+              WHEN relkind = 't' THEN 'toast.' ELSE ''
+            END || param
+    ),
+    -- иначе берем значение конфигурационного параметра
+    current_setting(param)
+  )::float;
+$$ LANGUAGE sql;
+</code></pre><br/>
+А вот и представление:<br/>
+<br/>
+<pre><code class="pgsql">=> CREATE VIEW need_vacuum AS
+  SELECT st.schemaname || '.' || st.relname tablename,
+         st.n_dead_tup dead_tup,
+         get_value('autovacuum_vacuum_threshold', c.reloptions, c.relkind) +
+         get_value('autovacuum_vacuum_scale_factor', c.reloptions, c.relkind) * c.reltuples
+         max_dead_tup,
+         st.last_autovacuum
+  FROM   pg_stat_all_tables st,
+         pg_class c
+  WHERE  c.oid = st.relid
+  AND    c.relkind IN ('r','m','t');
+</code></pre><br/>
+<h1>Какие таблицы требуют анализа</h1><br/>
+С автоанализом дело обстоит примерно так же. Считается, что анализа требуют те таблицы, у которых число измененных (с момента прошлого анализа) версий строк превышает пороговое значение, заданное двумя аналогичными параметрами: pg_stat_all_tables.n_mod_since_analyze >= <em>autovacuum_analyze_threshold</em> + <em>autovacuum_analyze_scale_factor</em> * pg_class.reltupes.<br/>
+<br/>
+Умолчательные настройки автоанализа немного отличаются: <em>autovacuum_analyze_threshold</em> = 50 и <em>autovacuum_analyze_scale_factor</em> = 0.1. Их также можно определить на уровне параметров хранения отдельных таблиц:<br/>
+<br/>
+<ul>
+<li><em>autovacuum_analyze_threshold</em>,</li>
+<li><em>autovacuum_analyze_scale_factor</em></li>
+</ul><br/>
+Поскольку toast-таблицы не анализируются, соответствующих параметров для них нет.<br/>
+<br/>
+Создадим представление и для анализа:<br/>
+<br/>
+<pre><code class="pgsql">=> CREATE VIEW need_analyze AS
+  SELECT st.schemaname || '.' || st.relname tablename,
+         st.n_mod_since_analyze mod_tup,
+         get_value('autovacuum_analyze_threshold', c.reloptions, c.relkind) +
+         get_value('autovacuum_analyze_scale_factor', c.reloptions, c.relkind) * c.reltuples
+         max_mod_tup,
+         st.last_autoanalyze
+  FROM   pg_stat_all_tables st,
+         pg_class c
+  WHERE  c.oid = st.relid
+  AND    c.relkind IN ('r','m');
+</code></pre><br/>
+<h1>Пример</h1><br/>
+Для экспериментов установим такие значение параметров:<br/>
+<br/>
+<pre><code class="pgsql">=> ALTER SYSTEM SET autovacuum_naptime = ‘1s’; -- чтобы долго не ждать
+=> ALTER SYSTEM SET autovacuum_vacuum_scale_factor = 0.03;  -- 3%
+=> ALTER SYSTEM SET autovacuum_vacuum_threshold = 0;
+=> ALTER SYSTEM SET autovacuum_analyze_scale_factor = 0.02; -- 2%
+=> ALTER SYSTEM SET autovacuum_analyze_threshold = 0;
+</code></pre><pre><code class="pgsql">=> SELECT pg_reload_conf();
+</code></pre><pre><code class="plaintext"> pg_reload_conf
+----------------
+ t
+(1 row)
+</code></pre><br/>
+Теперь создадим таблицу, аналогичную той, что мы использовали в прошлый раз, и вставим в нее тысячу строк. Автоочистка отключена на уровне таблицы, и мы будем сами включать ее. Если этого не сделать, то примеры не будут воспроизводимы, поскольку автоочистка может сработать в неподходящий момент времени.<br/>
+<br/>
+<pre><code class="pgsql">=> CREATE TABLE autovac(
+  id serial,
+  s char(100)
+) WITH (autovacuum_enabled = off);
+=> INSERT INTO autovac SELECT g.id,'A' FROM generate_series(1,1000) g(id);
+</code></pre><br/>
+Вот что покажет наше представление для очистки:<br/>
+<br/>
+<pre><code class="pgsql">=> SELECT * FROM need_vacuum WHERE tablename = 'public.autovac';
+</code></pre><pre><code class="plaintext">   tablename    | dead_tup | max_dead_tup | last_autovacuum 
+----------------+----------+--------------+-----------------
+ public.autovac |        0 |            0 | 
+(1 row)
+</code></pre><br/>
+Тут есть два момента, на которые стоит обратить внимание. Во-первых, max_dead_tup = 0, хотя 3% от 1000 строк составляет 30 строк. Дело в том, что у нас еще нет статистики по таблице, поскольку INSERT сам по себе ее не обновляет. Пока наша таблица не будет проанализирована, нули так и останутся, поскольку pg_class.reltuples = 0. Однако заглянем во второе представление для анализа:<br/>
+<br/>
+<pre><code class="pgsql">=> SELECT * FROM need_analyze WHERE tablename = 'public.autovac';
+</code></pre><pre><code class="plaintext">   tablename    | mod_tup | max_mod_tup | last_autoanalyze 
+----------------+---------+-------------+------------------
+ public.autovac |    1000 |           0 | 
+(1 row)
+</code></pre><br/>
+Поскольку в таблице изменилось (добавилось) 1000 строк, и это больше нуля, должен сработать автоанализ. Проверим это:<br/>
+<br/>
+<pre><code class="pgsql">=> ALTER TABLE autovac SET (autovacuum_enabled = on);
+</code></pre><br/>
+После небольшой паузы видим, что таблица проанализирована и вместо нулей в max_mod_tup мы видим корректные 20 строк:<br/>
+<br/>
+<pre><code class="pgsql">=> SELECT * FROM need_analyze WHERE tablename = 'public.autovac';
+</code></pre><pre><code class="plaintext">   tablename    | mod_tup | max_mod_tup |       last_autoanalyze        
+----------------+---------+-------------+-------------------------------
+ public.autovac |       0 |          20 | 2019-05-21 11:59:48.465987+03
+(1 row)
+</code></pre><br/>
+<pre><code class="pgsql">=> SELECT reltuples, relpages FROM pg_class WHERE relname = 'autovac';
+</code></pre><pre><code class="plaintext"> reltuples | relpages 
+-----------+----------
+      1000 |       17
+(1 row)
+</code></pre><br/>
+Вернемся к автоочистке:<br/>
+<br/>
+<pre><code class="pgsql">=> SELECT * FROM need_vacuum WHERE tablename = 'public.autovac';
+</code></pre><pre><code class="plaintext">   tablename    | dead_tup | max_dead_tup | last_autovacuum
+----------------+----------+--------------+-----------------
+ public.autovac |        0 |           30 |
+(1 row)
+</code></pre><br/>
+Max_dead_tup, как мы видим, уже исправился. Второй момент, на который надо обратить внимание — dead_tup = 0. Статистика показывает, что в таблице нет мертвых версий строк… и это правда. Очищать в нашей таблице пока нечего. Так и любая таблица, использующаяся только в режиме добавления данных (append-only), не будет очищаться и, стало быть, для нее не будет обновляться карта видимости. А это делает невозможным использование исключительно индексного сканирования (index-only scan).<br/>
+<br/>
+(В следующий раз мы увидим, что очистка рано или поздно придет и в append-only-таблицу, но происходить это будет очень редко.)<br/>
+<br/>
+Практический вывод: если важно использовать исключительно индексное сканирование, может потребоваться вызывать очистку вручную.<br/>
+<br/>
+Теперь снова отключим автоочистку и обновим 31 строку — на один больше, чем пороговое значение.<br/>
+<br/>
+<pre><code class="pgsql">=> ALTER TABLE autovac SET (autovacuum_enabled = off);
+=> UPDATE autovac SET s = 'B' WHERE id &lt;= 31;
+=> SELECT * FROM need_vacuum WHERE tablename = 'public.autovac';
+</code></pre><pre><code class="plaintext">   tablename    | dead_tup | max_dead_tup | last_autovacuum 
+----------------+----------+--------------+-----------------
+ public.autovac |       31 |           30 | 
+(1 row)
+</code></pre><br/>
+Теперь условие срабатывания автоочистки выполняется. Включим автоочистку и после непродолжительной паузы увидим, что таблица обработана:<br/>
+<br/>
+<pre><code class="pgsql">=> ALTER TABLE autovac SET (autovacuum_enabled = on);
+=> SELECT * FROM need_vacuum WHERE tablename = 'public.autovac';
+</code></pre><pre><code class="plaintext">   tablename    | dead_tup | max_dead_tup |        last_autovacuum        
+----------------+----------+--------------+-------------------------------
+ public.autovac |        0 |           30 | 2019-05-21 11:59:52.554571+03
+(1 row)
+</code></pre><br/>
+<h1>Регулирование нагрузки</h1><br/>
+Очистка не блокирует другие процессы, поскольку работает постранично, но тем не менее создает нагрузку на систему и может оказывать заметное влияние на производительность.<br/>
+<br/>
+<h2>Регулирование для обычной очистки</h2><br/>
+Чтобы иметь возможность управлять интенсивностью очистки и, следовательно, ее влиянием на систему, процесс чередует работу и ожидание. Очистка выполняет примерно <em>vacuum_cost_limit</em> условных единиц работы, а затем засыпает на <em>vacuum_cost_delay</em> мс.<br/>
+<br/>
+Настройки по умолчанию устанавливают <em>vacuum_cost_limit</em> = 200, <em>vacuum_cost_delay</em> = 0. Последний нолик фактически означает, что (обычная) очистка не засыпает, так что конкретное значение <em>vacuum_cost_limit</em> не играет никакой роли. Это сделано из соображения, что если уж администратору пришлось запускать VACUUM вручную, то он, вероятно, хочет выполнить очистку как можно быстрее.<br/>
+<br/>
+Тем не менее, если все-таки установить время сна, то указанный в <em>vacuum_cost_limit</em> объем работы будет складываться из стоимостей работы со страницами в буферном кэше. Каждое обращение к странице оценивается следующим образом:<br/>
+<br/>
+<ul>
+<li>если страница нашлась в буферном кэше, то <em>vacuum_cost_page_hit</em> = 1;</li>
+<li>если не нашлась, то <em>vacuum_cost_page_miss</em> = 10;</li>
+<li>если не нашлась, да еще пришлось вытеснять из буфера грязную страницу, то <em>vacuum_cost_page_dirty</em> = 20.</li>
+</ul><br/>
+То есть с настройками <em>vacuum_cost_limit</em> по умолчанию, за один присест могут быть обработаны 200 страниц из кэша, или 20 страниц с диска, или 10 страниц с вытеснением. Понятно, что это довольно условные цифры, но подбирать их точнее нет смысла.<br/>
+<br/>
+<h2>Регулирование для автоочистки</h2><br/>
+Регулирование нагрузки при автоматической очистке работает так же, как и для обычной. Но чтобы очистка, запускаемая вручную, и автоочистка могли работать с разной интенсивностью, для автоочистки сделаны собственные параметры: <em>autovacuum_vacuum_cost_limit</em> и <em>autovacuum_vacuum_cost_delay</em>. Если эти параметры принимают значение -1, то используется значение из <em>vacuum_cost_limit</em> и/или <em>vacuum_cost_delay</em>.<br/>
+<br/>
+По умолчанию <em>autovacuum_vacuum_cost_limit</em> = -1 (то есть используется значение <em>vacuum_cost_limit</em> = 200) и <em>autovacuum_vacuum_cost_delay</em> = 20ms. На современной аппаратуре с этими цифрами автоочистка будет работать очень и очень медленно.<br/>
+<br/>
+В версии 12 значение <em>autovacuum_vacuum_cost_delay</em> будет уменьшено до 2ms, что можно считать более подходящим первым приближением.<br/>
+<br/>
+Кроме того следует учитывать, что предел, устанавливаемый этими параметрами, общий для всех рабочих процессов. Иными словами, при изменении числа одновременно работающих рабочих процессов общая нагрузка будет оставаться постоянной. Поэтому, если стоит задача увеличить производительность автоочистки, то при добавлении рабочих процессов стоит увеличить и <em>autovacuum_vacuum_cost_limit</em>.<br/>
+<br/>
+<h2>Использование памяти и мониторинг</h2><br/>
+В <a href="https://habr.com/ru/company/postgrespro/blog/452320/">прошлый раз</a> мы рассматривали, как очистка использует оперативную память размером <em>maintenance_work_mem</em> для хранения идентификаторов версий строк, подлежащих очистке.<br/>
+<br/>
+Автоочистка поступает абсолютно так же. Но одновременно работающих процессов может быть много, если установить <em>autovacuum_max_workers</em> в большое значение. К тому же вся память выделяется сразу и полностью, а не по необходимости. Поэтому для рабочего процесса автоочистки можно установить собственное ограничение с помощью параметра <em>autovacuum_work_mem</em>. По умолчанию этот параметр равен -1, то есть не используется.<br/>
+<br/>
+Как уже говорилось, очистка может работать и с минимальным объемом памяти. Но если на таблице созданы индексы, то небольшое значение <em>maintenance_work_mem</em> может привести к повторным сканированиям индексов. То же самое справедливо и для автоочистки. В идеале следует подобрать такое минимальное значение <em>autovacuum_work_mem</em>, при котором повторные сканирования не происходят.<br/>
+<br/>
+Мы видели, что для мониторинга очистки можно использовать параметр VERBOSE (но его нельзя указать для автоочистки) или представление pg_stat_progress_vacuum (но оно показывает только текущую информацию). Поэтому основной способ мониторинга автоочистки — параметр <em>log_autovacuum_min_duration</em>, который выводит информацию в журнал сообщений сервера. По умолчанию он выключен (установлен в -1). Есть резон включить этот параметр (при значении 0 будет выводиться информация о всех запусках автоочистки) и наблюдать за цифрами.<br/>
+<br/>
+Вот как выглядит выводимая информация:<br/>
+<br/>
+<pre><code class="pgsql">=> ALTER SYSTEM SET log_autovacuum_min_duration = 0;
+=> SELECT pg_reload_conf();
+</code></pre><pre><code class="plaintext"> pg_reload_conf 
+----------------
+ t
+(1 row)
+</code></pre><br/>
+<pre><code class="pgsql">=> UPDATE autovac SET s = 'C' WHERE id &lt;= 31;
+</code></pre><br/>
+<pre><code class="plaintext">student$ tail -n 7 /var/log/postgresql/postgresql-11-main.log
+</code></pre><pre><code class="plaintext">2019-05-21 11:59:55.675 MSK [9737] LOG:  automatic vacuum of table "test.public.autovac": index scans: 0
+	pages: 0 removed, 18 remain, 0 skipped due to pins, 0 skipped frozen
+	tuples: 31 removed, 1000 remain, 0 are dead but not yet removable, oldest xmin: 4040
+	buffer usage: 78 hits, 0 misses, 0 dirtied
+	avg read rate: 0.000 MB/s, avg write rate: 0.000 MB/s
+	system usage: CPU: user: 0.00 s, system: 0.00 s, elapsed: 0.00 s
+2019-05-21 11:59:55.676 MSK [9737] LOG:  automatic analyze of table "test.public.autovac" system usage: CPU: user: 0.00 s, system: 0.00 s, elapsed: 0.00 s
+</code></pre><br/>
+Все необходимые сведения здесь присутствуют.<br/>
+<br/>
+Напомним, что зачастую следует не увеличивать размер памяти, а уменьшать порог срабатывания очистки, чтобы за один раз обрабатывалось меньше данных.<br/>
+<br/>
+Также может иметь смысл мониторить длину списка таблиц, требующих очистки, с помощью приведенных выше представлений. Увеличение длины списка будет свидетельствовать о том, что автоочистка не успевает выполнять свою работу и требуется изменение настроек.<br/>
+<br/>
+<a href="https://habr.com/ru/company/postgrespro/blog/455590/">Продолжение</a>.</div></div> <!----> <!----></div> <div class="tm-article-presenter__meta"><div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Теги:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bpostgresql%5D" class="tm-tags-list__link">postgresql</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bautovacuum%5D" class="tm-tags-list__link">autovacuum</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bvacuum%5D" class="tm-tags-list__link">vacuum</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Btuples%5D" class="tm-tags-list__link">tuples</a></li></ul></div> <div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Хабы:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/company/postgrespro/blog/" class="tm-hubs-list__link router-link-active">
+    Блог компании Postgres Professional
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/postgresql/" class="tm-hubs-list__link">
+    PostgreSQL
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/sql/" class="tm-hubs-list__link">
+    SQL
+  </a></li></ul></div></div></article></div> <!----></div> <div class="tm-article-sticky-panel"><div class="tm-data-icons tm-article-sticky-panel__icons"><div class="tm-article-rating tm-data-icons__item"><div class="tm-votes-meter tm-article-rating__votes-switcher"><svg height="16" width="16" class="tm-svg-img tm-votes-meter__icon tm-votes-meter__icon_medium"><title>Всего голосов 15: ↑15 и ↓0</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-rating"></use></svg> <span title="Всего голосов 15: ↑15 и ↓0" class="tm-votes-meter__value tm-votes-meter__value_positive tm-votes-meter__value_medium">+15</span></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----> <span title="Количество просмотров" class="tm-icon-counter tm-data-icons__item"><svg height="16" width="16" class="tm-svg-img tm-icon-counter__icon"><title>Просмотры</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-views"></use></svg> <span class="tm-icon-counter__value">14K</span></span> <button title="Добавить в закладки" type="button" class="bookmarks-button tm-data-icons__item"><span title="Добавить в закладки" class="tm-svg-icon__wrapper bookmarks-button__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Добавить в закладки</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-favorite"></use></svg></span> <span title="Количество пользователей, добавивших публикацию в закладки" class="bookmarks-button__counter">
+    45
+  </span></button> <!----> <div title="Поделиться" class="tm-sharing tm-data-icons__item"><button type="button" class="tm-sharing__button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="tm-sharing__icon"><path fill="currentColor" d="M10.33.275l9.047 7.572a.2.2 0 010 .306l-9.048 7.572a.2.2 0 01-.328-.153V11c-8 0-9.94 6-9.94 6S-1 5 10 5V.428a.2.2 0 01.328-.153z"></path></svg></button> <!----></div> <DIV class="v-portal" style="display:none;"></DIV></div> </div></div> <!----> <!----> <div class="tm-article-presenter__footer"><div class="tm-article-blocks"><!----> <section class="tm-block tm-block_spacing-bottom"><!----> <div class="tm-block__body tm-block__body_variant-balanced"><div class="tm-article-author"><div class="tm-article-author__company"><div class="tm-article-author__company-card"><div class="tm-company-snippet"><a href="/ru/company/postgrespro/profile/" class="tm-company-snippet__logo-link"><div class="tm-entity-image"><img alt="" height="40" src="//habrastorage.org/getpro/habr/company/4e0/339/621/4e0339621abc865fefb88f9e9f44748f.jpg" width="40" class="tm-entity-image__pic"></div></a> <div class="tm-company-snippet__info"><a href="/ru/company/postgrespro/profile/" class="tm-company-snippet__title">Postgres Professional</a> <div class="tm-company-snippet__description">Разработчик СУБД Postgres Pro</div></div></div> <div class="tm-article-author__buttons"><!----> <!----></div></div> <div class="tm-article-author__company-contacts"><a href="https://facebook.com/PostgresProfessional" rel="noopener" target="_blank" class="tm-article-author__contact">
+      Facebook
+    </a><a href="https://twitter.com/PostgresPro" rel="noopener" target="_blank" class="tm-article-author__contact">
+      Twitter
+    </a><a href="https://vk.com/public101507899" rel="noopener" target="_blank" class="tm-article-author__contact">
+      ВКонтакте
+    </a><a href="https://plus.google.com/+PostgresproRuCompany" rel="noopener" target="_blank" class="tm-article-author__contact">
+      Google+
+    </a><a href="https://postgrespro.livejournal.com/" rel="noopener" target="_blank" class="tm-article-author__contact">
+      LiveJournal
+    </a></div> <div class="tm-article-author__separator"></div></div> <div class="tm-user-card tm-article-author__user-card tm-user-card_variant-article"><div class="tm-user-card__info-container"><div class="tm-user-card__header"><div class="tm-user-card__header-data"><a href="/ru/users/erogov/" class="tm-user-card__userpic tm-user-card__userpic_size-40"><div class="tm-entity-image"><img alt="" src="//habrastorage.org/getpro/habr/avatars/d16/573/7e4/d165737e421383f77f007015ebd01fb1.jpg" class="tm-entity-image__pic"></div></a> <div class="tm-user-card__meta"><div title=" 170 голосов " class="tm-karma tm-user-card__karma"><div class="tm-karma__votes tm-karma__votes_positive">
+    163.5
+  </div> <div class="tm-karma__text">
+    Карма
+  </div></div> <div title="Рейтинг пользователя" class="tm-rating tm-user-card__rating"><div class="tm-rating__header"> <div class="tm-rating__counter">55</div></div> <div class="tm-rating__text">
+    Рейтинг
+  </div></div></div></div></div> <div class="tm-user-card__info tm-user-card__info_variant-article"><div class="tm-user-card__title tm-user-card__title_variant-article"><span class="tm-user-card__name tm-user-card__name_variant-article">Егор Рогов</span> <a href="/ru/users/erogov/" class="tm-user-card__nickname tm-user-card__nickname_variant-article">
+          @erogov
+        </a> <!----></div> <p class="tm-user-card__short-info tm-user-card__short-info_variant-article">Пользователь</p></div></div> <div class="tm-user-card__buttons tm-user-card__buttons_variant-article"><!----> <!----> <!----> <!----> <!----></div></div> <div class="tm-article-author__user-contacts"><a href="http://egorius.dreamwidth.org/" rel="noopener" target="_blank" class="tm-article-author__contact">
+      Сайт
+    </a></div></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----></section> <div class="tm-article-blocks__comments"><div class="tm-article-page-comments"><div class="tm-article-comments-counter-link tm-article-comments-counter-button"><a href="/ru/company/postgrespro/blog/452762/comments/" class="tm-article-comments-counter-link__link tm-article-comments-counter-link__link_button-style"><svg height="16" width="16" class="tm-svg-img tm-article-comments-counter-link__icon tm-article-comments-counter-link__icon_contrasted"><title>Комментарии</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-comments"></use></svg> <span class="tm-article-comments-counter-link__value tm-article-comments-counter-link__value_contrasted">
+       Комментарии 10 
+    </span></a> <!----></div></div></div>  <!---->  <!----> <!----></div></div></div></div></div> <div class="tm-page__sidebar"><div class="tm-layout-sidebar"><div class="tm-layout-sidebar__placeholder_initial"></div> <div class="tm-sexy-sidebar tm-sexy-sidebar_initial" style="margin-top:0px;"><!----> <section class="tm-block tm-block_spacing-bottom"><header class="tm-block__header"><h2 class="tm-block__title">Информация</h2> <!----></header> <div class="tm-block__body"><div class="tm-company-basic-info"><dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Дата основания</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><time datetime="2015-01-26T21:00:00.000Z" title="2015-01-27, 00:00">27  января  2015</time></dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Местоположение</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap">
+    Россия
+  </dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Сайт</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><a href="http://www.postgrespro.ru/" target="_blank" class="tm-company-basic-info__link">
+      www.postgrespro.ru
+    </a></dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Численность</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap">
+    51–100 человек
+  </dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Дата регистрации</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><time datetime="2015-09-30T07:41:09.000Z" title="2015-09-30, 10:41">30  сентября  2015</time></dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Представитель</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><a href="/ru/users/x-wao/" class="tm-company-basic-info__link">
+      Иван Панченко
+    </a></dd></dl></div></div> <!----></section> <div class="tm-company-widgets"></div> <!----></div></div></div></div></div></div></main> <!----></div> <div class="tm-footer-menu"><div class="tm-page-width"><div class="tm-footer-menu__container"><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Ваш аккаунт
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr/?back=/ru/company/postgrespro/blog/452762/&amp;hl=ru" rel="nofollow" target="_self">
+                Войти
+              </a></li><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr-register/?back=/ru/company/postgrespro/blog/452762/&amp;hl=ru" rel="nofollow" target="_self">
+                Регистрация
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Разделы
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/" class="footer-menu__item-link router-link-active">
+                Публикации
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/news/" class="footer-menu__item-link">
+                Новости
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/hubs/" class="footer-menu__item-link">
+                Хабы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/companies/" class="footer-menu__item-link">
+                Компании
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/users/" class="footer-menu__item-link">
+                Авторы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/sandbox/" class="footer-menu__item-link">
+                Песочница
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Информация
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/docs/help/" class="footer-menu__item-link">
+                Устройство сайта
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/authors/codex/" class="footer-menu__item-link">
+                Для авторов
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/companies/corpblogs/" class="footer-menu__item-link">
+                Для компаний
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/docs/transparency/" class="footer-menu__item-link">
+                Документы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/agreement" target="_blank">
+                Соглашение
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/confidential/" target="_blank">
+                Конфиденциальность
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Услуги
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQLwRfQmXibiUlWaRg-BAc38s7oM3lJiaPju7qmdJsp8ysIvZ_G-Npem0njJLMozE2bPHMpDqiI5hhy/pub?start=false&amp;loop=false&amp;delayms=60000&amp;slide=id.g91a03369cd_4_297" target="_blank">
+                Реклама
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://habrastorage.org/storage/stuff/habr/service_price.pdf" target="_blank">
+                Тарифы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQJJds8-Di7BQSP_guHxICN7woVYoN5NP_22ra-BIo4bqnTT9FR6fB-Ku2P0AoRpX0Ds-LRkDeAoD8F/pub?start=false&amp;loop=false&amp;delayms=60000" target="_blank">
+                Контент
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://tmtm.timepad.ru/" target="_blank">
+                Семинары
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/megaprojects/" class="footer-menu__item-link">
+                Мегапроекты
+              </a></li></ul></div></div></div></div></div> <div class="tm-footer"><div class="tm-page-width"><div class="tm-footer__container"><!----> <div class="tm-footer__social"><a href="https://www.facebook.com/habrahabr.ru" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Facebook</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-facebook"></use></svg></a><a href="https://twitter.com/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Twitter</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-twitter"></use></svg></a><a href="https://vk.com/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>VK</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-vkontakte"></use></svg></a><a href="https://telegram.me/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Telegram</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-telegram"></use></svg></a><a href="https://www.youtube.com/channel/UCd_sTwKqVrweTt4oAKY5y4w" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Youtube</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-youtube"></use></svg></a><a href="https://zen.yandex.ru/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Яндекс Дзен</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-zen"></use></svg></a></div> <DIV class="v-portal" style="display:none;"></DIV> <button class="tm-footer__link"><!---->
+        Настройка языка
+      </button> <a href="/ru/about" class="tm-footer__link">
+        О сайте
+      </a> <a href="/ru/feedback/" class="tm-footer__link">
+        Техническая поддержка
+      </a> <!----> <a href="/berserk-mode-nope" class="tm-footer__link">
+        Вернуться на старую версию
+      </a> <div class="tm-footer-copyright"><span class="tm-copyright"><span class="tm-copyright__years">© 2006–2021 </span> <span class="tm-copyright__name">«<a href="https://company.habr.com/" rel="noopener" target="_blank" class="tm-copyright__link">Habr</a>»</span></span></div></div></div></div> <!----> <!----></div> <div class="vue-portal-target"></div></div>
+<script>window.__INITIAL_STATE__={"adblock":{"hasAcceptableAdsFilter":false,"hasAdblock":false},"articlesList":{"articlesList":{"452762":{"id":"452762","timePublished":"2019-06-06T10:41:51+00:00","isCorporative":true,"lang":"ru","titleHtml":"MVCC-7. Автоочистка","leadData":{"textHtml":"Напомню, что мы начали с вопросов, связанных с \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fpostgrespro\u002Fblog\u002F442804\u002F\"\u003Eизоляцией\u003C\u002Fa\u003E, сделали отступление про \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fpostgrespro\u002Fblog\u002F444536\u002F\"\u003Eорганизацию данных на низком уровне\u003C\u002Fa\u003E, подробно поговорили \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fpostgrespro\u002Fblog\u002F445820\u002F\"\u003Eо версиях строк\u003C\u002Fa\u003E и о том, как из версий получаются \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fpostgrespro\u002Fblog\u002F446652\u002F\"\u003Eснимки данных\u003C\u002Fa\u003E.\u003Cbr\u003E\r\n\u003Cbr\u003E\r\nЗатем мы рассмотрели \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fpostgrespro\u002Fblog\u002F449704\u002F\"\u003Eвнутристраничную очистку\u003C\u002Fa\u003E (и HOT-обновления), \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fpostgrespro\u002Fblog\u002F452320\u002F\"\u003Eобычную очистку\u003C\u002Fa\u003E, ну а сегодня посмотрим на автоматическую очистку.\u003Cbr\u003E\r\n\u003Cbr\u003E\r\n\u003Ch1\u003EАвтоочистка (autovacuum)\u003C\u002Fh1\u003E\u003Cbr\u003E\r\nМы уже говорили о том, что обычная очистка в нормальных условиях (когда никто не удерживает надолго горизонт транзакций) должна справляться со своей работой. Вопрос в том, как часто ее вызывать.\u003Cbr\u003E\r\n\u003Cbr\u003E\r\nЕсли очищать изменяющуюся таблицу слишком редко, она вырастет в размерах больше, чем хотелось бы. Кроме того, для очередной очистки может потребоваться несколько проходов по индексам, если изменений накопилось слишком много.\u003Cbr\u003E\r\n\u003Cbr\u003E\r\nЕсли очищать таблицу слишком часто, то вместо полезной работы сервер будет постоянно заниматься обслуживанием — тоже нехорошо.\u003Cbr\u003E\r\n\u003Cbr\u003E\r\nЗаметим, что запуск обычной очистки по расписанию никак не решает проблему, потому что нагрузка может изменяться со временем. Если таблица стала обновляться активней, то и очищать ее надо чаще.\u003Cbr\u003E\r\n\u003Cbr\u003E\r\nАвтоматическая очистка — как раз тот самый механизм, который позволяет запускать очистку в зависимости от активности изменений в таблицах.\u003Cbr\u003E","imageUrl":null,"buttonTextHtml":"Читать дальше &rarr;","image":null},"editorVersion":"1.0","postType":"article","postLabels":[],"author":{"scoreStats":{"score":163.5,"votesCount":170},"rating":55,"relatedData":null,"contacts":[{"title":"Сайт","url":"http:\u002F\u002Fegorius.dreamwidth.org\u002F","value":"http:\u002F\u002Fegorius.dreamwidth.org\u002F"}],"authorContacts":[{"title":"Сайт","url":"http:\u002F\u002Fegorius.dreamwidth.org\u002F","value":"http:\u002F\u002Fegorius.dreamwidth.org\u002F"}],"paymentDetails":{"paymentYandexMoney":null,"paymentPayPalMe":null,"paymentWebmoney":null},"id":"594155","alias":"erogov","fullname":"Егор Рогов","avatarUrl":"\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Favatars\u002Fd16\u002F573\u002F7e4\u002Fd165737e421383f77f007015ebd01fb1.jpg","speciality":"Пользователь"},"statistics":{"commentsCount":10,"favoritesCount":45,"readingCount":14222,"score":15,"votesCount":15},"hubs":[{"relatedData":null,"id":"19663","alias":"postgrespro","type":"corporative","title":"Блог компании Postgres Professional","titleHtml":"Блог компании Postgres Professional","isProfiled":false},{"relatedData":null,"id":"358","alias":"postgresql","type":"collective","title":"PostgreSQL","titleHtml":"PostgreSQL","isProfiled":true},{"relatedData":null,"id":"594","alias":"sql","type":"collective","title":"SQL","titleHtml":"SQL","isProfiled":true}],"flows":[{"id":"1","alias":"develop","title":"Разработка"}],"relatedData":null,"textHtml":"\u003Cdiv xmlns=\"http:\u002F\u002Fwww.w3.org\u002F1999\u002Fxhtml\"\u003EНапомню, что мы начали с вопросов, связанных с \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fpostgrespro\u002Fblog\u002F442804\u002F\"\u003Eизоляцией\u003C\u002Fa\u003E, сделали отступление про \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fpostgrespro\u002Fblog\u002F444536\u002F\"\u003Eорганизацию данных на низком уровне\u003C\u002Fa\u003E, подробно поговорили \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fpostgrespro\u002Fblog\u002F445820\u002F\"\u003Eо версиях строк\u003C\u002Fa\u003E и о том, как из версий получаются \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fpostgrespro\u002Fblog\u002F446652\u002F\"\u003Eснимки данных\u003C\u002Fa\u003E.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЗатем мы рассмотрели \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fpostgrespro\u002Fblog\u002F449704\u002F\"\u003Eвнутристраничную очистку\u003C\u002Fa\u003E (и HOT-обновления), \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fpostgrespro\u002Fblog\u002F452320\u002F\"\u003Eобычную очистку\u003C\u002Fa\u003E, ну а сегодня посмотрим на автоматическую очистку.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch1\u003EАвтоочистка (autovacuum)\u003C\u002Fh1\u003E\u003Cbr\u002F\u003E\r\nМы уже говорили о том, что обычная очистка в нормальных условиях (когда никто не удерживает надолго горизонт транзакций) должна справляться со своей работой. Вопрос в том, как часто ее вызывать.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЕсли очищать изменяющуюся таблицу слишком редко, она вырастет в размерах больше, чем хотелось бы. Кроме того, для очередной очистки может потребоваться несколько проходов по индексам, если изменений накопилось слишком много.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЕсли очищать таблицу слишком часто, то вместо полезной работы сервер будет постоянно заниматься обслуживанием — тоже нехорошо.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЗаметим, что запуск обычной очистки по расписанию никак не решает проблему, потому что нагрузка может изменяться со временем. Если таблица стала обновляться активней, то и очищать ее надо чаще.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nАвтоматическая очистка — как раз тот самый механизм, который позволяет запускать очистку в зависимости от активности изменений в таблицах.\u003Cbr\u002F\u003E\r\n\u003Ca name=\"habracut\"\u003E\u003C\u002Fa\u003E\u003Cbr\u002F\u003E\r\nПри включенной автоочистке (конфигурационный параметр \u003Cem\u003Eautovacuum\u003C\u002Fem\u003E) в системе всегда присутствует процесс autovacuum launcher, который планирует работу, а реальной очисткой занимаются рабочие процессы autovacuum worker, несколько экземпляров которых могут работать параллельно.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПроцесс autovacuum launcher составляет список баз данных, в которых есть какая-либо активность. Активность определяется по статистике, а чтобы она собиралась, должен быть установлен параметр \u003Cem\u003Etrack_counts\u003C\u002Fem\u003E. Никогда не выключайте \u003Cem\u003Eautovacuum\u003C\u002Fem\u003E и \u003Cem\u003Etrack_counts\u003C\u002Fem\u003E, иначе автоочистка не будет работать.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nРаз в \u003Cem\u003Eautovacuum_naptime\u003C\u002Fem\u003E процесс autovacuum launcher запускает (с помощью процесса postmaster) рабочий процесс для каждой БД из списка. Иными словами, если в базе данных есть какая-то активность, то рабочие процессы будет приходить в нее с интервалом \u003Cem\u003Eautovacuum_naptime\u003C\u002Fem\u003E. Для этого, если имеется несколько активных БД (N штук), то рабочие процессы запускаются в N раз чаще, чем \u003Cem\u003Eautovacuum_naptime\u003C\u002Fem\u003E. Но при этом общее количество одновременно работающих рабочих процессов ограничено параметром \u003Cem\u003Eautovacuum_max_workers\u003C\u002Fem\u003E.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЗапустившись, рабочий процесс подключается к указанной ему базе данных и начинает с того, что строит список:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003Eвсех таблиц, материализованных представлений и toast-таблиц, требующих очистки,\u003C\u002Fli\u003E\r\n\u003Cli\u003Eвсех таблиц и материализованных представлений, требующих анализа (toast-таблицы не анализируются, потому что обращение к ним всегда происходит по индексу).\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\nДальше рабочий процесс по очереди очищает и\u002Fили анализирует отобранные объекты и по окончании очистки завершается.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЕсли процесс не успел выполнить всю намеченную работу за \u003Cem\u003Eautovacuum_naptime\u003C\u002Fem\u003E, процесс autovacuum launcher пошлет в ту же базу данных еще один рабочий процесс, и они будут работать вместе. «Вместе» просто означает, что второй процесс построит свой список таблиц и пойдет по нему. Таким образом, параллельно будут обрабатываться разные таблицы, но на уровне одной таблицы параллелизма нет — если один из рабочих процессов уже занимается таблицей, другой пропустит ее и пойдет дальше.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cblockquote\u003EОбсуждение необходимости параллельной обработки идет уже давно, но \u003Ca href=\"https:\u002F\u002Fcommitfest.postgresql.org\u002F23\u002F1774\u002F\"\u003Eпатч\u003C\u002Fa\u003E пока не принят.\u003Cbr\u002F\u003E\r\n\u003C\u002Fblockquote\u003E\u003Cbr\u002F\u003E\r\nТеперь разберемся детальнее, что значит «требует очистки» и «требует анализа».\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch1\u003EКакие таблицы требуют очистки\u003C\u002Fh1\u003E\u003Cbr\u002F\u003E\r\nСчитается, что очистка необходима, если число «мертвых», то есть неактуальных, версий строк превышает установленное пороговое значение. Число мертвых версий постоянно собирается коллектором статистики и хранится в таблице pg_stat_all_tables. А порог задается двумя параметрами:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003E\u003Cem\u003Eautovacuum_vacuum_threshold\u003C\u002Fem\u003E определяет абсолютное значение (в штуках),\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Cem\u003Eautovacuum_vacuum_scale_factor\u003C\u002Fem\u003E определяет долю строк в таблице.\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\nИтоговая формула такая: очистка требуется, если pg_stat_all_tables.n_dead_tup \u003E= \u003Cem\u003Eautovacuum_vacuum_threshold\u003C\u002Fem\u003E + \u003Cem\u003Eautovacuum_vacuum_scale_factor\u003C\u002Fem\u003E * pg_class.reltupes.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nНастройки по умолчанию устанавливают \u003Cem\u003Eautovacuum_vacuum_threshold\u003C\u002Fem\u003E = 50 и \u003Cbr\u002F\u003E\r\n\u003Cem\u003Eautovacuum_vacuum_scale_factor\u003C\u002Fem\u003E = 0.2. Главный параметр здесь, конечно, \u003Cem\u003Eautovacuum_vacuum_scale_factor\u003C\u002Fem\u003E — именно он важен для больших таблиц (а именно с ними связаны возможные проблемы). Значение 20% представляется сильно завышенным, скорее всего его потребуется существенно уменьшить.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nОптимальные значения параметров могут отличаться для разных таблиц в зависимости от их размера и характера изменений. Имеет смысл установить в целом адекватные значения, и — при необходимости — настроить специальным образом параметры на уровне некоторых таблиц с помощью параметров хранения:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003E\u003Cem\u003Eautovacuum_vacuum_threshold\u003C\u002Fem\u003E и \u003Cem\u003Etoast.autovacuum_vacuum_threshold\u003C\u002Fem\u003E,\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Cem\u003Eautovacuum_vacuum_scale_factor\u003C\u002Fem\u003E и \u003Cem\u003Etoast.autovacuum_vacuum_scale_factor\u003C\u002Fem\u003E.\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\nЧтобы не запутаться, это стоит делать только для небольшого числа таблиц, которые выделяются среди прочих объемом или интенсивностью изменений, и только в том случае, когда глобально установленные значения не подходят.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nКроме того, автоочистку можно отключать на уровне таблиц (хотя сложно придумать причину, по которой это было бы необходимо):\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003E\u003Cem\u003Eautovacuum_enabled\u003C\u002Fem\u003E и \u003Cem\u003Etoast.autovacuum_enabled\u003C\u002Fem\u003E.\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\nНапример, в прошлый раз мы создавали таблицу vac с отключенной автоочисткой, чтобы — для целей демонстрации — управлять очисткой вручную. Параметр хранения можно изменить следующим образом:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003E=\u003E ALTER TABLE vac SET (autovacuum_enabled = off);\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nЧтобы формализовать все сказанное выше, создадим представление, показывающее, какие таблицы в данный момент нуждаются в очистке. Оно будет использовать функцию, возвращающую текущее значение параметра с учетом того, что оно может быть переопределено на уровне таблицы:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003E=\u003E CREATE FUNCTION get_value(param text, reloptions text[], relkind \"char\")\nRETURNS float\nAS $$\n  SELECT coalesce(\n    -- если параметр хранения задан, то берем его\n    (SELECT option_value\n     FROM   pg_options_to_table(reloptions)\n     WHERE  option_name = CASE\n              -- для toast-таблиц имя параметра отличается\n              WHEN relkind = 't' THEN 'toast.' ELSE ''\n            END || param\n    ),\n    -- иначе берем значение конфигурационного параметра\n    current_setting(param)\n  )::float;\n$$ LANGUAGE sql;\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nА вот и представление:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003E=\u003E CREATE VIEW need_vacuum AS\n  SELECT st.schemaname || '.' || st.relname tablename,\n         st.n_dead_tup dead_tup,\n         get_value('autovacuum_vacuum_threshold', c.reloptions, c.relkind) +\n         get_value('autovacuum_vacuum_scale_factor', c.reloptions, c.relkind) * c.reltuples\n         max_dead_tup,\n         st.last_autovacuum\n  FROM   pg_stat_all_tables st,\n         pg_class c\n  WHERE  c.oid = st.relid\n  AND    c.relkind IN ('r','m','t');\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Ch1\u003EКакие таблицы требуют анализа\u003C\u002Fh1\u003E\u003Cbr\u002F\u003E\r\nС автоанализом дело обстоит примерно так же. Считается, что анализа требуют те таблицы, у которых число измененных (с момента прошлого анализа) версий строк превышает пороговое значение, заданное двумя аналогичными параметрами: pg_stat_all_tables.n_mod_since_analyze \u003E= \u003Cem\u003Eautovacuum_analyze_threshold\u003C\u002Fem\u003E + \u003Cem\u003Eautovacuum_analyze_scale_factor\u003C\u002Fem\u003E * pg_class.reltupes.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nУмолчательные настройки автоанализа немного отличаются: \u003Cem\u003Eautovacuum_analyze_threshold\u003C\u002Fem\u003E = 50 и \u003Cem\u003Eautovacuum_analyze_scale_factor\u003C\u002Fem\u003E = 0.1. Их также можно определить на уровне параметров хранения отдельных таблиц:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003E\u003Cem\u003Eautovacuum_analyze_threshold\u003C\u002Fem\u003E,\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Cem\u003Eautovacuum_analyze_scale_factor\u003C\u002Fem\u003E\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\nПоскольку toast-таблицы не анализируются, соответствующих параметров для них нет.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nСоздадим представление и для анализа:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003E=\u003E CREATE VIEW need_analyze AS\n  SELECT st.schemaname || '.' || st.relname tablename,\n         st.n_mod_since_analyze mod_tup,\n         get_value('autovacuum_analyze_threshold', c.reloptions, c.relkind) +\n         get_value('autovacuum_analyze_scale_factor', c.reloptions, c.relkind) * c.reltuples\n         max_mod_tup,\n         st.last_autoanalyze\n  FROM   pg_stat_all_tables st,\n         pg_class c\n  WHERE  c.oid = st.relid\n  AND    c.relkind IN ('r','m');\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Ch1\u003EПример\u003C\u002Fh1\u003E\u003Cbr\u002F\u003E\r\nДля экспериментов установим такие значение параметров:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003E=\u003E ALTER SYSTEM SET autovacuum_naptime = ‘1s’; -- чтобы долго не ждать\n=\u003E ALTER SYSTEM SET autovacuum_vacuum_scale_factor = 0.03;  -- 3%\n=\u003E ALTER SYSTEM SET autovacuum_vacuum_threshold = 0;\n=\u003E ALTER SYSTEM SET autovacuum_analyze_scale_factor = 0.02; -- 2%\n=\u003E ALTER SYSTEM SET autovacuum_analyze_threshold = 0;\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003E=\u003E SELECT pg_reload_conf();\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E pg_reload_conf\n----------------\n t\n(1 row)\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nТеперь создадим таблицу, аналогичную той, что мы использовали в прошлый раз, и вставим в нее тысячу строк. Автоочистка отключена на уровне таблицы, и мы будем сами включать ее. Если этого не сделать, то примеры не будут воспроизводимы, поскольку автоочистка может сработать в неподходящий момент времени.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003E=\u003E CREATE TABLE autovac(\n  id serial,\n  s char(100)\n) WITH (autovacuum_enabled = off);\n=\u003E INSERT INTO autovac SELECT g.id,'A' FROM generate_series(1,1000) g(id);\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nВот что покажет наше представление для очистки:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003E=\u003E SELECT * FROM need_vacuum WHERE tablename = 'public.autovac';\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E   tablename    | dead_tup | max_dead_tup | last_autovacuum \n----------------+----------+--------------+-----------------\n public.autovac |        0 |            0 | \n(1 row)\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nТут есть два момента, на которые стоит обратить внимание. Во-первых, max_dead_tup = 0, хотя 3% от 1000 строк составляет 30 строк. Дело в том, что у нас еще нет статистики по таблице, поскольку INSERT сам по себе ее не обновляет. Пока наша таблица не будет проанализирована, нули так и останутся, поскольку pg_class.reltuples = 0. Однако заглянем во второе представление для анализа:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003E=\u003E SELECT * FROM need_analyze WHERE tablename = 'public.autovac';\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E   tablename    | mod_tup | max_mod_tup | last_autoanalyze \n----------------+---------+-------------+------------------\n public.autovac |    1000 |           0 | \n(1 row)\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nПоскольку в таблице изменилось (добавилось) 1000 строк, и это больше нуля, должен сработать автоанализ. Проверим это:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003E=\u003E ALTER TABLE autovac SET (autovacuum_enabled = on);\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nПосле небольшой паузы видим, что таблица проанализирована и вместо нулей в max_mod_tup мы видим корректные 20 строк:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003E=\u003E SELECT * FROM need_analyze WHERE tablename = 'public.autovac';\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E   tablename    | mod_tup | max_mod_tup |       last_autoanalyze        \n----------------+---------+-------------+-------------------------------\n public.autovac |       0 |          20 | 2019-05-21 11:59:48.465987+03\n(1 row)\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003E=\u003E SELECT reltuples, relpages FROM pg_class WHERE relname = 'autovac';\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E reltuples | relpages \n-----------+----------\n      1000 |       17\n(1 row)\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nВернемся к автоочистке:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003E=\u003E SELECT * FROM need_vacuum WHERE tablename = 'public.autovac';\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E   tablename    | dead_tup | max_dead_tup | last_autovacuum\n----------------+----------+--------------+-----------------\n public.autovac |        0 |           30 |\n(1 row)\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nMax_dead_tup, как мы видим, уже исправился. Второй момент, на который надо обратить внимание — dead_tup = 0. Статистика показывает, что в таблице нет мертвых версий строк… и это правда. Очищать в нашей таблице пока нечего. Так и любая таблица, использующаяся только в режиме добавления данных (append-only), не будет очищаться и, стало быть, для нее не будет обновляться карта видимости. А это делает невозможным использование исключительно индексного сканирования (index-only scan).\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n(В следующий раз мы увидим, что очистка рано или поздно придет и в append-only-таблицу, но происходить это будет очень редко.)\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПрактический вывод: если важно использовать исключительно индексное сканирование, может потребоваться вызывать очистку вручную.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nТеперь снова отключим автоочистку и обновим 31 строку — на один больше, чем пороговое значение.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003E=\u003E ALTER TABLE autovac SET (autovacuum_enabled = off);\n=\u003E UPDATE autovac SET s = 'B' WHERE id &lt;= 31;\n=\u003E SELECT * FROM need_vacuum WHERE tablename = 'public.autovac';\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E   tablename    | dead_tup | max_dead_tup | last_autovacuum \n----------------+----------+--------------+-----------------\n public.autovac |       31 |           30 | \n(1 row)\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nТеперь условие срабатывания автоочистки выполняется. Включим автоочистку и после непродолжительной паузы увидим, что таблица обработана:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003E=\u003E ALTER TABLE autovac SET (autovacuum_enabled = on);\n=\u003E SELECT * FROM need_vacuum WHERE tablename = 'public.autovac';\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E   tablename    | dead_tup | max_dead_tup |        last_autovacuum        \n----------------+----------+--------------+-------------------------------\n public.autovac |        0 |           30 | 2019-05-21 11:59:52.554571+03\n(1 row)\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Ch1\u003EРегулирование нагрузки\u003C\u002Fh1\u003E\u003Cbr\u002F\u003E\r\nОчистка не блокирует другие процессы, поскольку работает постранично, но тем не менее создает нагрузку на систему и может оказывать заметное влияние на производительность.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EРегулирование для обычной очистки\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nЧтобы иметь возможность управлять интенсивностью очистки и, следовательно, ее влиянием на систему, процесс чередует работу и ожидание. Очистка выполняет примерно \u003Cem\u003Evacuum_cost_limit\u003C\u002Fem\u003E условных единиц работы, а затем засыпает на \u003Cem\u003Evacuum_cost_delay\u003C\u002Fem\u003E мс.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nНастройки по умолчанию устанавливают \u003Cem\u003Evacuum_cost_limit\u003C\u002Fem\u003E = 200, \u003Cem\u003Evacuum_cost_delay\u003C\u002Fem\u003E = 0. Последний нолик фактически означает, что (обычная) очистка не засыпает, так что конкретное значение \u003Cem\u003Evacuum_cost_limit\u003C\u002Fem\u003E не играет никакой роли. Это сделано из соображения, что если уж администратору пришлось запускать VACUUM вручную, то он, вероятно, хочет выполнить очистку как можно быстрее.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nТем не менее, если все-таки установить время сна, то указанный в \u003Cem\u003Evacuum_cost_limit\u003C\u002Fem\u003E объем работы будет складываться из стоимостей работы со страницами в буферном кэше. Каждое обращение к странице оценивается следующим образом:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003Eесли страница нашлась в буферном кэше, то \u003Cem\u003Evacuum_cost_page_hit\u003C\u002Fem\u003E = 1;\u003C\u002Fli\u003E\r\n\u003Cli\u003Eесли не нашлась, то \u003Cem\u003Evacuum_cost_page_miss\u003C\u002Fem\u003E = 10;\u003C\u002Fli\u003E\r\n\u003Cli\u003Eесли не нашлась, да еще пришлось вытеснять из буфера грязную страницу, то \u003Cem\u003Evacuum_cost_page_dirty\u003C\u002Fem\u003E = 20.\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\nТо есть с настройками \u003Cem\u003Evacuum_cost_limit\u003C\u002Fem\u003E по умолчанию, за один присест могут быть обработаны 200 страниц из кэша, или 20 страниц с диска, или 10 страниц с вытеснением. Понятно, что это довольно условные цифры, но подбирать их точнее нет смысла.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EРегулирование для автоочистки\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nРегулирование нагрузки при автоматической очистке работает так же, как и для обычной. Но чтобы очистка, запускаемая вручную, и автоочистка могли работать с разной интенсивностью, для автоочистки сделаны собственные параметры: \u003Cem\u003Eautovacuum_vacuum_cost_limit\u003C\u002Fem\u003E и \u003Cem\u003Eautovacuum_vacuum_cost_delay\u003C\u002Fem\u003E. Если эти параметры принимают значение -1, то используется значение из \u003Cem\u003Evacuum_cost_limit\u003C\u002Fem\u003E и\u002Fили \u003Cem\u003Evacuum_cost_delay\u003C\u002Fem\u003E.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПо умолчанию \u003Cem\u003Eautovacuum_vacuum_cost_limit\u003C\u002Fem\u003E = -1 (то есть используется значение \u003Cem\u003Evacuum_cost_limit\u003C\u002Fem\u003E = 200) и \u003Cem\u003Eautovacuum_vacuum_cost_delay\u003C\u002Fem\u003E = 20ms. На современной аппаратуре с этими цифрами автоочистка будет работать очень и очень медленно.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВ версии 12 значение \u003Cem\u003Eautovacuum_vacuum_cost_delay\u003C\u002Fem\u003E будет уменьшено до 2ms, что можно считать более подходящим первым приближением.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nКроме того следует учитывать, что предел, устанавливаемый этими параметрами, общий для всех рабочих процессов. Иными словами, при изменении числа одновременно работающих рабочих процессов общая нагрузка будет оставаться постоянной. Поэтому, если стоит задача увеличить производительность автоочистки, то при добавлении рабочих процессов стоит увеличить и \u003Cem\u003Eautovacuum_vacuum_cost_limit\u003C\u002Fem\u003E.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EИспользование памяти и мониторинг\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nВ \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fpostgrespro\u002Fblog\u002F452320\u002F\"\u003Eпрошлый раз\u003C\u002Fa\u003E мы рассматривали, как очистка использует оперативную память размером \u003Cem\u003Emaintenance_work_mem\u003C\u002Fem\u003E для хранения идентификаторов версий строк, подлежащих очистке.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nАвтоочистка поступает абсолютно так же. Но одновременно работающих процессов может быть много, если установить \u003Cem\u003Eautovacuum_max_workers\u003C\u002Fem\u003E в большое значение. К тому же вся память выделяется сразу и полностью, а не по необходимости. Поэтому для рабочего процесса автоочистки можно установить собственное ограничение с помощью параметра \u003Cem\u003Eautovacuum_work_mem\u003C\u002Fem\u003E. По умолчанию этот параметр равен -1, то есть не используется.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nКак уже говорилось, очистка может работать и с минимальным объемом памяти. Но если на таблице созданы индексы, то небольшое значение \u003Cem\u003Emaintenance_work_mem\u003C\u002Fem\u003E может привести к повторным сканированиям индексов. То же самое справедливо и для автоочистки. В идеале следует подобрать такое минимальное значение \u003Cem\u003Eautovacuum_work_mem\u003C\u002Fem\u003E, при котором повторные сканирования не происходят.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nМы видели, что для мониторинга очистки можно использовать параметр VERBOSE (но его нельзя указать для автоочистки) или представление pg_stat_progress_vacuum (но оно показывает только текущую информацию). Поэтому основной способ мониторинга автоочистки — параметр \u003Cem\u003Elog_autovacuum_min_duration\u003C\u002Fem\u003E, который выводит информацию в журнал сообщений сервера. По умолчанию он выключен (установлен в -1). Есть резон включить этот параметр (при значении 0 будет выводиться информация о всех запусках автоочистки) и наблюдать за цифрами.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВот как выглядит выводимая информация:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003E=\u003E ALTER SYSTEM SET log_autovacuum_min_duration = 0;\n=\u003E SELECT pg_reload_conf();\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E pg_reload_conf \n----------------\n t\n(1 row)\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003E=\u003E UPDATE autovac SET s = 'C' WHERE id &lt;= 31;\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003Estudent$ tail -n 7 \u002Fvar\u002Flog\u002Fpostgresql\u002Fpostgresql-11-main.log\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E2019-05-21 11:59:55.675 MSK [9737] LOG:  automatic vacuum of table \"test.public.autovac\": index scans: 0\n\tpages: 0 removed, 18 remain, 0 skipped due to pins, 0 skipped frozen\n\ttuples: 31 removed, 1000 remain, 0 are dead but not yet removable, oldest xmin: 4040\n\tbuffer usage: 78 hits, 0 misses, 0 dirtied\n\tavg read rate: 0.000 MB\u002Fs, avg write rate: 0.000 MB\u002Fs\n\tsystem usage: CPU: user: 0.00 s, system: 0.00 s, elapsed: 0.00 s\n2019-05-21 11:59:55.676 MSK [9737] LOG:  automatic analyze of table \"test.public.autovac\" system usage: CPU: user: 0.00 s, system: 0.00 s, elapsed: 0.00 s\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nВсе необходимые сведения здесь присутствуют.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nНапомним, что зачастую следует не увеличивать размер памяти, а уменьшать порог срабатывания очистки, чтобы за один раз обрабатывалось меньше данных.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nТакже может иметь смысл мониторить длину списка таблиц, требующих очистки, с помощью приведенных выше представлений. Увеличение длины списка будет свидетельствовать о том, что автоочистка не успевает выполнять свою работу и требуется изменение настроек.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fpostgrespro\u002Fblog\u002F455590\u002F\"\u003EПродолжение\u003C\u002Fa\u003E.\u003C\u002Fdiv\u003E","tags":[{"titleHtml":"postgresql"},{"titleHtml":"autovacuum"},{"titleHtml":"vacuum"},{"titleHtml":"tuples"}],"metadata":{"stylesUrls":[],"scriptUrls":[],"shareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F452762\u002Fabe6a194066fa7565e7bae6808db970c\u002F","shareImageWidth":1200,"shareImageHeight":630,"vkShareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F452762\u002Fabe6a194066fa7565e7bae6808db970c\u002F?format=vk","schemaJsonLd":"{\"@context\":\"http:\\\u002F\\\u002Fschema.org\",\"@type\":\"Article\",\"mainEntityOfPage\":{\"@type\":\"WebPage\",\"@id\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fru\\\u002Fcompany\\\u002Fpostgrespro\\\u002Fblog\\\u002F452762\\\u002F\"},\"headline\":\"MVCC-7. Автоочистка\",\"datePublished\":\"2019-06-06T13:41:51+03:00\",\"dateModified\":\"2020-01-29T16:07:02+03:00\",\"author\":{\"@type\":\"Person\",\"name\":\"Егор Рогов\"},\"publisher\":{\"@type\":\"Organization\",\"name\":\"Habr\",\"logo\":{\"@type\":\"ImageObject\",\"url\":\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fa_\\\u002Flk\\\u002F9m\\\u002Fa_lk9mjkccjox-zccjrpfolmkmq.png\"}},\"description\":\"Напомню, что мы начали с вопросов, связанных с изоляцией, сделали отступление про организацию данных на низком уровне, подробно поговорили о версиях строк и о то...\",\"url\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fru\\\u002Fcompany\\\u002Fpostgrespro\\\u002Fblog\\\u002F452762\\\u002F#post-content-body\",\"about\":[\"c_postgrespro\",\"h_postgresql\",\"h_sql\",\"f_develop\"],\"image\":[\"https:\\\u002F\\\u002Fhabr.com\\\u002Fshare\\\u002Fpublication\\\u002F452762\\\u002Fabe6a194066fa7565e7bae6808db970c\\\u002F\"]}","metaDescription":"Напомню, что мы начали с вопросов, связанных с изоляцией, сделали отступление про организацию данных на низком уровне, подробно поговорили о версиях строк и о том, как из версий получаются снимки...","mainImageUrl":null,"amp":false},"polls":[],"commentsEnabled":true,"rulesRemindEnabled":false,"votesEnabled":true,"status":"published","plannedPublishTime":null,"checked":null,"isEditorial":false}},"articlesIds":{},"isLoading":false,"pagesCount":{},"route":{},"reasonsList":null,"view":"cards","lastVisitedRoute":{},"ssrCommentsArticleIds":[""],"karma":{}},"authorContribution":{"authors":{}},"betaTest":{"currentAnnouncement":null,"announcements":{},"announcementCards":null,"announcementComments":{},"announcementCommentThreads":{},"announcementCommentingStatuses":{},"archivedList":[]},"authorStatistics":{"articleRefs":{},"articleIds":{},"pagesCount":{},"route":{},"viewsCount":[],"maxStatsCount":{}},"career":{"seoLandings":[],"hubs":""},"comments":{"articleComments":{},"searchCommentsResults":null,"previewComment":null,"pagesCount":null,"commentAccess":{},"scrollParents":{},"pageArticleComments":{"lastViewedComment":0,"postId":null,"lastCommentTimestamp":"","moderated":[],"moderatedIds":[],"commentRoute":""}},"companies":{"companyRefs":{"postgrespro":{"alias":"postgrespro","imageUrl":"\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fcompany\u002F4e0\u002F339\u002F621\u002F4e0339621abc865fefb88f9e9f44748f.jpg","titleHtml":"Postgres Professional","descriptionHtml":"Разработчик СУБД Postgres Pro","relatedData":null,"statistics":{"postsCount":151,"newsCount":0,"vacanciesCount":0,"employeesCount":22,"careerRating":null,"subscribersCount":41642,"rating":218.7,"invest":null},"foundationDate":{"year":"2015","month":"01","day":"27"},"location":{"city":{"id":"447159","title":"Москва"},"region":{"id":"1885","title":"Москва и Московская обл."},"country":{"id":"168","title":"Россия"}},"siteUrl":"http:\u002F\u002Fwww.postgrespro.ru\u002F","staffNumber":"51–100 человек","registrationDate":"2015-09-30T07:41:09+00:00","representativeUser":{"alias":"x-wao","fullname":"Иван Панченко"},"contacts":[{"title":"Facebook","url":"https:\u002F\u002Ffacebook.com\u002FPostgresProfessional"},{"title":"Twitter","url":"https:\u002F\u002Ftwitter.com\u002FPostgresPro"},{"title":"ВКонтакте","url":"https:\u002F\u002Fvk.com\u002Fpublic101507899"},{"title":"Google+","url":"https:\u002F\u002Fplus.google.com\u002F+PostgresproRuCompany"},{"title":"LiveJournal","url":"https:\u002F\u002Fpostgrespro.livejournal.com\u002F"}],"settings":{"analyticsSettings":[{"type":"ga","trackingId":"UA-55152600-4"}],"branding":null,"status":"active"},"metadata":{"titleHtml":"Postgres Professional, Москва - Разработчик СУБД Postgres Pro с 27 января 2015 г.","title":"Postgres Professional, Москва - Разработчик СУБД Postgres Pro с 27 января 2015 г.","keywords":["PostgreSQL","SQL","Занимательные задачки","Конференции","Администрирование баз данных"],"descriptionHtml":"151 статья от авторов компании Postgres Professional","description":"151 статья от авторов компании Postgres Professional"},"aDeskSettings":null,"careerAlias":"postgrespro","maxCustomTrackerLinks":0}},"companyIds":{},"companyTopIds":{},"pagesCount":{},"companyProfiles":{},"companiesCategories":[],"companiesCategoriesTotalCount":0,"companiesWidgets":{},"companiesWorkers":{},"companiesFans":{},"route":{},"isLoading":false,"companyWorkersLoading":false,"companyFansLoading":false,"vacancies":{}},"companiesContribution":{"hubs":{},"flows":{},"companyRefs":{}},"companyHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"conversation":{"messages":[],"respondent":null,"isLoadMore":false},"conversations":{"conversations":[],"unreadCount":0,"pagesCount":0,"isLoadMore":false},"desktopState":{"desktopFl":null,"desktopHl":null,"isChecked":false,"isLoginDemanded":false},"dfp":{"slotsDict":{}},"docs":{"menu":{},"articles":{},"mainMenu":[],"loading":{"main":false,"dropdown":false,"article":false}},"feature":{"isProbablyVisible":"true"},"flows":{"flows":[{"alias":"develop","id":1,"route":{"name":"FLOW_PAGE","params":{"flowName":"develop"}}},{"alias":"admin","id":6,"route":{"name":"FLOW_PAGE","params":{"flowName":"admin"}}},{"alias":"design","id":2,"route":{"name":"FLOW_PAGE","params":{"flowName":"design"}}},{"alias":"management","id":3,"route":{"name":"FLOW_PAGE","params":{"flowName":"management"}}},{"alias":"marketing","id":4,"route":{"name":"FLOW_PAGE","params":{"flowName":"marketing"}}},{"alias":"popsci","id":7,"route":{"name":"FLOW_PAGE","params":{"flowName":"popsci"}}}]},"global":{"isPwa":false,"device":"desktop","isHabrCom":true},"hubs":{"hubRefs":{},"hubIds":{},"pagesCount":{},"isLoading":false,"route":{}},"hubsBlock":{"hubRefs":{},"hubIds":{}},"i18n":{"fl":"ru","hl":"ru"},"info":{"infoPage":{},"isLoading":true},"location":{"urlStruct":{"protocol":null,"slashes":null,"auth":null,"host":null,"port":null,"hostname":null,"hash":null,"search":null,"query":{},"pathname":null,"path":null,"href":""},"searchQuery":null},"me":{"user":null,"ppgDemanded":false,"karmaResetInfo":{"canReincarnate":null,"wasReincarnated":null,"currentScore":null},"notes":null},"mostReadingList":{"mostReadingListIds":[],"mostReadingListRefs":null,"promoPost":null},"pinnedPost":{"pinnedPost":null},"ppa":{"articles":{},"card":null,"transactions":null,"totalTransactions":null,"isAccessible":null},"projectsBlocks":{"activeBlocks":{}},"pullRefresh":{"shouldRefresh":false},"sandbox":{"articleIds":[],"articleRefs":{},"pagesCount":null,"route":{},"lastVisitedRoute":{},"isLoading":false},"settingsOther":{"inputs":{"uiLang":{"errors":[],"ref":null,"value":""},"articlesLangEnglish":{"errors":[],"ref":null,"value":false},"articlesLangRussian":{"errors":[],"ref":null,"value":false},"agreement":{"errors":[],"ref":null,"value":false},"email":{"errors":[],"ref":null,"value":true},"digest":{"errors":[],"ref":null,"value":true}}},"similarList":{"similarListIds":[],"similarListRefs":null},"ssr":{"error":null,"isDataLoaded":false,"isDataLoading":false,"isHydrationFailed":false,"isServer":false},"userHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"userInvites":{"availableInvites":0,"usedInvitesIds":[],"usedInvitesRefs":{},"usedInvitesPagesCount":0,"unusedInvitesIds":[],"unusedInvitesRefs":{},"unusedInvitesPagesCount":0},"users":{"authorRefs":{},"authorIds":{},"pagesCount":{},"authorProfiles":{},"userHubs":{},"userInvitations":{},"authorFollowers":{},"authorFollowed":{},"karmaStats":[],"statistics":null,"isLoading":false,"authorFollowersLoading":false,"authorFollowedLoading":false,"userHubsLoading":false,"userInvitationsLoading":false,"route":{}},"viewport":{"prevScrollY":{},"scrollY":0,"width":0},"tracker":{"items":{},"pagesCache":{},"markedViewedSilently":{},"markedRead":{},"unreadCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null},"unviewedCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null}}};(function(){var s;(s=document.currentScript||document.scripts[document.scripts.length-1]).parentNode.removeChild(s);}());</script>
+<script src="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" defer></script><script src="https://assets.habr.com/habr-web/js/app.c0af73e7.js" defer></script>
+
+
+
+    <script>
+      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+        (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+        m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+      })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+    </script>
+  
+  <script type="text/javascript" >
+    (function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+    m[i].l=1*new Date();k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})
+    (window, document, "script", "https://mc.yandex.ru/metrika/tag.js", "ym");
+
+    ym(24049213, "init", {
+      defer:true,
+      trackLinks:true,
+      accurateTrackBounce:true,
+      webvisor:false,
+    });
+  </script>
+  <noscript>
+    <div>
+      <img src="https://mc.yandex.ru/watch/24049213" style="position:absolute; left:-9999px;" alt="" />
+    </div>
+  </noscript>
+  
+    <script type="text/javascript">
+      window.addEventListener('load', function () {
+        setTimeout(() => {
+          const img = new Image();
+          img.src = 'https://vk.com/rtrg?p=VK-RTRG-421343-57vKE';
+        }, 0);
+      });
+    </script>
+  
+</body>
+</html>

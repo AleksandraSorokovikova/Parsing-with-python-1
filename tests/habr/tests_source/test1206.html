@@ -1,0 +1,881 @@
+<!DOCTYPE html>
+<html lang="ru" data-vue-meta="%7B%22lang%22:%7B%22ssr%22:%22ru%22%7D%7D">
+<head >
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
+  <title>Как ускорить разжатие LZ4 в ClickHouse / Хабр</title>
+  <style>
+    /* cyrillic-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSxf6TF0.woff2) format('woff2');
+      unicode-range: U+0460-052F, U+1C80-1C88, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+    }
+
+    /* cyrillic */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveQhf6TF0.woff2) format('woff2');
+      unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+    }
+
+    /* latin-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSBf6TF0.woff2) format('woff2');
+      unicode-range: U+0100-024F, U+0259, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20CF, U+2113, U+2C60-2C7F, U+A720-A7FF;
+    }
+
+    /* latin */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveRhf6.woff2) format('woff2');
+      unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+    }
+  </style>
+  <link rel="preload" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" as="script"><link rel="preload" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/app.c0af73e7.js" as="script">
+  <link rel="stylesheet" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css"><link rel="stylesheet" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css">
+  <script>window.i18nFetch = new Promise((res, rej) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open('GET', '/js/i18n/ru-compiled.85eb77f0b17c8235e7b64b9f81ea5ec2.json');
+          xhr.responseType = 'json';
+          xhr.onload = function(e) {
+            if (this.status === 200) {
+              res({ru: xhr.response});
+            } else {
+              rej(e);
+            }
+          };
+          xhr.send();
+        });</script>
+  
+  <script data-vue-meta="ssr" src="/js/ads.js" onload="window['zhY4i4nJ9K'] = true" data-vmid="checkad"></script><script data-vue-meta="ssr" type="application/ld+json" data-vmid="ldjson-schema">{"@context":"http:\/\/schema.org","@type":"Article","mainEntityOfPage":{"@type":"WebPage","@id":"https:\/\/habr.com\/ru\/company\/yandex\/blog\/452778\/"},"headline":"Как ускорить разжатие LZ4 в ClickHouse","datePublished":"2019-05-21T14:14:22+03:00","dateModified":"2019-06-04T21:10:24+03:00","author":{"@type":"Person","name":"Алексей"},"publisher":{"@type":"Organization","name":"Habr","logo":{"@type":"ImageObject","url":"https:\/\/habrastorage.org\/webt\/a_\/lk\/9m\/a_lk9mjkccjox-zccjrpfolmkmq.png"}},"description":"При выполнении запросов в ClickHouse можно обратить внимание, что в профайлере на одном из первых мест часто видна функция LZ_decompress_fast. Почему так происхо...","url":"https:\/\/habr.com\/ru\/company\/yandex\/blog\/452778\/#post-content-body","about":["c_yandex","h_hi","h_open_source","h_cpp","h_bigdata","f_develop"],"image":["https:\/\/habrastorage.org\/getpro\/habr\/post_images\/057\/302\/aba\/057302aba5041790af404c2c781c4dd3.png"]}</script>
+  <script src="//www.googletagservices.com/tag/js/gpt.js" async></script>
+  <style>.grecaptcha-badge{visibility: hidden;}</style>
+  <meta name="habr-version" content="2.49.0">
+  
+  <meta data-vue-meta="ssr" property="fb:app_id" content="444736788986613"><meta data-vue-meta="ssr" property="fb:pages" content="472597926099084"><meta data-vue-meta="ssr" name="twitter:card" content="summary_large_image"><meta data-vue-meta="ssr" name="twitter:site" content="@habr_eng"><meta data-vue-meta="ssr" property="og:title" content="Как ускорить разжатие LZ4 в ClickHouse" data-vmid="og:title"><meta data-vue-meta="ssr" name="twitter:title" content="Как ускорить разжатие LZ4 в ClickHouse" data-vmid="twitter:title"><meta data-vue-meta="ssr" name="aiturec:title" content="Как ускорить разжатие LZ4 в ClickHouse" data-vmid="aiturec:title"><meta data-vue-meta="ssr" name="description" content="При выполнении запросов в ClickHouse можно обратить внимание, что в профайлере на одном из первых мест часто видна функция LZ_decompress_fast. Почему так происходит? Этот вопрос стал поводом для..." data-vmid="description"><meta data-vue-meta="ssr" itemprop="description" content="При выполнении запросов в ClickHouse можно обратить внимание, что в профайлере на одном из первых мест часто видна функция LZ_decompress_fast. Почему так происходит? Этот вопрос стал поводом для..." data-vmid="description:itemprop"><meta data-vue-meta="ssr" property="og:description" content="При выполнении запросов в ClickHouse можно обратить внимание, что в профайлере на одном из первых мест часто видна функция LZ_decompress_fast. Почему так происходит? Этот вопрос стал поводом для..." data-vmid="og:description"><meta data-vue-meta="ssr" name="twitter:description" content="При выполнении запросов в ClickHouse можно обратить внимание, что в профайлере на одном из первых мест часто видна функция LZ_decompress_fast. Почему так происходит? Этот вопрос стал поводом для..." data-vmid="twitter:description"><meta data-vue-meta="ssr" property="aiturec:description" content="При выполнении запросов в ClickHouse можно обратить внимание, что в профайлере на одном из первых мест часто видна функция LZ_decompress_fast. Почему так происходит? Этот вопрос стал поводом для..." data-vmid="aiturec:description"><meta data-vue-meta="ssr" itemprop="image" content="https://habr.com/share/publication/452778/82e17d7fd76f61b03a661e9a3cddc747/" data-vmid="image:itemprop"><meta data-vue-meta="ssr" property="og:image" content="https://habr.com/share/publication/452778/82e17d7fd76f61b03a661e9a3cddc747/" data-vmid="og:image"><meta data-vue-meta="ssr" property="aiturec:image" content="https://habr.com/share/publication/452778/82e17d7fd76f61b03a661e9a3cddc747/" data-vmid="aiturec:image"><meta data-vue-meta="ssr" name="twitter:image" content="https://habr.com/share/publication/452778/82e17d7fd76f61b03a661e9a3cddc747/" data-vmid="twitter:image"><meta data-vue-meta="ssr" property="vk:image" content="https://habr.com/share/publication/452778/82e17d7fd76f61b03a661e9a3cddc747/" data-vmid="vk:image"><meta data-vue-meta="ssr" property="aiturec:item_id" content="452778" data-vmid="aiturec:item_id"><meta data-vue-meta="ssr" property="aiturec:datetime" content="2019-05-21T11:14:22.000Z" data-vmid="aiturec:datetime"><meta data-vue-meta="ssr" property="og:type" content="article" data-vmid="og:type"><meta data-vue-meta="ssr" property="og:locale" content="ru_RU" data-vmid="og:locale"><meta data-vue-meta="ssr" property="og:image:width" content="1200" data-vmid="og:image:width"><meta data-vue-meta="ssr" property="og:image:height" content="630" data-vmid="og:image:height">
+  <link data-vue-meta="ssr" href="https://habr.com/ru/rss/post/452778/?fl=ru" type="application/rss+xml" title="" rel="alternate" name="rss"><link data-vue-meta="ssr" href="https://habr.com/ru/company/yandex/blog/452778/" rel="canonical" data-vmid="canonical"><link data-vue-meta="ssr" data-vmid="hreflang"><link data-vue-meta="ssr" image_src="image" href="https://habr.com/share/publication/452778/82e17d7fd76f61b03a661e9a3cddc747/" data-vmid="image:href">
+  <meta name="apple-mobile-web-app-status-bar-style" content="#303b44">
+  <meta name="msapplication-TileColor" content="#629FBC">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="16x16"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-16.png"
+  >
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="32x32"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-32.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="76x76"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-76.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="120x120"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="152x152"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-152.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="180x180"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-180.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="256x256"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-256.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1136x640.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2436x1125.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1792x828.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_828x1792.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1334x750.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2208x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1125x2436.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2208.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2732x2048.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2688x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2224x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_750x1334.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x2732.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2388x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2224.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_640x1136.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2388.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x1536.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1536x2048.png"
+  >
+  <link
+    rel="mask-icon"
+    color="#77a2b6"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.svg"
+  >
+  <link
+    crossorigin="use-credentials"
+    href="/manifest.webmanifest"
+    rel="manifest"
+  >
+</head>
+<body>
+
+
+<div id="app" data-server-rendered="true" data-async-called="true"><div class="tm-layout__wrapper"><!----> <div></div> <!----> <header class="tm-header"><div class="tm-page-width"><div class="tm-header__container"><!----> <span class="tm-header__logo-wrap"><a href="/ru/" class="tm-header__logo tm-header__logo_ru"><svg height="16" width="16" class="tm-svg-img tm-header__icon"><title>Хабр</title> <use xlink:href="/img/habr-logo-ru.svg#logo"></use></svg></a> <span class="tm-header__beta-sign" style="display:none;">β</span></span> <div class="tm-dropdown tm-header__projects"><div class="tm-dropdown__head"><button class="tm-header__dropdown-toggle"><svg height="16" width="16" class="tm-svg-img tm-header__icon tm-header__icon_dropdown"><title>Открыть список</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#arrow-down"></use></svg></button></div> <!----></div> <a href="/ru/sandbox/start/" class="tm-header__become-author-btn">
+            Как стать автором
+          </a> <div class="tm-feature tm-header__feature tm-feature_variant-inline"><!----></div> <!----> <!----></div></div></header> <div class="tm-layout"><div class="tm-page-progress-bar"></div> <div data-menu-sticky="true" class="tm-base-layout__header tm-base-layout__header_is-sticky"><div class="tm-page-width"><div class="tm-base-layout__header-wrapper"><div class="tm-main-menu"><div class="tm-main-menu__section"><nav class="tm-main-menu__section-content"><!----> <a href="/ru/all/" class="tm-main-menu__item">
+        Все потоки
+      </a> <a href="/ru/flows/develop/" class="tm-main-menu__item">
+          Разработка
+        </a><a href="/ru/flows/admin/" class="tm-main-menu__item">
+          Администрирование
+        </a><a href="/ru/flows/design/" class="tm-main-menu__item">
+          Дизайн
+        </a><a href="/ru/flows/management/" class="tm-main-menu__item">
+          Менеджмент
+        </a><a href="/ru/flows/marketing/" class="tm-main-menu__item">
+          Маркетинг
+        </a><a href="/ru/flows/popsci/" class="tm-main-menu__item">
+          Научпоп
+        </a></nav></div></div> <div class="tm-header-user-menu tm-base-layout__user-menu"><a href="/ru/search/" class="tm-header-user-menu__item tm-header-user-menu__search"><svg height="24" width="24" class="tm-svg-img tm-header-user-menu__icon tm-header-user-menu__icon_search tm-header-user-menu__icon_dark"><title>Поиск</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#search"></use></svg></a> <!----> <!----> <!----> <div class="tm-header-user-menu__item tm-header-user-menu__user_desktop"><div class="tm-dropdown"><div class="tm-dropdown__head"><svg height="24" width="24" data-test-id="menu-toggle-guest" class="tm-svg-img tm-header-user-menu__icon"><title>Профиль</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#header-user"></use></svg> <!----></div> <!----></div> <!----></div> <!----></div></div></div></div> <!----> <div class="tm-page-width"></div> <main class="tm-layout__container"><div hl="ru" companyName="yandex" data-async-called="true" class="tm-page"><div class="tm-page-width"><div class="tm-page__header"><div class="tm-company-card__branding tm-company-article__branding tm-company-card__branding_loading"><div class="tm-company-card__branding-placeholder"><!----></div> <img src="//habrastorage.org/getpro/habr/branding/907/a84/1d7/907a841d7f3392623972d244da8dae91.png" width="100%" class="tm-company-card__branding-image"></div></div> <div class="tm-page__wrapper"><div class="tm-page__main tm-page__main_has-sidebar"><div class="pull-down"><div class="pull-down__header" style="height:0px;"><div class="pull-down__content" style="bottom:10px;"><svg height="24" width="24" class="tm-svg-img pull-down__arrow"><title>Обновить</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#pull-arrow"></use></svg></div></div> <div class="tm-article-presenter"><div class="tm-company-card tm-company-article__company-card"><div class="tm-company-card__info"><div class="tm-company-card__header"><a href="/ru/company/yandex/profile/" class="tm-company-card__avatar"><div class="tm-entity-image"><img alt="" height="48" src="//habrastorage.org/getpro/habr/company/b02/d9b/1d4/b02d9b1d4a6e64ff069e2ab32fdedae2.png" width="48" class="tm-entity-image__pic"></div></a> <!----> <div class="tm-rating tm-company-card__rating"><div class="tm-rating__header"> <div class="tm-rating__counter">562.71</div></div> <div class="tm-rating__text">
+    Рейтинг
+  </div></div></div> <div class="tm-company-card__info"><a href="/ru/company/yandex/profile/" class="tm-company-card__name">
+        Яндекс
+      </a> <div class="tm-company-card__description">Как мы делаем Яндекс</div></div></div> <div class="tm-company-card__buttons"><!----> <!----></div></div> <div class="tm-article-presenter__body"><div class="tm-misprint-area"><div class="tm-misprint-area__wrapper"><article class="tm-article-presenter__content tm-article-presenter__content_narrow"><div class="tm-article-presenter__header"> <div class="tm-article-snippet tm-article-presenter__snippet"><div class="tm-article-snippet__meta-container"><div class="tm-article-snippet__meta"><span class="tm-user-info tm-article-snippet__author"><a href="/ru/users/o6CuFl2Q/" title="o6CuFl2Q" class="tm-user-info__userpic"><div class="tm-entity-image"><svg height="24" width="24" class="tm-svg-img tm-image-placeholder tm-image-placeholder_lilac"><!----> <use xlink:href="/img/megazord-v24.ce74655c.svg#placeholder-user"></use></svg></div></a> <span class="tm-user-info__user"><a href="/ru/users/o6CuFl2Q/" class="tm-user-info__username">
+      o6CuFl2Q
+    </a> </span></span> <span class="tm-article-snippet__datetime-published"><time datetime="2019-05-21T11:14:22.000Z" title="2019-05-21, 14:14">21  мая  2019 в 14:14</time></span></div> <!----></div> <h1 lang="ru" class="tm-article-snippet__title tm-article-snippet__title_h1"><span>Как ускорить разжатие LZ4 в ClickHouse</span></h1> <div class="tm-article-snippet__hubs"><span class="tm-article-snippet__hubs-item"><a href="/ru/company/yandex/blog/" class="tm-article-snippet__hubs-item-link router-link-active"><span>Блог компании Яндекс</span> <!----></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/hi/" class="tm-article-snippet__hubs-item-link"><span>Высокая производительность</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/open_source/" class="tm-article-snippet__hubs-item-link"><span>Open source</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/cpp/" class="tm-article-snippet__hubs-item-link"><span>C++</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/bigdata/" class="tm-article-snippet__hubs-item-link"><span>Big Data</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span></div> <!----> <!----> <!----></div></div> <!----> <div data-gallery-root="" lang="ru" class="tm-article-body"><div id="post-content-body" class="article-formatted-body article-formatted-body_version-1"><div xmlns="http://www.w3.org/1999/xhtml">При выполнении запросов в ClickHouse можно обратить внимание, что в профайлере на одном из первых мест часто видна функция LZ_decompress_fast. Почему так происходит? Этот вопрос стал поводом для целого исследования по выбору лучшего алгоритма разжатия. Здесь я публикую исследование целиком, а короткую версию можно узнать из моего <a href="https://www.youtube.com/watch?v=V2CqQBICt7M">доклада</a> на HighLoad++ Siberia.<br/>
+<br/>
+Данные в ClickHouse хранятся в сжатом виде. А во время выполнения запросов ClickHouse старается почти ничего не делать — использовать минимум ресурсов CPU. Бывает, что все вычисления, на которые могло тратиться время, уже хорошо оптимизированы, да и запрос хорошо написан пользователем. Тогда остаётся выполнить разжатие.<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/getpro/habr/post_images/057/302/aba/057302aba5041790af404c2c781c4dd3.png"/><br/>
+<br/>
+Вопрос — почему разжатие LZ4 может быть узким местом? Казалось бы, LZ4 — <a href="https://github.com/lz4/lz4/">очень лёгкий алгоритм</a>: скорость разжатия, в зависимости от данных, обычно составляет от 1 до 3 ГБ/с на одно процессорное ядро. Это уже существенно больше скорости работы дисковой подсистемы. Более того, мы используем все доступные ядра, а разжатие линейно масштабируется по всем физическим ядрам.<br/>
+<a name="habracut"></a><br/>
+Но следует иметь в виду два момента. Во-первых, с диска читаются сжатые данные, а скорость разжатия приведена в количестве несжатых данных. Если коэффициент сжатия достаточно большой, то с дисков почти ничего не надо считывать. Но при этом разжатых данных образуется много, и разумеется, это влияет на расход CPU: объём работы по разжатию данных в случае LZ4 почти пропорционален объёму самих разжатых данных.<br/>
+<br/>
+Во-вторых, чтение данных с дисков может не требоваться вообще, если данные находятся в кэше. Для этого можно полагаться на page cache или использовать свой собственный кэш. В столбцовых БД использование кэша более эффективно за счёт того, что в него попадают не все столбцы, а только часто используемые. Вот почему LZ4 в смысле нагрузки на CPU часто является узким местом.<br/>
+<br/>
+Отсюда ещё два вопроса. Если разжатие данных «тормозит», то может, их вообще не стоит сжимать? Но на практике это предположение бессмысленно. Недавно в ClickHouse можно было настроить всего два варианта сжатия данных — LZ4 и <a href="https://github.com/facebook/zstd/">Zstandard</a>. По умолчанию используется LZ4. Переключившись на Zstandard, можно сделать сжатие сильнее и медленнее. А вот полностью отключить сжатие ещё совсем недавно было нельзя — LZ4 рассматривается как разумный минимум, который можно использовать всегда. Именно поэтому я очень люблю LZ4. :)<br/>
+<br/>
+Но недавно в англоязычном <a href="https://t.me/clickhouse_en">чате поддержки</a> ClickHouse появился таинственный незнакомец, который рассказал, что у него очень быстрая дисковая подсистема (NVMe SSD) и всё упирается в сжатие — неплохо было бы иметь возможность его выключить. Я ответил, что такой возможности нет, но её легко добавить. Через несколько дней нам пришёл <a href="https://github.com/yandex/ClickHouse/pull/1045">пул-реквест</a>, в котором реализуется метод сжатия <code>none</code>. Я попросил привести результаты — насколько это помогло, насколько ускорились запросы. Человек сказал, что эта новая фича оказалась бесполезной на практике, поскольку данные без сжатия стали занимать слишком много места.<br/>
+<br/>
+Второй возникающий вопрос: если есть кэш, почему бы не хранить в нём уже разжатые данные? Это допускается — во многих случаях так удастся избавиться от необходимости разжатия. И в ClickHouse есть такой кэш — <a href="https://clickhouse.yandex/docs/ru/operations/settings/settings/#use_uncompressed_cache">кэш разжатых блоков</a>. Но на него жалко тратить много оперативки из-за его низкой эффективности. Он оправдывает себя только на мелких, идущих подряд запросах, которые используют почти одни и те же данные.<br/>
+<br/>
+Общее соображение: данные надо сжимать, желательно всегда. Всегда записывайте их на диск со сжатием. Передавайте по сети тоже со сжатием. На мой взгляд, сжатие по умолчанию следует считать оправданным даже при передаче в 10-гигабитной сети без переподписки в пределах дата-центра, а передавать данные без сжатия между дата-центрами вообще недопустимо.<br/>
+<br/>
+<h3>Почему именно LZ4</h3><br/>
+Почему же используется именно LZ4? Можно ли подобрать нечто ещё более лёгкое? В принципе, можно, и это правильно и полезно. Но давайте сначала рассмотрим, к какому классу алгоритмов относится LZ4.<br/>
+<br/>
+Во-первых, он не зависит от типа данных. К примеру, если вы заранее знаете, что у вас будет массив целых чисел, то можете использовать один из многочисленных вариантов алгоритма VarInt — так будет эффективнее по CPU. Во-вторых, LZ4 не слишком сильно зависит от требуемых допущений на модель данных. Предположим, у вас есть упорядоченный временной ряд показаний датчика — массив с числами типа float. Тогда вы можете посчитать дельты, а затем сжимать дальше, и это будет эффективнее по коэффициенту сжатия.<br/>
+<br/>
+То есть LZ4 можно без проблем использовать для любых массивов байтов — для любых файлов. Конечно, у него есть своя специализация (об этом ниже), и в некоторых случаях его использование бессмысленно. Но если его назвать алгоритмом общего назначения, это будет небольшой ошибкой. И заметим, что, благодаря внутреннему устройству, LZ4 в качестве частного случая автоматом реализует алгоритм <a href="https://en.wikipedia.org/wiki/Run-length_encoding">RLE</a>.<br/>
+<br/>
+Другой вопрос: неужели LZ4 — наиболее оптимальный алгоритм данного класса по совокупности скорости и силы сжатия? Такие алгоритмы называются pareto frontier — это значит, что не существует другого алгоритма, который строго лучше по одному показателю и не хуже по другим (да ещё и на широком множестве датасетов). Есть алгоритмы, которые быстрее, но дают меньший коэффициент сжатия, а есть те, которые сжимают сильнее, но при этом медленнее сжимают или разжимают.<br/>
+<br/>
+На самом деле LZ4 — не pareto frontier. Есть варианты, которые чуть-чуть лучше. Например, это <a href="https://sites.google.com/site/powturbo/">LZTURBO</a> от некоего <a href="https://github.com/powturbo">powturbo</a>. В достоверности результатов можно не сомневаться благодаря сообществу на encode.ru (крупнейшем и примерно единственном форуме по сжатию данных). Но разработчик не распространяет ни исходники, ни бинарники, а только даёт их ограниченному кругу лиц для тестирования или за кучу денег (вроде никто до сих пор не заплатил). Также стоит обратить внимание на <a href="https://github.com/inikep/lizard/">Lizard</a> (бывший LZ5) и <a href="https://github.com/centaurean/density">Density</a>. Они могут работать чуть лучше LZ4 при выборе некоторого уровня сжатия. Также обратите внимание на <a href="https://github.com/ConorStokes/LZSSE/">LZSSE</a> — крайне интересная вещь. Впрочем, посмотреть на неё лучше после прочтения этой статьи.<br/>
+<br/>
+<h3>Как работает LZ4</h3><br/>
+Давайте рассмотрим, как вообще работает LZ4. Это одна из реализаций алгоритма LZ77: L и Z указывают на фамилии авторов (Лемпель и Зив), а 77 — на 1977 год, когда алгоритм был опубликован. У него множество других реализаций: QuickLZ, FastLZ, BriefLZ, LZF, LZO, а также gzip и zip в случае использования низких уровней сжатия.<br/>
+<br/>
+Сжатый с помощью LZ4 блок данных содержит последовательность записей (команд, инструкций) двух видов:<br/>
+<br/>
+<ol>
+<li>Литерал (literals): «возьми следующие N байт как есть и скопируй их в результат».</li>
+<li>Матч (match, совпадение): «возьми N байт, которые уже были в разжатом результате по смещению offset от текущей позиции».</li>
+</ol><br/>
+Пример. До сжатия:<br/>
+<code>Hello world Hello</code><br/>
+<br/>
+После сжатия:<br/>
+<code>literals 12 "Hello world " match 5 12</code><br/>
+<br/>
+Если взять сжатый блок и пройтись по нему курсором, выполняя эти команды, то мы получим в качестве результата исходные, разжатые данные.<br/>
+<br/>
+Мы примерно рассмотрели, как данные разжимаются. Также ясна суть: для выполнения сжатия алгоритм кодирует повторяющиеся последовательности байт с помощью матчей. <br/>
+<br/>
+Ясны и некоторые свойства. Этот алгоритм byte-oriented — он не препарирует отдельные байты, а лишь копирует их целиком. Здесь кроется отличие, например, от энтропийного кодирования. Для примера, <a href="https://github.com/facebook/zstd/">zstd</a> является композицией LZ77 и энтропийного кодирования.<br/>
+<br/>
+Заметим, что размер сжатого блока выбирается не слишком большим, чтобы не тратить много оперативки во время разжатия; чтобы не сильно замедлить random access в сжатом файле (который состоит из множества сжатых блоков); и иногда — чтобы блок помещался в какой-нибудь кэш CPU. Например, можно выбрать 64 КБ — так буферы для сжатых и несжатых данных поместятся в L2-кэш и половина ещё останется.<br/>
+<br/>
+Если нам потребуется сжать файл большего размера, мы просто будем конкатенировать сжатые блоки. Заодно рядом с каждым сжатым блоком удобно расположить дополнительные данные — размеры, чек-сумму.<br/>
+<br/>
+Максимальное смещение для матча ограничено, в LZ4 — 64 килобайтами. Эта величина называется sliding window. Действительно, это значит, что по мере продвижения курсора вперёд совпадения могут находиться в окне размером 64 килобайта до курсора, которое движется вместе с курсором.<br/>
+<br/>
+Теперь рассмотрим, как сжать данные — другими словами, как найти в файле совпадающие последовательности. Конечно, вы можете использовать suffix trie (классно, если вы о нём слышали). Есть варианты, при которых в процессе сжатия среди предыдущих байт гарантированно находится самая длинная совпадающая последовательность. Это называется optimal parsing и даёт <a href="http://fastcompression.blogspot.com/2011/12/advanced-parsing-strategies.html">почти</a> лучший коэффициент сжатия для фиксированного формата сжатого блока. Но есть и более эффективные варианты — когда мы находим какое-нибудь достаточно хорошее совпадение в данных, но не обязательно самое длинное. Самый эффективный способ его найти — использовать хэш-таблицу.<br/>
+<br/>
+Для этого проходимся по исходному блоку данных курсором и берём несколько байт после курсора. Например, 4 байта. Хэшируем их и кладём в хэш-таблицу смещение от начала блока — где эти 4 байта встретились. Величина 4 называется min-match — с помощью такой хэш-таблицы мы можем отыскать совпадения минимум в 4 байта.<br/>
+<br/>
+Если мы посмотрели в хэш-таблицу, а там уже есть запись, и если смещение не превышает sliding window, то мы проверяем, сколько ещё байт совпадает после этих четырёх байт. Может быть, там ещё много чего совпадает. Возможно и такое, что в хэш-таблице возникла коллизия и не совпадает ничего. Это нормально — можно просто заменить значение в хэш-таблице на новое. Коллизии в хэш-таблице будут просто приводить к меньшему коэффициенту сжатия, поскольку найдётся меньше совпадений. Кстати, такой вид хэш-таблиц (фиксированного размера и без разрешения коллизий) называется cache table, кэш-таблица. Это тоже логично — в случае коллизии кэш-таблица просто забывает про старую запись.<br/>
+<blockquote>Задача для внимательного читателя. Пусть данные — это массив чисел типа UInt32 в формате little endian, представляющий собой часть последовательности натуральных чисел: 0, 1, 2… Объясните, почему при использовании LZ4 эти данные не сжимаются (объём сжатых данных оказывается не меньше, чем объём несжатых данных).</blockquote> <h3>Как всё ускорить</h3><br/>
+Итак, я хочу ускорить разжатие LZ4. Давайте посмотрим, что из себя представляет цикл разжатия. Вот этот цикл в псевдокоде:<br/>
+<br/>
+<pre>while (...)
+{
+    read(input_pos, literal_length, match_length);
+
+    copy(output_pos, input_pos, literal_length);
+    output_pos += literal_length;
+
+    read(input_pos, match_offset);
+
+    copy(output_pos, output_pos - match_offset,
+        match_length);
+    output_pos += match_length;
+}</pre><br/>
+Формат LZ4 устроен так, что в сжатом файле литералы и матчи чередуются. И очевидно, первым всегда идёт literal (потому что с самого начала матч ещё неоткуда взять). Поэтому их длины кодируются вместе.<br/>
+<br/>
+На самом деле всё чуть-чуть сложнее. Из файла читается один байт, и из него берутся две половинки (nibble), в которых закодированы числа от 0 до 15. Если соответствующее число не равно 15, то оно считается длиной литерала и матча соответственно. А если оно равно 15, то длина больше и она закодирована в следующих байтах. Тогда считывается следующий байт, и его значение прибавляется к длине. Далее, если оно равно 255, то мы продолжаем — считываем следующий байт так же.<br/>
+<br/>
+Отметим, что максимальный коэффициент сжатия для формата LZ4 не достигает 255. И второе (бесполезное) наблюдение: если ваши данные очень избыточны, то применение LZ4 дважды позволит увеличить коэффициент сжатия.<br/>
+<br/>
+Когда мы прочитали длину литерала (а затем так же — длину матча и смещение матча), для разжатия достаточно просто скопировать два фрагмента памяти.<br/>
+<br/>
+<h3>Как копировать фрагмент памяти</h3><br/>
+Казалось бы, можно использовать функцию <code>memcpy</code>, которая как раз предназначена для копирования фрагментов памяти. Но это неоптимально и всё-таки некорректно.<br/>
+<br/>
+Почему использовать функцию memcpy неоптимально? Потому что она:<br/>
+<br/>
+<ol>
+<li>обычно находится в библиотеке libc (а библиотека libc обычно линкуется динамически, и вызов memcpy будет идти косвенно, через PLT),</li>
+<li>не инлайнится с неизвестным в compile time аргументом size,</li>
+<li>делает много усилий для корректной обработки «хвостов» фрагмента памяти, не кратных размеру машинного слова или регистра.</li>
+</ol><br/>
+Последний пункт самый важный. Допустим, мы попросили функцию memcpy скопировать ровно 5 байт. Было бы очень хорошо скопировать сразу 8 байт, использовав для этого две инструкции movq.<br/>
+<br/>
+<code>Hello world <font color="#0fc000">Hello </font><font color="#ff0000">wo</font>...<br/>
+^^^^^<font color="#ff0000">^^^</font> - src<br/>
+            ^^^^^<font color="#ff0000">^^^</font> - dst</code><br/>
+<br/>
+Но тогда мы скопируем три лишних байта — то есть будем писать за границу переданного буфера. Функция <code>memcpy</code> не имеет права это делать — действительно, ведь так мы перезапишем какие-то данные в нашей программе, будет «проезд» по памяти. А если мы писали по невыровненному адресу, то эти лишние байты могут быть расположены на невыделенной странице виртуальной памяти или на странице без доступа на запись. Тогда мы получим segfault (это хорошо).<br/>
+<br/>
+Но в нашем случае мы почти всегда можем писать лишние байты. Можем считывать лишние байты в input-буфере до тех пор, пока лишние байты расположены в нём целиком. При тех же условиях мы можем записать лишние байты в output-буфер — потому что на следующей итерации мы их всё равно перезапишем.<br/>
+<br/>
+Эта оптимизация уже есть в оригинальной реализации LZ4:<br/>
+<br/>
+<pre>inline void copy8(UInt8 * dst, const UInt8 * src)
+{
+    memcpy(dst, src, 8);    /// На самом деле здесь memcpy не вызывается.
+}
+
+inline void wildCopy8(UInt8 * dst, const UInt8 * src, UInt8 * dst_end)
+{
+    do
+    {
+        copy8(dst, src);
+        dst += 8;
+        src += 8;
+    } while (dst &lt; dst_end);
+}</pre><br/>
+Чтобы воспользоваться такой оптимизацией, нужно лишь проверять, что мы находимся достаточно далеко от границы буфера. Это должно быть бесплатно, потому что мы и так проверяем выход за границы буфера. А обработку последних нескольких байт — «хвостика» данных — можно делать уже после основного цикла.<br/>
+<br/>
+Впрочем, всё равно есть некоторые тонкости. В цикле два копирования — литерала и матча. Но при использовании функции LZ4_decompress_fast (вместо LZ4_decompress_safe) проверка выполняется один раз — когда нам нужно скопировать литерал. При копировании матча проверка не выполняется, но в самой <a href="https://github.com/lz4/lz4/blob/master/doc/lz4_Block_format.md">спецификации формата LZ4</a> есть условия, которые позволяют её избежать:<br/>
+<br/>
+<blockquote>The last 5 bytes are always literals<br/>
+The last match must start at least 12 bytes before end of block.<br/>
+Consequently, a block with less than 13 bytes cannot be compressed.</blockquote><br/>
+Специально подобранные входные данные могут вызвать «проезд» по памяти. Если вы используете функцию LZ4_decompress_fast, вам нужна защита от плохих данных. Сжатые данные надо по крайней мере чек-суммировать. А если вам нужна защита от злоумышленника, то используйте функцию LZ4_decompress_safe. Другие варианты: берите криптографическую хэш-функцию в качестве чек-суммы, но это почти наверное убьёт всю производительность; либо выделяйте больше памяти для буферов; либо выделяйте память для буферов отдельным вызовом mmap и создайте guard page.<br/>
+<br/>
+Когда я вижу код, который копирует данные по 8 байт, сразу спрашиваю — а почему именно по 8 байт? Можно копировать по 16 байт, используя SSE-регистры:<br/>
+<br/>
+<pre>inline void copy16(UInt8 * dst, const UInt8 * src)
+{
+#if __SSE2__
+    _mm_storeu_si128(reinterpret_cast&lt;__m128i *>(dst),
+        _mm_loadu_si128(reinterpret_cast&lt;const __m128i *>(src)));
+#else
+    memcpy(dst, src, 16);
+#endif
+}
+
+inline void wildCopy16(UInt8 * dst, const UInt8 * src, UInt8 * dst_end)
+{
+    do
+    {
+        copy16(dst, src);
+        dst += 16;
+        src += 16;
+    } while (dst &lt; dst_end);
+}</pre><br/>
+Аналогично работает копирование 32 байт для AVX и 64 байт для AVX-512. Кроме того, можно развернуть цикл в несколько раз. Если вы когда-нибудь смотрели, как реализована <code>memcpy</code>, то в ней именно такой подход. (Кстати, компилятор в данном случае не будет ни разворачивать, ни векторизовывать цикл: это потребует вставки громоздких проверок.) <br/>
+<br/>
+Почему в оригинальной реализации LZ4 так не сделано? Во-первых, неочевидно, лучше это или хуже. Результат зависит от размеров фрагментов, которые нужно копировать. Вдруг они все короткие и лишняя работа будет ни к чему? А во-вторых, это рушит те условия в формате LZ4, которые позволяют избежать лишнего бранча во внутреннем цикле.<br/>
+<br/>
+Тем не менее, будем пока держать этот вариант в уме.<br/>
+<br/>
+<h3>Хитрые копирования</h3><br/>
+Вернёмся к вопросу — всегда ли можно таким образом копировать данные? Предположим, нам нужно скопировать матч — то есть скопировать фрагмент памяти из output-буфера, находящийся на некотором смещении позади от курсора, в позицию этого курсора.<br/>
+<br/>
+Представим простой случай — нужно скопировать 5 байт по смещению 12:<br/>
+<br/>
+<code><font color="#0fc000">Hello</font> world ...........<br/>
+^^^^^ - src<br/>
+            ^^^^^ - dst<br/>
+<br/>
+Hello world <font color="#0fc000">Hello</font> <font color="#a8a8a8">wo</font>...<br/>
+^^^^^ - src<br/>
+            ^^^^^ - dst</code><br/>
+<br/>
+Но есть более сложный случай — когда нам нужно скопировать фрагмент памяти, длина которого больше смещения. То есть он частично указывает на данные, которые ещё не были записаны в output-буфер.<br/>
+<br/>
+Копируем 10 байт по смещению 3:<br/>
+<br/>
+<code><font color="#0fc000">abc</font>.............<br/>
+^^^^^^^^^^ - src<br/>
+   ^^^^^^^^^^ - dst<br/>
+<br/>
+abc<font color="#0fc000">abcabcabca</font>...<br/>
+^^^^^^^^^^ - src<br/>
+   ^^^^^^^^^^ - dst</code><br/>
+<br/>
+В процессе сжатия у нас есть все данные, и такой матч вполне может найтись. Функция <code>memcpy</code> не подходит для того, чтобы его скопировать: она не поддерживает случай, когда диапазоны фрагментов памяти пересекаются. Кстати, функция <code>memmove</code> тоже не подходит, потому что фрагмент памяти, откуда нужно брать данные, ещё не полностью инициализирован. Копировать нужно так же, как если бы мы копировали побайтово.<br/>
+<br/>
+<pre>op[0] = match[0];
+op[1] = match[1];
+op[2] = match[2];
+op[3] = match[3];
+...</pre><br/>
+<br/>
+Вот как это работает:<br/>
+<br/>
+<code><font color="#0fc000">a</font>bc<font color="#0fc000">a</font>............<br/>
+^ - src<br/>
+   ^ - dst<br/>
+<br/>
+a<font color="#0fc000">b</font>ca<font color="#0fc000">b</font>...........<br/>
+ ^ - src<br/>
+    ^ - dst<br/>
+<br/>
+ab<font color="#0fc000">c</font>ab<font color="#0fc000">c</font>..........<br/>
+  ^ - src<br/>
+     ^ - dst<br/>
+<br/>
+abc<font color="#0fc000">a</font>bc<font color="#0fc000">a</font>.........<br/>
+   ^ - src<br/>
+      ^ - dst<br/>
+<br/>
+abca<font color="#0fc000">b</font>ca<font color="#0fc000">b</font>........<br/>
+    ^ - src<br/>
+       ^ - dst</code><br/>
+<br/>
+То есть мы должны создать повторяющуюся последовательность. В оригинальной реализации LZ4 для этого написан удивительно непонятный код:<br/>
+<br/>
+<pre>const unsigned dec32table[] = {0, 1, 2, 1, 4, 4, 4, 4};
+const int dec64table[] = {0, 0, 0, -1, 0, 1, 2, 3};
+
+const int dec64 = dec64table[offset];
+op[0] = match[0];
+op[1] = match[1];
+op[2] = match[2];
+op[3] = match[3];
+match += dec32table[offset];
+memcpy(op+4, match, 4);
+match -= dec64;</pre><br/>
+Мы копируем первые 4 байта побайтово, смещаемся на какое-то магическое число, копируем следующие 4 байта целиком, смещаем указатель на match на другое магическое число. Автор кода (<a href="http://fastcompression.blogspot.com">Ян Коллет</a>) по какой-то нелепой причине забыл оставить комментарий, что это значит. К тому же имена переменных запутывают. Обе называются dec...table, но одну из них мы прибавляем, а другую — вычитаем. Кроме того, ещё одна из них имеет тип unsigned, а другая — int. Впрочем, стоит отдать должное: как раз недавно автор улучшил это место в коде.<br/>
+<br/>
+Вот как на самом деле это работает. Копируем первые 4 байта побайтово:<br/>
+<br/>
+<code>abc<font color="#0fc000">abca</font>.........<br/>
+^^^^ - src<br/>
+   ^^^^ - dst</code><br/>
+<br/>
+Теперь можно скопировать 4 байта сразу:<br/>
+<br/>
+<code>abcabca<font color="#0fc000">bcab</font>.....<br/>
+ ^^^^ - src<br/>
+       ^^^^ - dst</code><br/>
+<br/>
+Можно продолжить как обычно, копируя 8 байт сразу:<br/>
+<br/>
+<code>abcabcabcab<font color="#0fc000">cabcabca</font>.....<br/>
+  ^^^^^^^^ - src<br/>
+           ^^^^^^^^ - dst</code><br/>
+<br/>
+Как вы знаете из опыта, иногда лучший способ понять код — это переписать его. Вот что получилось:<br/>
+<br/>
+<pre>inline void copyOverlap8(UInt8 * op, const UInt8 *&amp; match, const size_t offset)
+{
+    /// 4 % n.
+    /// Or if 4 % n is zero, we use n.
+    /// It gives equivalent result, but is better CPU friendly for unknown reason.
+    static constexpr int shift1[] = { 0, 1, 2, 1, 4, 4, 4, 4 };
+
+    /// 8 % n - 4 % n
+    static constexpr int shift2[] = { 0, 0, 0, 1, 0, -1, -2, -3 };
+
+    op[0] = match[0];
+    op[1] = match[1];
+    op[2] = match[2];
+    op[3] = match[3];
+
+    match += shift1[offset];
+    memcpy(op + 4, match, 4);
+    match += shift2[offset];
+}</pre><br/>
+Производительность, конечно же, не изменилась никак. Впрочем, я очень хотел попробовать оптимизацию, в которой обычное копирование — сразу по 16 байт.<br/>
+<br/>
+Но это усложняет «особый случай» и приводит к тому, что он вызывается чаще (условие <code>offset &lt; 16</code> выполнено не реже, чем <code>offset &lt; 8</code>). Копирование (начала) пересекающихся диапазонов для случая 16-байтных копирований выглядит так:<br/>
+<br/>
+<pre>inline void copyOverlap16(UInt8 * op, const UInt8 *&amp; match, const size_t offset)
+{
+    /// 4 % n.
+    static constexpr int shift1[]
+        = { 0,  1,  2,  1,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4 };
+
+    /// 8 % n - 4 % n
+    static constexpr int shift2[]
+        = { 0,  0,  0,  1,  0, -1, -2, -3, -4,  4,  4,  4,  4,  4,  4,  4 };
+
+    /// 16 % n - 8 % n
+    static constexpr int shift3[]
+        = { 0,  0,  0, -1,  0, -2,  2,  1,  8, -1, -2, -3, -4, -5, -6, -7 };
+
+    op[0] = match[0];
+    op[1] = match[1];
+    op[2] = match[2];
+    op[3] = match[3];
+
+    match += shift1[offset];
+    memcpy(op + 4, match, 4);
+    match += shift2[offset];
+    memcpy(op + 8, match, 8);
+    match += shift3[offset];
+}</pre><br/>
+Можно ли реализовать именно эту функцию оптимальнее? Хотелось бы, чтобы для такого сложного кода нашлась магическая SIMD-инструкция, ведь мы всего лишь хотим записать 16 байт, которые целиком состоят из нескольких байт входных данных (от 1 до 15). Их, в свою очередь, нужно просто повторить в правильном порядке.<br/>
+<br/>
+Такая инструкция есть — она называется <code>pshufb</code> (от слов packed shuffle bytes) и входит в SSSE3 (три буквы S). Она принимает два 16-байтных регистра. В одном регистре содержатся исходные данные. В другом — «селектор»: в каждом байте записано число от 0 до 15 — в зависимости от того, из какого байта исходного регистра взять результат. Или, если значение байта селектора больше 127 — заполнить соответствующий байт результата нулём.<br/>
+<br/>
+Вот пример:<br/>
+<br/>
+<pre>xmm0: abc.............
+xmm1: 0120120120120120
+
+pshufb %xmm1, %xmm0
+
+xmm0: abcabcabcabcabca</pre><br/>
+Каждый байт результата мы заполнили выбранным нами байтом исходных данных — это как раз то что надо! Вот как выглядит код в результате:<br/>
+<br/>
+<pre>inline void copyOverlap16Shuffle(UInt8 * op, const UInt8 *&amp; match, const size_t offset)
+{
+#ifdef __SSSE3__
+
+    static constexpr UInt8 __attribute__((__aligned__(16))) masks[] =
+    {
+        0,  1,  2,  1,  4,  1,  4,  2,  8,  7,  6,  5,  4,  3,  2,  1, /* offset = 0, not used as mask, but for shift amount instead */
+        0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, /* offset = 1 */
+        0,  1,  0,  1,  0,  1,  0,  1,  0,  1,  0,  1,  0,  1,  0,  1,
+        0,  1,  2,  0,  1,  2,  0,  1,  2,  0,  1,  2,  0,  1,  2,  0,
+        0,  1,  2,  3,  0,  1,  2,  3,  0,  1,  2,  3,  0,  1,  2,  3,
+        0,  1,  2,  3,  4,  0,  1,  2,  3,  4,  0,  1,  2,  3,  4,  0,
+        0,  1,  2,  3,  4,  5,  0,  1,  2,  3,  4,  5,  0,  1,  2,  3,
+        0,  1,  2,  3,  4,  5,  6,  0,  1,  2,  3,  4,  5,  6,  0,  1,
+        0,  1,  2,  3,  4,  5,  6,  7,  0,  1,  2,  3,  4,  5,  6,  7,
+        0,  1,  2,  3,  4,  5,  6,  7,  8,  0,  1,  2,  3,  4,  5,  6,
+        0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  0,  1,  2,  3,  4,  5,
+        0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10,  0,  1,  2,  3,  4,
+        0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11,  0,  1,  2,  3,
+        0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12,  0,  1,  2,
+        0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13,  0,  1,
+        0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14,  0,
+    };
+
+    _mm_storeu_si128(reinterpret_cast&lt;__m128i *>(op),
+        _mm_shuffle_epi8(
+            _mm_loadu_si128(reinterpret_cast&lt;const __m128i *>(match)),
+            _mm_load_si128(reinterpret_cast&lt;const __m128i *>(masks) + offset)));
+
+    match += masks[offset];
+
+#else
+    copyOverlap16(op, match, offset);
+#endif
+}</pre><br/>
+Здесь <code>_mm_shuffle_epi8</code> — это <a href="https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_shuffle_epi8">intrinsic</a>, разворачивающийся в инструкцию <code>pshufb</code>.<br/>
+<br/>
+Можно ли сделать такую операцию для большего числа байт сразу, используя более новые инструкции? Ведь SSSE3 — очень старый набор инструкций, существующий с 2006 года. В AVX2 есть инструкция, которая делает это сразу для 32 байт, но только независимо для отдельных 16-байтных фрагментов. Она называется уже не packed shuffle bytes, а vector permute bytes — слова другие, а смысл такой же. В AVX-512 VBMI есть ещё одна инструкция, работающая сразу для 64 байт, но процессоры с её поддержкой появились совсем недавно. Похожие инструкции также есть в ARM NEON — они называются vtbl (vector table lookup), но позволяют записывать только 8 байт.<br/>
+<br/>
+Кроме того, существует вариант инструкции <code>pshufb</code> с 64-битными MMX-регистрами, чтобы сформировать 8 байт. Он как раз подходит для замены исходного варианта кода. Правда, вместо неё я решил всё равно использовать вариант, работающий с 16 байтами (по серьёзным причинам).<br/>
+<br/>
+На конференции Highload++ Siberia после моего доклада ко мне подошёл слушатель и сказал, что для случая 8 байт можно просто использовать умножение на специально подобранную константу (также потребуется сдвиг) — я об этом раньше даже не думал!<br/>
+<br/>
+<h3>Как убрать лишний if</h3><br/>
+Допустим, я хочу использовать вариант, копирующий по 16 байт. Как избежать необходимости дополнительной проверки выхода за границы буфера?<br/>
+<br/>
+Я решил, что вообще не буду делать эту проверку. В комментарии к функции будет написано, что разработчику следует выделить кусок памяти на указанное количество байт больше, чем требуется, чтобы позволить нам читать и писать туда ненужный мусор. Интерфейс функции станет неудобным, но это уже другие проблемы.<br/>
+<br/>
+Впрочем, могут возникнуть негативные последствия. Допустим, данные, которые нам надо разжимать, были сформированы из блоков по 65 536 байт. Тогда пользователь даёт нам фрагмент памяти размером 65 536 байт для разжатых данных. Но с новым интерфейсом функции пользователь будет обязан выделить фрагмент памяти, например, из 65 551 байта. Тогда аллокатор, вполне возможно, будет вынужден на самом деле выделить 96 или даже 128 килобайт — в зависимости от его реализации. Если же аллокатор очень плохой, он может внезапно перестать кэшировать фрагмент памяти у себя в «куче» и начать каждый раз использовать mmap для выделения памяти (либо освобождать память с помощью madvice). Такой процесс будет ужасно медленным из-за page faults. В итоге маленькая попытка оптимизации может привести к тому, что всё начнёт тормозить.<br/>
+<br/>
+<h3>Есть ли ускорение?</h3><br/>
+Итак, я сделал вариант кода, в котором применены три оптимизации:<br/>
+<br/>
+<ol>
+<li>Копируем по 16 байт вместо 8.</li>
+<li>Используются shuffle-инструкции для случая <code>offset &lt; 16</code>.</li>
+<li>Убран один лишний if.</li>
+</ol><br/>
+Я стал тестировать этот код на самых разных наборах данных и получил неожиданные результаты.<br/>
+<br/>
+Пример 1:<br/>
+Xeon E2650v2, данные Яндекс.Браузера, столбец AppVersion.<br/>
+reference: 1.67 GB/sec. <br/>
+16 bytes, shuffle: 2.94 GB/sec (на 76% быстрее).<br/>
+<br/>
+Пример 2:<br/>
+Xeon E2650v2, данные Яндекс.Директа, столбец ShowsSumPosition.<br/>
+reference: 2.30 GB/sec. <br/>
+16 bytes, shuffle: 1.91 GB/sec (на 20% медленнее).<br/>
+<br/>
+Сначала я увидел, что всё ускорилось на десятки процентов и успел обрадоваться. Потом на других файлах увидел, что ничего не ускорилось. Ещё на каких-то замедлилось, хоть и ненамного. Я сделал вывод, что результаты зависят от коэффициента сжатия. Чем больше сжат файл — тем больше преимущество от перехода на 16 байт. Это естественно: чем больше коэффициент сжатия, тем больше средняя длина фрагментов, которые нужно копировать.<br/>
+<br/>
+Чтобы лучше разобраться, я с помощью шаблонов C++ сделал варианты кода для четырёх случаев: оперируем 8- или 16- байтными кусочками; используем или не используем shuffle-инструкцию.<br/>
+<br/>
+<pre>template &lt;size_t copy_amount, bool use_shuffle>
+void NO_INLINE decompressImpl(
+     const char * const source,
+     char * const dest,
+     size_t dest_size)</pre><br/>
+На разных файлах выигрывали совершенно разные варианты кода, но при тестировании на рабочем компьютере вариант с shuffle всегда выигрывал. На рабочем компьютере тестировать неудобно, приходится делать так:<br/>
+<br/>
+<pre>sudo echo 'performance' | tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor
+kill -STOP $(pidof firefox) $(pidof chromium)</pre><br/>
+Потом я пошёл на один из старых «разработческих» серверов (c процессором Xeon E5645), достал ещё больше наборов данных и получил почти диаметрально противоположные результаты, которые меня окончательно запутали. Выяснилось, что выбор оптимального алгоритма определяется не только коэффициентом сжатия, но и моделью процессора. От неё зависит то, когда лучше использовать shuffle-инструкцию, а также порог, начиная с которого лучше использовать 16-байтные копирования.<br/>
+<br/>
+Кстати при тестировании на серверах имеет смысл делать так:<br/>
+<br/>
+<pre>sudo kill -STOP $(pidof python) $(pidof perl) $(pgrep -u skynet) $(pidof cqudp-client)</pre><br/>
+Иначе результаты будут нестабильными. Также следите за thermal throttling и power capping.<br/>
+<br/>
+<h3>Как выбрать лучший алгоритм</h3><br/>
+Итак, у нас есть четыре варианта алгоритма, и нужно в зависимости от условий выбирать лучший. Можно было бы создать репрезентативный набор данных и железа, затем провести хорошее нагрузочное тестирование и выбрать тот метод, который лучше в среднем. Но у нас нет репрезентативного набора данных. Для тестирования я взял выборку данных Метрики, Директа, Браузера и авиаперелётов в США. Но этого недостаточно: ClickHouse используется сотнями компаний по всему миру, и переоптимизировав его на одном наборе данных, мы можем не заметить падения производительности с другими данными. А если результаты зависят от модели процессора, придётся явно вписывать условия в код и тестировать его на каждой модели (либо смотреть справочные данные по таймингам инструкций — как считаете?). В любом случае это слишком трудоёмко.<br/>
+<br/>
+Тогда я решил использовать другой метод, который очевиден для коллег, которые не зря учились в ШАДе. Это <a href="https://learnforeverlearn.com/bandits/">«многорукие бандиты»</a>. Суть в том, что вариант алгоритма выбирается случайным образом, а затем мы на основе статистики начинаем чаще выбирать те варианты, которые хорошо себя показали.<br/>
+<br/>
+У нас есть много блоков данных, которые нужно разжать. То есть нужны независимые вызовы функции разжатия данных. Мы можем для каждого блока выбирать какой-нибудь из четырёх алгоритмов и измерять время его работы. Такая операция обычно ничего не стоит по сравнению с обработкой блока данных — а в ClickHouse блок несжатых данных составляет минимум 64 КБ. (Прочтите <a href="http://btorpey.github.io/blog/2014/02/18/clock-sources-in-linux/">статью</a> про измерение времени.)<br/>
+<br/>
+Чтобы понять, как конкретно работает алгоритм «многорукие бандиты», узнаем, почему он так называется. Это аналогия с автоматами в казино, у которых есть несколько ручек, которые можно дёрнуть, чтобы получить какое-то случайное количество денег. Игрок может много раз дёргать ручки в любой выбираемой им последовательности. У каждой ручки есть фиксированное соответствующее ей вероятностное распределение количества выдаваемых денег, но игрок его не знает и может лишь оценить его, исходя из опыта игры. Тогда он сумеет максимизировать свою выгоду.<br/>
+<br/>
+Один из подходов к максимизации выигрыша состоит в том, чтобы на каждом шаге оценивать вероятностное распределение для каждой ручки, исходя из статистики игры на предыдущих шагах. Затем в уме «разыгрываем» случайный выигрыш для каждой ручки, основываясь на полученных распределениях. И затем дёргаем ту ручку, для которой разыгранный в уме исход оказался лучше. Этот подход называется Thompson Sampling.<br/>
+<br/>
+Мы, в свою очередь, должны выбрать алгоритм разжатия. Результат — время работы в пикосекундах на байт: чем меньше, тем лучше. Будем считать время работы случайной величиной и оценивать её распределение. Чтобы оценивать распределение случайной величины, надо использовать методы математической статистики. Для таких задач часто используют байесовский подход, но было бы неэффективно вписывать сложные формулы в код на C++. Можно использовать параметрический подход — сказать, что случайная величина принадлежит какому-то семейству случайных величин, зависящих от параметров; и затем оценивать эти параметры.<br/>
+<br/>
+Как выбрать семейство случайных величин? Для примера мы могли бы считать, что время выполнения кода имеет нормальное распределение. Но это абсолютно неверно. Во-первых, время выполнения не может быть отрицательным, а нормальное распределение принимает значения на всей числовой прямой. Во-вторых, время выполнения, как я предполагаю, имеет большой «хвост» справа.<br/>
+<br/>
+Впрочем, есть факторы, исходя из которых использовать оценку нормального распределения лишь для целей Thompson Sampling — неплохая идея (даже несмотря на то, что распределение искомой величины заведомо не является нормальным). Причина в том, что необходимая оценка матожидания и дисперсии выполняется очень просто, а после достаточного количества итераций нормальное распределение станет более-менее узким, не сильно отличающимся от распределений, которые мы бы получили другими методами. Если нас не очень сильно интересует скорость сходимости на первых шагах, то такими деталями можно пренебречь.<br/>
+<br/>
+С одной стороны, это несколько «невежественный» подход. Из опыта известно, что среднее время выполнения запроса, загрузки сайта и так далее представляет собой «мусор», который не имеет смысла вычислять. Лучше было бы вычислять медиану — <a href="https://en.wikipedia.org/wiki/Robust_statistics">робастную статистику</a>. Но это несколько сложнее, и как я покажу дальше, для практических целей описанный метод себя оправдывает.<br/>
+<br/>
+Сначала я реализовал расчёт матожидания и дисперсии, а потом решил, что это слишком хорошо, и нужно упростить код, чтобы получилось «хуже»:<br/>
+<br/>
+<pre>/// For better convergence, we don't use proper estimate of stddev.
+/// We want to eventually separate between two algorithms even in case
+///  when there is no statistical significant difference between them.
+double sigma() const
+{
+    return mean() / sqrt(adjustedCount());
+}
+
+double sample(pcg64 &amp; rng) const
+{
+    ...
+    return std::normal_distribution&lt;>(mean(), sigma())(rng);
+}</pre><br/>
+Я написал всё так, чтобы первые несколько итераций не учитывались — чтобы исключить эффект memory latencies.<br/>
+<br/>
+Получилась тестовая программа, которая умеет сама подбирать лучший алгоритм на входных данных, а в качестве дополнительных режимов работы — использовать референсную реализацию LZ4 либо фиксированный вариант алгоритма.<br/>
+<br/>
+Таким образом, есть шесть вариантов работы:<br/>
+— reference (baseline): оригинальный LZ4 без наших модификаций;<br/>
+— variant 0: копировать по 8 байт, не использовать shuffle;<br/>
+— variant 1: копировать по 8 байт, использовать shuffle;<br/>
+— variant 2: копировать по 16 байт, не использовать shuffle;<br/>
+— variant 3: копировать по 16 байт, использовать shuffle;<br/>
+— «бандитский» вариант, который сам во время работы выбирает лучший из четырёх перечисленных оптимизированных вариантов.<br/>
+<br/>
+<h3>Тестирование на разных CPU</h3><br/>
+Если результат сильно зависит от модели CPU, было бы любопытно изучить, как именно. Может быть, на некоторых CPU разница особенно большая?<br/>
+<br/>
+Я подготовил набор датасетов из разных таблиц в ClickHouse с реальными данными, всего 256 разных файлов по 100 МБ несжатых данных (число 256 просто совпало). И посмотрел, какие CPU у серверов, на которых я могу запустить бенчмарки. Я нашёл серверы с такими CPU:<br/>
+— Intel® Xeon® CPU E5-2650 v2 @ 2.60GHz<br/>
+— Intel® Xeon® CPU E5-2660 v4 @ 2.00GHz<br/>
+— Intel® Xeon® CPU E5-2660 0 @ 2.20GHz<br/>
+— Intel® Xeon® CPU E5645 @ 2.40GHz<br/>
+— Intel Xeon E312xx (Sandy Bridge)<br/>
+— AMD Opteron(TM) Processor 6274<br/>
+— AMD Opteron(tm) Processor 6380<br/>
+— Intel® Xeon® CPU E5-2683 v4 @ 2.10GHz<br/>
+— Intel® Xeon® CPU E5530 @ 2.40GHz<br/>
+— Intel® Xeon® CPU E5440 @ 2.83GHz<br/>
+— Intel® Xeon® CPU E5-2667 v2 @ 3.30GHz<br/>
+<br/>
+Дальше самое интересное — процессоры, предоставленные отделом R&amp;D:<br/>
+— AMD EPYC 7351 16-Core Processor — новый серверный процессор AMD.<br/>
+— Cavium ThunderX2 — а это вообще не x86, а AArch64. Для них мои SIMD-оптимизации потребовалось немного переделывать. На сервере определяется 224 логических и 56 физических ядер.<br/>
+<br/>
+Всего 13 серверов, на каждом из которых запускается тест на 256 файлах в 6 вариантах (reference, 0, 1, 2, 3, adaptive), причём тест запускаем 10 раз, чередуя варианты вперемешку. Получается 199 680 результатов, и их можно сравнивать.<br/>
+<br/>
+Например, можно сравнить разные CPU между собой. Но не стоит делать поспешные выводы из этих результатов: мы тестируем только алгоритм разжатия LZ4 на одном ядре (очень узкий кейс — получается микробенчмарк). К примеру, у Cavium самое слабое ядро. Но я тестировал на нём сам ClickHouse, и он «рвёт» Xeon E5-2650 v2 на тяжёлых запросах за счёт превосходства по количеству ядер, даже несмотря на отсутствие многих оптимизаций, которые в ClickHouse делаются только для x86.<br/>
+<br/>
+<pre>┌─cpu───────────────────┬──ref─┬─adapt─┬──max─┬─best─┬─adapt_boost─┬─max_boost─┬─adapt_over_max─┐
+│ E5-2667 v2 @ 3.30GHz  │ 2.81 │  3.19 │ 3.15 │    3 │        1.14 │      1.12 │           1.01 │
+│ E5-2650 v2 @ 2.60GHz  │ 2.5  │  2.84 │ 2.81 │    3 │        1.14 │      1.12 │           1.01 │
+│ E5-2683 v4 @ 2.10GHz  │ 2.26 │  2.63 │ 2.59 │    3 │        1.16 │      1.15 │           1.02 │
+│ E5-2660 v4 @ 2.00GHz  │ 2.15 │  2.49 │ 2.46 │    3 │        1.16 │      1.14 │           1.01 │
+│ AMD EPYC 7351         │ 2.03 │  2.44 │ 2.35 │    3 │        1.20 │      1.16 │           1.04 │
+│ E5-2660 0 @ 2.20GHz   │ 2.13 │  2.39 │ 2.37 │    3 │        1.12 │      1.11 │           1.01 │
+│ E312xx (Sandy Bridge) │ 1.97 │  2.2  │ 2.18 │    3 │        1.12 │      1.11 │           1.01 │
+│ E5530 @ 2.40GHz       │ 1.65 │  1.93 │ 1.94 │    3 │        1.17 │      1.18 │           0.99 │
+│ E5645 @ 2.40GHz       │ 1.65 │  1.92 │ 1.94 │    3 │        1.16 │      1.18 │           0.99 │
+│ AMD Opteron 6380      │ 1.47 │  1.58 │ 1.56 │    1 │        1.07 │      1.06 │           1.01 │
+│ AMD Opteron 6274      │ 1.15 │  1.35 │ 1.35 │    1 │        1.17 │      1.17 │              1 │
+│ E5440 @ 2.83GHz       │ 1.35 │  1.33 │ 1.42 │    1 │        0.99 │      1.05 │           0.94 │
+│ Cavium ThunderX2      │ 0.84 │  0.87 │ 0.87 │    0 │        1.04 │      1.04 │              1 │
+└───────────────────────┴──────┴───────┴──────┴──────┴─────────────┴───────────┴────────────────┘</pre><br/>
+ref, adapt, max — это скорость в гигабайтах в секунду (величина, обратная к среднему арифметическому времени по всем запускам на всех наборах данных). best — номер лучшего алгоритма среди оптимизированных вариантов, от 0 до 3. adapt_boost — относительное преимущество адаптивного алгоритма по сравнению с baseline. max_boost — относительное преимущество лучшего из неадаптивных вариантов по сравнению с baseline. adapt_over_max — относительное преимущество адаптивного алгоритма по сравнению с лучшим неадаптивным.<br/>
+<br/>
+Как видно, на современных процессорах x86 мы смогли ускорить разжатие на 12–20%. Даже на ARM мы получили плюс 4%, несмотря на то, что мы уделили меньше внимания оптимизации под эту архитектуру. Также заметно, что в среднем по разным наборам данных «бандитский» алгоритм выигрывает у выбранного наперёд лучшего варианта на всех процессорах кроме очень старых Intel.<br/>
+<br/>
+<h3>Выводы</h3><br/>
+На практике проделанная работа имеет сомнительную полезность. Да, само разжатие LZ4 ускорилось в среднем на 12–20%, а на отдельных наборах данных есть даже более чем двухкратный прирост производительности. Но в целом на время выполнения запроса это влияет существенно меньше. Не так легко найти настоящие запросы, на которых преимущество в скорости будет более пары процентов.<br/>
+<br/>
+Стоит иметь в виду, что на нескольких кластерах Метрики, предназначенных для выполнения «длинных» запросов, мы решили использовать ZStandard level 1 вместо LZ4: на холодных данных важнее экономить IO и место на дисках.<br/>
+<br/>
+Наибольшие преимущества от оптимизации разжатия наблюдаются на сильно сжимающихся данных — например, на столбцах с повторяющимися строковыми значениями. Но специально для этого сценария у нас разработано отдельное решение, которое позволяет ускорить такие запросы на порядки.<br/>
+<br/>
+Ещё одно полезное соображение: оптимизация скорости алгоритма сжатия часто ограничена форматом сжатых данных. LZ4 использует очень хороший формат, но у Lizard, Density и LZSSE другие форматы, которые могут работать быстрее. Возможно, вместо попыток ускорить LZ4 было бы лучше просто подключить LZSSE к ClickHouse.<br/>
+<br/>
+Внедрение этих оптимизаций в саму библиотеку LZ4 маловероятно: для их использования нужно изменить или дополнить интерфейс библиотеки. На самом деле это очень частый случай при улучшении алгоритмов: оптимизации не укладываются в старые абстракции, требуют их пересмотра. В то же время в оригинальной имплементации уже сейчас исправлено довольно много названий. Например, в части inc- и dec-таблиц теперь всё <a href="https://github.com/lz4/lz4/blob/dev/lib/lz4.c#L313">правильно</a>. Кроме того, несколько недель назад оригинальная имплементация ускорила разжатие на те же 12–15% с помощью копирования по 32 байта, а не по 16, как указано выше. Мы и сами пробовали вариант с 32 байтами — результаты получились не такими классными, но в целом ускорение <a href="https://habrastorage.org/webt/d0/jn/ia/d0jniaidtjaqnnu2ek3fbznv8ji.png">тоже есть</a>.<br/>
+<br/>
+Если посмотреть на профиль в начале статьи, можно заметить, что мы могли бы убрать одно лишнее копирование из page cache в userspace (либо с помощью mmap, либо с помощью O_DIRECT и userspace page cache — оба варианта сопряжены с проблемами), а также немного улучшить вычисление чек-сумм (сейчас используется CityHash128 без CRC32-C, а можно взять HighwayHash, FARSH или XXH3). Ускорение этих двух операций полезно для слабо сжимающихся данных, так как они производятся над сжатыми данными.<br/>
+<br/>
+В любом случае, изменения уже добавлены в master, а полученные в результате этого исследования идеи нашли применение в других задачах. Вот <a href="https://www.youtube.com/watch?v=V2CqQBICt7M">видео</a> с HighLoad++ Siberia, а вот <a href="https://yandex.github.io/clickhouse-presentations/highload_siberia_2018/">презентация</a>.</div></div> <!----> <!----></div> <div class="tm-article-presenter__meta"><div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Теги:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5B%D0%B1%D0%B0%D0%B7%D1%8B%20%D0%B4%D0%B0%D0%BD%D0%BD%D1%8B%D1%85%5D" class="tm-tags-list__link">базы данных</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5B%D1%81%D0%B6%D0%B0%D1%82%D0%B8%D0%B5%20%D0%B4%D0%B0%D0%BD%D0%BD%D1%8B%D1%85%5D" class="tm-tags-list__link">сжатие данных</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5BC%2B%2B%5D" class="tm-tags-list__link">C++</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Blz4%5D" class="tm-tags-list__link">lz4</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Blz77%5D" class="tm-tags-list__link">lz77</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bperformance%5D" class="tm-tags-list__link">performance</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bhighload%5D" class="tm-tags-list__link">highload</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bclickhouse%5D" class="tm-tags-list__link">clickhouse</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bbayesian%20optimization%5D" class="tm-tags-list__link">bayesian optimization</a></li></ul></div> <div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Хабы:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/company/yandex/blog/" class="tm-hubs-list__link router-link-active">
+    Блог компании Яндекс
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/hi/" class="tm-hubs-list__link">
+    Высокая производительность
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/open_source/" class="tm-hubs-list__link">
+    Open source
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/cpp/" class="tm-hubs-list__link">
+    C++
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/bigdata/" class="tm-hubs-list__link">
+    Big Data
+  </a></li></ul></div></div></article></div> <!----></div> <div class="tm-article-sticky-panel"><div class="tm-data-icons tm-article-sticky-panel__icons"><div class="tm-article-rating tm-data-icons__item"><div class="tm-votes-meter tm-article-rating__votes-switcher"><svg height="16" width="16" class="tm-svg-img tm-votes-meter__icon tm-votes-meter__icon_medium"><title>Всего голосов 66: ↑63 и ↓3</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-rating"></use></svg> <span title="Всего голосов 66: ↑63 и ↓3" class="tm-votes-meter__value tm-votes-meter__value_positive tm-votes-meter__value_medium">+60</span></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----> <span title="Количество просмотров" class="tm-icon-counter tm-data-icons__item"><svg height="16" width="16" class="tm-svg-img tm-icon-counter__icon"><title>Просмотры</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-views"></use></svg> <span class="tm-icon-counter__value">10K</span></span> <button title="Добавить в закладки" type="button" class="bookmarks-button tm-data-icons__item"><span title="Добавить в закладки" class="tm-svg-icon__wrapper bookmarks-button__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Добавить в закладки</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-favorite"></use></svg></span> <span title="Количество пользователей, добавивших публикацию в закладки" class="bookmarks-button__counter">
+    52
+  </span></button> <!----> <div title="Поделиться" class="tm-sharing tm-data-icons__item"><button type="button" class="tm-sharing__button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="tm-sharing__icon"><path fill="currentColor" d="M10.33.275l9.047 7.572a.2.2 0 010 .306l-9.048 7.572a.2.2 0 01-.328-.153V11c-8 0-9.94 6-9.94 6S-1 5 10 5V.428a.2.2 0 01.328-.153z"></path></svg></button> <!----></div> <DIV class="v-portal" style="display:none;"></DIV></div> </div></div> <!----> <!----> <div class="tm-article-presenter__footer"><div class="tm-article-blocks"><!----> <section class="tm-block tm-block_spacing-bottom"><!----> <div class="tm-block__body tm-block__body_variant-balanced"><div class="tm-article-author"><div class="tm-article-author__company"><div class="tm-article-author__company-card"><div class="tm-company-snippet"><a href="/ru/company/yandex/profile/" class="tm-company-snippet__logo-link"><div class="tm-entity-image"><img alt="" height="40" src="//habrastorage.org/getpro/habr/company/b02/d9b/1d4/b02d9b1d4a6e64ff069e2ab32fdedae2.png" width="40" class="tm-entity-image__pic"></div></a> <div class="tm-company-snippet__info"><a href="/ru/company/yandex/profile/" class="tm-company-snippet__title">Яндекс</a> <div class="tm-company-snippet__description">Как мы делаем Яндекс</div></div></div> <div class="tm-article-author__buttons"><!----> <!----></div></div> <div class="tm-article-author__company-contacts"><a href="https://github.com/yandex" rel="noopener" target="_blank" class="tm-article-author__contact">
+      Github
+    </a></div> <div class="tm-article-author__separator"></div></div> <div class="tm-user-card tm-article-author__user-card tm-user-card_variant-article"><div class="tm-user-card__info-container"><div class="tm-user-card__header"><div class="tm-user-card__header-data"><a href="/ru/users/o6CuFl2Q/" class="tm-user-card__userpic tm-user-card__userpic_size-40"><div class="tm-entity-image"><svg class="tm-svg-img tm-image-placeholder tm-image-placeholder_lilac"><!----> <use xlink:href="/img/megazord-v24.ce74655c.svg#placeholder-user"></use></svg></div></a> <div class="tm-user-card__meta"><div title=" 94 голоса " class="tm-karma tm-user-card__karma"><div class="tm-karma__votes tm-karma__votes_positive">
+    92
+  </div> <div class="tm-karma__text">
+    Карма
+  </div></div> <div title="Рейтинг пользователя" class="tm-rating tm-user-card__rating"><div class="tm-rating__header"> <div class="tm-rating__counter">0</div></div> <div class="tm-rating__text">
+    Рейтинг
+  </div></div></div></div></div> <div class="tm-user-card__info tm-user-card__info_variant-article"><div class="tm-user-card__title tm-user-card__title_variant-article"><span class="tm-user-card__name tm-user-card__name_variant-article">Алексей</span> <a href="/ru/users/o6CuFl2Q/" class="tm-user-card__nickname tm-user-card__nickname_variant-article">
+          @o6CuFl2Q
+        </a> <!----></div> <p class="tm-user-card__short-info tm-user-card__short-info_variant-article">Разработчик</p></div></div> <div class="tm-user-card__buttons tm-user-card__buttons_variant-article"><!----> <!----> <!----> <!----> <!----></div></div> <!----></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----></section> <div class="tm-article-blocks__comments"><div class="tm-article-page-comments"><div class="tm-article-comments-counter-link tm-article-comments-counter-button"><a href="/ru/company/yandex/blog/452778/comments/" class="tm-article-comments-counter-link__link tm-article-comments-counter-link__link_button-style"><svg height="16" width="16" class="tm-svg-img tm-article-comments-counter-link__icon tm-article-comments-counter-link__icon_contrasted"><title>Комментарии</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-comments"></use></svg> <span class="tm-article-comments-counter-link__value tm-article-comments-counter-link__value_contrasted">
+       Комментарии 15 
+    </span></a> <!----></div></div></div>  <!---->  <!----> <!----></div></div></div></div></div> <div class="tm-page__sidebar"><div class="tm-layout-sidebar"><div class="tm-layout-sidebar__placeholder_initial"></div> <div class="tm-sexy-sidebar tm-sexy-sidebar_initial" style="margin-top:0px;"><!----> <section class="tm-block tm-block_spacing-bottom"><header class="tm-block__header"><h2 class="tm-block__title">Информация</h2> <!----></header> <div class="tm-block__body"><div class="tm-company-basic-info"><dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Дата основания</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><time datetime="1997-09-22T20:00:00.000Z" title="1997-09-23, 00:00">23  сентября  1997</time></dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Местоположение</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap">
+    Россия
+  </dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Сайт</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><a href="http://www.yandex.ru/" target="_blank" class="tm-company-basic-info__link">
+      www.yandex.ru
+    </a></dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Численность</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap">
+    свыше 10 000 человек
+  </dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Дата регистрации</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><time datetime="2008-08-09T07:42:31.000Z" title="2008-08-09, 11:42">9  августа  2008</time></dd></dl> <!----></div></div> <!----></section> <div class="tm-company-widgets"></div> <!----></div></div></div></div></div></div></main> <!----></div> <div class="tm-footer-menu"><div class="tm-page-width"><div class="tm-footer-menu__container"><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Ваш аккаунт
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr/?back=/ru/company/yandex/blog/452778/&amp;hl=ru" rel="nofollow" target="_self">
+                Войти
+              </a></li><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr-register/?back=/ru/company/yandex/blog/452778/&amp;hl=ru" rel="nofollow" target="_self">
+                Регистрация
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Разделы
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/" class="footer-menu__item-link router-link-active">
+                Публикации
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/news/" class="footer-menu__item-link">
+                Новости
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/hubs/" class="footer-menu__item-link">
+                Хабы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/companies/" class="footer-menu__item-link">
+                Компании
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/users/" class="footer-menu__item-link">
+                Авторы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/sandbox/" class="footer-menu__item-link">
+                Песочница
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Информация
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/docs/help/" class="footer-menu__item-link">
+                Устройство сайта
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/authors/codex/" class="footer-menu__item-link">
+                Для авторов
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/companies/corpblogs/" class="footer-menu__item-link">
+                Для компаний
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/docs/transparency/" class="footer-menu__item-link">
+                Документы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/agreement" target="_blank">
+                Соглашение
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/confidential/" target="_blank">
+                Конфиденциальность
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Услуги
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQLwRfQmXibiUlWaRg-BAc38s7oM3lJiaPju7qmdJsp8ysIvZ_G-Npem0njJLMozE2bPHMpDqiI5hhy/pub?start=false&amp;loop=false&amp;delayms=60000&amp;slide=id.g91a03369cd_4_297" target="_blank">
+                Реклама
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://habrastorage.org/storage/stuff/habr/service_price.pdf" target="_blank">
+                Тарифы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQJJds8-Di7BQSP_guHxICN7woVYoN5NP_22ra-BIo4bqnTT9FR6fB-Ku2P0AoRpX0Ds-LRkDeAoD8F/pub?start=false&amp;loop=false&amp;delayms=60000" target="_blank">
+                Контент
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://tmtm.timepad.ru/" target="_blank">
+                Семинары
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/megaprojects/" class="footer-menu__item-link">
+                Мегапроекты
+              </a></li></ul></div></div></div></div></div> <div class="tm-footer"><div class="tm-page-width"><div class="tm-footer__container"><!----> <div class="tm-footer__social"><a href="https://www.facebook.com/habrahabr.ru" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Facebook</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-facebook"></use></svg></a><a href="https://twitter.com/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Twitter</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-twitter"></use></svg></a><a href="https://vk.com/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>VK</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-vkontakte"></use></svg></a><a href="https://telegram.me/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Telegram</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-telegram"></use></svg></a><a href="https://www.youtube.com/channel/UCd_sTwKqVrweTt4oAKY5y4w" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Youtube</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-youtube"></use></svg></a><a href="https://zen.yandex.ru/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Яндекс Дзен</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-zen"></use></svg></a></div> <DIV class="v-portal" style="display:none;"></DIV> <button class="tm-footer__link"><!---->
+        Настройка языка
+      </button> <a href="/ru/about" class="tm-footer__link">
+        О сайте
+      </a> <a href="/ru/feedback/" class="tm-footer__link">
+        Техническая поддержка
+      </a> <!----> <a href="/berserk-mode-nope" class="tm-footer__link">
+        Вернуться на старую версию
+      </a> <div class="tm-footer-copyright"><span class="tm-copyright"><span class="tm-copyright__years">© 2006–2021 </span> <span class="tm-copyright__name">«<a href="https://company.habr.com/" rel="noopener" target="_blank" class="tm-copyright__link">Habr</a>»</span></span></div></div></div></div> <!----> <!----></div> <div class="vue-portal-target"></div></div>
+<script>window.__INITIAL_STATE__={"adblock":{"hasAcceptableAdsFilter":false,"hasAdblock":false},"articlesList":{"articlesList":{"452778":{"id":"452778","timePublished":"2019-05-21T11:14:22+00:00","isCorporative":true,"lang":"ru","titleHtml":"Как ускорить разжатие LZ4 в ClickHouse","leadData":{"textHtml":"При выполнении запросов в ClickHouse можно обратить внимание, что в профайлере на одном из первых мест часто видна функция LZ_decompress_fast. Почему так происходит? Этот вопрос стал поводом для целого исследования по выбору лучшего алгоритма разжатия. Здесь я публикую исследование целиком, а короткую версию можно узнать из моего \u003Ca href=\"https:\u002F\u002Fwww.youtube.com\u002Fwatch?v=V2CqQBICt7M\"\u003Eдоклада\u003C\u002Fa\u003E на HighLoad++ Siberia.\u003Cbr\u003E\r\n\u003Cbr\u003E\r\nДанные в ClickHouse хранятся в сжатом виде. А во время выполнения запросов ClickHouse старается почти ничего не делать — использовать минимум ресурсов CPU. Бывает, что все вычисления, на которые могло тратиться время, уже хорошо оптимизированы, да и запрос хорошо написан пользователем. Тогда остаётся выполнить разжатие.\u003Cbr\u003E\r\n\u003Cbr\u003E\r\n\u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fpost_images\u002F057\u002F302\u002Faba\u002F057302aba5041790af404c2c781c4dd3.png\"\u003E\u003Cbr\u003E\r\n\u003Cbr\u003E\r\nВопрос — почему разжатие LZ4 может быть узким местом? Казалось бы, LZ4 — \u003Ca href=\"https:\u002F\u002Fgithub.com\u002Flz4\u002Flz4\u002F\"\u003Eочень лёгкий алгоритм\u003C\u002Fa\u003E: скорость разжатия, в зависимости от данных, обычно составляет от 1 до 3 ГБ\u002Fс на одно процессорное ядро. Это уже существенно больше скорости работы дисковой подсистемы. Более того, мы используем все доступные ядра, а разжатие линейно масштабируется по всем физическим ядрам.\u003Cbr\u003E","imageUrl":null,"buttonTextHtml":"Читать дальше →","image":null},"editorVersion":"1.0","postType":"article","postLabels":[],"author":{"scoreStats":{"score":92,"votesCount":94},"rating":0,"relatedData":null,"contacts":[],"authorContacts":[],"paymentDetails":{"paymentYandexMoney":null,"paymentPayPalMe":null,"paymentWebmoney":null},"id":"1071388","alias":"o6CuFl2Q","fullname":"Алексей","avatarUrl":null,"speciality":"Разработчик"},"statistics":{"commentsCount":15,"favoritesCount":52,"readingCount":10189,"score":60,"votesCount":66},"hubs":[{"relatedData":null,"id":"4991","alias":"yandex","type":"corporative","title":"Блог компании Яндекс","titleHtml":"Блог компании Яндекс","isProfiled":false},{"relatedData":null,"id":"4","alias":"hi","type":"collective","title":"Высокая производительность","titleHtml":"Высокая производительность","isProfiled":true},{"relatedData":null,"id":"144","alias":"open_source","type":"collective","title":"Open source","titleHtml":"Open source","isProfiled":true},{"relatedData":null,"id":"559","alias":"cpp","type":"collective","title":"C++","titleHtml":"C++","isProfiled":true},{"relatedData":null,"id":"17795","alias":"bigdata","type":"collective","title":"Big Data","titleHtml":"Big Data","isProfiled":true}],"flows":[{"id":"1","alias":"develop","title":"Разработка"}],"relatedData":null,"textHtml":"\u003Cdiv xmlns=\"http:\u002F\u002Fwww.w3.org\u002F1999\u002Fxhtml\"\u003EПри выполнении запросов в ClickHouse можно обратить внимание, что в профайлере на одном из первых мест часто видна функция LZ_decompress_fast. Почему так происходит? Этот вопрос стал поводом для целого исследования по выбору лучшего алгоритма разжатия. Здесь я публикую исследование целиком, а короткую версию можно узнать из моего \u003Ca href=\"https:\u002F\u002Fwww.youtube.com\u002Fwatch?v=V2CqQBICt7M\"\u003Eдоклада\u003C\u002Fa\u003E на HighLoad++ Siberia.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nДанные в ClickHouse хранятся в сжатом виде. А во время выполнения запросов ClickHouse старается почти ничего не делать — использовать минимум ресурсов CPU. Бывает, что все вычисления, на которые могло тратиться время, уже хорошо оптимизированы, да и запрос хорошо написан пользователем. Тогда остаётся выполнить разжатие.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fpost_images\u002F057\u002F302\u002Faba\u002F057302aba5041790af404c2c781c4dd3.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВопрос — почему разжатие LZ4 может быть узким местом? Казалось бы, LZ4 — \u003Ca href=\"https:\u002F\u002Fgithub.com\u002Flz4\u002Flz4\u002F\"\u003Eочень лёгкий алгоритм\u003C\u002Fa\u003E: скорость разжатия, в зависимости от данных, обычно составляет от 1 до 3 ГБ\u002Fс на одно процессорное ядро. Это уже существенно больше скорости работы дисковой подсистемы. Более того, мы используем все доступные ядра, а разжатие линейно масштабируется по всем физическим ядрам.\u003Cbr\u002F\u003E\r\n\u003Ca name=\"habracut\"\u003E\u003C\u002Fa\u003E\u003Cbr\u002F\u003E\r\nНо следует иметь в виду два момента. Во-первых, с диска читаются сжатые данные, а скорость разжатия приведена в количестве несжатых данных. Если коэффициент сжатия достаточно большой, то с дисков почти ничего не надо считывать. Но при этом разжатых данных образуется много, и разумеется, это влияет на расход CPU: объём работы по разжатию данных в случае LZ4 почти пропорционален объёму самих разжатых данных.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВо-вторых, чтение данных с дисков может не требоваться вообще, если данные находятся в кэше. Для этого можно полагаться на page cache или использовать свой собственный кэш. В столбцовых БД использование кэша более эффективно за счёт того, что в него попадают не все столбцы, а только часто используемые. Вот почему LZ4 в смысле нагрузки на CPU часто является узким местом.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nОтсюда ещё два вопроса. Если разжатие данных «тормозит», то может, их вообще не стоит сжимать? Но на практике это предположение бессмысленно. Недавно в ClickHouse можно было настроить всего два варианта сжатия данных — LZ4 и \u003Ca href=\"https:\u002F\u002Fgithub.com\u002Ffacebook\u002Fzstd\u002F\"\u003EZstandard\u003C\u002Fa\u003E. По умолчанию используется LZ4. Переключившись на Zstandard, можно сделать сжатие сильнее и медленнее. А вот полностью отключить сжатие ещё совсем недавно было нельзя — LZ4 рассматривается как разумный минимум, который можно использовать всегда. Именно поэтому я очень люблю LZ4. :)\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nНо недавно в англоязычном \u003Ca href=\"https:\u002F\u002Ft.me\u002Fclickhouse_en\"\u003Eчате поддержки\u003C\u002Fa\u003E ClickHouse появился таинственный незнакомец, который рассказал, что у него очень быстрая дисковая подсистема (NVMe SSD) и всё упирается в сжатие — неплохо было бы иметь возможность его выключить. Я ответил, что такой возможности нет, но её легко добавить. Через несколько дней нам пришёл \u003Ca href=\"https:\u002F\u002Fgithub.com\u002Fyandex\u002FClickHouse\u002Fpull\u002F1045\"\u003Eпул-реквест\u003C\u002Fa\u003E, в котором реализуется метод сжатия \u003Ccode\u003Enone\u003C\u002Fcode\u003E. Я попросил привести результаты — насколько это помогло, насколько ускорились запросы. Человек сказал, что эта новая фича оказалась бесполезной на практике, поскольку данные без сжатия стали занимать слишком много места.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВторой возникающий вопрос: если есть кэш, почему бы не хранить в нём уже разжатые данные? Это допускается — во многих случаях так удастся избавиться от необходимости разжатия. И в ClickHouse есть такой кэш — \u003Ca href=\"https:\u002F\u002Fclickhouse.yandex\u002Fdocs\u002Fru\u002Foperations\u002Fsettings\u002Fsettings\u002F#use_uncompressed_cache\"\u003Eкэш разжатых блоков\u003C\u002Fa\u003E. Но на него жалко тратить много оперативки из-за его низкой эффективности. Он оправдывает себя только на мелких, идущих подряд запросах, которые используют почти одни и те же данные.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nОбщее соображение: данные надо сжимать, желательно всегда. Всегда записывайте их на диск со сжатием. Передавайте по сети тоже со сжатием. На мой взгляд, сжатие по умолчанию следует считать оправданным даже при передаче в 10-гигабитной сети без переподписки в пределах дата-центра, а передавать данные без сжатия между дата-центрами вообще недопустимо.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch3\u003EПочему именно LZ4\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\nПочему же используется именно LZ4? Можно ли подобрать нечто ещё более лёгкое? В принципе, можно, и это правильно и полезно. Но давайте сначала рассмотрим, к какому классу алгоритмов относится LZ4.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВо-первых, он не зависит от типа данных. К примеру, если вы заранее знаете, что у вас будет массив целых чисел, то можете использовать один из многочисленных вариантов алгоритма VarInt — так будет эффективнее по CPU. Во-вторых, LZ4 не слишком сильно зависит от требуемых допущений на модель данных. Предположим, у вас есть упорядоченный временной ряд показаний датчика — массив с числами типа float. Тогда вы можете посчитать дельты, а затем сжимать дальше, и это будет эффективнее по коэффициенту сжатия.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nТо есть LZ4 можно без проблем использовать для любых массивов байтов — для любых файлов. Конечно, у него есть своя специализация (об этом ниже), и в некоторых случаях его использование бессмысленно. Но если его назвать алгоритмом общего назначения, это будет небольшой ошибкой. И заметим, что, благодаря внутреннему устройству, LZ4 в качестве частного случая автоматом реализует алгоритм \u003Ca href=\"https:\u002F\u002Fen.wikipedia.org\u002Fwiki\u002FRun-length_encoding\"\u003ERLE\u003C\u002Fa\u003E.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nДругой вопрос: неужели LZ4 — наиболее оптимальный алгоритм данного класса по совокупности скорости и силы сжатия? Такие алгоритмы называются pareto frontier — это значит, что не существует другого алгоритма, который строго лучше по одному показателю и не хуже по другим (да ещё и на широком множестве датасетов). Есть алгоритмы, которые быстрее, но дают меньший коэффициент сжатия, а есть те, которые сжимают сильнее, но при этом медленнее сжимают или разжимают.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nНа самом деле LZ4 — не pareto frontier. Есть варианты, которые чуть-чуть лучше. Например, это \u003Ca href=\"https:\u002F\u002Fsites.google.com\u002Fsite\u002Fpowturbo\u002F\"\u003ELZTURBO\u003C\u002Fa\u003E от некоего \u003Ca href=\"https:\u002F\u002Fgithub.com\u002Fpowturbo\"\u003Epowturbo\u003C\u002Fa\u003E. В достоверности результатов можно не сомневаться благодаря сообществу на encode.ru (крупнейшем и примерно единственном форуме по сжатию данных). Но разработчик не распространяет ни исходники, ни бинарники, а только даёт их ограниченному кругу лиц для тестирования или за кучу денег (вроде никто до сих пор не заплатил). Также стоит обратить внимание на \u003Ca href=\"https:\u002F\u002Fgithub.com\u002Finikep\u002Flizard\u002F\"\u003ELizard\u003C\u002Fa\u003E (бывший LZ5) и \u003Ca href=\"https:\u002F\u002Fgithub.com\u002Fcentaurean\u002Fdensity\"\u003EDensity\u003C\u002Fa\u003E. Они могут работать чуть лучше LZ4 при выборе некоторого уровня сжатия. Также обратите внимание на \u003Ca href=\"https:\u002F\u002Fgithub.com\u002FConorStokes\u002FLZSSE\u002F\"\u003ELZSSE\u003C\u002Fa\u003E — крайне интересная вещь. Впрочем, посмотреть на неё лучше после прочтения этой статьи.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch3\u003EКак работает LZ4\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\nДавайте рассмотрим, как вообще работает LZ4. Это одна из реализаций алгоритма LZ77: L и Z указывают на фамилии авторов (Лемпель и Зив), а 77 — на 1977 год, когда алгоритм был опубликован. У него множество других реализаций: QuickLZ, FastLZ, BriefLZ, LZF, LZO, а также gzip и zip в случае использования низких уровней сжатия.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nСжатый с помощью LZ4 блок данных содержит последовательность записей (команд, инструкций) двух видов:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Col\u003E\r\n\u003Cli\u003EЛитерал (literals): «возьми следующие N байт как есть и скопируй их в результат».\u003C\u002Fli\u003E\r\n\u003Cli\u003EМатч (match, совпадение): «возьми N байт, которые уже были в разжатом результате по смещению offset от текущей позиции».\u003C\u002Fli\u003E\r\n\u003C\u002Fol\u003E\u003Cbr\u002F\u003E\r\nПример. До сжатия:\u003Cbr\u002F\u003E\r\n\u003Ccode\u003EHello world Hello\u003C\u002Fcode\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПосле сжатия:\u003Cbr\u002F\u003E\r\n\u003Ccode\u003Eliterals 12 \"Hello world \" match 5 12\u003C\u002Fcode\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЕсли взять сжатый блок и пройтись по нему курсором, выполняя эти команды, то мы получим в качестве результата исходные, разжатые данные.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nМы примерно рассмотрели, как данные разжимаются. Также ясна суть: для выполнения сжатия алгоритм кодирует повторяющиеся последовательности байт с помощью матчей. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЯсны и некоторые свойства. Этот алгоритм byte-oriented — он не препарирует отдельные байты, а лишь копирует их целиком. Здесь кроется отличие, например, от энтропийного кодирования. Для примера, \u003Ca href=\"https:\u002F\u002Fgithub.com\u002Ffacebook\u002Fzstd\u002F\"\u003Ezstd\u003C\u002Fa\u003E является композицией LZ77 и энтропийного кодирования.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЗаметим, что размер сжатого блока выбирается не слишком большим, чтобы не тратить много оперативки во время разжатия; чтобы не сильно замедлить random access в сжатом файле (который состоит из множества сжатых блоков); и иногда — чтобы блок помещался в какой-нибудь кэш CPU. Например, можно выбрать 64 КБ — так буферы для сжатых и несжатых данных поместятся в L2-кэш и половина ещё останется.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЕсли нам потребуется сжать файл большего размера, мы просто будем конкатенировать сжатые блоки. Заодно рядом с каждым сжатым блоком удобно расположить дополнительные данные — размеры, чек-сумму.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nМаксимальное смещение для матча ограничено, в LZ4 — 64 килобайтами. Эта величина называется sliding window. Действительно, это значит, что по мере продвижения курсора вперёд совпадения могут находиться в окне размером 64 килобайта до курсора, которое движется вместе с курсором.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nТеперь рассмотрим, как сжать данные — другими словами, как найти в файле совпадающие последовательности. Конечно, вы можете использовать suffix trie (классно, если вы о нём слышали). Есть варианты, при которых в процессе сжатия среди предыдущих байт гарантированно находится самая длинная совпадающая последовательность. Это называется optimal parsing и даёт \u003Ca href=\"http:\u002F\u002Ffastcompression.blogspot.com\u002F2011\u002F12\u002Fadvanced-parsing-strategies.html\"\u003Eпочти\u003C\u002Fa\u003E лучший коэффициент сжатия для фиксированного формата сжатого блока. Но есть и более эффективные варианты — когда мы находим какое-нибудь достаточно хорошее совпадение в данных, но не обязательно самое длинное. Самый эффективный способ его найти — использовать хэш-таблицу.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nДля этого проходимся по исходному блоку данных курсором и берём несколько байт после курсора. Например, 4 байта. Хэшируем их и кладём в хэш-таблицу смещение от начала блока — где эти 4 байта встретились. Величина 4 называется min-match — с помощью такой хэш-таблицы мы можем отыскать совпадения минимум в 4 байта.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЕсли мы посмотрели в хэш-таблицу, а там уже есть запись, и если смещение не превышает sliding window, то мы проверяем, сколько ещё байт совпадает после этих четырёх байт. Может быть, там ещё много чего совпадает. Возможно и такое, что в хэш-таблице возникла коллизия и не совпадает ничего. Это нормально — можно просто заменить значение в хэш-таблице на новое. Коллизии в хэш-таблице будут просто приводить к меньшему коэффициенту сжатия, поскольку найдётся меньше совпадений. Кстати, такой вид хэш-таблиц (фиксированного размера и без разрешения коллизий) называется cache table, кэш-таблица. Это тоже логично — в случае коллизии кэш-таблица просто забывает про старую запись.\u003Cbr\u002F\u003E\r\n\u003Cblockquote\u003EЗадача для внимательного читателя. Пусть данные — это массив чисел типа UInt32 в формате little endian, представляющий собой часть последовательности натуральных чисел: 0, 1, 2… Объясните, почему при использовании LZ4 эти данные не сжимаются (объём сжатых данных оказывается не меньше, чем объём несжатых данных).\u003C\u002Fblockquote\u003E \u003Ch3\u003EКак всё ускорить\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\nИтак, я хочу ускорить разжатие LZ4. Давайте посмотрим, что из себя представляет цикл разжатия. Вот этот цикл в псевдокоде:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003Ewhile (...)\n{\n    read(input_pos, literal_length, match_length);\n\n    copy(output_pos, input_pos, literal_length);\n    output_pos += literal_length;\n\n    read(input_pos, match_offset);\n\n    copy(output_pos, output_pos - match_offset,\n        match_length);\n    output_pos += match_length;\n}\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nФормат LZ4 устроен так, что в сжатом файле литералы и матчи чередуются. И очевидно, первым всегда идёт literal (потому что с самого начала матч ещё неоткуда взять). Поэтому их длины кодируются вместе.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nНа самом деле всё чуть-чуть сложнее. Из файла читается один байт, и из него берутся две половинки (nibble), в которых закодированы числа от 0 до 15. Если соответствующее число не равно 15, то оно считается длиной литерала и матча соответственно. А если оно равно 15, то длина больше и она закодирована в следующих байтах. Тогда считывается следующий байт, и его значение прибавляется к длине. Далее, если оно равно 255, то мы продолжаем — считываем следующий байт так же.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nОтметим, что максимальный коэффициент сжатия для формата LZ4 не достигает 255. И второе (бесполезное) наблюдение: если ваши данные очень избыточны, то применение LZ4 дважды позволит увеличить коэффициент сжатия.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nКогда мы прочитали длину литерала (а затем так же — длину матча и смещение матча), для разжатия достаточно просто скопировать два фрагмента памяти.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch3\u003EКак копировать фрагмент памяти\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\nКазалось бы, можно использовать функцию \u003Ccode\u003Ememcpy\u003C\u002Fcode\u003E, которая как раз предназначена для копирования фрагментов памяти. Но это неоптимально и всё-таки некорректно.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПочему использовать функцию memcpy неоптимально? Потому что она:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Col\u003E\r\n\u003Cli\u003Eобычно находится в библиотеке libc (а библиотека libc обычно линкуется динамически, и вызов memcpy будет идти косвенно, через PLT),\u003C\u002Fli\u003E\r\n\u003Cli\u003Eне инлайнится с неизвестным в compile time аргументом size,\u003C\u002Fli\u003E\r\n\u003Cli\u003Eделает много усилий для корректной обработки «хвостов» фрагмента памяти, не кратных размеру машинного слова или регистра.\u003C\u002Fli\u003E\r\n\u003C\u002Fol\u003E\u003Cbr\u002F\u003E\r\nПоследний пункт самый важный. Допустим, мы попросили функцию memcpy скопировать ровно 5 байт. Было бы очень хорошо скопировать сразу 8 байт, использовав для этого две инструкции movq.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ccode\u003EHello world \u003Cfont color=\"#0fc000\"\u003EHello \u003C\u002Ffont\u003E\u003Cfont color=\"#ff0000\"\u003Ewo\u003C\u002Ffont\u003E...\u003Cbr\u002F\u003E\r\n^^^^^\u003Cfont color=\"#ff0000\"\u003E^^^\u003C\u002Ffont\u003E - src\u003Cbr\u002F\u003E\r\n            ^^^^^\u003Cfont color=\"#ff0000\"\u003E^^^\u003C\u002Ffont\u003E - dst\u003C\u002Fcode\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nНо тогда мы скопируем три лишних байта — то есть будем писать за границу переданного буфера. Функция \u003Ccode\u003Ememcpy\u003C\u002Fcode\u003E не имеет права это делать — действительно, ведь так мы перезапишем какие-то данные в нашей программе, будет «проезд» по памяти. А если мы писали по невыровненному адресу, то эти лишние байты могут быть расположены на невыделенной странице виртуальной памяти или на странице без доступа на запись. Тогда мы получим segfault (это хорошо).\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nНо в нашем случае мы почти всегда можем писать лишние байты. Можем считывать лишние байты в input-буфере до тех пор, пока лишние байты расположены в нём целиком. При тех же условиях мы можем записать лишние байты в output-буфер — потому что на следующей итерации мы их всё равно перезапишем.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЭта оптимизация уже есть в оригинальной реализации LZ4:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003Einline void copy8(UInt8 * dst, const UInt8 * src)\n{\n    memcpy(dst, src, 8);    \u002F\u002F\u002F На самом деле здесь memcpy не вызывается.\n}\n\ninline void wildCopy8(UInt8 * dst, const UInt8 * src, UInt8 * dst_end)\n{\n    do\n    {\n        copy8(dst, src);\n        dst += 8;\n        src += 8;\n    } while (dst &lt; dst_end);\n}\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nЧтобы воспользоваться такой оптимизацией, нужно лишь проверять, что мы находимся достаточно далеко от границы буфера. Это должно быть бесплатно, потому что мы и так проверяем выход за границы буфера. А обработку последних нескольких байт — «хвостика» данных — можно делать уже после основного цикла.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВпрочем, всё равно есть некоторые тонкости. В цикле два копирования — литерала и матча. Но при использовании функции LZ4_decompress_fast (вместо LZ4_decompress_safe) проверка выполняется один раз — когда нам нужно скопировать литерал. При копировании матча проверка не выполняется, но в самой \u003Ca href=\"https:\u002F\u002Fgithub.com\u002Flz4\u002Flz4\u002Fblob\u002Fmaster\u002Fdoc\u002Flz4_Block_format.md\"\u003Eспецификации формата LZ4\u003C\u002Fa\u003E есть условия, которые позволяют её избежать:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cblockquote\u003EThe last 5 bytes are always literals\u003Cbr\u002F\u003E\r\nThe last match must start at least 12 bytes before end of block.\u003Cbr\u002F\u003E\r\nConsequently, a block with less than 13 bytes cannot be compressed.\u003C\u002Fblockquote\u003E\u003Cbr\u002F\u003E\r\nСпециально подобранные входные данные могут вызвать «проезд» по памяти. Если вы используете функцию LZ4_decompress_fast, вам нужна защита от плохих данных. Сжатые данные надо по крайней мере чек-суммировать. А если вам нужна защита от злоумышленника, то используйте функцию LZ4_decompress_safe. Другие варианты: берите криптографическую хэш-функцию в качестве чек-суммы, но это почти наверное убьёт всю производительность; либо выделяйте больше памяти для буферов; либо выделяйте память для буферов отдельным вызовом mmap и создайте guard page.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nКогда я вижу код, который копирует данные по 8 байт, сразу спрашиваю — а почему именно по 8 байт? Можно копировать по 16 байт, используя SSE-регистры:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003Einline void copy16(UInt8 * dst, const UInt8 * src)\n{\n#if __SSE2__\n    _mm_storeu_si128(reinterpret_cast&lt;__m128i *\u003E(dst),\n        _mm_loadu_si128(reinterpret_cast&lt;const __m128i *\u003E(src)));\n#else\n    memcpy(dst, src, 16);\n#endif\n}\n\ninline void wildCopy16(UInt8 * dst, const UInt8 * src, UInt8 * dst_end)\n{\n    do\n    {\n        copy16(dst, src);\n        dst += 16;\n        src += 16;\n    } while (dst &lt; dst_end);\n}\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nАналогично работает копирование 32 байт для AVX и 64 байт для AVX-512. Кроме того, можно развернуть цикл в несколько раз. Если вы когда-нибудь смотрели, как реализована \u003Ccode\u003Ememcpy\u003C\u002Fcode\u003E, то в ней именно такой подход. (Кстати, компилятор в данном случае не будет ни разворачивать, ни векторизовывать цикл: это потребует вставки громоздких проверок.) \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПочему в оригинальной реализации LZ4 так не сделано? Во-первых, неочевидно, лучше это или хуже. Результат зависит от размеров фрагментов, которые нужно копировать. Вдруг они все короткие и лишняя работа будет ни к чему? А во-вторых, это рушит те условия в формате LZ4, которые позволяют избежать лишнего бранча во внутреннем цикле.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nТем не менее, будем пока держать этот вариант в уме.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch3\u003EХитрые копирования\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\nВернёмся к вопросу — всегда ли можно таким образом копировать данные? Предположим, нам нужно скопировать матч — то есть скопировать фрагмент памяти из output-буфера, находящийся на некотором смещении позади от курсора, в позицию этого курсора.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПредставим простой случай — нужно скопировать 5 байт по смещению 12:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ccode\u003E\u003Cfont color=\"#0fc000\"\u003EHello\u003C\u002Ffont\u003E world ...........\u003Cbr\u002F\u003E\r\n^^^^^ - src\u003Cbr\u002F\u003E\r\n            ^^^^^ - dst\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nHello world \u003Cfont color=\"#0fc000\"\u003EHello\u003C\u002Ffont\u003E \u003Cfont color=\"#a8a8a8\"\u003Ewo\u003C\u002Ffont\u003E...\u003Cbr\u002F\u003E\r\n^^^^^ - src\u003Cbr\u002F\u003E\r\n            ^^^^^ - dst\u003C\u002Fcode\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nНо есть более сложный случай — когда нам нужно скопировать фрагмент памяти, длина которого больше смещения. То есть он частично указывает на данные, которые ещё не были записаны в output-буфер.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nКопируем 10 байт по смещению 3:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ccode\u003E\u003Cfont color=\"#0fc000\"\u003Eabc\u003C\u002Ffont\u003E.............\u003Cbr\u002F\u003E\r\n^^^^^^^^^^ - src\u003Cbr\u002F\u003E\r\n   ^^^^^^^^^^ - dst\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nabc\u003Cfont color=\"#0fc000\"\u003Eabcabcabca\u003C\u002Ffont\u003E...\u003Cbr\u002F\u003E\r\n^^^^^^^^^^ - src\u003Cbr\u002F\u003E\r\n   ^^^^^^^^^^ - dst\u003C\u002Fcode\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВ процессе сжатия у нас есть все данные, и такой матч вполне может найтись. Функция \u003Ccode\u003Ememcpy\u003C\u002Fcode\u003E не подходит для того, чтобы его скопировать: она не поддерживает случай, когда диапазоны фрагментов памяти пересекаются. Кстати, функция \u003Ccode\u003Ememmove\u003C\u002Fcode\u003E тоже не подходит, потому что фрагмент памяти, откуда нужно брать данные, ещё не полностью инициализирован. Копировать нужно так же, как если бы мы копировали побайтово.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003Eop[0] = match[0];\nop[1] = match[1];\nop[2] = match[2];\nop[3] = match[3];\n...\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВот как это работает:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ccode\u003E\u003Cfont color=\"#0fc000\"\u003Ea\u003C\u002Ffont\u003Ebc\u003Cfont color=\"#0fc000\"\u003Ea\u003C\u002Ffont\u003E............\u003Cbr\u002F\u003E\r\n^ - src\u003Cbr\u002F\u003E\r\n   ^ - dst\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\na\u003Cfont color=\"#0fc000\"\u003Eb\u003C\u002Ffont\u003Eca\u003Cfont color=\"#0fc000\"\u003Eb\u003C\u002Ffont\u003E...........\u003Cbr\u002F\u003E\r\n ^ - src\u003Cbr\u002F\u003E\r\n    ^ - dst\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nab\u003Cfont color=\"#0fc000\"\u003Ec\u003C\u002Ffont\u003Eab\u003Cfont color=\"#0fc000\"\u003Ec\u003C\u002Ffont\u003E..........\u003Cbr\u002F\u003E\r\n  ^ - src\u003Cbr\u002F\u003E\r\n     ^ - dst\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nabc\u003Cfont color=\"#0fc000\"\u003Ea\u003C\u002Ffont\u003Ebc\u003Cfont color=\"#0fc000\"\u003Ea\u003C\u002Ffont\u003E.........\u003Cbr\u002F\u003E\r\n   ^ - src\u003Cbr\u002F\u003E\r\n      ^ - dst\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nabca\u003Cfont color=\"#0fc000\"\u003Eb\u003C\u002Ffont\u003Eca\u003Cfont color=\"#0fc000\"\u003Eb\u003C\u002Ffont\u003E........\u003Cbr\u002F\u003E\r\n    ^ - src\u003Cbr\u002F\u003E\r\n       ^ - dst\u003C\u002Fcode\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nТо есть мы должны создать повторяющуюся последовательность. В оригинальной реализации LZ4 для этого написан удивительно непонятный код:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003Econst unsigned dec32table[] = {0, 1, 2, 1, 4, 4, 4, 4};\nconst int dec64table[] = {0, 0, 0, -1, 0, 1, 2, 3};\n\nconst int dec64 = dec64table[offset];\nop[0] = match[0];\nop[1] = match[1];\nop[2] = match[2];\nop[3] = match[3];\nmatch += dec32table[offset];\nmemcpy(op+4, match, 4);\nmatch -= dec64;\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nМы копируем первые 4 байта побайтово, смещаемся на какое-то магическое число, копируем следующие 4 байта целиком, смещаем указатель на match на другое магическое число. Автор кода (\u003Ca href=\"http:\u002F\u002Ffastcompression.blogspot.com\"\u003EЯн Коллет\u003C\u002Fa\u003E) по какой-то нелепой причине забыл оставить комментарий, что это значит. К тому же имена переменных запутывают. Обе называются dec...table, но одну из них мы прибавляем, а другую — вычитаем. Кроме того, ещё одна из них имеет тип unsigned, а другая — int. Впрочем, стоит отдать должное: как раз недавно автор улучшил это место в коде.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВот как на самом деле это работает. Копируем первые 4 байта побайтово:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ccode\u003Eabc\u003Cfont color=\"#0fc000\"\u003Eabca\u003C\u002Ffont\u003E.........\u003Cbr\u002F\u003E\r\n^^^^ - src\u003Cbr\u002F\u003E\r\n   ^^^^ - dst\u003C\u002Fcode\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nТеперь можно скопировать 4 байта сразу:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ccode\u003Eabcabca\u003Cfont color=\"#0fc000\"\u003Ebcab\u003C\u002Ffont\u003E.....\u003Cbr\u002F\u003E\r\n ^^^^ - src\u003Cbr\u002F\u003E\r\n       ^^^^ - dst\u003C\u002Fcode\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nМожно продолжить как обычно, копируя 8 байт сразу:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ccode\u003Eabcabcabcab\u003Cfont color=\"#0fc000\"\u003Ecabcabca\u003C\u002Ffont\u003E.....\u003Cbr\u002F\u003E\r\n  ^^^^^^^^ - src\u003Cbr\u002F\u003E\r\n           ^^^^^^^^ - dst\u003C\u002Fcode\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nКак вы знаете из опыта, иногда лучший способ понять код — это переписать его. Вот что получилось:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003Einline void copyOverlap8(UInt8 * op, const UInt8 *&amp; match, const size_t offset)\n{\n    \u002F\u002F\u002F 4 % n.\n    \u002F\u002F\u002F Or if 4 % n is zero, we use n.\n    \u002F\u002F\u002F It gives equivalent result, but is better CPU friendly for unknown reason.\n    static constexpr int shift1[] = { 0, 1, 2, 1, 4, 4, 4, 4 };\n\n    \u002F\u002F\u002F 8 % n - 4 % n\n    static constexpr int shift2[] = { 0, 0, 0, 1, 0, -1, -2, -3 };\n\n    op[0] = match[0];\n    op[1] = match[1];\n    op[2] = match[2];\n    op[3] = match[3];\n\n    match += shift1[offset];\n    memcpy(op + 4, match, 4);\n    match += shift2[offset];\n}\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nПроизводительность, конечно же, не изменилась никак. Впрочем, я очень хотел попробовать оптимизацию, в которой обычное копирование — сразу по 16 байт.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nНо это усложняет «особый случай» и приводит к тому, что он вызывается чаще (условие \u003Ccode\u003Eoffset &lt; 16\u003C\u002Fcode\u003E выполнено не реже, чем \u003Ccode\u003Eoffset &lt; 8\u003C\u002Fcode\u003E). Копирование (начала) пересекающихся диапазонов для случая 16-байтных копирований выглядит так:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003Einline void copyOverlap16(UInt8 * op, const UInt8 *&amp; match, const size_t offset)\n{\n    \u002F\u002F\u002F 4 % n.\n    static constexpr int shift1[]\n        = { 0,  1,  2,  1,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4 };\n\n    \u002F\u002F\u002F 8 % n - 4 % n\n    static constexpr int shift2[]\n        = { 0,  0,  0,  1,  0, -1, -2, -3, -4,  4,  4,  4,  4,  4,  4,  4 };\n\n    \u002F\u002F\u002F 16 % n - 8 % n\n    static constexpr int shift3[]\n        = { 0,  0,  0, -1,  0, -2,  2,  1,  8, -1, -2, -3, -4, -5, -6, -7 };\n\n    op[0] = match[0];\n    op[1] = match[1];\n    op[2] = match[2];\n    op[3] = match[3];\n\n    match += shift1[offset];\n    memcpy(op + 4, match, 4);\n    match += shift2[offset];\n    memcpy(op + 8, match, 8);\n    match += shift3[offset];\n}\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nМожно ли реализовать именно эту функцию оптимальнее? Хотелось бы, чтобы для такого сложного кода нашлась магическая SIMD-инструкция, ведь мы всего лишь хотим записать 16 байт, которые целиком состоят из нескольких байт входных данных (от 1 до 15). Их, в свою очередь, нужно просто повторить в правильном порядке.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nТакая инструкция есть — она называется \u003Ccode\u003Epshufb\u003C\u002Fcode\u003E (от слов packed shuffle bytes) и входит в SSSE3 (три буквы S). Она принимает два 16-байтных регистра. В одном регистре содержатся исходные данные. В другом — «селектор»: в каждом байте записано число от 0 до 15 — в зависимости от того, из какого байта исходного регистра взять результат. Или, если значение байта селектора больше 127 — заполнить соответствующий байт результата нулём.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВот пример:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003Exmm0: abc.............\nxmm1: 0120120120120120\n\npshufb %xmm1, %xmm0\n\nxmm0: abcabcabcabcabca\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nКаждый байт результата мы заполнили выбранным нами байтом исходных данных — это как раз то что надо! Вот как выглядит код в результате:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003Einline void copyOverlap16Shuffle(UInt8 * op, const UInt8 *&amp; match, const size_t offset)\n{\n#ifdef __SSSE3__\n\n    static constexpr UInt8 __attribute__((__aligned__(16))) masks[] =\n    {\n        0,  1,  2,  1,  4,  1,  4,  2,  8,  7,  6,  5,  4,  3,  2,  1, \u002F* offset = 0, not used as mask, but for shift amount instead *\u002F\n        0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, \u002F* offset = 1 *\u002F\n        0,  1,  0,  1,  0,  1,  0,  1,  0,  1,  0,  1,  0,  1,  0,  1,\n        0,  1,  2,  0,  1,  2,  0,  1,  2,  0,  1,  2,  0,  1,  2,  0,\n        0,  1,  2,  3,  0,  1,  2,  3,  0,  1,  2,  3,  0,  1,  2,  3,\n        0,  1,  2,  3,  4,  0,  1,  2,  3,  4,  0,  1,  2,  3,  4,  0,\n        0,  1,  2,  3,  4,  5,  0,  1,  2,  3,  4,  5,  0,  1,  2,  3,\n        0,  1,  2,  3,  4,  5,  6,  0,  1,  2,  3,  4,  5,  6,  0,  1,\n        0,  1,  2,  3,  4,  5,  6,  7,  0,  1,  2,  3,  4,  5,  6,  7,\n        0,  1,  2,  3,  4,  5,  6,  7,  8,  0,  1,  2,  3,  4,  5,  6,\n        0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  0,  1,  2,  3,  4,  5,\n        0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10,  0,  1,  2,  3,  4,\n        0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11,  0,  1,  2,  3,\n        0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12,  0,  1,  2,\n        0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13,  0,  1,\n        0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14,  0,\n    };\n\n    _mm_storeu_si128(reinterpret_cast&lt;__m128i *\u003E(op),\n        _mm_shuffle_epi8(\n            _mm_loadu_si128(reinterpret_cast&lt;const __m128i *\u003E(match)),\n            _mm_load_si128(reinterpret_cast&lt;const __m128i *\u003E(masks) + offset)));\n\n    match += masks[offset];\n\n#else\n    copyOverlap16(op, match, offset);\n#endif\n}\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nЗдесь \u003Ccode\u003E_mm_shuffle_epi8\u003C\u002Fcode\u003E — это \u003Ca href=\"https:\u002F\u002Fsoftware.intel.com\u002Fsites\u002Flandingpage\u002FIntrinsicsGuide\u002F#text=_mm_shuffle_epi8\"\u003Eintrinsic\u003C\u002Fa\u003E, разворачивающийся в инструкцию \u003Ccode\u003Epshufb\u003C\u002Fcode\u003E.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nМожно ли сделать такую операцию для большего числа байт сразу, используя более новые инструкции? Ведь SSSE3 — очень старый набор инструкций, существующий с 2006 года. В AVX2 есть инструкция, которая делает это сразу для 32 байт, но только независимо для отдельных 16-байтных фрагментов. Она называется уже не packed shuffle bytes, а vector permute bytes — слова другие, а смысл такой же. В AVX-512 VBMI есть ещё одна инструкция, работающая сразу для 64 байт, но процессоры с её поддержкой появились совсем недавно. Похожие инструкции также есть в ARM NEON — они называются vtbl (vector table lookup), но позволяют записывать только 8 байт.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nКроме того, существует вариант инструкции \u003Ccode\u003Epshufb\u003C\u002Fcode\u003E с 64-битными MMX-регистрами, чтобы сформировать 8 байт. Он как раз подходит для замены исходного варианта кода. Правда, вместо неё я решил всё равно использовать вариант, работающий с 16 байтами (по серьёзным причинам).\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nНа конференции Highload++ Siberia после моего доклада ко мне подошёл слушатель и сказал, что для случая 8 байт можно просто использовать умножение на специально подобранную константу (также потребуется сдвиг) — я об этом раньше даже не думал!\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch3\u003EКак убрать лишний if\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\nДопустим, я хочу использовать вариант, копирующий по 16 байт. Как избежать необходимости дополнительной проверки выхода за границы буфера?\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЯ решил, что вообще не буду делать эту проверку. В комментарии к функции будет написано, что разработчику следует выделить кусок памяти на указанное количество байт больше, чем требуется, чтобы позволить нам читать и писать туда ненужный мусор. Интерфейс функции станет неудобным, но это уже другие проблемы.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВпрочем, могут возникнуть негативные последствия. Допустим, данные, которые нам надо разжимать, были сформированы из блоков по 65 536 байт. Тогда пользователь даёт нам фрагмент памяти размером 65 536 байт для разжатых данных. Но с новым интерфейсом функции пользователь будет обязан выделить фрагмент памяти, например, из 65 551 байта. Тогда аллокатор, вполне возможно, будет вынужден на самом деле выделить 96 или даже 128 килобайт — в зависимости от его реализации. Если же аллокатор очень плохой, он может внезапно перестать кэшировать фрагмент памяти у себя в «куче» и начать каждый раз использовать mmap для выделения памяти (либо освобождать память с помощью madvice). Такой процесс будет ужасно медленным из-за page faults. В итоге маленькая попытка оптимизации может привести к тому, что всё начнёт тормозить.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch3\u003EЕсть ли ускорение?\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\nИтак, я сделал вариант кода, в котором применены три оптимизации:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Col\u003E\r\n\u003Cli\u003EКопируем по 16 байт вместо 8.\u003C\u002Fli\u003E\r\n\u003Cli\u003EИспользуются shuffle-инструкции для случая \u003Ccode\u003Eoffset &lt; 16\u003C\u002Fcode\u003E.\u003C\u002Fli\u003E\r\n\u003Cli\u003EУбран один лишний if.\u003C\u002Fli\u003E\r\n\u003C\u002Fol\u003E\u003Cbr\u002F\u003E\r\nЯ стал тестировать этот код на самых разных наборах данных и получил неожиданные результаты.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПример 1:\u003Cbr\u002F\u003E\r\nXeon E2650v2, данные Яндекс.Браузера, столбец AppVersion.\u003Cbr\u002F\u003E\r\nreference: 1.67 GB\u002Fsec. \u003Cbr\u002F\u003E\r\n16 bytes, shuffle: 2.94 GB\u002Fsec (на 76% быстрее).\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПример 2:\u003Cbr\u002F\u003E\r\nXeon E2650v2, данные Яндекс.Директа, столбец ShowsSumPosition.\u003Cbr\u002F\u003E\r\nreference: 2.30 GB\u002Fsec. \u003Cbr\u002F\u003E\r\n16 bytes, shuffle: 1.91 GB\u002Fsec (на 20% медленнее).\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nСначала я увидел, что всё ускорилось на десятки процентов и успел обрадоваться. Потом на других файлах увидел, что ничего не ускорилось. Ещё на каких-то замедлилось, хоть и ненамного. Я сделал вывод, что результаты зависят от коэффициента сжатия. Чем больше сжат файл — тем больше преимущество от перехода на 16 байт. Это естественно: чем больше коэффициент сжатия, тем больше средняя длина фрагментов, которые нужно копировать.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЧтобы лучше разобраться, я с помощью шаблонов C++ сделал варианты кода для четырёх случаев: оперируем 8- или 16- байтными кусочками; используем или не используем shuffle-инструкцию.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003Etemplate &lt;size_t copy_amount, bool use_shuffle\u003E\nvoid NO_INLINE decompressImpl(\n     const char * const source,\n     char * const dest,\n     size_t dest_size)\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nНа разных файлах выигрывали совершенно разные варианты кода, но при тестировании на рабочем компьютере вариант с shuffle всегда выигрывал. На рабочем компьютере тестировать неудобно, приходится делать так:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003Esudo echo 'performance' | tee \u002Fsys\u002Fdevices\u002Fsystem\u002Fcpu\u002Fcpu*\u002Fcpufreq\u002Fscaling_governor\nkill -STOP $(pidof firefox) $(pidof chromium)\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nПотом я пошёл на один из старых «разработческих» серверов (c процессором Xeon E5645), достал ещё больше наборов данных и получил почти диаметрально противоположные результаты, которые меня окончательно запутали. Выяснилось, что выбор оптимального алгоритма определяется не только коэффициентом сжатия, но и моделью процессора. От неё зависит то, когда лучше использовать shuffle-инструкцию, а также порог, начиная с которого лучше использовать 16-байтные копирования.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nКстати при тестировании на серверах имеет смысл делать так:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003Esudo kill -STOP $(pidof python) $(pidof perl) $(pgrep -u skynet) $(pidof cqudp-client)\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nИначе результаты будут нестабильными. Также следите за thermal throttling и power capping.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch3\u003EКак выбрать лучший алгоритм\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\nИтак, у нас есть четыре варианта алгоритма, и нужно в зависимости от условий выбирать лучший. Можно было бы создать репрезентативный набор данных и железа, затем провести хорошее нагрузочное тестирование и выбрать тот метод, который лучше в среднем. Но у нас нет репрезентативного набора данных. Для тестирования я взял выборку данных Метрики, Директа, Браузера и авиаперелётов в США. Но этого недостаточно: ClickHouse используется сотнями компаний по всему миру, и переоптимизировав его на одном наборе данных, мы можем не заметить падения производительности с другими данными. А если результаты зависят от модели процессора, придётся явно вписывать условия в код и тестировать его на каждой модели (либо смотреть справочные данные по таймингам инструкций — как считаете?). В любом случае это слишком трудоёмко.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nТогда я решил использовать другой метод, который очевиден для коллег, которые не зря учились в ШАДе. Это \u003Ca href=\"https:\u002F\u002Flearnforeverlearn.com\u002Fbandits\u002F\"\u003E«многорукие бандиты»\u003C\u002Fa\u003E. Суть в том, что вариант алгоритма выбирается случайным образом, а затем мы на основе статистики начинаем чаще выбирать те варианты, которые хорошо себя показали.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nУ нас есть много блоков данных, которые нужно разжать. То есть нужны независимые вызовы функции разжатия данных. Мы можем для каждого блока выбирать какой-нибудь из четырёх алгоритмов и измерять время его работы. Такая операция обычно ничего не стоит по сравнению с обработкой блока данных — а в ClickHouse блок несжатых данных составляет минимум 64 КБ. (Прочтите \u003Ca href=\"http:\u002F\u002Fbtorpey.github.io\u002Fblog\u002F2014\u002F02\u002F18\u002Fclock-sources-in-linux\u002F\"\u003Eстатью\u003C\u002Fa\u003E про измерение времени.)\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЧтобы понять, как конкретно работает алгоритм «многорукие бандиты», узнаем, почему он так называется. Это аналогия с автоматами в казино, у которых есть несколько ручек, которые можно дёрнуть, чтобы получить какое-то случайное количество денег. Игрок может много раз дёргать ручки в любой выбираемой им последовательности. У каждой ручки есть фиксированное соответствующее ей вероятностное распределение количества выдаваемых денег, но игрок его не знает и может лишь оценить его, исходя из опыта игры. Тогда он сумеет максимизировать свою выгоду.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nОдин из подходов к максимизации выигрыша состоит в том, чтобы на каждом шаге оценивать вероятностное распределение для каждой ручки, исходя из статистики игры на предыдущих шагах. Затем в уме «разыгрываем» случайный выигрыш для каждой ручки, основываясь на полученных распределениях. И затем дёргаем ту ручку, для которой разыгранный в уме исход оказался лучше. Этот подход называется Thompson Sampling.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nМы, в свою очередь, должны выбрать алгоритм разжатия. Результат — время работы в пикосекундах на байт: чем меньше, тем лучше. Будем считать время работы случайной величиной и оценивать её распределение. Чтобы оценивать распределение случайной величины, надо использовать методы математической статистики. Для таких задач часто используют байесовский подход, но было бы неэффективно вписывать сложные формулы в код на C++. Можно использовать параметрический подход — сказать, что случайная величина принадлежит какому-то семейству случайных величин, зависящих от параметров; и затем оценивать эти параметры.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nКак выбрать семейство случайных величин? Для примера мы могли бы считать, что время выполнения кода имеет нормальное распределение. Но это абсолютно неверно. Во-первых, время выполнения не может быть отрицательным, а нормальное распределение принимает значения на всей числовой прямой. Во-вторых, время выполнения, как я предполагаю, имеет большой «хвост» справа.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВпрочем, есть факторы, исходя из которых использовать оценку нормального распределения лишь для целей Thompson Sampling — неплохая идея (даже несмотря на то, что распределение искомой величины заведомо не является нормальным). Причина в том, что необходимая оценка матожидания и дисперсии выполняется очень просто, а после достаточного количества итераций нормальное распределение станет более-менее узким, не сильно отличающимся от распределений, которые мы бы получили другими методами. Если нас не очень сильно интересует скорость сходимости на первых шагах, то такими деталями можно пренебречь.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nС одной стороны, это несколько «невежественный» подход. Из опыта известно, что среднее время выполнения запроса, загрузки сайта и так далее представляет собой «мусор», который не имеет смысла вычислять. Лучше было бы вычислять медиану — \u003Ca href=\"https:\u002F\u002Fen.wikipedia.org\u002Fwiki\u002FRobust_statistics\"\u003Eробастную статистику\u003C\u002Fa\u003E. Но это несколько сложнее, и как я покажу дальше, для практических целей описанный метод себя оправдывает.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nСначала я реализовал расчёт матожидания и дисперсии, а потом решил, что это слишком хорошо, и нужно упростить код, чтобы получилось «хуже»:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u002F\u002F\u002F For better convergence, we don't use proper estimate of stddev.\n\u002F\u002F\u002F We want to eventually separate between two algorithms even in case\n\u002F\u002F\u002F  when there is no statistical significant difference between them.\ndouble sigma() const\n{\n    return mean() \u002F sqrt(adjustedCount());\n}\n\ndouble sample(pcg64 &amp; rng) const\n{\n    ...\n    return std::normal_distribution&lt;\u003E(mean(), sigma())(rng);\n}\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nЯ написал всё так, чтобы первые несколько итераций не учитывались — чтобы исключить эффект memory latencies.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПолучилась тестовая программа, которая умеет сама подбирать лучший алгоритм на входных данных, а в качестве дополнительных режимов работы — использовать референсную реализацию LZ4 либо фиксированный вариант алгоритма.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nТаким образом, есть шесть вариантов работы:\u003Cbr\u002F\u003E\r\n— reference (baseline): оригинальный LZ4 без наших модификаций;\u003Cbr\u002F\u003E\r\n— variant 0: копировать по 8 байт, не использовать shuffle;\u003Cbr\u002F\u003E\r\n— variant 1: копировать по 8 байт, использовать shuffle;\u003Cbr\u002F\u003E\r\n— variant 2: копировать по 16 байт, не использовать shuffle;\u003Cbr\u002F\u003E\r\n— variant 3: копировать по 16 байт, использовать shuffle;\u003Cbr\u002F\u003E\r\n— «бандитский» вариант, который сам во время работы выбирает лучший из четырёх перечисленных оптимизированных вариантов.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch3\u003EТестирование на разных CPU\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\nЕсли результат сильно зависит от модели CPU, было бы любопытно изучить, как именно. Может быть, на некоторых CPU разница особенно большая?\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЯ подготовил набор датасетов из разных таблиц в ClickHouse с реальными данными, всего 256 разных файлов по 100 МБ несжатых данных (число 256 просто совпало). И посмотрел, какие CPU у серверов, на которых я могу запустить бенчмарки. Я нашёл серверы с такими CPU:\u003Cbr\u002F\u003E\r\n— Intel® Xeon® CPU E5-2650 v2 @ 2.60GHz\u003Cbr\u002F\u003E\r\n— Intel® Xeon® CPU E5-2660 v4 @ 2.00GHz\u003Cbr\u002F\u003E\r\n— Intel® Xeon® CPU E5-2660 0 @ 2.20GHz\u003Cbr\u002F\u003E\r\n— Intel® Xeon® CPU E5645 @ 2.40GHz\u003Cbr\u002F\u003E\r\n— Intel Xeon E312xx (Sandy Bridge)\u003Cbr\u002F\u003E\r\n— AMD Opteron(TM) Processor 6274\u003Cbr\u002F\u003E\r\n— AMD Opteron(tm) Processor 6380\u003Cbr\u002F\u003E\r\n— Intel® Xeon® CPU E5-2683 v4 @ 2.10GHz\u003Cbr\u002F\u003E\r\n— Intel® Xeon® CPU E5530 @ 2.40GHz\u003Cbr\u002F\u003E\r\n— Intel® Xeon® CPU E5440 @ 2.83GHz\u003Cbr\u002F\u003E\r\n— Intel® Xeon® CPU E5-2667 v2 @ 3.30GHz\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nДальше самое интересное — процессоры, предоставленные отделом R&amp;D:\u003Cbr\u002F\u003E\r\n— AMD EPYC 7351 16-Core Processor — новый серверный процессор AMD.\u003Cbr\u002F\u003E\r\n— Cavium ThunderX2 — а это вообще не x86, а AArch64. Для них мои SIMD-оптимизации потребовалось немного переделывать. На сервере определяется 224 логических и 56 физических ядер.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВсего 13 серверов, на каждом из которых запускается тест на 256 файлах в 6 вариантах (reference, 0, 1, 2, 3, adaptive), причём тест запускаем 10 раз, чередуя варианты вперемешку. Получается 199 680 результатов, и их можно сравнивать.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nНапример, можно сравнить разные CPU между собой. Но не стоит делать поспешные выводы из этих результатов: мы тестируем только алгоритм разжатия LZ4 на одном ядре (очень узкий кейс — получается микробенчмарк). К примеру, у Cavium самое слабое ядро. Но я тестировал на нём сам ClickHouse, и он «рвёт» Xeon E5-2650 v2 на тяжёлых запросах за счёт превосходства по количеству ядер, даже несмотря на отсутствие многих оптимизаций, которые в ClickHouse делаются только для x86.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E┌─cpu───────────────────┬──ref─┬─adapt─┬──max─┬─best─┬─adapt_boost─┬─max_boost─┬─adapt_over_max─┐\n│ E5-2667 v2 @ 3.30GHz  │ 2.81 │  3.19 │ 3.15 │    3 │        1.14 │      1.12 │           1.01 │\n│ E5-2650 v2 @ 2.60GHz  │ 2.5  │  2.84 │ 2.81 │    3 │        1.14 │      1.12 │           1.01 │\n│ E5-2683 v4 @ 2.10GHz  │ 2.26 │  2.63 │ 2.59 │    3 │        1.16 │      1.15 │           1.02 │\n│ E5-2660 v4 @ 2.00GHz  │ 2.15 │  2.49 │ 2.46 │    3 │        1.16 │      1.14 │           1.01 │\n│ AMD EPYC 7351         │ 2.03 │  2.44 │ 2.35 │    3 │        1.20 │      1.16 │           1.04 │\n│ E5-2660 0 @ 2.20GHz   │ 2.13 │  2.39 │ 2.37 │    3 │        1.12 │      1.11 │           1.01 │\n│ E312xx (Sandy Bridge) │ 1.97 │  2.2  │ 2.18 │    3 │        1.12 │      1.11 │           1.01 │\n│ E5530 @ 2.40GHz       │ 1.65 │  1.93 │ 1.94 │    3 │        1.17 │      1.18 │           0.99 │\n│ E5645 @ 2.40GHz       │ 1.65 │  1.92 │ 1.94 │    3 │        1.16 │      1.18 │           0.99 │\n│ AMD Opteron 6380      │ 1.47 │  1.58 │ 1.56 │    1 │        1.07 │      1.06 │           1.01 │\n│ AMD Opteron 6274      │ 1.15 │  1.35 │ 1.35 │    1 │        1.17 │      1.17 │              1 │\n│ E5440 @ 2.83GHz       │ 1.35 │  1.33 │ 1.42 │    1 │        0.99 │      1.05 │           0.94 │\n│ Cavium ThunderX2      │ 0.84 │  0.87 │ 0.87 │    0 │        1.04 │      1.04 │              1 │\n└───────────────────────┴──────┴───────┴──────┴──────┴─────────────┴───────────┴────────────────┘\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nref, adapt, max — это скорость в гигабайтах в секунду (величина, обратная к среднему арифметическому времени по всем запускам на всех наборах данных). best — номер лучшего алгоритма среди оптимизированных вариантов, от 0 до 3. adapt_boost — относительное преимущество адаптивного алгоритма по сравнению с baseline. max_boost — относительное преимущество лучшего из неадаптивных вариантов по сравнению с baseline. adapt_over_max — относительное преимущество адаптивного алгоритма по сравнению с лучшим неадаптивным.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nКак видно, на современных процессорах x86 мы смогли ускорить разжатие на 12–20%. Даже на ARM мы получили плюс 4%, несмотря на то, что мы уделили меньше внимания оптимизации под эту архитектуру. Также заметно, что в среднем по разным наборам данных «бандитский» алгоритм выигрывает у выбранного наперёд лучшего варианта на всех процессорах кроме очень старых Intel.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch3\u003EВыводы\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\nНа практике проделанная работа имеет сомнительную полезность. Да, само разжатие LZ4 ускорилось в среднем на 12–20%, а на отдельных наборах данных есть даже более чем двухкратный прирост производительности. Но в целом на время выполнения запроса это влияет существенно меньше. Не так легко найти настоящие запросы, на которых преимущество в скорости будет более пары процентов.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nСтоит иметь в виду, что на нескольких кластерах Метрики, предназначенных для выполнения «длинных» запросов, мы решили использовать ZStandard level 1 вместо LZ4: на холодных данных важнее экономить IO и место на дисках.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nНаибольшие преимущества от оптимизации разжатия наблюдаются на сильно сжимающихся данных — например, на столбцах с повторяющимися строковыми значениями. Но специально для этого сценария у нас разработано отдельное решение, которое позволяет ускорить такие запросы на порядки.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЕщё одно полезное соображение: оптимизация скорости алгоритма сжатия часто ограничена форматом сжатых данных. LZ4 использует очень хороший формат, но у Lizard, Density и LZSSE другие форматы, которые могут работать быстрее. Возможно, вместо попыток ускорить LZ4 было бы лучше просто подключить LZSSE к ClickHouse.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВнедрение этих оптимизаций в саму библиотеку LZ4 маловероятно: для их использования нужно изменить или дополнить интерфейс библиотеки. На самом деле это очень частый случай при улучшении алгоритмов: оптимизации не укладываются в старые абстракции, требуют их пересмотра. В то же время в оригинальной имплементации уже сейчас исправлено довольно много названий. Например, в части inc- и dec-таблиц теперь всё \u003Ca href=\"https:\u002F\u002Fgithub.com\u002Flz4\u002Flz4\u002Fblob\u002Fdev\u002Flib\u002Flz4.c#L313\"\u003Eправильно\u003C\u002Fa\u003E. Кроме того, несколько недель назад оригинальная имплементация ускорила разжатие на те же 12–15% с помощью копирования по 32 байта, а не по 16, как указано выше. Мы и сами пробовали вариант с 32 байтами — результаты получились не такими классными, но в целом ускорение \u003Ca href=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fd0\u002Fjn\u002Fia\u002Fd0jniaidtjaqnnu2ek3fbznv8ji.png\"\u003Eтоже есть\u003C\u002Fa\u003E.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЕсли посмотреть на профиль в начале статьи, можно заметить, что мы могли бы убрать одно лишнее копирование из page cache в userspace (либо с помощью mmap, либо с помощью O_DIRECT и userspace page cache — оба варианта сопряжены с проблемами), а также немного улучшить вычисление чек-сумм (сейчас используется CityHash128 без CRC32-C, а можно взять HighwayHash, FARSH или XXH3). Ускорение этих двух операций полезно для слабо сжимающихся данных, так как они производятся над сжатыми данными.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВ любом случае, изменения уже добавлены в master, а полученные в результате этого исследования идеи нашли применение в других задачах. Вот \u003Ca href=\"https:\u002F\u002Fwww.youtube.com\u002Fwatch?v=V2CqQBICt7M\"\u003Eвидео\u003C\u002Fa\u003E с HighLoad++ Siberia, а вот \u003Ca href=\"https:\u002F\u002Fyandex.github.io\u002Fclickhouse-presentations\u002Fhighload_siberia_2018\u002F\"\u003Eпрезентация\u003C\u002Fa\u003E.\u003C\u002Fdiv\u003E","tags":[{"titleHtml":"базы данных"},{"titleHtml":"сжатие данных"},{"titleHtml":"C++"},{"titleHtml":"lz4"},{"titleHtml":"lz77"},{"titleHtml":"performance"},{"titleHtml":"highload"},{"titleHtml":"clickhouse"},{"titleHtml":"bayesian optimization"}],"metadata":{"stylesUrls":[],"scriptUrls":[],"shareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F452778\u002F82e17d7fd76f61b03a661e9a3cddc747\u002F","shareImageWidth":1200,"shareImageHeight":630,"vkShareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F452778\u002F82e17d7fd76f61b03a661e9a3cddc747\u002F?format=vk","schemaJsonLd":"{\"@context\":\"http:\\\u002F\\\u002Fschema.org\",\"@type\":\"Article\",\"mainEntityOfPage\":{\"@type\":\"WebPage\",\"@id\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fru\\\u002Fcompany\\\u002Fyandex\\\u002Fblog\\\u002F452778\\\u002F\"},\"headline\":\"Как ускорить разжатие LZ4 в ClickHouse\",\"datePublished\":\"2019-05-21T14:14:22+03:00\",\"dateModified\":\"2019-06-04T21:10:24+03:00\",\"author\":{\"@type\":\"Person\",\"name\":\"Алексей\"},\"publisher\":{\"@type\":\"Organization\",\"name\":\"Habr\",\"logo\":{\"@type\":\"ImageObject\",\"url\":\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fa_\\\u002Flk\\\u002F9m\\\u002Fa_lk9mjkccjox-zccjrpfolmkmq.png\"}},\"description\":\"При выполнении запросов в ClickHouse можно обратить внимание, что в профайлере на одном из первых мест часто видна функция LZ_decompress_fast. Почему так происхо...\",\"url\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fru\\\u002Fcompany\\\u002Fyandex\\\u002Fblog\\\u002F452778\\\u002F#post-content-body\",\"about\":[\"c_yandex\",\"h_hi\",\"h_open_source\",\"h_cpp\",\"h_bigdata\",\"f_develop\"],\"image\":[\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fgetpro\\\u002Fhabr\\\u002Fpost_images\\\u002F057\\\u002F302\\\u002Faba\\\u002F057302aba5041790af404c2c781c4dd3.png\"]}","metaDescription":"При выполнении запросов в ClickHouse можно обратить внимание, что в профайлере на одном из первых мест часто видна функция LZ_decompress_fast. Почему так происходит? Этот вопрос стал поводом для...","mainImageUrl":null,"amp":false},"polls":[],"commentsEnabled":true,"rulesRemindEnabled":false,"votesEnabled":true,"status":"published","plannedPublishTime":null,"checked":null,"isEditorial":false}},"articlesIds":{},"isLoading":false,"pagesCount":{},"route":{},"reasonsList":null,"view":"cards","lastVisitedRoute":{},"ssrCommentsArticleIds":[""],"karma":{}},"authorContribution":{"authors":{}},"betaTest":{"currentAnnouncement":null,"announcements":{},"announcementCards":null,"announcementComments":{},"announcementCommentThreads":{},"announcementCommentingStatuses":{},"archivedList":[]},"authorStatistics":{"articleRefs":{},"articleIds":{},"pagesCount":{},"route":{},"viewsCount":[],"maxStatsCount":{}},"career":{"seoLandings":[],"hubs":""},"comments":{"articleComments":{},"searchCommentsResults":null,"previewComment":null,"pagesCount":null,"commentAccess":{},"scrollParents":{},"pageArticleComments":{"lastViewedComment":0,"postId":null,"lastCommentTimestamp":"","moderated":[],"moderatedIds":[],"commentRoute":""}},"companies":{"companyRefs":{"yandex":{"alias":"yandex","imageUrl":"\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fcompany\u002Fb02\u002Fd9b\u002F1d4\u002Fb02d9b1d4a6e64ff069e2ab32fdedae2.png","titleHtml":"Яндекс","descriptionHtml":"Как мы делаем Яндекс","relatedData":null,"statistics":{"postsCount":1776,"newsCount":20,"vacanciesCount":20,"employeesCount":731,"careerRating":null,"subscribersCount":115205,"rating":562.71,"invest":null},"foundationDate":{"year":"1997","month":"09","day":"23"},"location":{"city":{"id":"447159","title":"Москва"},"region":{"id":"1885","title":"Москва и Московская обл."},"country":{"id":"168","title":"Россия"}},"siteUrl":"http:\u002F\u002Fwww.yandex.ru\u002F","staffNumber":"свыше 10 000 человек","registrationDate":"2008-08-09T07:42:31+00:00","representativeUser":null,"contacts":[{"title":"Github","url":"https:\u002F\u002Fgithub.com\u002Fyandex"}],"settings":{"analyticsSettings":[{"type":"ym","trackingId":"55712026"}],"branding":{"imageUrl":"\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fbranding\u002F907\u002Fa84\u002F1d7\u002F907a841d7f3392623972d244da8dae91.png","linkUrl":"","pixelUrl":""},"status":"active"},"metadata":{"titleHtml":"Яндекс, Москва - Как мы делаем Яндекс с 23 сентября 1997 г.","title":"Яндекс, Москва - Как мы делаем Яндекс с 23 сентября 1997 г.","keywords":["Интерфейсы","Высокая производительность","Машинное обучение","Разработка мобильных приложений","C++"],"descriptionHtml":"1 776 статей от авторов компании Яндекс","description":"1 776 статей от авторов компании Яндекс"},"aDeskSettings":null,"careerAlias":"yandex","maxCustomTrackerLinks":3}},"companyIds":{},"companyTopIds":{},"pagesCount":{},"companyProfiles":{},"companiesCategories":[],"companiesCategoriesTotalCount":0,"companiesWidgets":{},"companiesWorkers":{},"companiesFans":{},"route":{},"isLoading":false,"companyWorkersLoading":false,"companyFansLoading":false,"vacancies":{}},"companiesContribution":{"hubs":{},"flows":{},"companyRefs":{}},"companyHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"conversation":{"messages":[],"respondent":null,"isLoadMore":false},"conversations":{"conversations":[],"unreadCount":0,"pagesCount":0,"isLoadMore":false},"desktopState":{"desktopFl":null,"desktopHl":null,"isChecked":false,"isLoginDemanded":false},"dfp":{"slotsDict":{}},"docs":{"menu":{},"articles":{},"mainMenu":[],"loading":{"main":false,"dropdown":false,"article":false}},"feature":{"isProbablyVisible":"true"},"flows":{"flows":[{"alias":"develop","id":1,"route":{"name":"FLOW_PAGE","params":{"flowName":"develop"}}},{"alias":"admin","id":6,"route":{"name":"FLOW_PAGE","params":{"flowName":"admin"}}},{"alias":"design","id":2,"route":{"name":"FLOW_PAGE","params":{"flowName":"design"}}},{"alias":"management","id":3,"route":{"name":"FLOW_PAGE","params":{"flowName":"management"}}},{"alias":"marketing","id":4,"route":{"name":"FLOW_PAGE","params":{"flowName":"marketing"}}},{"alias":"popsci","id":7,"route":{"name":"FLOW_PAGE","params":{"flowName":"popsci"}}}]},"global":{"isPwa":false,"device":"desktop","isHabrCom":true},"hubs":{"hubRefs":{},"hubIds":{},"pagesCount":{},"isLoading":false,"route":{}},"hubsBlock":{"hubRefs":{},"hubIds":{}},"i18n":{"fl":"ru","hl":"ru"},"info":{"infoPage":{},"isLoading":true},"location":{"urlStruct":{"protocol":null,"slashes":null,"auth":null,"host":null,"port":null,"hostname":null,"hash":null,"search":null,"query":{},"pathname":null,"path":null,"href":""},"searchQuery":null},"me":{"user":null,"ppgDemanded":false,"karmaResetInfo":{"canReincarnate":null,"wasReincarnated":null,"currentScore":null},"notes":null},"mostReadingList":{"mostReadingListIds":[],"mostReadingListRefs":null,"promoPost":null},"pinnedPost":{"pinnedPost":null},"ppa":{"articles":{},"card":null,"transactions":null,"totalTransactions":null,"isAccessible":null},"projectsBlocks":{"activeBlocks":{}},"pullRefresh":{"shouldRefresh":false},"sandbox":{"articleIds":[],"articleRefs":{},"pagesCount":null,"route":{},"lastVisitedRoute":{},"isLoading":false},"settingsOther":{"inputs":{"uiLang":{"errors":[],"ref":null,"value":""},"articlesLangEnglish":{"errors":[],"ref":null,"value":false},"articlesLangRussian":{"errors":[],"ref":null,"value":false},"agreement":{"errors":[],"ref":null,"value":false},"email":{"errors":[],"ref":null,"value":true},"digest":{"errors":[],"ref":null,"value":true}}},"similarList":{"similarListIds":[],"similarListRefs":null},"ssr":{"error":null,"isDataLoaded":false,"isDataLoading":false,"isHydrationFailed":false,"isServer":false},"userHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"userInvites":{"availableInvites":0,"usedInvitesIds":[],"usedInvitesRefs":{},"usedInvitesPagesCount":0,"unusedInvitesIds":[],"unusedInvitesRefs":{},"unusedInvitesPagesCount":0},"users":{"authorRefs":{},"authorIds":{},"pagesCount":{},"authorProfiles":{},"userHubs":{},"userInvitations":{},"authorFollowers":{},"authorFollowed":{},"karmaStats":[],"statistics":null,"isLoading":false,"authorFollowersLoading":false,"authorFollowedLoading":false,"userHubsLoading":false,"userInvitationsLoading":false,"route":{}},"viewport":{"prevScrollY":{},"scrollY":0,"width":0},"tracker":{"items":{},"pagesCache":{},"markedViewedSilently":{},"markedRead":{},"unreadCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null},"unviewedCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null}}};(function(){var s;(s=document.currentScript||document.scripts[document.scripts.length-1]).parentNode.removeChild(s);}());</script>
+<script src="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" defer></script><script src="https://assets.habr.com/habr-web/js/app.c0af73e7.js" defer></script>
+
+
+
+    <script>
+      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+        (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+        m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+      })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+    </script>
+  
+  <script type="text/javascript" >
+    (function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+    m[i].l=1*new Date();k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})
+    (window, document, "script", "https://mc.yandex.ru/metrika/tag.js", "ym");
+
+    ym(24049213, "init", {
+      defer:true,
+      trackLinks:true,
+      accurateTrackBounce:true,
+      webvisor:false,
+    });
+  </script>
+  <noscript>
+    <div>
+      <img src="https://mc.yandex.ru/watch/24049213" style="position:absolute; left:-9999px;" alt="" />
+    </div>
+  </noscript>
+  
+    <script type="text/javascript">
+      window.addEventListener('load', function () {
+        setTimeout(() => {
+          const img = new Image();
+          img.src = 'https://vk.com/rtrg?p=VK-RTRG-421343-57vKE';
+        }, 0);
+      });
+    </script>
+  
+</body>
+</html>

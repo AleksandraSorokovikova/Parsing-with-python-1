@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="ru" data-vue-meta="%7B%22lang%22:%7B%22ssr%22:%22ru%22%7D%7D">
+<head >
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
+  <title>Пишем HTTP/1.1 &amp; HTTP/2 клиент и сервер на Golang / Хабр</title>
+  <style>
+    /* cyrillic-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSxf6TF0.woff2) format('woff2');
+      unicode-range: U+0460-052F, U+1C80-1C88, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+    }
+
+    /* cyrillic */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveQhf6TF0.woff2) format('woff2');
+      unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+    }
+
+    /* latin-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSBf6TF0.woff2) format('woff2');
+      unicode-range: U+0100-024F, U+0259, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20CF, U+2113, U+2C60-2C7F, U+A720-A7FF;
+    }
+
+    /* latin */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveRhf6.woff2) format('woff2');
+      unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+    }
+  </style>
+  <link rel="preload" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" as="script"><link rel="preload" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/app.c0af73e7.js" as="script">
+  <link rel="stylesheet" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css"><link rel="stylesheet" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css">
+  <script>window.i18nFetch = new Promise((res, rej) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open('GET', '/js/i18n/ru-compiled.85eb77f0b17c8235e7b64b9f81ea5ec2.json');
+          xhr.responseType = 'json';
+          xhr.onload = function(e) {
+            if (this.status === 200) {
+              res({ru: xhr.response});
+            } else {
+              rej(e);
+            }
+          };
+          xhr.send();
+        });</script>
+  
+  <script data-vue-meta="ssr" src="/js/ads.js" onload="window['zhY4i4nJ9K'] = true" data-vmid="checkad"></script><script data-vue-meta="ssr" type="application/ld+json" data-vmid="ldjson-schema">{"@context":"http:\/\/schema.org","@type":"Article","mainEntityOfPage":{"@type":"WebPage","@id":"https:\/\/habr.com\/ru\/company\/skillbox\/blog\/451032\/"},"headline":"Пишем HTTP\/1.1 &amp; HTTP\/2 клиент и сервер на Golang","datePublished":"2019-05-08T17:09:34+03:00","dateModified":"2019-05-08T17:37:01+03:00","author":{"@type":"Person","name":"fokus-lop"},"publisher":{"@type":"Organization","name":"Habr","logo":{"@type":"ImageObject","url":"https:\/\/habrastorage.org\/webt\/a_\/lk\/9m\/a_lk9mjkccjox-zccjrpfolmkmq.png"}},"description":"Golang &mdash; отличный язык программирования с широким спектром возможностей. В этой статье показано, как на Go можно написать клиент и сервер для протоколов HTTP\/...","url":"https:\/\/habr.com\/ru\/company\/skillbox\/blog\/451032\/#post-content-body","about":["c_skillbox","h_programming","h_go","f_develop"],"image":["https:\/\/habrastorage.org\/getpro\/habr\/post_images\/d3a\/039\/afd\/d3a039afd1ba2d00298f26b62c2a3624.png"]}</script>
+  <script src="//www.googletagservices.com/tag/js/gpt.js" async></script>
+  <style>.grecaptcha-badge{visibility: hidden;}</style>
+  <meta name="habr-version" content="2.49.0">
+  
+  <meta data-vue-meta="ssr" property="fb:app_id" content="444736788986613"><meta data-vue-meta="ssr" property="fb:pages" content="472597926099084"><meta data-vue-meta="ssr" name="twitter:card" content="summary_large_image"><meta data-vue-meta="ssr" name="twitter:site" content="@habr_eng"><meta data-vue-meta="ssr" property="og:title" content="Пишем HTTP/1.1 &amp;amp; HTTP/2 клиент и сервер на Golang" data-vmid="og:title"><meta data-vue-meta="ssr" name="twitter:title" content="Пишем HTTP/1.1 &amp;amp; HTTP/2 клиент и сервер на Golang" data-vmid="twitter:title"><meta data-vue-meta="ssr" name="aiturec:title" content="Пишем HTTP/1.1 &amp;amp; HTTP/2 клиент и сервер на Golang" data-vmid="aiturec:title"><meta data-vue-meta="ssr" name="description" content="Golang — отличный язык программирования с широким спектром возможностей. В этой статье показано, как на Go можно написать клиент и сервер для протоколов HTTP/1.1 и HTTP/2.
+
+Skillbox..." data-vmid="description"><meta data-vue-meta="ssr" itemprop="description" content="Golang — отличный язык программирования с широким спектром возможностей. В этой статье показано, как на Go можно написать клиент и сервер для протоколов HTTP/1.1 и HTTP/2.
+
+Skillbox..." data-vmid="description:itemprop"><meta data-vue-meta="ssr" property="og:description" content="Golang — отличный язык программирования с широким спектром возможностей. В этой статье показано, как на Go можно написать клиент и сервер для протоколов HTTP/1.1 и HTTP/2.
+
+Skillbox..." data-vmid="og:description"><meta data-vue-meta="ssr" name="twitter:description" content="Golang — отличный язык программирования с широким спектром возможностей. В этой статье показано, как на Go можно написать клиент и сервер для протоколов HTTP/1.1 и HTTP/2.
+
+Skillbox..." data-vmid="twitter:description"><meta data-vue-meta="ssr" property="aiturec:description" content="Golang — отличный язык программирования с широким спектром возможностей. В этой статье показано, как на Go можно написать клиент и сервер для протоколов HTTP/1.1 и HTTP/2.
+
+Skillbox..." data-vmid="aiturec:description"><meta data-vue-meta="ssr" itemprop="image" content="https://habr.com/share/publication/451032/edec188c0d5853af8c2f29a3a0b972f5/" data-vmid="image:itemprop"><meta data-vue-meta="ssr" property="og:image" content="https://habr.com/share/publication/451032/edec188c0d5853af8c2f29a3a0b972f5/" data-vmid="og:image"><meta data-vue-meta="ssr" property="aiturec:image" content="https://habr.com/share/publication/451032/edec188c0d5853af8c2f29a3a0b972f5/" data-vmid="aiturec:image"><meta data-vue-meta="ssr" name="twitter:image" content="https://habr.com/share/publication/451032/edec188c0d5853af8c2f29a3a0b972f5/" data-vmid="twitter:image"><meta data-vue-meta="ssr" property="vk:image" content="https://habr.com/share/publication/451032/edec188c0d5853af8c2f29a3a0b972f5/" data-vmid="vk:image"><meta data-vue-meta="ssr" property="aiturec:item_id" content="451032" data-vmid="aiturec:item_id"><meta data-vue-meta="ssr" property="aiturec:datetime" content="2019-05-08T14:09:34.000Z" data-vmid="aiturec:datetime"><meta data-vue-meta="ssr" property="og:type" content="article" data-vmid="og:type"><meta data-vue-meta="ssr" property="og:locale" content="ru_RU" data-vmid="og:locale"><meta data-vue-meta="ssr" property="og:image:width" content="1200" data-vmid="og:image:width"><meta data-vue-meta="ssr" property="og:image:height" content="630" data-vmid="og:image:height">
+  <link data-vue-meta="ssr" href="https://habr.com/ru/rss/post/451032/?fl=ru" type="application/rss+xml" title="" rel="alternate" name="rss"><link data-vue-meta="ssr" href="https://habr.com/ru/company/skillbox/blog/451032/" rel="canonical" data-vmid="canonical"><link data-vue-meta="ssr" data-vmid="hreflang"><link data-vue-meta="ssr" image_src="image" href="https://habr.com/share/publication/451032/edec188c0d5853af8c2f29a3a0b972f5/" data-vmid="image:href">
+  <meta name="apple-mobile-web-app-status-bar-style" content="#303b44">
+  <meta name="msapplication-TileColor" content="#629FBC">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="16x16"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-16.png"
+  >
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="32x32"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-32.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="76x76"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-76.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="120x120"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="152x152"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-152.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="180x180"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-180.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="256x256"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-256.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1136x640.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2436x1125.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1792x828.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_828x1792.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1334x750.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2208x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1125x2436.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2208.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2732x2048.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2688x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2224x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_750x1334.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x2732.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2388x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2224.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_640x1136.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2388.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x1536.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1536x2048.png"
+  >
+  <link
+    rel="mask-icon"
+    color="#77a2b6"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.svg"
+  >
+  <link
+    crossorigin="use-credentials"
+    href="/manifest.webmanifest"
+    rel="manifest"
+  >
+</head>
+<body>
+
+
+<div id="app" data-server-rendered="true" data-async-called="true"><div class="tm-layout__wrapper"><!----> <div></div> <!----> <header class="tm-header"><div class="tm-page-width"><div class="tm-header__container"><!----> <span class="tm-header__logo-wrap"><a href="/ru/" class="tm-header__logo tm-header__logo_ru"><svg height="16" width="16" class="tm-svg-img tm-header__icon"><title>Хабр</title> <use xlink:href="/img/habr-logo-ru.svg#logo"></use></svg></a> <span class="tm-header__beta-sign" style="display:none;">β</span></span> <div class="tm-dropdown tm-header__projects"><div class="tm-dropdown__head"><button class="tm-header__dropdown-toggle"><svg height="16" width="16" class="tm-svg-img tm-header__icon tm-header__icon_dropdown"><title>Открыть список</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#arrow-down"></use></svg></button></div> <!----></div> <a href="/ru/sandbox/start/" class="tm-header__become-author-btn">
+            Как стать автором
+          </a> <div class="tm-feature tm-header__feature tm-feature_variant-inline"><!----></div> <!----> <!----></div></div></header> <div class="tm-layout"><div class="tm-page-progress-bar"></div> <div data-menu-sticky="true" class="tm-base-layout__header tm-base-layout__header_is-sticky"><div class="tm-page-width"><div class="tm-base-layout__header-wrapper"><div class="tm-main-menu"><div class="tm-main-menu__section"><nav class="tm-main-menu__section-content"><!----> <a href="/ru/all/" class="tm-main-menu__item">
+        Все потоки
+      </a> <a href="/ru/flows/develop/" class="tm-main-menu__item">
+          Разработка
+        </a><a href="/ru/flows/admin/" class="tm-main-menu__item">
+          Администрирование
+        </a><a href="/ru/flows/design/" class="tm-main-menu__item">
+          Дизайн
+        </a><a href="/ru/flows/management/" class="tm-main-menu__item">
+          Менеджмент
+        </a><a href="/ru/flows/marketing/" class="tm-main-menu__item">
+          Маркетинг
+        </a><a href="/ru/flows/popsci/" class="tm-main-menu__item">
+          Научпоп
+        </a></nav></div></div> <div class="tm-header-user-menu tm-base-layout__user-menu"><a href="/ru/search/" class="tm-header-user-menu__item tm-header-user-menu__search"><svg height="24" width="24" class="tm-svg-img tm-header-user-menu__icon tm-header-user-menu__icon_search tm-header-user-menu__icon_dark"><title>Поиск</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#search"></use></svg></a> <!----> <!----> <!----> <div class="tm-header-user-menu__item tm-header-user-menu__user_desktop"><div class="tm-dropdown"><div class="tm-dropdown__head"><svg height="24" width="24" data-test-id="menu-toggle-guest" class="tm-svg-img tm-header-user-menu__icon"><title>Профиль</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#header-user"></use></svg> <!----></div> <!----></div> <!----></div> <!----></div></div></div></div> <!----> <div class="tm-page-width"></div> <main class="tm-layout__container"><div hl="ru" companyName="skillbox" data-async-called="true" class="tm-page"><div class="tm-page-width"><div class="tm-page__header"><!----></div> <div class="tm-page__wrapper"><div class="tm-page__main tm-page__main_has-sidebar"><div class="pull-down"><div class="pull-down__header" style="height:0px;"><div class="pull-down__content" style="bottom:10px;"><svg height="24" width="24" class="tm-svg-img pull-down__arrow"><title>Обновить</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#pull-arrow"></use></svg></div></div> <div class="tm-article-presenter"><div class="tm-company-card tm-company-article__company-card"><div class="tm-company-card__info"><div class="tm-company-card__header"><a href="/ru/company/skillbox/profile/" class="tm-company-card__avatar"><div class="tm-entity-image"><img alt="" height="48" src="//habrastorage.org/getpro/habr/company/ca7/89b/5f1/ca789b5f1556a1df2ef2e53c1554fff9.png" width="48" class="tm-entity-image__pic"></div></a> <!----> <div class="tm-rating tm-company-card__rating"><div class="tm-rating__header"> <div class="tm-rating__counter">101.71</div></div> <div class="tm-rating__text">
+    Рейтинг
+  </div></div></div> <div class="tm-company-card__info"><a href="/ru/company/skillbox/profile/" class="tm-company-card__name">
+        Skillbox
+      </a> <div class="tm-company-card__description">Образовательная платформа Skillbox</div></div></div> <div class="tm-company-card__buttons"><!----> <!----></div></div> <div class="tm-article-presenter__body"><div class="tm-misprint-area"><div class="tm-misprint-area__wrapper"><article class="tm-article-presenter__content tm-article-presenter__content_narrow"><div class="tm-article-presenter__header"> <div class="tm-article-snippet tm-article-presenter__snippet"><div class="tm-article-snippet__meta-container"><div class="tm-article-snippet__meta"><span class="tm-user-info tm-article-snippet__author"><a href="/ru/users/fokus-lop/" title="fokus-lop" class="tm-user-info__userpic"><div class="tm-entity-image"><svg height="24" width="24" class="tm-svg-img tm-image-placeholder tm-image-placeholder_blue"><!----> <use xlink:href="/img/megazord-v24.ce74655c.svg#placeholder-user"></use></svg></div></a> <span class="tm-user-info__user"><a href="/ru/users/fokus-lop/" class="tm-user-info__username">
+      fokus-lop
+    </a> </span></span> <span class="tm-article-snippet__datetime-published"><time datetime="2019-05-08T14:09:34.000Z" title="2019-05-08, 17:09">8  мая  2019 в 17:09</time></span></div> <!----></div> <h1 lang="ru" class="tm-article-snippet__title tm-article-snippet__title_h1"><span>Пишем HTTP/1.1 &amp; HTTP/2 клиент и сервер на Golang</span></h1> <div class="tm-article-snippet__hubs"><span class="tm-article-snippet__hubs-item"><a href="/ru/company/skillbox/blog/" class="tm-article-snippet__hubs-item-link router-link-active"><span>Блог компании Skillbox</span> <!----></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/programming/" class="tm-article-snippet__hubs-item-link"><span>Программирование</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/go/" class="tm-article-snippet__hubs-item-link"><span>Go</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span></div> <div class="tm-article-snippet__labels"><div class="tm-article-snippet__label"><span>
+        Перевод
+      </span></div></div> <!----> <!----></div></div> <div class="tm-article-presenter__origin"><a href="https://medium.com/@ldclakmal/how-to-play-go-lang-with-http-5f3628e81001" target="_blank" class="tm-article-presenter__origin-link">
+                Автор оригинала:
+                <span>
+                  Chanaka Lakmal
+                </span></a></div> <div data-gallery-root="" lang="ru" class="tm-article-body"><div id="post-content-body" class="article-formatted-body article-formatted-body_version-1"><div xmlns="http://www.w3.org/1999/xhtml"><img src="/img/image-loader.svg" data-src="https://habrastorage.org/getpro/habr/post_images/d3a/039/afd/d3a039afd1ba2d00298f26b62c2a3624.png"/><br/>
+ <br/>
+Golang — отличный язык программирования с широким спектром возможностей. В этой статье показано, как на Go можно написать клиент и сервер для протоколов HTTP/1.1 и HTTP/2.<br/>
+<a name="habracut"></a><br/>
+<blockquote><b>Skillbox рекомендует:</b> Практический курс <a href="https://skillbox.ru/python/?utm_source=skillbox.media&amp;utm_medium=habr.com&amp;utm_campaign=PTNDEV&amp;utm_content=articles&amp;utm_term=goserver">«Python-разработчик с нуля»</a>.<br/>
+<br/>
+<b>Напоминаем:</b> <i>для всех читателей «Хабра» — скидка 10 000 рублей при записи на любой курс Skillbox по промокоду «Хабр».</i><br/>
+</blockquote><br/>
+HTTP/2 — вторая крупная версия сетевого протокола HTTP, используемая для доступа к World Wide Web. Протокол основан на SPDY. Подробнее об этой версии можно <a href="https://http2.github.io/faq/">узнать на GitHub</a>.<br/>
+ <br/>
+ <h3>HTTP/1.1 Server</h3><br/>
+Код, размещенный ниже, демонстрирует принцип написания HTTP/1.1-сервера на Go. Функция main запускает службу HTTP(S) с портом 9191 и путем /hello/sayHello. echoPayload отвечает за логику echo, занимаясь анализом входящего трафика и реагируя соответствующим образом. При необходимости echoPayload можно модифицировать.<br/>
+<br/>
+<pre><code class="go">package main
+ 
+import (
+"fmt"
+"io/ioutil"
+"log"
+"net/http"
+)
+ 
+func main() {
+http.HandleFunc("/hello/sayHello", echoPayload)
+log.Printf("Go Backend: { HTTPVersion = 1 }; serving on https://localhost:9191/hello/sayHello")
+log.Fatal(http.ListenAndServeTLS(":9191", "./cert/server.crt", "./cert/server.key", nil))
+}
+ 
+func echoPayload(w http.ResponseWriter, req *http.Request) {
+log.Printf("Request connection: %s, path: %s", req.Proto, req.URL.Path[1:])
+defer req.Body.Close()
+contents, err := ioutil.ReadAll(req.Body)
+if err != nil {
+log.Fatalf("Oops! Failed reading body of the request.\n %s", err)
+http.Error(w, err.Error(), 500)
+}
+fmt.Fprintf(w, "%s\n", string(contents))</code></pre> <br/>
+Поскольку служба HTTP(S) уже запущена, нужно предоставить сертификат и ключ сервера. Оба объекта сохранены в директории cert с названиями server.crt и server.key.<br/>
+ <br/>
+Пример сертификата и ключа — ниже.<br/>
+ <br/>
+./cert/server.crt<br/>
+ <br/>
+-----BEGIN CERTIFICATE-----<br/>
+MIID+zCCAuOgAwIBAgIJAPsvGCCAC2i+MA0GCSqGSIb3DQEBCwUAMIGTMQswCQYD<br/>
+VQQGEwJMSzEQMA4GA1UECAwHV2VzdGVybjEQMA4GA1UEBwwHQ29sb21ibzESMBAG<br/>
+A1UECgwJTERDTEFLTUFMMRQwEgYDVQQLDAtFbmdpbmVlcmluZzESMBAGA1UEAwwJ<br/>
+bG9jYWxob3N0MSIwIAYJKoZIhvcNAQkBFhNsZGNsYWttYWxAZ21haWwuY29tMB4X<br/>
+DTE5MDQyMDA1MjczM1oXDTIwMDQxOTA1MjczM1owgZMxCzAJBgNVBAYTAkxLMRAw<br/>
+DgYDVQQIDAdXZXN0ZXJuMRAwDgYDVQQHDAdDb2xvbWJvMRIwEAYDVQQKDAlMRENM<br/>
+QUtNQUwxFDASBgNVBAsMC0VuZ2luZWVyaW5nMRIwEAYDVQQDDAlsb2NhbGhvc3Qx<br/>
+IjAgBgkqhkiG9w0BCQEWE2xkY2xha21hbEBnbWFpbC5jb20wggEiMA0GCSqGSIb3<br/>
+DQEBAQUAA4IBDwAwggEKAoIBAQC9PKAOlJcOBUI9CGnVjMjQHNRqYv01CaUdC4/e<br/>
+YFyegxLpoMpYvEC+nYlHT2j7BOhQBV+TkH1D4YOK2WP3V0FLv5hM7Nxsgf25WNHa<br/>
+zi2DTBvcBgB9sDJA/avIvF+63+Btnyggp3xq6MaHy5DNH0kPnSiPiy7PRKToEUn6<br/>
+oqPnB10rRBFZqs3ePmEDxVL3T/TUZSXR3P95fV1vDCqrJbr3YwWOzFCq8kEJFslK<br/>
+B7GSEKpPgmK0g5krmAQqUOuCJ3/xFlCP4trKg/lvSJZ5S/LZD5teDDg6Ax3Mvthj<br/>
+kMh9/OM5GGTTjRwhct9dHjFI8POj+TMbLZvoPVXjsmATEgtLAgMBAAGjUDBOMB0G<br/>
+A1UdDgQWBBQ1CmWXmrHOv6b8f763/bk80EpbajAfBgNVHSMEGDAWgBQ1CmWXmrHO<br/>
+v6b8f763/bk80EpbajAMBgNVHRMEBTADAQH/MA0GCSqGSIb3DQEBCwUAA4IBAQAH<br/>
+D51Uoe2K4N9/GxRgww5mMW2dUJ7Hc/tGsr/J1fNqHY8SXNAn5i+GwI+xBvwxFHL3<br/>
+KZHbfq7eYDE5EItt3cZp5ySSscdTEay9ReH2+8k32gpH46CMwPV3XvtQuBVVAC4u<br/>
+szrq1eWKhYI2zf4iUVpwvq89OynVGIp0atng+q3A2cBhi3NGo6Ho1s2rywQyqiq8<br/>
+up4PUSVQ6WBoJFx5PEEDxD84VMS7Pan6dT34b9n56tq5R06retZTUZ8jMM88CGX4<br/>
+88pSPU+XImp6DdNVBmW6Lz76jiSNHLkZGm4jumjeyUGzBjBEBOgSegeWlinMtWE9<br/>
+gaVxeUHrqHk8xzwJ4oIu<br/>
+-----END CERTIFICATE-----<br/>
+ <br/>
+./cert/server.key<br/>
+ <br/>
+-----BEGIN PRIVATE KEY-----<br/>
+MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC9PKAOlJcOBUI9<br/>
+CGnVjMjQHNRqYv01CaUdC4/eYFyegxLpoMpYvEC+nYlHT2j7BOhQBV+TkH1D4YOK<br/>
+2WP3V0FLv5hM7Nxsgf25WNHazi2DTBvcBgB9sDJA/avIvF+63+Btnyggp3xq6MaH<br/>
+y5DNH0kPnSiPiy7PRKToEUn6oqPnB10rRBFZqs3ePmEDxVL3T/TUZSXR3P95fV1v<br/>
+DCqrJbr3YwWOzFCq8kEJFslKB7GSEKpPgmK0g5krmAQqUOuCJ3/xFlCP4trKg/lv<br/>
+SJZ5S/LZD5teDDg6Ax3MvthjkMh9/OM5GGTTjRwhct9dHjFI8POj+TMbLZvoPVXj<br/>
+smATEgtLAgMBAAECggEAbaS2yDvn2cPKQTqit4y+vXY2zP1V4GkaNd4BGcOTZnRj<br/>
+fOIg25EXoln8tEiadva888BpREKvkakUYlraxPDVcGIuiEOk42nd7Io97R0Q2cY7<br/>
+ThxcJHb2ZxmTctdSUCBvFJTm1ySzve3pOb0ExRSfbGCOo7zs/kKzmZKK3qFlffGS<br/>
+Ga9O7hyLOuXPU22CM+5Lq0JPTER73z0DpAweZc0L14j6dzhcG3qUwk0K6K47VZgE<br/>
+NhEORul7xDj91bh2iEoSbaQe8HxLaMQoMXOC/9oey2UKKTe9WZE3+XCvg+vkw/sS<br/>
+biQ+b4EZ9LuhAhCZ0UE6+y7PZY+8G/YsbGg0Zo8cAQKBgQDyTuG47rWBgbdHsEB/<br/>
+MSKGU6w+a1SdLk6jG+Enji5Q624/h0xt5nF9ah2eRf3Rlhn9WEKM/uE9ouEODBKE<br/>
+8rnIDsjufEMI8moPEloRBSsxPNw+fNMSSCZjL+qPtTJUbRio7WA23sfdnE57ygBa<br/>
+wlPQ9UBBWSm2se4veEZtHjtngQKBgQDH7gnH5Att6ZYazRTgD72g0C5v1l4LYVEQ<br/>
+jxdBcs6TJA8wHfifZ45F67W95QunmM813UxfS+ybdjytlb8/lmi2BnK6lDx5HWIL<br/>
+31jnbg2CxCrNv9oZLjKVDmkp4WUcEp5W33R1/MGDTRfyARP+6QYQO/ATMdqtm5Uu<br/>
+cD6clrL4ywKBgQCQ0niy0WmGaAMlQ8CoxLM/2c6+1+OQtlalwkoGHEKudqhELBeQ<br/>
+MAVw0fW13Vtg4vfRpejQ4J26+xjMDocbEv/bBIsvjvF57XlaXLucJJy2Jwv0BSMa<br/>
+cCkRa1gkYEYek74DaSzyXqDSYVO/RPKFTFRQNeUbqbD20s3rbVWablFPAQKBgB5y<br/>
+zUCJJYh2w6qPQzegjhO4wOm9bxMyngL0l+ka0AUuv7VnSx8TyWIytLoX8P90UVJ1<br/>
+wpTc3ksK5dDV9ot7n7ThJIXv34nehLkkKckNRLd+oro1FsUw+PkkebWsIxb0avL2<br/>
+EymI9fvGOPhdW6s91/OO/VAfDpvUDxNEevSkKtujAoGAcMOsXtn/UyT3Lssxgla3<br/>
+K+DCaFhAQPSUXOmpZwEbQ0yQlksDe4flsam8bEDI5D5iHx1ziSfh583qJl3BEZ5u<br/>
+VZTEO2YLvT9QRz7pv2qspqj7nzSyBU2BFAajq43/G1b8FHfVgN+YdVtzVrigfql5<br/>
+2a+JxOxFfpjnGQ7RfSxSb+Q=<br/>
+-----END PRIVATE KEY-----<br/>
+ <br/>
+Пора провести тестовый запуск службы, использовав следующую команду:<br/>
+ <br/>
+<pre><code class="plaintext">$ go run http_server.go</code></pre><br/>
+Ответ должен быть таким:<br/>
+ <br/>
+<pre><code class="plaintext">Go Backend: { HTTPVersion = 1 }; serving on https://localhost:9191/hello/sayHello</code></pre><br/>
+Теперь инициируем службу при помощи запроса HTTP/1.1 POST (небезопасный и безопасный режимы):<br/>
+ <br/>
+<pre><code class="plaintext">$ curl -k -v https://localhost:9191/hello/sayHello -d "Hello Go!"
+ 
+$ curl -v --cacert ./cert/server.crt https://localhost:9191/hello/sayHello -d "Hello Go!"</code></pre><br/>
+Ниже — результат работы программы. Первая часть — детали рукопожатия TLS сервера и клиента. Вторая — детали запроса и ответа HTTP/1.1. В конце — текстовое сообщение «Hello Go!».<br/>
+ <br/>
+* Trying 127.0.0.1…<br/>
+* Connected to localhost (127.0.0.1) port 9191 (#0)<br/>
+* ALPN, offering http/1.1<br/>
+* Cipher selection: ALL:!EXPORT:!EXPORT40:!EXPORT56:!aNULL:!LOW:!RC4:@STRENGTH<br/>
+* successfully set certificate verify locations:<br/>
+* CAfile: /etc/ssl/certs/ca-certificates.crt<br/>
+ CApath: none<br/>
+* TLSv1.2 (OUT), TLS header, Certificate Status (22):<br/>
+* TLSv1.2 (OUT), TLS handshake, Client hello (1):<br/>
+* TLSv1.2 (IN), TLS handshake, Server hello (2):<br/>
+* TLSv1.2 (IN), TLS handshake, Certificate (11):<br/>
+* TLSv1.2 (IN), TLS handshake, Server key exchange (12):<br/>
+* TLSv1.2 (IN), TLS handshake, Server finished (14):<br/>
+* TLSv1.2 (OUT), TLS handshake, Client key exchange (16):<br/>
+* TLSv1.2 (OUT), TLS change cipher, Client hello (1):<br/>
+* TLSv1.2 (OUT), TLS handshake, Finished (20):<br/>
+* TLSv1.2 (IN), TLS change cipher, Client hello (1):<br/>
+* TLSv1.2 (IN), TLS handshake, Finished (20):<br/>
+* SSL connection using TLSv1.2 / ECDHE-RSA-AES128-GCM-SHA256<br/>
+* ALPN, server accepted to use http/1.1<br/>
+* Server certificate:<br/>
+* subject: C=LK; ST=Western; L=Colombo; O=LDCLAKMAL; OU=Engineering; CN=Chanaka Lakmal; emailAddress=ldclakmal@gmail.com<br/>
+* start date: Apr 20 03:03:58 2019 GMT<br/>
+* expire date: Apr 19 03:03:58 2020 GMT<br/>
+* issuer: C=LK; ST=Western; L=Colombo; O=LDCLAKMAL; OU=Engineering; CN=Chanaka Lakmal; emailAddress=ldclakmal@gmail.com<br/>
+* SSL certificate verify result: self signed certificate (18), continuing anyway.<br/>
+> POST /hello/sayHello HTTP/1.1<br/>
+> Host: localhost:9191<br/>
+> User-Agent: curl/7.46.0<br/>
+> Accept: */*<br/>
+> Content-Length: 9<br/>
+> Content-Type: application/x-www-form-urlencoded<br/>
+><br/>
+* upload completely sent off: 9 out of 9 bytes<br/>
+&lt; HTTP/1.1 200 OK<br/>
+&lt; Date: Sat, 20 Apr 2019 06:56:19 GMT<br/>
+&lt; Content-Length: 10<br/>
+&lt; Content-Type: text/plain; charset=utf-8<br/>
+&lt;<br/>
+Hello Go!<br/>
+* Connection #0 to host localhost left intact<br/>
+ <br/>
+<h3>HTTP/1.1 Client</h3><br/>
+Новый код — пример написания простого клиента HTTP/1.1 на Go. Этот клиент отправляет запрос HTTP(S) POST на <a href="https://localhost">localhost</a>:9191/hello/sayHello с сообщением “Hello Go!”.<br/>
+<br/>
+<pre><code class="go">package main
+ 
+import (
+"bytes"
+"crypto/tls"
+"crypto/x509"
+"fmt"
+"io/ioutil"
+"log"
+"net/http"
+)
+ 
+func main() {
+client := &amp;http.Client{}
+ 
+// Create a pool with the server certificate since it is not signed
+// by a known CA
+caCert, err := ioutil.ReadFile("./cert/server.crt")
+if err != nil {
+log.Fatalf("Reading server certificate: %s", err)
+}
+caCertPool := x509.NewCertPool()
+caCertPool.AppendCertsFromPEM(caCert)
+ 
+// Create TLS configuration with the certificate of the server
+tlsConfig := &amp;tls.Config{
+RootCAs: caCertPool,
+}
+ 
+// Use the proper transport in the client
+client.Transport = &amp;http.Transport{
+TLSClientConfig: tlsConfig,
+}
+ 
+// Perform the request
+resp, err := client.Post("https://localhost:9191/hello/sayHello", "text/plain", bytes.NewBufferString("Hello Go!"))
+if err != nil {
+log.Fatalf("Failed get: %s", err)
+}
+defer resp.Body.Close()
+body, err := ioutil.ReadAll(resp.Body)
+if err != nil {
+log.Fatalf("Failed reading response body: %s", err)
+}
+fmt.Printf("Got response %d: %s %s", resp.StatusCode, resp.Proto, string(body))</code></pre> <br/>
+Поскольку здесь тоже запускается служба HTTP(S), нужно предоставить сертификат и ключ. Нужные данные размещены в директории cert с названиями server.crt и server.key.<br/>
+ <br/>
+Для того чтобы запустить клиент, нужно инициализировать сервер. Для этого выполняем описанные в первом разделе действия либо же запускаем любую HTTP(S)-службу с портом 9191 и путем /hello/sayHello.<br/>
+ <br/>
+<pre><code class="plaintext">$ go run http_client.go</code></pre><br/>
+Вывод должен быть таким:<br/>
+ <br/>
+<pre><code class="plaintext">Got response 200: HTTP/1.1 Hello Go!</code></pre><br/>
+Клиент показывает работу команды curl:<br/>
+ <br/>
+<pre><code class="plaintext">$ curl -v --cacert ./cert/server.crt https://localhost:9191/hello/sayHello -d "Hello Go!"</code></pre><br/>
+После того как закончена работа с HTTP/1.1, стоит попробовать повторить то же самое для HTTP/2.<br/>
+ <br/>
+<h3>HTTP/2 Server</h3><br/>
+Как и в предыдущем разделе, сначала нужно создать эхо-сервер.<br/>
+<br/>
+<pre><code class="go">package main
+ 
+import (
+"fmt"
+"golang.org/x/net/http2"
+"io/ioutil"
+"log"
+"net/http"
+)
+ 
+func main() {
+var httpServer = http.Server{
+Addr: ":9191",
+}
+var http2Server = http2.Server{}
+_ = http2.ConfigureServer(&amp;httpServer, &amp;http2Server)
+http.HandleFunc("/hello/sayHello", echoPayload)
+log.Printf("Go Backend: { HTTPVersion = 2 }; serving on https://localhost:9191/hello/sayHello")
+log.Fatal(httpServer.ListenAndServeTLS("./cert/server.crt", "./cert/server.key"))
+}
+ 
+func echoPayload(w http.ResponseWriter, req *http.Request) {
+log.Printf("Request connection: %s, path: %s", req.Proto, req.URL.Path[1:])
+defer req.Body.Close()
+contents, err := ioutil.ReadAll(req.Body)
+if err != nil {
+log.Fatalf("Oops! Failed reading body of the request.\n %s", err)
+http.Error(w, err.Error(), 500)
+}
+fmt.Fprintf(w, "%s\n", string(contents))</code></pre> <br/>
+Для того чтобы проверить работу сервера, нужно отправить команду:<br/>
+<br/>
+<pre><code class="plaintext">$ go run http2_server.go</code></pre><br/>
+Ответ должен быть таким:<br/>
+ <br/>
+<pre><code class="plaintext">Go Backend: { HTTPVersion = 2 }; serving on https://localhost:9191/hello/sayHello</code></pre><br/>
+Теперь сервер запущен, инициализировать его можно при помощи запросов HTTP/1.1 или HTTP/2. Команды HTTP/1.1 POST для тестирования работы сервера приведены ниже: <br/>
+ <br/>
+<pre><code class="plaintext">$ curl -k -v https://localhost:9191/hello/sayHello -d "Hello Go!"
+ 
+$ curl -v --cacert ./cert/server.crt https://localhost:9191/hello/sayHello -d "Hello Go!"</code></pre><br/>
+И то же самое, но уже с HTTP/2 POST:<br/>
+ <br/>
+<pre><code class="plaintext">$ curl -k -v --http2 https://localhost:9191/hello/sayHello -d "Hello Go!"
+ 
+$ curl -v --http2 --cacert ./cert/server.crt https://localhost:9191/hello/sayHello -d "Hello Go!"</code></pre><br/>
+Ниже — пример вывода работы сервера. Первая часть — TLS-рукопожатие между сервером и клиентом, вторая — детали запроса и ответа HTTP/2.<br/>
+ <br/>
+* Trying 127.0.0.1…<br/>
+* Connected to localhost (127.0.0.1) port 9191 (#0)<br/>
+* ALPN, offering h2<br/>
+* ALPN, offering http/1.1<br/>
+* Cipher selection: ALL:!EXPORT:!EXPORT40:!EXPORT56:!aNULL:!LOW:!RC4:@STRENGTH<br/>
+* successfully set certificate verify locations:<br/>
+* CAfile: src/hello/cert/server.crt<br/>
+ CApath: none<br/>
+* TLSv1.2 (OUT), TLS header, Certificate Status (22):<br/>
+* TLSv1.2 (OUT), TLS handshake, Client hello (1):<br/>
+* TLSv1.2 (IN), TLS handshake, Server hello (2):<br/>
+* TLSv1.2 (IN), TLS handshake, Certificate (11):<br/>
+* TLSv1.2 (IN), TLS handshake, Server key exchange (12):<br/>
+* TLSv1.2 (IN), TLS handshake, Server finished (14):<br/>
+* TLSv1.2 (OUT), TLS handshake, Client key exchange (16):<br/>
+* TLSv1.2 (OUT), TLS change cipher, Client hello (1):<br/>
+* TLSv1.2 (OUT), TLS handshake, Finished (20):<br/>
+* TLSv1.2 (IN), TLS change cipher, Client hello (1):<br/>
+* TLSv1.2 (IN), TLS handshake, Finished (20):<br/>
+* SSL connection using TLSv1.2 / ECDHE-RSA-AES128-GCM-SHA256<br/>
+* ALPN, server accepted to use h2<br/>
+* Server certificate:<br/>
+* subject: C=LK; ST=Western; L=Colombo; O=LDCLAKMAL; OU=Engineering; CN=localhost; emailAddress=ldclakmal@gmail.com<br/>
+* start date: Apr 20 05:27:33 2019 GMT<br/>
+* expire date: Apr 19 05:27:33 2020 GMT<br/>
+* common name: localhost (matched)<br/>
+* issuer: C=LK; ST=Western; L=Colombo; O=LDCLAKMAL; OU=Engineering; CN=localhost; emailAddress=ldclakmal@gmail.com<br/>
+* SSL certificate verify ok.<br/>
+* Using HTTP2, server supports multi-use<br/>
+* Connection state changed (HTTP/2 confirmed)<br/>
+* TCP_NODELAY set<br/>
+* Copying HTTP/2 data in stream buffer to connection buffer after upgrade: len=0<br/>
+* Using Stream ID: 1 (easy handle 0x10ddf20)<br/>
+> POST /hello/sayHello HTTP/1.1<br/>
+> Host: localhost:9191<br/>
+> User-Agent: curl/7.46.0<br/>
+> Accept: */*<br/>
+> Content-Length: 9<br/>
+> Content-Type: application/x-www-form-urlencoded<br/>
+><br/>
+* We are completely uploaded and fine<br/>
+&lt; HTTP/2.0 200<br/>
+&lt; content-type:text/plain; charset=utf-8<br/>
+&lt; content-length:10<br/>
+&lt; date:Sat, 20 Apr 2019 06:54:50 GMT<br/>
+&lt;<br/>
+Hello Go!<br/>
+* Connection #0 to host localhost left intact<br/>
+ <br/>
+<h3>HTTP/2 Client</h3><br/>
+Последняя часть — создание HTTP/2-клиента. Вот реализация отправки HTTP(S) POST запроса для <a href="https://localhost">localhost</a>:9191/hello/sayHello:<br/>
+<br/>
+<pre><code class="go">package main
+ 
+import (
+"bytes"
+"crypto/tls"
+"crypto/x509"
+"fmt"
+"golang.org/x/net/http2"
+"io/ioutil"
+"log"
+"net/http"
+)
+ 
+func main() {
+client := &amp;http.Client{}
+ 
+// Create a pool with the server certificate since it is not signed
+// by a known CA
+caCert, err := ioutil.ReadFile("./cert/server.crt")
+if err != nil {
+log.Fatalf("Reading server certificate: %s", err)
+}
+caCertPool := x509.NewCertPool()
+caCertPool.AppendCertsFromPEM(caCert)
+ 
+// Create TLS configuration with the certificate of the server
+tlsConfig := &amp;tls.Config{
+RootCAs: caCertPool,
+}
+ 
+// Use the proper transport in the client
+client.Transport = &amp;http2.Transport{
+TLSClientConfig: tlsConfig,
+}
+ 
+// Perform the request
+resp, err := client.Post("https://localhost:9191/hello/sayHello", "text/plain", bytes.NewBufferString("Hello Go!"))
+if err != nil {
+log.Fatalf("Failed get: %s", err)
+}
+defer resp.Body.Close()
+body, err := ioutil.ReadAll(resp.Body)
+if err != nil {
+log.Fatalf("Failed reading response body: %s", err)
+}
+fmt.Printf("Got response %d: %s %s", resp.StatusCode, resp.Proto, string(body))</code></pre> <br/>
+Как и прежде, для работы нужны ключ и сертификат. Они сохранены в cert с названиями server.crt и server.key.<br/>
+ <br/>
+Запуск клиента:<br/>
+ <br/>
+<pre><code class="plaintext">$ go run http2_client.go</code></pre><br/>
+И ожидаемый ответ:<br/>
+ <br/>
+<pre><code class="plaintext">Got response 200: HTTP/2 Hello Go!</code></pre><br/>
+Детализация работы клиента:<br/>
+ <br/>
+<pre><code class="plaintext">$ curl -v --http2 --cacert ./cert/server.crt https://localhost:9191/hello/sayHello -d "Hello Go!"</code></pre><br/>
+Вот и все. Работа относительно простая, но она дает понимание того, как реализовать базовые сетевые сервисы на языке Go.<br/>
+ <br/>
+ <blockquote><b>Skillbox рекомендует:</b><br/>
+<br/>
+<ul>
+<li>Двухлетний практический курс <a href="https://iamwebdev.skillbox.ru/?utm_source=skillbox.media&amp;utm_medium=habr.com&amp;utm_campaign=WEBDEVPRO&amp;utm_content=articles&amp;utm_term=goserver">«Я — веб-разработчик PRO»</a>.</li>
+<li>Образовательный онлайн-курс <a href="https://skillbox.ru/java/?utm_source=skillbox.media&amp;utm_medium=habr.com&amp;utm_campaign=JAVDEV&amp;utm_content=articles&amp;utm_term=goserver">«Профессия Java-разработчик»</a>.</li>
+<li>Практический годовой курс <a href="https://skillbox.ru/php/?utm_source=skillbox.media&amp;utm_medium=habr.com&amp;utm_campaign=PHPDEV&amp;utm_content=articles&amp;utm_term=goserver">«PHP-разработчик с 0 до PRO»</a>.<br/>
+</li>
+</ul></blockquote></div></div> <!----> <!----></div> <div class="tm-article-presenter__meta"><div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Теги:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5BGOLANG%5D" class="tm-tags-list__link">GOLANG</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bgo%5D" class="tm-tags-list__link">go</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5B%D1%8F%D0%B7%D1%8B%D0%BA%D0%B8%20%D0%BF%D1%80%D0%BE%D0%B3%D1%80%D0%B0%D0%BC%D0%BC%D0%B8%D1%80%D0%BE%D0%B2%D0%B0%D0%BD%D0%B8%D1%8F%5D" class="tm-tags-list__link">языки программирования</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5B%D1%80%D0%B0%D0%B7%D1%80%D0%B0%D0%B1%D0%BE%D1%82%D0%BA%D0%B0%5D" class="tm-tags-list__link">разработка</a></li></ul></div> <div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Хабы:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/company/skillbox/blog/" class="tm-hubs-list__link router-link-active">
+    Блог компании Skillbox
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/programming/" class="tm-hubs-list__link">
+    Программирование
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/go/" class="tm-hubs-list__link">
+    Go
+  </a></li></ul></div></div></article></div> <!----></div> <div class="tm-article-sticky-panel"><div class="tm-data-icons tm-article-sticky-panel__icons"><div class="tm-article-rating tm-data-icons__item"><div class="tm-votes-meter tm-article-rating__votes-switcher"><svg height="16" width="16" class="tm-svg-img tm-votes-meter__icon tm-votes-meter__icon_medium"><title>Всего голосов 53: ↑37 и ↓16</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-rating"></use></svg> <span title="Всего голосов 53: ↑37 и ↓16" class="tm-votes-meter__value tm-votes-meter__value_positive tm-votes-meter__value_medium">+21</span></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----> <span title="Количество просмотров" class="tm-icon-counter tm-data-icons__item"><svg height="16" width="16" class="tm-svg-img tm-icon-counter__icon"><title>Просмотры</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-views"></use></svg> <span class="tm-icon-counter__value">13K</span></span> <button title="Добавить в закладки" type="button" class="bookmarks-button tm-data-icons__item"><span title="Добавить в закладки" class="tm-svg-icon__wrapper bookmarks-button__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Добавить в закладки</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-favorite"></use></svg></span> <span title="Количество пользователей, добавивших публикацию в закладки" class="bookmarks-button__counter">
+    85
+  </span></button> <!----> <div title="Поделиться" class="tm-sharing tm-data-icons__item"><button type="button" class="tm-sharing__button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="tm-sharing__icon"><path fill="currentColor" d="M10.33.275l9.047 7.572a.2.2 0 010 .306l-9.048 7.572a.2.2 0 01-.328-.153V11c-8 0-9.94 6-9.94 6S-1 5 10 5V.428a.2.2 0 01.328-.153z"></path></svg></button> <!----></div> <DIV class="v-portal" style="display:none;"></DIV></div> </div></div> <!----> <!----> <div class="tm-article-presenter__footer"><div class="tm-article-blocks"><!----> <section class="tm-block tm-block_spacing-bottom"><!----> <div class="tm-block__body tm-block__body_variant-balanced"><div class="tm-article-author"><div class="tm-article-author__company"><div class="tm-article-author__company-card"><div class="tm-company-snippet"><a href="/ru/company/skillbox/profile/" class="tm-company-snippet__logo-link"><div class="tm-entity-image"><img alt="" height="40" src="//habrastorage.org/getpro/habr/company/ca7/89b/5f1/ca789b5f1556a1df2ef2e53c1554fff9.png" width="40" class="tm-entity-image__pic"></div></a> <div class="tm-company-snippet__info"><a href="/ru/company/skillbox/profile/" class="tm-company-snippet__title">Skillbox</a> <div class="tm-company-snippet__description">Образовательная платформа Skillbox</div></div></div> <div class="tm-article-author__buttons"><!----> <!----></div></div> <div class="tm-article-author__company-contacts"><a href="https://skillbox.ru/" rel="noopener" target="_blank" class="tm-article-author__contact">
+      Сайт
+    </a><a href="https://facebook.com/skillboxru" rel="noopener" target="_blank" class="tm-article-author__contact">
+      Facebook
+    </a><a href="https://vk.com/skillbox_education" rel="noopener" target="_blank" class="tm-article-author__contact">
+      ВКонтакте
+    </a><a href="https://instagram.com/skillbox.ru" rel="noopener" target="_blank" class="tm-article-author__contact">
+      Instagram
+    </a><a href="https://telegram.me/skillboxru" rel="noopener" target="_blank" class="tm-article-author__contact">
+      Telegram
+    </a></div> <div class="tm-article-author__separator"></div></div> <div class="tm-user-card tm-article-author__user-card tm-user-card_variant-article"><div class="tm-user-card__info-container"><div class="tm-user-card__header"><div class="tm-user-card__header-data"><a href="/ru/users/fokus-lop/" class="tm-user-card__userpic tm-user-card__userpic_size-40"><div class="tm-entity-image"><svg class="tm-svg-img tm-image-placeholder tm-image-placeholder_blue"><!----> <use xlink:href="/img/megazord-v24.ce74655c.svg#placeholder-user"></use></svg></div></a> <div class="tm-user-card__meta"><div title=" 193 голоса " class="tm-karma tm-user-card__karma"><div class="tm-karma__votes tm-karma__votes_positive">
+    35
+  </div> <div class="tm-karma__text">
+    Карма
+  </div></div> <div title="Рейтинг пользователя" class="tm-rating tm-user-card__rating"><div class="tm-rating__header"> <div class="tm-rating__counter">5.8</div></div> <div class="tm-rating__text">
+    Рейтинг
+  </div></div></div></div></div> <div class="tm-user-card__info tm-user-card__info_variant-article"><div class="tm-user-card__title tm-user-card__title_variant-article"><!----> <a href="/ru/users/fokus-lop/" class="tm-user-card__nickname tm-user-card__nickname_variant-article">
+          @fokus-lop
+        </a> <!----></div> <p class="tm-user-card__short-info tm-user-card__short-info_variant-article">Пользователь</p></div></div> <div class="tm-user-card__buttons tm-user-card__buttons_variant-article"><!----> <!----> <!----> <!----> <!----></div></div> <!----></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----></section> <div class="tm-article-blocks__comments"><div class="tm-article-page-comments"><div class="tm-article-comments-counter-link tm-article-comments-counter-button"><a href="/ru/company/skillbox/blog/451032/comments/" class="tm-article-comments-counter-link__link tm-article-comments-counter-link__link_button-style"><svg height="16" width="16" class="tm-svg-img tm-article-comments-counter-link__icon tm-article-comments-counter-link__icon_contrasted"><title>Комментарии</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-comments"></use></svg> <span class="tm-article-comments-counter-link__value tm-article-comments-counter-link__value_contrasted">
+       Комментарии 4 
+    </span></a> <!----></div></div></div>  <!---->  <!----> <!----></div></div></div></div></div> <div class="tm-page__sidebar"><div class="tm-layout-sidebar"><div class="tm-layout-sidebar__placeholder_initial"></div> <div class="tm-sexy-sidebar tm-sexy-sidebar_initial" style="margin-top:0px;"><!----> <section class="tm-block tm-block_spacing-bottom"><header class="tm-block__header"><h2 class="tm-block__title">Информация</h2> <!----></header> <div class="tm-block__body"><div class="tm-company-basic-info"><dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Дата основания</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><time datetime="2016-06-06T21:00:00.000Z" title="2016-06-07, 00:00">7  июня  2016</time></dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Местоположение</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap">
+    Россия
+  </dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Сайт</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><a href="https://skillbox.ru/" target="_blank" class="tm-company-basic-info__link">
+      skillbox.ru
+    </a></dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Численность</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap">
+    501–1 000 человек
+  </dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Дата регистрации</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><time datetime="2018-05-18T08:00:03.000Z" title="2018-05-18, 11:00">18  мая  2018</time></dd></dl> <!----></div></div> <!----></section> <div class="tm-company-widgets"></div> <!----></div></div></div></div></div></div></main> <!----></div> <div class="tm-footer-menu"><div class="tm-page-width"><div class="tm-footer-menu__container"><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Ваш аккаунт
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr/?back=/ru/company/skillbox/blog/451032/&amp;hl=ru" rel="nofollow" target="_self">
+                Войти
+              </a></li><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr-register/?back=/ru/company/skillbox/blog/451032/&amp;hl=ru" rel="nofollow" target="_self">
+                Регистрация
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Разделы
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/" class="footer-menu__item-link router-link-active">
+                Публикации
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/news/" class="footer-menu__item-link">
+                Новости
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/hubs/" class="footer-menu__item-link">
+                Хабы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/companies/" class="footer-menu__item-link">
+                Компании
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/users/" class="footer-menu__item-link">
+                Авторы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/sandbox/" class="footer-menu__item-link">
+                Песочница
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Информация
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/docs/help/" class="footer-menu__item-link">
+                Устройство сайта
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/authors/codex/" class="footer-menu__item-link">
+                Для авторов
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/companies/corpblogs/" class="footer-menu__item-link">
+                Для компаний
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/docs/transparency/" class="footer-menu__item-link">
+                Документы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/agreement" target="_blank">
+                Соглашение
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/confidential/" target="_blank">
+                Конфиденциальность
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Услуги
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQLwRfQmXibiUlWaRg-BAc38s7oM3lJiaPju7qmdJsp8ysIvZ_G-Npem0njJLMozE2bPHMpDqiI5hhy/pub?start=false&amp;loop=false&amp;delayms=60000&amp;slide=id.g91a03369cd_4_297" target="_blank">
+                Реклама
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://habrastorage.org/storage/stuff/habr/service_price.pdf" target="_blank">
+                Тарифы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQJJds8-Di7BQSP_guHxICN7woVYoN5NP_22ra-BIo4bqnTT9FR6fB-Ku2P0AoRpX0Ds-LRkDeAoD8F/pub?start=false&amp;loop=false&amp;delayms=60000" target="_blank">
+                Контент
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://tmtm.timepad.ru/" target="_blank">
+                Семинары
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/megaprojects/" class="footer-menu__item-link">
+                Мегапроекты
+              </a></li></ul></div></div></div></div></div> <div class="tm-footer"><div class="tm-page-width"><div class="tm-footer__container"><!----> <div class="tm-footer__social"><a href="https://www.facebook.com/habrahabr.ru" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Facebook</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-facebook"></use></svg></a><a href="https://twitter.com/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Twitter</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-twitter"></use></svg></a><a href="https://vk.com/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>VK</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-vkontakte"></use></svg></a><a href="https://telegram.me/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Telegram</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-telegram"></use></svg></a><a href="https://www.youtube.com/channel/UCd_sTwKqVrweTt4oAKY5y4w" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Youtube</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-youtube"></use></svg></a><a href="https://zen.yandex.ru/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Яндекс Дзен</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-zen"></use></svg></a></div> <DIV class="v-portal" style="display:none;"></DIV> <button class="tm-footer__link"><!---->
+        Настройка языка
+      </button> <a href="/ru/about" class="tm-footer__link">
+        О сайте
+      </a> <a href="/ru/feedback/" class="tm-footer__link">
+        Техническая поддержка
+      </a> <!----> <a href="/berserk-mode-nope" class="tm-footer__link">
+        Вернуться на старую версию
+      </a> <div class="tm-footer-copyright"><span class="tm-copyright"><span class="tm-copyright__years">© 2006–2021 </span> <span class="tm-copyright__name">«<a href="https://company.habr.com/" rel="noopener" target="_blank" class="tm-copyright__link">Habr</a>»</span></span></div></div></div></div> <!----> <!----></div> <div class="vue-portal-target"></div></div>
+<script>window.__INITIAL_STATE__={"adblock":{"hasAcceptableAdsFilter":false,"hasAdblock":false},"articlesList":{"articlesList":{"451032":{"id":"451032","timePublished":"2019-05-08T14:09:34+00:00","isCorporative":true,"lang":"ru","titleHtml":"Пишем HTTP\u002F1.1 &amp; HTTP\u002F2 клиент и сервер на Golang","leadData":{"textHtml":"\u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fpost_images\u002Fd3a\u002F039\u002Fafd\u002Fd3a039afd1ba2d00298f26b62c2a3624.png\"\u003E\u003Cbr\u003E\r\n \u003Cbr\u003E\r\nGolang — отличный язык программирования с широким спектром возможностей. В этой статье показано, как на Go можно написать клиент и сервер для протоколов HTTP\u002F1.1 и HTTP\u002F2.\u003Cbr\u003E","imageUrl":null,"buttonTextHtml":"Читать дальше →","image":null},"editorVersion":"1.0","postType":"article","postLabels":[{"type":"translation","data":{"originalAuthorName":"Chanaka Lakmal","originalUrl":"https:\u002F\u002Fmedium.com\u002F@ldclakmal\u002Fhow-to-play-go-lang-with-http-5f3628e81001"}}],"author":{"scoreStats":{"score":35,"votesCount":193},"rating":5.8,"relatedData":null,"contacts":[],"authorContacts":[],"paymentDetails":{"paymentYandexMoney":null,"paymentPayPalMe":null,"paymentWebmoney":null},"id":"1721123","alias":"fokus-lop","fullname":null,"avatarUrl":null,"speciality":null},"statistics":{"commentsCount":4,"favoritesCount":85,"readingCount":13017,"score":21,"votesCount":53},"hubs":[{"relatedData":null,"id":"21490","alias":"skillbox","type":"corporative","title":"Блог компании Skillbox","titleHtml":"Блог компании Skillbox","isProfiled":false},{"relatedData":null,"id":"359","alias":"programming","type":"collective","title":"Программирование","titleHtml":"Программирование","isProfiled":true},{"relatedData":null,"id":"17748","alias":"go","type":"collective","title":"Go","titleHtml":"Go","isProfiled":true}],"flows":[{"id":"1","alias":"develop","title":"Разработка"}],"relatedData":null,"textHtml":"\u003Cdiv xmlns=\"http:\u002F\u002Fwww.w3.org\u002F1999\u002Fxhtml\"\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fpost_images\u002Fd3a\u002F039\u002Fafd\u002Fd3a039afd1ba2d00298f26b62c2a3624.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n \u003Cbr\u002F\u003E\r\nGolang — отличный язык программирования с широким спектром возможностей. В этой статье показано, как на Go можно написать клиент и сервер для протоколов HTTP\u002F1.1 и HTTP\u002F2.\u003Cbr\u002F\u003E\r\n\u003Ca name=\"habracut\"\u003E\u003C\u002Fa\u003E\u003Cbr\u002F\u003E\r\n\u003Cblockquote\u003E\u003Cb\u003ESkillbox рекомендует:\u003C\u002Fb\u003E Практический курс \u003Ca href=\"https:\u002F\u002Fskillbox.ru\u002Fpython\u002F?utm_source=skillbox.media&amp;utm_medium=habr.com&amp;utm_campaign=PTNDEV&amp;utm_content=articles&amp;utm_term=goserver\"\u003E«Python-разработчик с нуля»\u003C\u002Fa\u003E.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cb\u003EНапоминаем:\u003C\u002Fb\u003E \u003Ci\u003Eдля всех читателей «Хабра» — скидка 10 000 рублей при записи на любой курс Skillbox по промокоду «Хабр».\u003C\u002Fi\u003E\u003Cbr\u002F\u003E\r\n\u003C\u002Fblockquote\u003E\u003Cbr\u002F\u003E\r\nHTTP\u002F2 — вторая крупная версия сетевого протокола HTTP, используемая для доступа к World Wide Web. Протокол основан на SPDY. Подробнее об этой версии можно \u003Ca href=\"https:\u002F\u002Fhttp2.github.io\u002Ffaq\u002F\"\u003Eузнать на GitHub\u003C\u002Fa\u003E.\u003Cbr\u002F\u003E\r\n \u003Cbr\u002F\u003E\r\n \u003Ch3\u003EHTTP\u002F1.1 Server\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\nКод, размещенный ниже, демонстрирует принцип написания HTTP\u002F1.1-сервера на Go. Функция main запускает службу HTTP(S) с портом 9191 и путем \u002Fhello\u002FsayHello. echoPayload отвечает за логику echo, занимаясь анализом входящего трафика и реагируя соответствующим образом. При необходимости echoPayload можно модифицировать.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"go\"\u003Epackage main\n \nimport (\n\"fmt\"\n\"io\u002Fioutil\"\n\"log\"\n\"net\u002Fhttp\"\n)\n \nfunc main() {\nhttp.HandleFunc(\"\u002Fhello\u002FsayHello\", echoPayload)\nlog.Printf(\"Go Backend: { HTTPVersion = 1 }; serving on https:\u002F\u002Flocalhost:9191\u002Fhello\u002FsayHello\")\nlog.Fatal(http.ListenAndServeTLS(\":9191\", \".\u002Fcert\u002Fserver.crt\", \".\u002Fcert\u002Fserver.key\", nil))\n}\n \nfunc echoPayload(w http.ResponseWriter, req *http.Request) {\nlog.Printf(\"Request connection: %s, path: %s\", req.Proto, req.URL.Path[1:])\ndefer req.Body.Close()\ncontents, err := ioutil.ReadAll(req.Body)\nif err != nil {\nlog.Fatalf(\"Oops! Failed reading body of the request.\\n %s\", err)\nhttp.Error(w, err.Error(), 500)\n}\nfmt.Fprintf(w, \"%s\\n\", string(contents))\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E \u003Cbr\u002F\u003E\r\nПоскольку служба HTTP(S) уже запущена, нужно предоставить сертификат и ключ сервера. Оба объекта сохранены в директории cert с названиями server.crt и server.key.\u003Cbr\u002F\u003E\r\n \u003Cbr\u002F\u003E\r\nПример сертификата и ключа — ниже.\u003Cbr\u002F\u003E\r\n \u003Cbr\u002F\u003E\r\n.\u002Fcert\u002Fserver.crt\u003Cbr\u002F\u003E\r\n \u003Cbr\u002F\u003E\r\n-----BEGIN CERTIFICATE-----\u003Cbr\u002F\u003E\r\nMIID+zCCAuOgAwIBAgIJAPsvGCCAC2i+MA0GCSqGSIb3DQEBCwUAMIGTMQswCQYD\u003Cbr\u002F\u003E\r\nVQQGEwJMSzEQMA4GA1UECAwHV2VzdGVybjEQMA4GA1UEBwwHQ29sb21ibzESMBAG\u003Cbr\u002F\u003E\r\nA1UECgwJTERDTEFLTUFMMRQwEgYDVQQLDAtFbmdpbmVlcmluZzESMBAGA1UEAwwJ\u003Cbr\u002F\u003E\r\nbG9jYWxob3N0MSIwIAYJKoZIhvcNAQkBFhNsZGNsYWttYWxAZ21haWwuY29tMB4X\u003Cbr\u002F\u003E\r\nDTE5MDQyMDA1MjczM1oXDTIwMDQxOTA1MjczM1owgZMxCzAJBgNVBAYTAkxLMRAw\u003Cbr\u002F\u003E\r\nDgYDVQQIDAdXZXN0ZXJuMRAwDgYDVQQHDAdDb2xvbWJvMRIwEAYDVQQKDAlMRENM\u003Cbr\u002F\u003E\r\nQUtNQUwxFDASBgNVBAsMC0VuZ2luZWVyaW5nMRIwEAYDVQQDDAlsb2NhbGhvc3Qx\u003Cbr\u002F\u003E\r\nIjAgBgkqhkiG9w0BCQEWE2xkY2xha21hbEBnbWFpbC5jb20wggEiMA0GCSqGSIb3\u003Cbr\u002F\u003E\r\nDQEBAQUAA4IBDwAwggEKAoIBAQC9PKAOlJcOBUI9CGnVjMjQHNRqYv01CaUdC4\u002Fe\u003Cbr\u002F\u003E\r\nYFyegxLpoMpYvEC+nYlHT2j7BOhQBV+TkH1D4YOK2WP3V0FLv5hM7Nxsgf25WNHa\u003Cbr\u002F\u003E\r\nzi2DTBvcBgB9sDJA\u002FavIvF+63+Btnyggp3xq6MaHy5DNH0kPnSiPiy7PRKToEUn6\u003Cbr\u002F\u003E\r\noqPnB10rRBFZqs3ePmEDxVL3T\u002FTUZSXR3P95fV1vDCqrJbr3YwWOzFCq8kEJFslK\u003Cbr\u002F\u003E\r\nB7GSEKpPgmK0g5krmAQqUOuCJ3\u002FxFlCP4trKg\u002FlvSJZ5S\u002FLZD5teDDg6Ax3Mvthj\u003Cbr\u002F\u003E\r\nkMh9\u002FOM5GGTTjRwhct9dHjFI8POj+TMbLZvoPVXjsmATEgtLAgMBAAGjUDBOMB0G\u003Cbr\u002F\u003E\r\nA1UdDgQWBBQ1CmWXmrHOv6b8f763\u002Fbk80EpbajAfBgNVHSMEGDAWgBQ1CmWXmrHO\u003Cbr\u002F\u003E\r\nv6b8f763\u002Fbk80EpbajAMBgNVHRMEBTADAQH\u002FMA0GCSqGSIb3DQEBCwUAA4IBAQAH\u003Cbr\u002F\u003E\r\nD51Uoe2K4N9\u002FGxRgww5mMW2dUJ7Hc\u002FtGsr\u002FJ1fNqHY8SXNAn5i+GwI+xBvwxFHL3\u003Cbr\u002F\u003E\r\nKZHbfq7eYDE5EItt3cZp5ySSscdTEay9ReH2+8k32gpH46CMwPV3XvtQuBVVAC4u\u003Cbr\u002F\u003E\r\nszrq1eWKhYI2zf4iUVpwvq89OynVGIp0atng+q3A2cBhi3NGo6Ho1s2rywQyqiq8\u003Cbr\u002F\u003E\r\nup4PUSVQ6WBoJFx5PEEDxD84VMS7Pan6dT34b9n56tq5R06retZTUZ8jMM88CGX4\u003Cbr\u002F\u003E\r\n88pSPU+XImp6DdNVBmW6Lz76jiSNHLkZGm4jumjeyUGzBjBEBOgSegeWlinMtWE9\u003Cbr\u002F\u003E\r\ngaVxeUHrqHk8xzwJ4oIu\u003Cbr\u002F\u003E\r\n-----END CERTIFICATE-----\u003Cbr\u002F\u003E\r\n \u003Cbr\u002F\u003E\r\n.\u002Fcert\u002Fserver.key\u003Cbr\u002F\u003E\r\n \u003Cbr\u002F\u003E\r\n-----BEGIN PRIVATE KEY-----\u003Cbr\u002F\u003E\r\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC9PKAOlJcOBUI9\u003Cbr\u002F\u003E\r\nCGnVjMjQHNRqYv01CaUdC4\u002FeYFyegxLpoMpYvEC+nYlHT2j7BOhQBV+TkH1D4YOK\u003Cbr\u002F\u003E\r\n2WP3V0FLv5hM7Nxsgf25WNHazi2DTBvcBgB9sDJA\u002FavIvF+63+Btnyggp3xq6MaH\u003Cbr\u002F\u003E\r\ny5DNH0kPnSiPiy7PRKToEUn6oqPnB10rRBFZqs3ePmEDxVL3T\u002FTUZSXR3P95fV1v\u003Cbr\u002F\u003E\r\nDCqrJbr3YwWOzFCq8kEJFslKB7GSEKpPgmK0g5krmAQqUOuCJ3\u002FxFlCP4trKg\u002Flv\u003Cbr\u002F\u003E\r\nSJZ5S\u002FLZD5teDDg6Ax3MvthjkMh9\u002FOM5GGTTjRwhct9dHjFI8POj+TMbLZvoPVXj\u003Cbr\u002F\u003E\r\nsmATEgtLAgMBAAECggEAbaS2yDvn2cPKQTqit4y+vXY2zP1V4GkaNd4BGcOTZnRj\u003Cbr\u002F\u003E\r\nfOIg25EXoln8tEiadva888BpREKvkakUYlraxPDVcGIuiEOk42nd7Io97R0Q2cY7\u003Cbr\u002F\u003E\r\nThxcJHb2ZxmTctdSUCBvFJTm1ySzve3pOb0ExRSfbGCOo7zs\u002FkKzmZKK3qFlffGS\u003Cbr\u002F\u003E\r\nGa9O7hyLOuXPU22CM+5Lq0JPTER73z0DpAweZc0L14j6dzhcG3qUwk0K6K47VZgE\u003Cbr\u002F\u003E\r\nNhEORul7xDj91bh2iEoSbaQe8HxLaMQoMXOC\u002F9oey2UKKTe9WZE3+XCvg+vkw\u002FsS\u003Cbr\u002F\u003E\r\nbiQ+b4EZ9LuhAhCZ0UE6+y7PZY+8G\u002FYsbGg0Zo8cAQKBgQDyTuG47rWBgbdHsEB\u002F\u003Cbr\u002F\u003E\r\nMSKGU6w+a1SdLk6jG+Enji5Q624\u002Fh0xt5nF9ah2eRf3Rlhn9WEKM\u002FuE9ouEODBKE\u003Cbr\u002F\u003E\r\n8rnIDsjufEMI8moPEloRBSsxPNw+fNMSSCZjL+qPtTJUbRio7WA23sfdnE57ygBa\u003Cbr\u002F\u003E\r\nwlPQ9UBBWSm2se4veEZtHjtngQKBgQDH7gnH5Att6ZYazRTgD72g0C5v1l4LYVEQ\u003Cbr\u002F\u003E\r\njxdBcs6TJA8wHfifZ45F67W95QunmM813UxfS+ybdjytlb8\u002Flmi2BnK6lDx5HWIL\u003Cbr\u002F\u003E\r\n31jnbg2CxCrNv9oZLjKVDmkp4WUcEp5W33R1\u002FMGDTRfyARP+6QYQO\u002FATMdqtm5Uu\u003Cbr\u002F\u003E\r\ncD6clrL4ywKBgQCQ0niy0WmGaAMlQ8CoxLM\u002F2c6+1+OQtlalwkoGHEKudqhELBeQ\u003Cbr\u002F\u003E\r\nMAVw0fW13Vtg4vfRpejQ4J26+xjMDocbEv\u002FbBIsvjvF57XlaXLucJJy2Jwv0BSMa\u003Cbr\u002F\u003E\r\ncCkRa1gkYEYek74DaSzyXqDSYVO\u002FRPKFTFRQNeUbqbD20s3rbVWablFPAQKBgB5y\u003Cbr\u002F\u003E\r\nzUCJJYh2w6qPQzegjhO4wOm9bxMyngL0l+ka0AUuv7VnSx8TyWIytLoX8P90UVJ1\u003Cbr\u002F\u003E\r\nwpTc3ksK5dDV9ot7n7ThJIXv34nehLkkKckNRLd+oro1FsUw+PkkebWsIxb0avL2\u003Cbr\u002F\u003E\r\nEymI9fvGOPhdW6s91\u002FOO\u002FVAfDpvUDxNEevSkKtujAoGAcMOsXtn\u002FUyT3Lssxgla3\u003Cbr\u002F\u003E\r\nK+DCaFhAQPSUXOmpZwEbQ0yQlksDe4flsam8bEDI5D5iHx1ziSfh583qJl3BEZ5u\u003Cbr\u002F\u003E\r\nVZTEO2YLvT9QRz7pv2qspqj7nzSyBU2BFAajq43\u002FG1b8FHfVgN+YdVtzVrigfql5\u003Cbr\u002F\u003E\r\n2a+JxOxFfpjnGQ7RfSxSb+Q=\u003Cbr\u002F\u003E\r\n-----END PRIVATE KEY-----\u003Cbr\u002F\u003E\r\n \u003Cbr\u002F\u003E\r\nПора провести тестовый запуск службы, использовав следующую команду:\u003Cbr\u002F\u003E\r\n \u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E$ go run http_server.go\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nОтвет должен быть таким:\u003Cbr\u002F\u003E\r\n \u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003EGo Backend: { HTTPVersion = 1 }; serving on https:\u002F\u002Flocalhost:9191\u002Fhello\u002FsayHello\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nТеперь инициируем службу при помощи запроса HTTP\u002F1.1 POST (небезопасный и безопасный режимы):\u003Cbr\u002F\u003E\r\n \u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E$ curl -k -v https:\u002F\u002Flocalhost:9191\u002Fhello\u002FsayHello -d \"Hello Go!\"\n \n$ curl -v --cacert .\u002Fcert\u002Fserver.crt https:\u002F\u002Flocalhost:9191\u002Fhello\u002FsayHello -d \"Hello Go!\"\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nНиже — результат работы программы. Первая часть — детали рукопожатия TLS сервера и клиента. Вторая — детали запроса и ответа HTTP\u002F1.1. В конце — текстовое сообщение «Hello Go!».\u003Cbr\u002F\u003E\r\n \u003Cbr\u002F\u003E\r\n* Trying 127.0.0.1…\u003Cbr\u002F\u003E\r\n* Connected to localhost (127.0.0.1) port 9191 (#0)\u003Cbr\u002F\u003E\r\n* ALPN, offering http\u002F1.1\u003Cbr\u002F\u003E\r\n* Cipher selection: ALL:!EXPORT:!EXPORT40:!EXPORT56:!aNULL:!LOW:!RC4:@STRENGTH\u003Cbr\u002F\u003E\r\n* successfully set certificate verify locations:\u003Cbr\u002F\u003E\r\n* CAfile: \u002Fetc\u002Fssl\u002Fcerts\u002Fca-certificates.crt\u003Cbr\u002F\u003E\r\n CApath: none\u003Cbr\u002F\u003E\r\n* TLSv1.2 (OUT), TLS header, Certificate Status (22):\u003Cbr\u002F\u003E\r\n* TLSv1.2 (OUT), TLS handshake, Client hello (1):\u003Cbr\u002F\u003E\r\n* TLSv1.2 (IN), TLS handshake, Server hello (2):\u003Cbr\u002F\u003E\r\n* TLSv1.2 (IN), TLS handshake, Certificate (11):\u003Cbr\u002F\u003E\r\n* TLSv1.2 (IN), TLS handshake, Server key exchange (12):\u003Cbr\u002F\u003E\r\n* TLSv1.2 (IN), TLS handshake, Server finished (14):\u003Cbr\u002F\u003E\r\n* TLSv1.2 (OUT), TLS handshake, Client key exchange (16):\u003Cbr\u002F\u003E\r\n* TLSv1.2 (OUT), TLS change cipher, Client hello (1):\u003Cbr\u002F\u003E\r\n* TLSv1.2 (OUT), TLS handshake, Finished (20):\u003Cbr\u002F\u003E\r\n* TLSv1.2 (IN), TLS change cipher, Client hello (1):\u003Cbr\u002F\u003E\r\n* TLSv1.2 (IN), TLS handshake, Finished (20):\u003Cbr\u002F\u003E\r\n* SSL connection using TLSv1.2 \u002F ECDHE-RSA-AES128-GCM-SHA256\u003Cbr\u002F\u003E\r\n* ALPN, server accepted to use http\u002F1.1\u003Cbr\u002F\u003E\r\n* Server certificate:\u003Cbr\u002F\u003E\r\n* subject: C=LK; ST=Western; L=Colombo; O=LDCLAKMAL; OU=Engineering; CN=Chanaka Lakmal; emailAddress=ldclakmal@gmail.com\u003Cbr\u002F\u003E\r\n* start date: Apr 20 03:03:58 2019 GMT\u003Cbr\u002F\u003E\r\n* expire date: Apr 19 03:03:58 2020 GMT\u003Cbr\u002F\u003E\r\n* issuer: C=LK; ST=Western; L=Colombo; O=LDCLAKMAL; OU=Engineering; CN=Chanaka Lakmal; emailAddress=ldclakmal@gmail.com\u003Cbr\u002F\u003E\r\n* SSL certificate verify result: self signed certificate (18), continuing anyway.\u003Cbr\u002F\u003E\r\n\u003E POST \u002Fhello\u002FsayHello HTTP\u002F1.1\u003Cbr\u002F\u003E\r\n\u003E Host: localhost:9191\u003Cbr\u002F\u003E\r\n\u003E User-Agent: curl\u002F7.46.0\u003Cbr\u002F\u003E\r\n\u003E Accept: *\u002F*\u003Cbr\u002F\u003E\r\n\u003E Content-Length: 9\u003Cbr\u002F\u003E\r\n\u003E Content-Type: application\u002Fx-www-form-urlencoded\u003Cbr\u002F\u003E\r\n\u003E\u003Cbr\u002F\u003E\r\n* upload completely sent off: 9 out of 9 bytes\u003Cbr\u002F\u003E\r\n&lt; HTTP\u002F1.1 200 OK\u003Cbr\u002F\u003E\r\n&lt; Date: Sat, 20 Apr 2019 06:56:19 GMT\u003Cbr\u002F\u003E\r\n&lt; Content-Length: 10\u003Cbr\u002F\u003E\r\n&lt; Content-Type: text\u002Fplain; charset=utf-8\u003Cbr\u002F\u003E\r\n&lt;\u003Cbr\u002F\u003E\r\nHello Go!\u003Cbr\u002F\u003E\r\n* Connection #0 to host localhost left intact\u003Cbr\u002F\u003E\r\n \u003Cbr\u002F\u003E\r\n\u003Ch3\u003EHTTP\u002F1.1 Client\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\nНовый код — пример написания простого клиента HTTP\u002F1.1 на Go. Этот клиент отправляет запрос HTTP(S) POST на \u003Ca href=\"https:\u002F\u002Flocalhost\"\u003Elocalhost\u003C\u002Fa\u003E:9191\u002Fhello\u002FsayHello с сообщением “Hello Go!”.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"go\"\u003Epackage main\n \nimport (\n\"bytes\"\n\"crypto\u002Ftls\"\n\"crypto\u002Fx509\"\n\"fmt\"\n\"io\u002Fioutil\"\n\"log\"\n\"net\u002Fhttp\"\n)\n \nfunc main() {\nclient := &amp;http.Client{}\n \n\u002F\u002F Create a pool with the server certificate since it is not signed\n\u002F\u002F by a known CA\ncaCert, err := ioutil.ReadFile(\".\u002Fcert\u002Fserver.crt\")\nif err != nil {\nlog.Fatalf(\"Reading server certificate: %s\", err)\n}\ncaCertPool := x509.NewCertPool()\ncaCertPool.AppendCertsFromPEM(caCert)\n \n\u002F\u002F Create TLS configuration with the certificate of the server\ntlsConfig := &amp;tls.Config{\nRootCAs: caCertPool,\n}\n \n\u002F\u002F Use the proper transport in the client\nclient.Transport = &amp;http.Transport{\nTLSClientConfig: tlsConfig,\n}\n \n\u002F\u002F Perform the request\nresp, err := client.Post(\"https:\u002F\u002Flocalhost:9191\u002Fhello\u002FsayHello\", \"text\u002Fplain\", bytes.NewBufferString(\"Hello Go!\"))\nif err != nil {\nlog.Fatalf(\"Failed get: %s\", err)\n}\ndefer resp.Body.Close()\nbody, err := ioutil.ReadAll(resp.Body)\nif err != nil {\nlog.Fatalf(\"Failed reading response body: %s\", err)\n}\nfmt.Printf(\"Got response %d: %s %s\", resp.StatusCode, resp.Proto, string(body))\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E \u003Cbr\u002F\u003E\r\nПоскольку здесь тоже запускается служба HTTP(S), нужно предоставить сертификат и ключ. Нужные данные размещены в директории cert с названиями server.crt и server.key.\u003Cbr\u002F\u003E\r\n \u003Cbr\u002F\u003E\r\nДля того чтобы запустить клиент, нужно инициализировать сервер. Для этого выполняем описанные в первом разделе действия либо же запускаем любую HTTP(S)-службу с портом 9191 и путем \u002Fhello\u002FsayHello.\u003Cbr\u002F\u003E\r\n \u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E$ go run http_client.go\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nВывод должен быть таким:\u003Cbr\u002F\u003E\r\n \u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003EGot response 200: HTTP\u002F1.1 Hello Go!\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nКлиент показывает работу команды curl:\u003Cbr\u002F\u003E\r\n \u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E$ curl -v --cacert .\u002Fcert\u002Fserver.crt https:\u002F\u002Flocalhost:9191\u002Fhello\u002FsayHello -d \"Hello Go!\"\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nПосле того как закончена работа с HTTP\u002F1.1, стоит попробовать повторить то же самое для HTTP\u002F2.\u003Cbr\u002F\u003E\r\n \u003Cbr\u002F\u003E\r\n\u003Ch3\u003EHTTP\u002F2 Server\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\nКак и в предыдущем разделе, сначала нужно создать эхо-сервер.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"go\"\u003Epackage main\n \nimport (\n\"fmt\"\n\"golang.org\u002Fx\u002Fnet\u002Fhttp2\"\n\"io\u002Fioutil\"\n\"log\"\n\"net\u002Fhttp\"\n)\n \nfunc main() {\nvar httpServer = http.Server{\nAddr: \":9191\",\n}\nvar http2Server = http2.Server{}\n_ = http2.ConfigureServer(&amp;httpServer, &amp;http2Server)\nhttp.HandleFunc(\"\u002Fhello\u002FsayHello\", echoPayload)\nlog.Printf(\"Go Backend: { HTTPVersion = 2 }; serving on https:\u002F\u002Flocalhost:9191\u002Fhello\u002FsayHello\")\nlog.Fatal(httpServer.ListenAndServeTLS(\".\u002Fcert\u002Fserver.crt\", \".\u002Fcert\u002Fserver.key\"))\n}\n \nfunc echoPayload(w http.ResponseWriter, req *http.Request) {\nlog.Printf(\"Request connection: %s, path: %s\", req.Proto, req.URL.Path[1:])\ndefer req.Body.Close()\ncontents, err := ioutil.ReadAll(req.Body)\nif err != nil {\nlog.Fatalf(\"Oops! Failed reading body of the request.\\n %s\", err)\nhttp.Error(w, err.Error(), 500)\n}\nfmt.Fprintf(w, \"%s\\n\", string(contents))\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E \u003Cbr\u002F\u003E\r\nДля того чтобы проверить работу сервера, нужно отправить команду:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E$ go run http2_server.go\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nОтвет должен быть таким:\u003Cbr\u002F\u003E\r\n \u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003EGo Backend: { HTTPVersion = 2 }; serving on https:\u002F\u002Flocalhost:9191\u002Fhello\u002FsayHello\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nТеперь сервер запущен, инициализировать его можно при помощи запросов HTTP\u002F1.1 или HTTP\u002F2. Команды HTTP\u002F1.1 POST для тестирования работы сервера приведены ниже: \u003Cbr\u002F\u003E\r\n \u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E$ curl -k -v https:\u002F\u002Flocalhost:9191\u002Fhello\u002FsayHello -d \"Hello Go!\"\n \n$ curl -v --cacert .\u002Fcert\u002Fserver.crt https:\u002F\u002Flocalhost:9191\u002Fhello\u002FsayHello -d \"Hello Go!\"\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nИ то же самое, но уже с HTTP\u002F2 POST:\u003Cbr\u002F\u003E\r\n \u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E$ curl -k -v --http2 https:\u002F\u002Flocalhost:9191\u002Fhello\u002FsayHello -d \"Hello Go!\"\n \n$ curl -v --http2 --cacert .\u002Fcert\u002Fserver.crt https:\u002F\u002Flocalhost:9191\u002Fhello\u002FsayHello -d \"Hello Go!\"\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nНиже — пример вывода работы сервера. Первая часть — TLS-рукопожатие между сервером и клиентом, вторая — детали запроса и ответа HTTP\u002F2.\u003Cbr\u002F\u003E\r\n \u003Cbr\u002F\u003E\r\n* Trying 127.0.0.1…\u003Cbr\u002F\u003E\r\n* Connected to localhost (127.0.0.1) port 9191 (#0)\u003Cbr\u002F\u003E\r\n* ALPN, offering h2\u003Cbr\u002F\u003E\r\n* ALPN, offering http\u002F1.1\u003Cbr\u002F\u003E\r\n* Cipher selection: ALL:!EXPORT:!EXPORT40:!EXPORT56:!aNULL:!LOW:!RC4:@STRENGTH\u003Cbr\u002F\u003E\r\n* successfully set certificate verify locations:\u003Cbr\u002F\u003E\r\n* CAfile: src\u002Fhello\u002Fcert\u002Fserver.crt\u003Cbr\u002F\u003E\r\n CApath: none\u003Cbr\u002F\u003E\r\n* TLSv1.2 (OUT), TLS header, Certificate Status (22):\u003Cbr\u002F\u003E\r\n* TLSv1.2 (OUT), TLS handshake, Client hello (1):\u003Cbr\u002F\u003E\r\n* TLSv1.2 (IN), TLS handshake, Server hello (2):\u003Cbr\u002F\u003E\r\n* TLSv1.2 (IN), TLS handshake, Certificate (11):\u003Cbr\u002F\u003E\r\n* TLSv1.2 (IN), TLS handshake, Server key exchange (12):\u003Cbr\u002F\u003E\r\n* TLSv1.2 (IN), TLS handshake, Server finished (14):\u003Cbr\u002F\u003E\r\n* TLSv1.2 (OUT), TLS handshake, Client key exchange (16):\u003Cbr\u002F\u003E\r\n* TLSv1.2 (OUT), TLS change cipher, Client hello (1):\u003Cbr\u002F\u003E\r\n* TLSv1.2 (OUT), TLS handshake, Finished (20):\u003Cbr\u002F\u003E\r\n* TLSv1.2 (IN), TLS change cipher, Client hello (1):\u003Cbr\u002F\u003E\r\n* TLSv1.2 (IN), TLS handshake, Finished (20):\u003Cbr\u002F\u003E\r\n* SSL connection using TLSv1.2 \u002F ECDHE-RSA-AES128-GCM-SHA256\u003Cbr\u002F\u003E\r\n* ALPN, server accepted to use h2\u003Cbr\u002F\u003E\r\n* Server certificate:\u003Cbr\u002F\u003E\r\n* subject: C=LK; ST=Western; L=Colombo; O=LDCLAKMAL; OU=Engineering; CN=localhost; emailAddress=ldclakmal@gmail.com\u003Cbr\u002F\u003E\r\n* start date: Apr 20 05:27:33 2019 GMT\u003Cbr\u002F\u003E\r\n* expire date: Apr 19 05:27:33 2020 GMT\u003Cbr\u002F\u003E\r\n* common name: localhost (matched)\u003Cbr\u002F\u003E\r\n* issuer: C=LK; ST=Western; L=Colombo; O=LDCLAKMAL; OU=Engineering; CN=localhost; emailAddress=ldclakmal@gmail.com\u003Cbr\u002F\u003E\r\n* SSL certificate verify ok.\u003Cbr\u002F\u003E\r\n* Using HTTP2, server supports multi-use\u003Cbr\u002F\u003E\r\n* Connection state changed (HTTP\u002F2 confirmed)\u003Cbr\u002F\u003E\r\n* TCP_NODELAY set\u003Cbr\u002F\u003E\r\n* Copying HTTP\u002F2 data in stream buffer to connection buffer after upgrade: len=0\u003Cbr\u002F\u003E\r\n* Using Stream ID: 1 (easy handle 0x10ddf20)\u003Cbr\u002F\u003E\r\n\u003E POST \u002Fhello\u002FsayHello HTTP\u002F1.1\u003Cbr\u002F\u003E\r\n\u003E Host: localhost:9191\u003Cbr\u002F\u003E\r\n\u003E User-Agent: curl\u002F7.46.0\u003Cbr\u002F\u003E\r\n\u003E Accept: *\u002F*\u003Cbr\u002F\u003E\r\n\u003E Content-Length: 9\u003Cbr\u002F\u003E\r\n\u003E Content-Type: application\u002Fx-www-form-urlencoded\u003Cbr\u002F\u003E\r\n\u003E\u003Cbr\u002F\u003E\r\n* We are completely uploaded and fine\u003Cbr\u002F\u003E\r\n&lt; HTTP\u002F2.0 200\u003Cbr\u002F\u003E\r\n&lt; content-type:text\u002Fplain; charset=utf-8\u003Cbr\u002F\u003E\r\n&lt; content-length:10\u003Cbr\u002F\u003E\r\n&lt; date:Sat, 20 Apr 2019 06:54:50 GMT\u003Cbr\u002F\u003E\r\n&lt;\u003Cbr\u002F\u003E\r\nHello Go!\u003Cbr\u002F\u003E\r\n* Connection #0 to host localhost left intact\u003Cbr\u002F\u003E\r\n \u003Cbr\u002F\u003E\r\n\u003Ch3\u003EHTTP\u002F2 Client\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\nПоследняя часть — создание HTTP\u002F2-клиента. Вот реализация отправки HTTP(S) POST запроса для \u003Ca href=\"https:\u002F\u002Flocalhost\"\u003Elocalhost\u003C\u002Fa\u003E:9191\u002Fhello\u002FsayHello:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"go\"\u003Epackage main\n \nimport (\n\"bytes\"\n\"crypto\u002Ftls\"\n\"crypto\u002Fx509\"\n\"fmt\"\n\"golang.org\u002Fx\u002Fnet\u002Fhttp2\"\n\"io\u002Fioutil\"\n\"log\"\n\"net\u002Fhttp\"\n)\n \nfunc main() {\nclient := &amp;http.Client{}\n \n\u002F\u002F Create a pool with the server certificate since it is not signed\n\u002F\u002F by a known CA\ncaCert, err := ioutil.ReadFile(\".\u002Fcert\u002Fserver.crt\")\nif err != nil {\nlog.Fatalf(\"Reading server certificate: %s\", err)\n}\ncaCertPool := x509.NewCertPool()\ncaCertPool.AppendCertsFromPEM(caCert)\n \n\u002F\u002F Create TLS configuration with the certificate of the server\ntlsConfig := &amp;tls.Config{\nRootCAs: caCertPool,\n}\n \n\u002F\u002F Use the proper transport in the client\nclient.Transport = &amp;http2.Transport{\nTLSClientConfig: tlsConfig,\n}\n \n\u002F\u002F Perform the request\nresp, err := client.Post(\"https:\u002F\u002Flocalhost:9191\u002Fhello\u002FsayHello\", \"text\u002Fplain\", bytes.NewBufferString(\"Hello Go!\"))\nif err != nil {\nlog.Fatalf(\"Failed get: %s\", err)\n}\ndefer resp.Body.Close()\nbody, err := ioutil.ReadAll(resp.Body)\nif err != nil {\nlog.Fatalf(\"Failed reading response body: %s\", err)\n}\nfmt.Printf(\"Got response %d: %s %s\", resp.StatusCode, resp.Proto, string(body))\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E \u003Cbr\u002F\u003E\r\nКак и прежде, для работы нужны ключ и сертификат. Они сохранены в cert с названиями server.crt и server.key.\u003Cbr\u002F\u003E\r\n \u003Cbr\u002F\u003E\r\nЗапуск клиента:\u003Cbr\u002F\u003E\r\n \u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E$ go run http2_client.go\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nИ ожидаемый ответ:\u003Cbr\u002F\u003E\r\n \u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003EGot response 200: HTTP\u002F2 Hello Go!\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nДетализация работы клиента:\u003Cbr\u002F\u003E\r\n \u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E$ curl -v --http2 --cacert .\u002Fcert\u002Fserver.crt https:\u002F\u002Flocalhost:9191\u002Fhello\u002FsayHello -d \"Hello Go!\"\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nВот и все. Работа относительно простая, но она дает понимание того, как реализовать базовые сетевые сервисы на языке Go.\u003Cbr\u002F\u003E\r\n \u003Cbr\u002F\u003E\r\n \u003Cblockquote\u003E\u003Cb\u003ESkillbox рекомендует:\u003C\u002Fb\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003EДвухлетний практический курс \u003Ca href=\"https:\u002F\u002Fiamwebdev.skillbox.ru\u002F?utm_source=skillbox.media&amp;utm_medium=habr.com&amp;utm_campaign=WEBDEVPRO&amp;utm_content=articles&amp;utm_term=goserver\"\u003E«Я — веб-разработчик PRO»\u003C\u002Fa\u003E.\u003C\u002Fli\u003E\r\n\u003Cli\u003EОбразовательный онлайн-курс \u003Ca href=\"https:\u002F\u002Fskillbox.ru\u002Fjava\u002F?utm_source=skillbox.media&amp;utm_medium=habr.com&amp;utm_campaign=JAVDEV&amp;utm_content=articles&amp;utm_term=goserver\"\u003E«Профессия Java-разработчик»\u003C\u002Fa\u003E.\u003C\u002Fli\u003E\r\n\u003Cli\u003EПрактический годовой курс \u003Ca href=\"https:\u002F\u002Fskillbox.ru\u002Fphp\u002F?utm_source=skillbox.media&amp;utm_medium=habr.com&amp;utm_campaign=PHPDEV&amp;utm_content=articles&amp;utm_term=goserver\"\u003E«PHP-разработчик с 0 до PRO»\u003C\u002Fa\u003E.\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003C\u002Fblockquote\u003E\u003C\u002Fdiv\u003E","tags":[{"titleHtml":"GOLANG"},{"titleHtml":"go"},{"titleHtml":"языки программирования"},{"titleHtml":"разработка"}],"metadata":{"stylesUrls":[],"scriptUrls":[],"shareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F451032\u002Fedec188c0d5853af8c2f29a3a0b972f5\u002F","shareImageWidth":1200,"shareImageHeight":630,"vkShareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F451032\u002Fedec188c0d5853af8c2f29a3a0b972f5\u002F?format=vk","schemaJsonLd":"{\"@context\":\"http:\\\u002F\\\u002Fschema.org\",\"@type\":\"Article\",\"mainEntityOfPage\":{\"@type\":\"WebPage\",\"@id\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fru\\\u002Fcompany\\\u002Fskillbox\\\u002Fblog\\\u002F451032\\\u002F\"},\"headline\":\"Пишем HTTP\\\u002F1.1 &amp; HTTP\\\u002F2 клиент и сервер на Golang\",\"datePublished\":\"2019-05-08T17:09:34+03:00\",\"dateModified\":\"2019-05-08T17:37:01+03:00\",\"author\":{\"@type\":\"Person\",\"name\":\"fokus-lop\"},\"publisher\":{\"@type\":\"Organization\",\"name\":\"Habr\",\"logo\":{\"@type\":\"ImageObject\",\"url\":\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fa_\\\u002Flk\\\u002F9m\\\u002Fa_lk9mjkccjox-zccjrpfolmkmq.png\"}},\"description\":\"Golang &mdash; отличный язык программирования с широким спектром возможностей. В этой статье показано, как на Go можно написать клиент и сервер для протоколов HTTP\\\u002F...\",\"url\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fru\\\u002Fcompany\\\u002Fskillbox\\\u002Fblog\\\u002F451032\\\u002F#post-content-body\",\"about\":[\"c_skillbox\",\"h_programming\",\"h_go\",\"f_develop\"],\"image\":[\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fgetpro\\\u002Fhabr\\\u002Fpost_images\\\u002Fd3a\\\u002F039\\\u002Fafd\\\u002Fd3a039afd1ba2d00298f26b62c2a3624.png\"]}","metaDescription":"Golang — отличный язык программирования с широким спектром возможностей. В этой статье показано, как на Go можно написать клиент и сервер для протоколов HTTP\u002F1.1 и HTTP\u002F2.\r\n\r\nSkillbox...","mainImageUrl":null,"amp":false},"polls":[],"commentsEnabled":true,"rulesRemindEnabled":false,"votesEnabled":true,"status":"published","plannedPublishTime":null,"checked":null,"isEditorial":false}},"articlesIds":{},"isLoading":false,"pagesCount":{},"route":{},"reasonsList":null,"view":"cards","lastVisitedRoute":{},"ssrCommentsArticleIds":[""],"karma":{}},"authorContribution":{"authors":{}},"betaTest":{"currentAnnouncement":null,"announcements":{},"announcementCards":null,"announcementComments":{},"announcementCommentThreads":{},"announcementCommentingStatuses":{},"archivedList":[]},"authorStatistics":{"articleRefs":{},"articleIds":{},"pagesCount":{},"route":{},"viewsCount":[],"maxStatsCount":{}},"career":{"seoLandings":[],"hubs":""},"comments":{"articleComments":{},"searchCommentsResults":null,"previewComment":null,"pagesCount":null,"commentAccess":{},"scrollParents":{},"pageArticleComments":{"lastViewedComment":0,"postId":null,"lastCommentTimestamp":"","moderated":[],"moderatedIds":[],"commentRoute":""}},"companies":{"companyRefs":{"skillbox":{"alias":"skillbox","imageUrl":"\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fcompany\u002Fca7\u002F89b\u002F5f1\u002Fca789b5f1556a1df2ef2e53c1554fff9.png","titleHtml":"Skillbox","descriptionHtml":"Образовательная платформа Skillbox","relatedData":null,"statistics":{"postsCount":160,"newsCount":0,"vacanciesCount":0,"employeesCount":11,"careerRating":null,"subscribersCount":62430,"rating":101.71,"invest":null},"foundationDate":{"year":"2016","month":"06","day":"07"},"location":{"city":{"id":"447159","title":"Москва"},"region":{"id":"1885","title":"Москва и Московская обл."},"country":{"id":"168","title":"Россия"}},"siteUrl":"https:\u002F\u002Fskillbox.ru\u002F","staffNumber":"501–1 000 человек","registrationDate":"2018-05-18T08:00:03+00:00","representativeUser":null,"contacts":[{"title":"Сайт","url":"https:\u002F\u002Fskillbox.ru\u002F"},{"title":"Facebook","url":"https:\u002F\u002Ffacebook.com\u002Fskillboxru"},{"title":"ВКонтакте","url":"https:\u002F\u002Fvk.com\u002Fskillbox_education"},{"title":"Instagram","url":"https:\u002F\u002Finstagram.com\u002Fskillbox.ru"},{"title":"Telegram","url":"https:\u002F\u002Ftelegram.me\u002Fskillboxru"}],"settings":{"analyticsSettings":[{"type":"ga","trackingId":"UA-165018707-1"}],"branding":null,"status":"active"},"metadata":{"titleHtml":"Skillbox, Москва - Образовательная платформа Skillbox с 7 июня 2016 г.","title":"Skillbox, Москва - Образовательная платформа Skillbox с 7 июня 2016 г.","keywords":["Программирование","Лайфхаки для гиков","Учебный процесс в IT","Python","Big Data"],"descriptionHtml":"160 статей от авторов компании Skillbox","description":"160 статей от авторов компании Skillbox"},"aDeskSettings":null,"careerAlias":"skillbox","maxCustomTrackerLinks":0}},"companyIds":{},"companyTopIds":{},"pagesCount":{},"companyProfiles":{},"companiesCategories":[],"companiesCategoriesTotalCount":0,"companiesWidgets":{},"companiesWorkers":{},"companiesFans":{},"route":{},"isLoading":false,"companyWorkersLoading":false,"companyFansLoading":false,"vacancies":{}},"companiesContribution":{"hubs":{},"flows":{},"companyRefs":{}},"companyHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"conversation":{"messages":[],"respondent":null,"isLoadMore":false},"conversations":{"conversations":[],"unreadCount":0,"pagesCount":0,"isLoadMore":false},"desktopState":{"desktopFl":null,"desktopHl":null,"isChecked":false,"isLoginDemanded":false},"dfp":{"slotsDict":{}},"docs":{"menu":{},"articles":{},"mainMenu":[],"loading":{"main":false,"dropdown":false,"article":false}},"feature":{"isProbablyVisible":"true"},"flows":{"flows":[{"alias":"develop","id":1,"route":{"name":"FLOW_PAGE","params":{"flowName":"develop"}}},{"alias":"admin","id":6,"route":{"name":"FLOW_PAGE","params":{"flowName":"admin"}}},{"alias":"design","id":2,"route":{"name":"FLOW_PAGE","params":{"flowName":"design"}}},{"alias":"management","id":3,"route":{"name":"FLOW_PAGE","params":{"flowName":"management"}}},{"alias":"marketing","id":4,"route":{"name":"FLOW_PAGE","params":{"flowName":"marketing"}}},{"alias":"popsci","id":7,"route":{"name":"FLOW_PAGE","params":{"flowName":"popsci"}}}]},"global":{"isPwa":false,"device":"desktop","isHabrCom":true},"hubs":{"hubRefs":{},"hubIds":{},"pagesCount":{},"isLoading":false,"route":{}},"hubsBlock":{"hubRefs":{},"hubIds":{}},"i18n":{"fl":"ru","hl":"ru"},"info":{"infoPage":{},"isLoading":true},"location":{"urlStruct":{"protocol":null,"slashes":null,"auth":null,"host":null,"port":null,"hostname":null,"hash":null,"search":null,"query":{},"pathname":null,"path":null,"href":""},"searchQuery":null},"me":{"user":null,"ppgDemanded":false,"karmaResetInfo":{"canReincarnate":null,"wasReincarnated":null,"currentScore":null},"notes":null},"mostReadingList":{"mostReadingListIds":[],"mostReadingListRefs":null,"promoPost":null},"pinnedPost":{"pinnedPost":null},"ppa":{"articles":{},"card":null,"transactions":null,"totalTransactions":null,"isAccessible":null},"projectsBlocks":{"activeBlocks":{}},"pullRefresh":{"shouldRefresh":false},"sandbox":{"articleIds":[],"articleRefs":{},"pagesCount":null,"route":{},"lastVisitedRoute":{},"isLoading":false},"settingsOther":{"inputs":{"uiLang":{"errors":[],"ref":null,"value":""},"articlesLangEnglish":{"errors":[],"ref":null,"value":false},"articlesLangRussian":{"errors":[],"ref":null,"value":false},"agreement":{"errors":[],"ref":null,"value":false},"email":{"errors":[],"ref":null,"value":true},"digest":{"errors":[],"ref":null,"value":true}}},"similarList":{"similarListIds":[],"similarListRefs":null},"ssr":{"error":null,"isDataLoaded":false,"isDataLoading":false,"isHydrationFailed":false,"isServer":false},"userHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"userInvites":{"availableInvites":0,"usedInvitesIds":[],"usedInvitesRefs":{},"usedInvitesPagesCount":0,"unusedInvitesIds":[],"unusedInvitesRefs":{},"unusedInvitesPagesCount":0},"users":{"authorRefs":{},"authorIds":{},"pagesCount":{},"authorProfiles":{},"userHubs":{},"userInvitations":{},"authorFollowers":{},"authorFollowed":{},"karmaStats":[],"statistics":null,"isLoading":false,"authorFollowersLoading":false,"authorFollowedLoading":false,"userHubsLoading":false,"userInvitationsLoading":false,"route":{}},"viewport":{"prevScrollY":{},"scrollY":0,"width":0},"tracker":{"items":{},"pagesCache":{},"markedViewedSilently":{},"markedRead":{},"unreadCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null},"unviewedCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null}}};(function(){var s;(s=document.currentScript||document.scripts[document.scripts.length-1]).parentNode.removeChild(s);}());</script>
+<script src="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" defer></script><script src="https://assets.habr.com/habr-web/js/app.c0af73e7.js" defer></script>
+
+
+
+    <script>
+      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+        (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+        m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+      })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+    </script>
+  
+  <script type="text/javascript" >
+    (function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+    m[i].l=1*new Date();k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})
+    (window, document, "script", "https://mc.yandex.ru/metrika/tag.js", "ym");
+
+    ym(24049213, "init", {
+      defer:true,
+      trackLinks:true,
+      accurateTrackBounce:true,
+      webvisor:false,
+    });
+  </script>
+  <noscript>
+    <div>
+      <img src="https://mc.yandex.ru/watch/24049213" style="position:absolute; left:-9999px;" alt="" />
+    </div>
+  </noscript>
+  
+    <script type="text/javascript">
+      window.addEventListener('load', function () {
+        setTimeout(() => {
+          const img = new Image();
+          img.src = 'https://vk.com/rtrg?p=VK-RTRG-421343-57vKE';
+        }, 0);
+      });
+    </script>
+  
+</body>
+</html>

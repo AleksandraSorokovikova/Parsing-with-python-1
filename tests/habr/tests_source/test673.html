@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="ru" data-vue-meta="%7B%22lang%22:%7B%22ssr%22:%22ru%22%7D%7D">
+<head >
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
+  <title>Как и зачем мы делали распознавание достопримечательностей в Облаке Mail.ru / Хабр</title>
+  <style>
+    /* cyrillic-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSxf6TF0.woff2) format('woff2');
+      unicode-range: U+0460-052F, U+1C80-1C88, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+    }
+
+    /* cyrillic */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveQhf6TF0.woff2) format('woff2');
+      unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+    }
+
+    /* latin-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSBf6TF0.woff2) format('woff2');
+      unicode-range: U+0100-024F, U+0259, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20CF, U+2113, U+2C60-2C7F, U+A720-A7FF;
+    }
+
+    /* latin */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveRhf6.woff2) format('woff2');
+      unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+    }
+  </style>
+  <link rel="preload" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" as="script"><link rel="preload" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/app.c0af73e7.js" as="script">
+  <link rel="stylesheet" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css"><link rel="stylesheet" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css">
+  <script>window.i18nFetch = new Promise((res, rej) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open('GET', '/js/i18n/ru-compiled.85eb77f0b17c8235e7b64b9f81ea5ec2.json');
+          xhr.responseType = 'json';
+          xhr.onload = function(e) {
+            if (this.status === 200) {
+              res({ru: xhr.response});
+            } else {
+              rej(e);
+            }
+          };
+          xhr.send();
+        });</script>
+  
+  <script data-vue-meta="ssr" src="/js/ads.js" onload="window['zhY4i4nJ9K'] = true" data-vmid="checkad"></script><script data-vue-meta="ssr" type="application/ld+json" data-vmid="ldjson-schema">{"@context":"http:\/\/schema.org","@type":"Article","mainEntityOfPage":{"@type":"WebPage","@id":"https:\/\/habr.com\/ru\/company\/vk\/blog\/451542\/"},"headline":"Как и зачем мы делали распознавание достопримечательностей в Облаке Mail.ru","datePublished":"2019-05-14T13:22:15+03:00","dateModified":"2019-05-14T13:37:56+03:00","author":{"@type":"Person","name":"Андрей Бояров"},"publisher":{"@type":"Organization","name":"Habr","logo":{"@type":"ImageObject","url":"https:\/\/habrastorage.org\/webt\/a_\/lk\/9m\/a_lk9mjkccjox-zccjrpfolmkmq.png"}},"description":"С появлением качественных камер в мобильных телефонах мы все больше и чаще фотографируем, снимаем видео ярких и важных моментов нашей жизни. У многих из нас фо...","url":"https:\/\/habr.com\/ru\/company\/vk\/blog\/451542\/#post-content-body","about":["c_vk","h_algorithms","h_image_processing","h_machine_learning","h_artificial_intelligence","f_develop","f_popsci"],"image":["https:\/\/habrastorage.org\/getpro\/habr\/post_images\/a5d\/eeb\/615\/a5deeb615e9a57fb482a1a5464ab6fcc.png","https:\/\/habrastorage.org\/getpro\/habr\/post_images\/bd4\/da6\/7f7\/bd4da67f77caa21c8afdd344e1e1a05a.png","https:\/\/habrastorage.org\/getpro\/habr\/post_images\/837\/0a4\/f9b\/8370a4f9b8785814cd4cc7368770aac2.png","https:\/\/habrastorage.org\/getpro\/habr\/post_images\/55d\/632\/245\/55d632245cf529e935e25a78de40f020.png","https:\/\/habrastorage.org\/getpro\/habr\/post_images\/3f6\/e54\/629\/3f6e546299616e59efd6a1a1464b9b65.png","https:\/\/habrastorage.org\/getpro\/habr\/post_images\/305\/300\/a87\/305300a8734289229c57e0d1876fa74e.png","https:\/\/habrastorage.org\/getpro\/habr\/post_images\/e17\/a2d\/803\/e17a2d803135ba5a7821842f035b1cf8.png","https:\/\/habrastorage.org\/getpro\/habr\/post_images\/008\/a1f\/544\/008a1f544843103423b5bcdb4c8b1fe5.png","https:\/\/habrastorage.org\/getpro\/habr\/post_images\/27a\/ed1\/cfb\/27aed1cfbe8d7cffa90bc1a96b578eff.png","https:\/\/habrastorage.org\/getpro\/habr\/post_images\/6dd\/7bf\/338\/6dd7bf33835ea1d84565a04c5ff1e281.jpg","https:\/\/habrastorage.org\/getpro\/habr\/post_images\/5aa\/4aa\/264\/5aa4aa26413082931c28f1a393a64b95.png","https:\/\/habrastorage.org\/getpro\/habr\/post_images\/c49\/b0f\/69e\/c49b0f69e33581f30c05985a98702f6f.png","https:\/\/habrastorage.org\/getpro\/habr\/post_images\/000\/7b7\/8ef\/0007b78efb3d15296bab0ebef0cf4dfb.png","https:\/\/habrastorage.org\/getpro\/habr\/post_images\/d13\/5f4\/105\/d135f4105f2823a612e458f946e25221.png","https:\/\/habrastorage.org\/getpro\/habr\/post_images\/d01\/75c\/5a5\/d0175c5a5142647bf9446f7d65df0509.png","https:\/\/habrastorage.org\/getpro\/habr\/post_images\/14b\/ffe\/04f\/14bffe04fe6ca1b3d09876432e319e53.png","https:\/\/habrastorage.org\/getpro\/habr\/post_images\/72c\/df4\/52e\/72cdf452e2105c18f8e4375a1b69d497.png","https:\/\/habrastorage.org\/getpro\/habr\/post_images\/ec6\/7f8\/929\/ec67f892964ee568754a86cd48e16b51.png"]}</script>
+  <script src="//www.googletagservices.com/tag/js/gpt.js" async></script>
+  <style>.grecaptcha-badge{visibility: hidden;}</style>
+  <meta name="habr-version" content="2.49.0">
+  
+  <meta data-vue-meta="ssr" property="fb:app_id" content="444736788986613"><meta data-vue-meta="ssr" property="fb:pages" content="472597926099084"><meta data-vue-meta="ssr" name="twitter:card" content="summary_large_image"><meta data-vue-meta="ssr" name="twitter:site" content="@habr_eng"><meta data-vue-meta="ssr" property="og:title" content="Как и зачем мы делали распознавание достопримечательностей в Облаке Mail.ru" data-vmid="og:title"><meta data-vue-meta="ssr" name="twitter:title" content="Как и зачем мы делали распознавание достопримечательностей в Облаке Mail.ru" data-vmid="twitter:title"><meta data-vue-meta="ssr" name="aiturec:title" content="Как и зачем мы делали распознавание достопримечательностей в Облаке Mail.ru" data-vmid="aiturec:title"><meta data-vue-meta="ssr" name="description" content="С появлением качественных камер в мобильных телефонах мы все больше и чаще фотографируем, снимаем видео ярких и важных моментов нашей жизни. У многих из нас фотоархивы насчитывают десятки лет и..." data-vmid="description"><meta data-vue-meta="ssr" itemprop="description" content="С появлением качественных камер в мобильных телефонах мы все больше и чаще фотографируем, снимаем видео ярких и важных моментов нашей жизни. У многих из нас фотоархивы насчитывают десятки лет и..." data-vmid="description:itemprop"><meta data-vue-meta="ssr" property="og:description" content="С появлением качественных камер в мобильных телефонах мы все больше и чаще фотографируем, снимаем видео ярких и важных моментов нашей жизни. У многих из нас фотоархивы насчитывают десятки лет и..." data-vmid="og:description"><meta data-vue-meta="ssr" name="twitter:description" content="С появлением качественных камер в мобильных телефонах мы все больше и чаще фотографируем, снимаем видео ярких и важных моментов нашей жизни. У многих из нас фотоархивы насчитывают десятки лет и..." data-vmid="twitter:description"><meta data-vue-meta="ssr" property="aiturec:description" content="С появлением качественных камер в мобильных телефонах мы все больше и чаще фотографируем, снимаем видео ярких и важных моментов нашей жизни. У многих из нас фотоархивы насчитывают десятки лет и..." data-vmid="aiturec:description"><meta data-vue-meta="ssr" itemprop="image" content="https://habr.com/share/publication/451542/956c6ecb00490646c96dac09437e5883/" data-vmid="image:itemprop"><meta data-vue-meta="ssr" property="og:image" content="https://habr.com/share/publication/451542/956c6ecb00490646c96dac09437e5883/" data-vmid="og:image"><meta data-vue-meta="ssr" property="aiturec:image" content="https://habr.com/share/publication/451542/956c6ecb00490646c96dac09437e5883/" data-vmid="aiturec:image"><meta data-vue-meta="ssr" name="twitter:image" content="https://habr.com/share/publication/451542/956c6ecb00490646c96dac09437e5883/" data-vmid="twitter:image"><meta data-vue-meta="ssr" property="vk:image" content="https://habr.com/share/publication/451542/956c6ecb00490646c96dac09437e5883/" data-vmid="vk:image"><meta data-vue-meta="ssr" property="aiturec:item_id" content="451542" data-vmid="aiturec:item_id"><meta data-vue-meta="ssr" property="aiturec:datetime" content="2019-05-14T10:22:15.000Z" data-vmid="aiturec:datetime"><meta data-vue-meta="ssr" property="og:type" content="article" data-vmid="og:type"><meta data-vue-meta="ssr" property="og:locale" content="ru_RU" data-vmid="og:locale"><meta data-vue-meta="ssr" property="og:image:width" content="1200" data-vmid="og:image:width"><meta data-vue-meta="ssr" property="og:image:height" content="630" data-vmid="og:image:height">
+  <link data-vue-meta="ssr" href="https://habr.com/ru/rss/post/451542/?fl=ru" type="application/rss+xml" title="" rel="alternate" name="rss"><link data-vue-meta="ssr" href="https://habr.com/ru/company/vk/blog/451542/" rel="canonical" data-vmid="canonical"><link data-vue-meta="ssr" data-vmid="hreflang"><link data-vue-meta="ssr" image_src="image" href="https://habr.com/share/publication/451542/956c6ecb00490646c96dac09437e5883/" data-vmid="image:href"><link data-vue-meta="ssr" rel="amphtml" href="https://habr.com/ru/amp/post/451542/">
+  <meta name="apple-mobile-web-app-status-bar-style" content="#303b44">
+  <meta name="msapplication-TileColor" content="#629FBC">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="16x16"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-16.png"
+  >
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="32x32"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-32.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="76x76"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-76.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="120x120"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="152x152"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-152.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="180x180"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-180.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="256x256"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-256.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1136x640.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2436x1125.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1792x828.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_828x1792.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1334x750.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2208x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1125x2436.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2208.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2732x2048.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2688x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2224x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_750x1334.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x2732.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2388x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2224.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_640x1136.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2388.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x1536.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1536x2048.png"
+  >
+  <link
+    rel="mask-icon"
+    color="#77a2b6"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.svg"
+  >
+  <link
+    crossorigin="use-credentials"
+    href="/manifest.webmanifest"
+    rel="manifest"
+  >
+</head>
+<body>
+
+
+<div id="app" data-server-rendered="true" data-async-called="true"><div class="tm-layout__wrapper"><!----> <div></div> <!----> <header class="tm-header"><div class="tm-page-width"><div class="tm-header__container"><!----> <span class="tm-header__logo-wrap"><a href="/ru/" class="tm-header__logo tm-header__logo_ru"><svg height="16" width="16" class="tm-svg-img tm-header__icon"><title>Хабр</title> <use xlink:href="/img/habr-logo-ru.svg#logo"></use></svg></a> <span class="tm-header__beta-sign" style="display:none;">β</span></span> <div class="tm-dropdown tm-header__projects"><div class="tm-dropdown__head"><button class="tm-header__dropdown-toggle"><svg height="16" width="16" class="tm-svg-img tm-header__icon tm-header__icon_dropdown"><title>Открыть список</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#arrow-down"></use></svg></button></div> <!----></div> <a href="/ru/sandbox/start/" class="tm-header__become-author-btn">
+            Как стать автором
+          </a> <div class="tm-feature tm-header__feature tm-feature_variant-inline"><!----></div> <!----> <!----></div></div></header> <div class="tm-layout"><div class="tm-page-progress-bar"></div> <div data-menu-sticky="true" class="tm-base-layout__header tm-base-layout__header_is-sticky"><div class="tm-page-width"><div class="tm-base-layout__header-wrapper"><div class="tm-main-menu"><div class="tm-main-menu__section"><nav class="tm-main-menu__section-content"><!----> <a href="/ru/all/" class="tm-main-menu__item">
+        Все потоки
+      </a> <a href="/ru/flows/develop/" class="tm-main-menu__item">
+          Разработка
+        </a><a href="/ru/flows/admin/" class="tm-main-menu__item">
+          Администрирование
+        </a><a href="/ru/flows/design/" class="tm-main-menu__item">
+          Дизайн
+        </a><a href="/ru/flows/management/" class="tm-main-menu__item">
+          Менеджмент
+        </a><a href="/ru/flows/marketing/" class="tm-main-menu__item">
+          Маркетинг
+        </a><a href="/ru/flows/popsci/" class="tm-main-menu__item">
+          Научпоп
+        </a></nav></div></div> <div class="tm-header-user-menu tm-base-layout__user-menu"><a href="/ru/search/" class="tm-header-user-menu__item tm-header-user-menu__search"><svg height="24" width="24" class="tm-svg-img tm-header-user-menu__icon tm-header-user-menu__icon_search tm-header-user-menu__icon_dark"><title>Поиск</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#search"></use></svg></a> <!----> <!----> <!----> <div class="tm-header-user-menu__item tm-header-user-menu__user_desktop"><div class="tm-dropdown"><div class="tm-dropdown__head"><svg height="24" width="24" data-test-id="menu-toggle-guest" class="tm-svg-img tm-header-user-menu__icon"><title>Профиль</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#header-user"></use></svg> <!----></div> <!----></div> <!----></div> <!----></div></div></div></div> <!----> <div class="tm-page-width"></div> <main class="tm-layout__container"><div hl="ru" companyName="vk" data-async-called="true" class="tm-page"><div class="tm-page-width"><div class="tm-page__header"><div class="tm-company-card__branding tm-company-article__branding tm-company-card__branding_loading"><div class="tm-company-card__branding-placeholder"><!----></div> <a href="https://vk.com/vkteam"><img src="//habrastorage.org/getpro/habr/branding/174/2c4/3a5/1742c43a5b504987a0fadf577a0bd4de.png" width="100%" class="tm-company-card__branding-image"></a></div></div> <div class="tm-page__wrapper"><div class="tm-page__main tm-page__main_has-sidebar"><div class="pull-down"><div class="pull-down__header" style="height:0px;"><div class="pull-down__content" style="bottom:10px;"><svg height="24" width="24" class="tm-svg-img pull-down__arrow"><title>Обновить</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#pull-arrow"></use></svg></div></div> <div class="tm-article-presenter"><div class="tm-company-card tm-company-article__company-card"><div class="tm-company-card__info"><div class="tm-company-card__header"><a href="/ru/company/vk/profile/" class="tm-company-card__avatar"><div class="tm-entity-image"><img alt="" height="48" src="//habrastorage.org/getpro/habr/company/9ed/c74/6b4/9edc746b484c805ecad1f941b5f7068a.png" width="48" class="tm-entity-image__pic"></div></a> <a href="https://career.habr.com/companies/vk" rel="noopener" target="_blank" class="tm-grade tm-company-card__rating"><div class="tm-rating"><div class="tm-rating__header"><svg height="24" width="24" class="tm-svg-img tm-svg-grade__icon"><title>Оценка компании на Хабр Карьере</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#grade"></use></svg> <div class="tm-rating__counter tm-rating__counter_variant-grade">4.37</div></div> <div class="tm-rating__text tm-rating__text_variant-grade">
+    Оценка
+  </div></div></a> <div class="tm-rating tm-company-card__rating"><div class="tm-rating__header"> <div class="tm-rating__counter">331.85</div></div> <div class="tm-rating__text">
+    Рейтинг
+  </div></div></div> <div class="tm-company-card__info"><a href="/ru/company/vk/profile/" class="tm-company-card__name">
+        VK
+      </a> <div class="tm-company-card__description">Технологии, которые объединяют</div></div></div> <div class="tm-company-card__buttons"><!----> <!----></div></div> <div class="tm-article-presenter__body"><div class="tm-misprint-area"><div class="tm-misprint-area__wrapper"><article class="tm-article-presenter__content tm-article-presenter__content_narrow"><div class="tm-article-presenter__header"> <div class="tm-article-snippet tm-article-presenter__snippet"><div class="tm-article-snippet__meta-container"><div class="tm-article-snippet__meta"><span class="tm-user-info tm-article-snippet__author"><a href="/ru/users/andrewbo29/" title="andrewbo29" class="tm-user-info__userpic"><div class="tm-entity-image"><img alt="" height="24" loading="lazy" src="//habrastorage.org/r/w32/getpro/habr/avatars/ba5/d5d/6ec/ba5d5d6eca24e7c21678277e02d9d8ea.jpg" width="24" class="tm-entity-image__pic"></div></a> <span class="tm-user-info__user"><a href="/ru/users/andrewbo29/" class="tm-user-info__username">
+      andrewbo29
+    </a> </span></span> <span class="tm-article-snippet__datetime-published"><time datetime="2019-05-14T10:22:15.000Z" title="2019-05-14, 13:22">14  мая  2019 в 13:22</time></span></div> <!----></div> <h1 lang="ru" class="tm-article-snippet__title tm-article-snippet__title_h1"><span>Как и зачем мы делали распознавание достопримечательностей в Облаке Mail.ru</span></h1> <div class="tm-article-snippet__hubs"><span class="tm-article-snippet__hubs-item"><a href="/ru/company/vk/blog/" class="tm-article-snippet__hubs-item-link router-link-active"><span>Блог компании VK</span> <!----></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/algorithms/" class="tm-article-snippet__hubs-item-link"><span>Алгоритмы</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/image_processing/" class="tm-article-snippet__hubs-item-link"><span>Обработка изображений</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/machine_learning/" class="tm-article-snippet__hubs-item-link"><span>Машинное обучение</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/artificial_intelligence/" class="tm-article-snippet__hubs-item-link"><span>Искусственный интеллект</span> <!----></a></span></div> <!----> <!----> <!----></div></div> <!----> <div data-gallery-root="" lang="ru" class="tm-article-body"><div id="post-content-body" class="article-formatted-body article-formatted-body_version-1"><div xmlns="http://www.w3.org/1999/xhtml"><img src="/img/image-loader.svg" data-src="https://habrastorage.org/getpro/habr/post_images/a5d/eeb/615/a5deeb615e9a57fb482a1a5464ab6fcc.png"/><br/>
+<br/>
+С появлением качественных камер в мобильных телефонах мы все больше и чаще фотографируем, снимаем видео ярких и важных моментов нашей жизни. У многих из нас фотоархивы насчитывают десятки лет и тысячи фотографий, ориентироваться в которых становится все труднее. Вспомните, сколько времени зачастую занимал поиск нужной фотографии несколько лет назад.<br/>
+<br/>
+Одной из целей Облака Mail.ru является обеспечение наиболее удобного доступа и поиска по своему фото и видеоархиву. Для этого мы — команда машинного зрения Mail.ru — создали и внедрили системы «умной» обработки фотографий: поиск по объектам, сценам, лицам и др. Еще одной такой яркой технологией является распознавание достопримечательностей. И сегодня я расскажу про то, как с помощью Deep Learning мы решили эту задачу.<br/>
+<a name="habracut"></a><br/>
+Представьте ситуацию: вы съездили в отпуск и привезли кучу фотографий. И в разговоре с друзьями вас попросили показать, как вы побывали у какого-нибудь дворца, замка, пирамиды, храма, озера, водопада, горы и т.п. Вы начинаете судорожно скролить папку с фотографиями, пытаясь найти нужную. Скорее всего, вы её не находите среди сотен изображений, и говорите, что покажете потом. <br/>
+<br/>
+Мы решаем эту проблему с помощью группирования пользовательских фотографий в альбомы. Это позволяет легко находить нужные снимки буквально за несколько кликов. Сейчас у нас есть альбомы по лицам, по объектам и сценам, а также по достопримечательностям. <br/>
+<br/>
+Фото с достопримечательностями важны, потому что часто они отображают значимые моменты нашей жизни (например, путешествия). Это могут быть фотографии на фоне какого-то архитектурного сооружения или не тронутого человеком уголка природы. Поэтому нам нужно находить эти фотографии и давать пользователям легкий и быстрый доступ к ним. <br/>
+<br/>
+<h1>Особенности распознавания достопримечательностей</h1><br/>
+Но тут есть нюанс: нельзя просто взять и обучить какую-то модель, чтобы она распознавала достопримечательности, здесь много сложностей. <br/>
+<br/>
+<ul>
+<li>Во-первых, мы не можем ясно описать, что такое «достопримечательность». Мы не можем сказать, почему одно здание является достопримечательностью, а стоящее рядом с ним — не является. Это не формализованное понятие, что усложняет постановку задачи распознавания. <br/>
+</li>
+<li>Во-вторых, достопримечательности крайне разнообразны. Это могут быть исторические или культурные здания — храмы, дворцы, замки. Это могут быть самые разнообразные памятники. Это могут быть природные объекты — озёра, каньоны, водопады. И одна модель должна уметь находить все эти достопримечательности. <br/>
+</li>
+<li>В-третьих, изображений с достопримечательностями крайне мало, по нашим подсчётам, они встречаются лишь на 1—3 % пользовательских фотографий. Поэтому мы не можем себе позволить ошибки в распознавании, потому что если покажем человеку фото без достопримечательности, это будет сразу заметно и вызовет недоумение и негативную реакцию. Или, напротив, мы показали человеку фото с достопримечательностью в Нью-Йорке, а он никогда в Америке не был. Так что модель для распознавания должна иметь низкий FPR (false positive rate). <br/>
+</li>
+<li>В-четвертых, около 50 % пользователей, а то и больше, отключают сохранение геоинформации при фотографировании. Нам это нужно учитывать и определять место исключительно по изображению. Большинство сервисов, которые сегодня каким-то образом умеют работать с достопримечательностями, делают это благодаря геоданным. У нас же исходные требования были жёстче. <br/>
+</li>
+</ul><br/>
+Покажу теперь на примерах.<br/>
+<br/>
+Вот похожие объекты, три французских готических собора. Левый — это Амьенский собор, посредине Реймсский собор, справа — Нотр-Дам-де-Пари. <br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/getpro/habr/post_images/bd4/da6/7f7/bd4da67f77caa21c8afdd344e1e1a05a.png"/><br/>
+<br/>
+Даже человеку нужно некоторое время, чтобы на них посмотреть и понять, что это разные соборы, а машина тоже должна уметь с этим справляться, причём быстрее человека. <br/>
+<br/>
+А вот пример другого затруднения: эти три фотографии на слайде — Нотр-Дам-де-Пари, снятый с разных ракурсов. Фотографии получились очень разные, но их все нужно распознавать и находить. <br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/getpro/habr/post_images/837/0a4/f9b/8370a4f9b8785814cd4cc7368770aac2.png"/><br/>
+<br/>
+Природные объекты полностью отличаются от архитектурных. Слева — Кейсария в Израиле, справа — Английский парк в Мюнхене. <br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/getpro/habr/post_images/55d/632/245/55d632245cf529e935e25a78de40f020.png"/><br/>
+<br/>
+На этих фотографиях очень мало характерных деталей, за которые модель может «зацепиться». <br/>
+<br/>
+<h1>Наш метод</h1><br/>
+Наш метод полностью основан на глубоких свёрточных нейронных сетях. В качестве подхода к обучению выбрали так называемое curriculum learning — обучение в несколько этапов. Чтобы эффективнее работать как при наличии геоданных, так и при их отсутствии, мы сделали особый inference (вывод). Расскажу про каждый из этапов подробнее. <br/>
+<br/>
+<h1>Датасет</h1><br/>
+Топливом для машинного обучения являются данные. И в первую очередь нам нужно было собрать датасет для обучения модели.<br/>
+<br/>
+Мы разделили мир на 4 региона, каждый из которых используется на разных этапах обучения. Затем в каждом регионе взяли страны, для каждой страны составили список городов и собрали базу фотографий их достопримечательностей. Примеры данных представлены ниже.<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/getpro/habr/post_images/3f6/e54/629/3f6e546299616e59efd6a1a1464b9b65.png"/><br/>
+<br/>
+Сначала мы попробовали обучить на получившейся базе нашу модель. Результаты получались плохие. Стали анализировать, и оказалось, что данные очень «грязные». На каждую достопримечательность приходилось большое количество мусора. Что делать? Вручную пересматривать весь огромный объём данных дорого, муторно и не очень умно. Поэтому мы сделали автоматическую чистку базы, в ходе которой лишь на одном шаге используется ручная обработка: для каждой достопримечательности мы вручную отобрали 3—5 эталонных фотографий, которые точно содержат нужную достопримечательность в более-менее правильном ракурсе. Получается довольно быстро, потому что объём таких эталонных данных небольшой относительно всей базы. Затем уже выполняется автоматическая чистка на основе глубоких свёрточных нейронных сетей. <br/>
+<br/>
+Дальше я буду использовать термин «эмбеддинг», под которым буду понимать следующее. У нас есть свёрточная нейронная сеть, мы обучили её для классификации, отрезали последний классифицирующий слой, взяли некие изображения, прогнали через сеть и на выходе получили числовой вектор. Его я и буду называть эмбеддингом. <br/>
+<br/>
+Как я говорил, обучение у нас проводилось в несколько этапов, соответствующих частям нашей базы данных. Поэтому сначала мы берём либо нейросеть с предыдущего этапа, либо инициализирующую сеть.<br/>
+<br/>
+Фотографии-эталоны достопримечательности прогоняем через сеть и получаем несколько эмбеддингов. Теперь можно чистить базу. Берём все картинки из датасета для этой достопримечательности и каждую картинку тоже прогоняем через сеть. Получаем кучу эмбеддингов и для каждого из них считаем расстояния до эмбеддингов эталонов. Затем вычисляем среднее расстояние, и если оно больше некоторого порога, которым является параметр алгоритма, то мы считаем, что это не достопримечательность. Если же среднее расстояние меньше порога, то мы эту фотографию оставляем. <br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/getpro/habr/post_images/305/300/a87/305300a8734289229c57e0d1876fa74e.png"/><br/>
+<br/>
+В итоге мы получили базу, которая содержит более 11 тыс. достопримечательностей из более чем 500 городов в 70 странах мира — свыше 2,3 млн фотографий. Теперь пора вспомнить, что большая часть фотографий вообще не содержит достопримечательностей. Эту информацию нужно каким-то образом рассказывать нашим моделям. Поэтому мы добавили в нашу базу 900 тыс. фотографий без достопримечательностей, и обучили на получившемся датасете нашу модель. <br/>
+<br/>
+Для измерения качества обучения мы ввели оффлайн-тест. Исходя из того, что достопримечательности встречаются лишь примерно на 1—3 % фотографий, мы вручную составили набор из 290 снимков, на которых достопримечательности есть. Это разные, достаточно сложные фотографии с большим количеством объектов, снятых с разных ракурсов, чтобы тест был как можно сложнее для модели. По тому же принципу мы отобрали 11 тыс. фотографий без достопримечательностей, тоже достаточно сложных, причём постарались найти объекты, которые сильно похожи на достопримечательности, имеющиеся в нашей базе.<br/>
+<br/>
+Для оценки качества обучения мы измеряем точность нашей модели по фотографиям с достопримечательностями и без них. Это две наши главные метрики. <br/>
+<br/>
+<h1>Существующие подходы</h1><br/>
+В научной литературе относительно мало информации по распознаванию достопримечательностей. Большинство решений основаны на локальных признаках. Идея в том, что у нас есть некая картинка-запрос и картинка из базы. На этих картинках мы находим локальные признаки — ключевые точки, и сравниваем их. Если количество совпадений достаточно большое, мы считаем, что нашли достопримечательность. <br/>
+<br/>
+На сегодняшний день лучшим является метод, предложенный Google, — DELF (deep local features), в котором сравнение локальных признаков скомбинировано с глубоким обучением. Прогоняя входное изображение через свёрточную сеть, мы получаем некоторые DELF-признаки. <br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/getpro/habr/post_images/e17/a2d/803/e17a2d803135ba5a7821842f035b1cf8.png"/><br/>
+<br/>
+Как происходит распознавание достопримечательности? У нас есть база фотографий и входное изображение, и мы хотим понять, есть на нём достопримечательность или нет. Все снимки прогоняем через DELF, получаем соответствующие признаки для базы и для входного изображения. Затем выполняем поиск по методу ближайших соседей и на выходе получаем изображения-кандидаты с признаками. Сравниваем мы эти признаки с помощью геометрической верификации: если они проходят её успешно, то мы считаем, что на картинке есть достопримечательность.<br/>
+<br/>
+<h1>Свёрточная нейронная сеть</h1><br/>
+Для Deep Learning крайне важно предварительное обучение. Поэтому мы взяли базу сцен и предобучили на ней нашу нейронную сеть. Почему именно так? Сцена — это комплексный объект, который включает в себя большое количество других объектов. А достопримечательность является частным случаем сцены. Предобучая модель на такой базе, мы можем дать модели представление о некоторых низкоуровневых признаках, которые потом можно обобщать для успешного распознавания достопримечательностей. <br/>
+<br/>
+В качестве модели мы использовали нейронную сеть из семейства Residual network. Главной их особенностью является то, что они используют residual block, который включает в себя skip connection, позволяющий сигналу проходить свободно, не попадая в слои с весами. С такой архитектурой можно качественно обучать глубокие сети и бороться с эффектом размытия градиента, что очень важно при обучении. <br/>
+<br/>
+Наша модель — это Wide ResNet 50-2, модификация ResNet 50, в которой в два раза увеличено количество сверток во внутреннем bottleneck-блоке. <br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/getpro/habr/post_images/008/a1f/544/008a1f544843103423b5bcdb4c8b1fe5.png"/><br/>
+<br/>
+Сеть работает очень эффективно. Мы провели тесты на нашей базе сцен и вот, что получили:<br/>
+<br/>
+<div class="scrollable-table"><table>
+<tr>
+<th>Модель <br/>
+</th>
+<th>Top 1 err<br/>
+</th>
+<th>Top 5 err<br/>
+</th>
+</tr>
+<tr>
+<td>ResNet-50 <br/>
+</td>
+<td>46.1 % <br/>
+</td>
+<td>15,7 %<br/>
+</td>
+</tr>
+<tr>
+<td>ResNet-200 <br/>
+</td>
+<td>42,6 % <br/>
+</td>
+<td>12,9 %<br/>
+</td>
+</tr>
+<tr>
+<td>SE-ResNext-101 <br/>
+</td>
+<td>42 % <br/>
+</td>
+<td>12,1 %<br/>
+</td>
+</tr>
+<tr>
+<td>WRN-50-2 (быстрая!) <br/>
+</td>
+<td>41,8 % <br/>
+</td>
+<td>11,8 %<br/>
+</td>
+</tr>
+</table></div><br/>
+Wide ResNet оказалась практически вдвое быстрее, чем довольно большая сеть ResNet 200. А скорость работы очень важна для эксплуатации. По совокупности этих обстоятельств мы и взяли Wide ResNet 50-2 в качестве нашей основной нейронной сети. <br/>
+<br/>
+<h2>Обучение</h2><br/>
+Для обучения сети нам нужен loss (функция потерь). Для его подбора мы решили использовать подход metric learning: нейронная сеть обучается так, чтобы представители одного и того же класса стягивались в один кластер. При этом кластеры для разных классов должны быть как можно дальше друг от друга. Для достопримечательностей мы использовали Center loss, который стягивает точки одного и того же класса к некоторому центру. Важной особенностью этого подхода является то, что он не требует негативного сэмплирования, которое на поздних этапах обучения является достаточно трудной процедурой. <br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/getpro/habr/post_images/27a/ed1/cfb/27aed1cfbe8d7cffa90bc1a96b578eff.png"/><br/>
+<br/>
+Напомню, что у нас есть n классов достопримечательностей и ещё один класс «не достопримечательности», для него Center loss не используется. Мы подразумеваем, что достопримечательность — это один и тот же объект, и в нём есть структура, поэтому целесообразно считать для него центр. А не достопримечательностью может быть всё, что угодно, и считать для него центр неразумно. <br/>
+<br/>
+Затем мы собрали всё это вместе и получили модель для обучения. Она состоит из трёх основных частей:<br/>
+<br/>
+<ul>
+<li>Свёрточная нейросети Wide ResNet 50-2, предобученной на базе сцен; <br/>
+</li>
+<li>Части эмбеддинга, состоящей из полносвязного слоя и слоя Batch norm;<br/>
+</li>
+<li>Классификатора, который является полносвязным слоем, за которым следует пара из Softmax loss и Centre loss. <br/>
+</li>
+</ul><br/>
+<img src="https://habrastorage.org/r/w780q1/getpro/habr/post_images/6dd/7bf/338/6dd7bf33835ea1d84565a04c5ff1e281.jpg" data-src="https://habrastorage.org/getpro/habr/post_images/6dd/7bf/338/6dd7bf33835ea1d84565a04c5ff1e281.jpg" data-blurred="true"/><br/>
+<br/>
+Как вы помните, наша база разделена на 4 части по регионам мира. Эти 4 части мы используем в рамках парадигмы curriculum learning. На каждом этапе у нас есть текущий датасет, мы добавляем к нему ещё одну часть света и получается новый обучающий датасет. <br/>
+<br/>
+Модель состоит из трёх частей, и для каждой из них мы используем свой learning rate при обучении. Это нужно для того, чтобы сеть не только могла выучивать достопримечательности из новой части датасета, которую мы добавили, но и чтобы она не забывала уже выученные данные. После многих экспериментов такой подход оказался наиболее эффективным. <br/>
+<br/>
+Итак, мы обучили модель. Нужно понять, как она работает. Давайте с помощью class activation map посмотрим, на какую часть изображения больше всего реагирует наша нейронная сеть. На картинке ниже в первом ряду входные изображения, а во втором на них наложена class activation map от сетки, которую мы обучили на предыдущем этапе. <br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/getpro/habr/post_images/5aa/4aa/264/5aa4aa26413082931c28f1a393a64b95.png"/><br/>
+<br/>
+Тепловая карта показывает, каким частям изображения сеть уделяет больше внимания. Из class activation map видно, что наша нейронная сеть успешно выучила понятие достопримечательности.<br/>
+<br/>
+<h2>Inference</h2><br/>
+Теперь нужно каким-то образом использовать это знание, чтобы получать результат. Поскольку для обучения мы использовали Center loss, то представляется вполне логичным на inference также вычислять цетроиды для достопримечательностей. <br/>
+<br/>
+Для этого берём часть изображений из обучающего набора для какой-нибудь достопримечательности, например, для Медного Всадника. Прогоняем их через сеть, получаем эмбеддинги, усредняем и получаем центроид. <br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/getpro/habr/post_images/c49/b0f/69e/c49b0f69e33581f30c05985a98702f6f.png"/><br/>
+<br/>
+Но возникает вопрос: сколько центроидов на одну достопримечательность имеет смысл вычислять? Вначале ответ представляется ясным и логичным: один центроид. Но это оказалось не совсем так. Сначала мы тоже решили сделать по одному центроиду и получили достаточно неплохой результат. Так почему надо брать несколько центроидов? <br/>
+<br/>
+Во-первых, данные у нас не совсем чистые. Хотя мы и почистили датасет, но убрали лишь откровенный мусор. А у нас могли остаться изображения, которые вроде бы и нельзя считать мусором, но которые ухудшают результат. <br/>
+<br/>
+Например, у меня есть класс достопримечательности Зимний дворец. Я хочу посчитать для него центроид. Но в наборе оказалось некоторое количество фотографий с Дворцовой площадью и аркой Главного штаба. Если считать центроид по всем изображениям, то получится не слишком устойчиво. Нужно каким-то образом кластеризовать их эмбеддинги, которые получены из обычной сетки, взять только тот центроид, который отвечает за Зимний дворец, и уже по этим данным посчитать среднее. <br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/getpro/habr/post_images/000/7b7/8ef/0007b78efb3d15296bab0ebef0cf4dfb.png"/><br/>
+<br/>
+Во-вторых, фотографии могут быть сняты в разных ракурсах. <br/>
+<br/>
+Приведу в качестве иллюстрации такого поведения колокольню Белфорт в Брюгге. Для неё посчитано два центроида. В верхнем ряду изображения те фото, которые ближе к первому центроиду, а во втором ряду — те, что ближе ко второму центроиду: <br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/getpro/habr/post_images/d13/5f4/105/d135f4105f2823a612e458f946e25221.png"/><br/>
+<br/>
+Первый центроид отвечает за более «парадные» фотографии с близкого расстояния, которые сделаны с рыночной площади Брюгге. А второй центроид отвечает за фотографии, сделанные издали, с сопредельных улиц. <br/>
+<br/>
+Получается, что, вычисляя по несколько центроидов на класс достопримечательности, мы можем отобразить на inference разные ракурсы этой достопримечательности. <br/>
+<br/>
+Итак, как же мы находим эти множества для вычисления центроидов? К наборам данных для каждой достопримечательности мы применяем иерархическую кластеризацию — complete link. С её помощью мы находим валидные кластеры, по которым будем вычислять центроиды. Под валидными кластерами мы понимаем те, которые в результате кластеризации содержат не меньше 50 фотографий. Остальные кластеры мы отбрасываем. В результате у нас получилось, что около 20 % достопримечательностей имеют более одного центроида. <br/>
+<br/>
+Теперь inference. Мы вычисляем его в два этапа: сначала прогоняем входное изображение через нашу свёрточную нейронную сеть и получаем эмбеддинг, а затем с помощью скалярного произведения сравниваем эмбеддинг с центроидами. Если изображения содержат геоданные, то мы ограничиваем поиск центроидами, которые относятся к достопримечательностям, расположенным в квадрате 1 на 1 км от места съемки. Это позволяет искать точнее, подобрать меньший порог для последующего сравнения. Если полученное расстояние больше порога, которое является параметром алгоритма, то мы говорим, что на фото есть достопримечательность с максимальным значением скалярного произведения. Если меньше, то это не достопримечательность. <br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/getpro/habr/post_images/d01/75c/5a5/d0175c5a5142647bf9446f7d65df0509.png"/><br/>
+<br/>
+Предположим, что фото содержит достопримечательность. Если у нас есть геоданные, то мы используем их и выводим ответ. Если геоданных нет, то делаем дополнительную проверку. Когда мы чистили датасет, для каждого класса достопримечательностей делали набор эталонных изображений. Для них мы можем посчитать эмбеддинги, а потом считаем среднее расстояние от них до эмбеддинга картинки-запроса. Если оно больше какого-то порога, то верификация пройдена, подключаем метаданные и выводим результат. Важно отметить, что такую процедуру мы можем делать для нескольких достопримечательностей, которые были найдены на изображении. <br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/getpro/habr/post_images/14b/ffe/04f/14bffe04fe6ca1b3d09876432e319e53.png"/><br/>
+<br/>
+<h1>Результаты тестов</h1><br/>
+Мы сравнили нашу модель с DELF, для которой взяли параметры, при которых она показала лучшие результаты на нашем тесте. Результаты оказались практически одинаковые. <br/>
+<br/>
+<div class="scrollable-table"><table>
+<tr>
+<th>Модель <br/>
+</th>
+<th>Достопримечательности <br/>
+</th>
+<th>Не достопримечательности<br/>
+</th>
+</tr>
+<tr>
+<td>Наша<br/>
+</td>
+<td>80 %<br/>
+</td>
+<td>99 %<br/>
+</td>
+</tr>
+<tr>
+<td>DELF<br/>
+</td>
+<td>80,1 %<br/>
+</td>
+<td>99 %<br/>
+</td>
+</tr>
+</table></div><br/>
+Затем мы разделили достопримечательности на два типа: частые (более 100 фотографий), которые составляют 87 % от всех достопримечательностей в тесте, и редкие. На частых наша модель работает хорошо: точность 85,3 %. С редкими достопримечательностями мы получили 46 %, что тоже очень неплохо — даже при малом количестве данных наш подход показывает приличные результаты. <br/>
+<br/>
+<div class="scrollable-table"><table>
+<tr>
+<th>Тип<br/>
+</th>
+<th>Точность<br/>
+</th>
+<th>Доля от общего количества<br/>
+</th>
+</tr>
+<tr>
+<td>Частые<br/>
+</td>
+<td>85,3 %<br/>
+</td>
+<td>87 %<br/>
+</td>
+</tr>
+<tr>
+<td>Редкие<br/>
+</td>
+<td>46 %<br/>
+</td>
+<td>13 %<br/>
+</td>
+</tr>
+</table></div><br/>
+После мы провели А/B-тестирование на пользовательских фотографиях. В результате конверсия покупки места в облаке увеличилась на 10 %, конверсия удаления мобильного приложения упала на 3 %, а количество просмотров альбомов увеличилось на 13 %. <br/>
+<br/>
+Сравним скорость работы нашего подхода и DELF. На GPU DELF требует 7 прогонов сетки, потому что использует 7 масштабов изображения, а наш подход использует только 1 прогон. На CPU DELF использует более долгий поиск по методу ближайших соседей и очень долгую геометрическую верификацию. В результате наш метод на CPU оказался в 15 раз быстрее. В обоих случаях наш подход выигрывает в скорости, что крайне важно при эксплуатации.<br/>
+<br/>
+<h1>Результаты: впечатления из отпуска</h1><br/>
+В начале статьи я упомянул о решении проблемы скролинга и поиска нужных картинок с достопримечательностями. Вот оно. <br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/getpro/habr/post_images/72c/df4/52e/72cdf452e2105c18f8e4375a1b69d497.png"/><br/>
+<br/>
+Это мое облако, и в нём все фотографии разбиты на альбомы. Есть альбом «Люди», «Объекты», «Достопримечательности». Внутри него достопримечательности разбиты по альбомам, которые сгруппированы по городам. Если кликнуть по Цвингеру в Дрездене, то откроется альбом с фотографиями только этой достопримечательности.<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/getpro/habr/post_images/ec6/7f8/929/ec67f892964ee568754a86cd48e16b51.png"/><br/>
+<br/>
+Очень полезная фича: съездил в отпуск, пофоткал, сложил в облако. А когда захотелось залить их в Instagram или поделиться с друзьями и близкими, не придётся долго искать и выбирать, всего несколько кликов — и вы найдёте нужные фотографии. <br/>
+<br/>
+<h1>Резюме</h1><br/>
+Напомню о главных моментах нашего решения. <br/>
+<br/>
+<ol>
+<li>Полуавтоматическая чистка базы. Немного ручного труда для начальной разметки, а дальше нейронная сеть справляется сама. Это позволяет быстро чистить новые данные и дообучать на них модель. <br/>
+</li>
+<li>Мы используем глубокие свёрточные нейронные сети и deep metric learning, который позволяет нам эффективно выучивать структуру в классах. <br/>
+</li>
+<li>В качестве парадигмы обучения мы использовали curriculum learning — обучение по частям. Этот подход нам очень сильно помог. На inference мы применяем несколько центроидов, которые позволяют использовать более чистые данные и находить разные ракурсы достопримечательностей. <br/>
+</li>
+</ol><br/>
+Казалось бы, распознавание объектов — это хорошо изученная область. Но исследуя потребности реальных пользователей, мы находим новые интересные задачи, такие как распознавание достопримечательностей. Она позволяет с помощью машинного обучения рассказывать людям что-то новое о мире. Это очень сильно вдохновляет и мотивирует!</div></div> <!----> <!----></div> <div class="tm-article-presenter__meta"><div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Теги:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Blandmark%20recognition%5D" class="tm-tags-list__link">landmark recognition</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bdeep%20learning%5D" class="tm-tags-list__link">deep learning</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bmachine%20learning%5D" class="tm-tags-list__link">machine learning</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bcomputer%20vision%5D" class="tm-tags-list__link">computer vision</a></li></ul></div> <div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Хабы:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/company/vk/blog/" class="tm-hubs-list__link router-link-active">
+    Блог компании VK
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/algorithms/" class="tm-hubs-list__link">
+    Алгоритмы
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/image_processing/" class="tm-hubs-list__link">
+    Обработка изображений
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/machine_learning/" class="tm-hubs-list__link">
+    Машинное обучение
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/artificial_intelligence/" class="tm-hubs-list__link">
+    Искусственный интеллект
+  </a></li></ul></div></div></article></div> <!----></div> <div class="tm-article-sticky-panel"><div class="tm-data-icons tm-article-sticky-panel__icons"><div class="tm-article-rating tm-data-icons__item"><div class="tm-votes-meter tm-article-rating__votes-switcher"><svg height="16" width="16" class="tm-svg-img tm-votes-meter__icon tm-votes-meter__icon_medium"><title>Всего голосов 39: ↑38 и ↓1</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-rating"></use></svg> <span title="Всего голосов 39: ↑38 и ↓1" class="tm-votes-meter__value tm-votes-meter__value_positive tm-votes-meter__value_medium">+37</span></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----> <span title="Количество просмотров" class="tm-icon-counter tm-data-icons__item"><svg height="16" width="16" class="tm-svg-img tm-icon-counter__icon"><title>Просмотры</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-views"></use></svg> <span class="tm-icon-counter__value">4.7K</span></span> <button title="Добавить в закладки" type="button" class="bookmarks-button tm-data-icons__item"><span title="Добавить в закладки" class="tm-svg-icon__wrapper bookmarks-button__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Добавить в закладки</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-favorite"></use></svg></span> <span title="Количество пользователей, добавивших публикацию в закладки" class="bookmarks-button__counter">
+    28
+  </span></button> <!----> <div title="Поделиться" class="tm-sharing tm-data-icons__item"><button type="button" class="tm-sharing__button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="tm-sharing__icon"><path fill="currentColor" d="M10.33.275l9.047 7.572a.2.2 0 010 .306l-9.048 7.572a.2.2 0 01-.328-.153V11c-8 0-9.94 6-9.94 6S-1 5 10 5V.428a.2.2 0 01.328-.153z"></path></svg></button> <!----></div> <DIV class="v-portal" style="display:none;"></DIV></div> </div></div> <!----> <!----> <div class="tm-article-presenter__footer"><div class="tm-article-blocks"><!----> <section class="tm-block tm-block_spacing-bottom"><!----> <div class="tm-block__body tm-block__body_variant-balanced"><div class="tm-article-author"><div class="tm-article-author__company"><div class="tm-article-author__company-card"><div class="tm-company-snippet"><a href="/ru/company/vk/profile/" class="tm-company-snippet__logo-link"><div class="tm-entity-image"><img alt="" height="40" src="//habrastorage.org/getpro/habr/company/9ed/c74/6b4/9edc746b484c805ecad1f941b5f7068a.png" width="40" class="tm-entity-image__pic"></div></a> <div class="tm-company-snippet__info"><a href="/ru/company/vk/profile/" class="tm-company-snippet__title">VK</a> <div class="tm-company-snippet__description">Технологии, которые объединяют</div></div></div> <div class="tm-article-author__buttons"><!----> <!----></div></div> <div class="tm-article-author__company-contacts"><a href="https://facebook.com/insidevk" rel="noopener" target="_blank" class="tm-article-author__contact">
+      Facebook
+    </a><a href="https://twitter.com/inside_vk" rel="noopener" target="_blank" class="tm-article-author__contact">
+      Twitter
+    </a><a href="https://vk.com/insidevk" rel="noopener" target="_blank" class="tm-article-author__contact">
+      ВКонтакте
+    </a><a href="https://instagram.com/inside.vk" rel="noopener" target="_blank" class="tm-article-author__contact">
+      Instagram
+    </a><a href="https://telegram.me/inside_vk" rel="noopener" target="_blank" class="tm-article-author__contact">
+      Telegram
+    </a></div> <div class="tm-article-author__separator"></div></div> <div class="tm-user-card tm-article-author__user-card tm-user-card_variant-article"><div class="tm-user-card__info-container"><div class="tm-user-card__header"><div class="tm-user-card__header-data"><a href="/ru/users/andrewbo29/" class="tm-user-card__userpic tm-user-card__userpic_size-40"><div class="tm-entity-image"><img alt="" src="//habrastorage.org/getpro/habr/avatars/ba5/d5d/6ec/ba5d5d6eca24e7c21678277e02d9d8ea.jpg" class="tm-entity-image__pic"></div></a> <div class="tm-user-card__meta"><div title=" 28 голосов " class="tm-karma tm-user-card__karma"><div class="tm-karma__votes tm-karma__votes_positive">
+    28
+  </div> <div class="tm-karma__text">
+    Карма
+  </div></div> <div title="Рейтинг пользователя" class="tm-rating tm-user-card__rating"><div class="tm-rating__header"> <div class="tm-rating__counter">0</div></div> <div class="tm-rating__text">
+    Рейтинг
+  </div></div></div></div></div> <div class="tm-user-card__info tm-user-card__info_variant-article"><div class="tm-user-card__title tm-user-card__title_variant-article"><span class="tm-user-card__name tm-user-card__name_variant-article">Андрей Бояров</span> <a href="/ru/users/andrewbo29/" class="tm-user-card__nickname tm-user-card__nickname_variant-article">
+          @andrewbo29
+        </a> <!----></div> <p class="tm-user-card__short-info tm-user-card__short-info_variant-article">Research Engineer</p></div></div> <div class="tm-user-card__buttons tm-user-card__buttons_variant-article"><!----> <!----> <!----> <!----> <!----></div></div> <div class="tm-article-author__user-contacts"><a href="https://www.linkedin.com/in/andrei-boiarov-5367a157/" rel="noopener" target="_blank" class="tm-article-author__contact">
+      Сайт
+    </a></div></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----></section> <div class="tm-article-blocks__comments"><div class="tm-article-page-comments"><div class="tm-article-comments-counter-link tm-article-comments-counter-button"><a href="/ru/company/vk/blog/451542/comments/" class="tm-article-comments-counter-link__link tm-article-comments-counter-link__link_button-style"><svg height="16" width="16" class="tm-svg-img tm-article-comments-counter-link__icon tm-article-comments-counter-link__icon_contrasted"><title>Комментарии</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-comments"></use></svg> <span class="tm-article-comments-counter-link__value tm-article-comments-counter-link__value_contrasted">
+       Комментарии 6 
+    </span></a> <!----></div></div></div>  <!---->  <!----> <!----></div></div></div></div></div> <div class="tm-page__sidebar"><div class="tm-layout-sidebar"><div class="tm-layout-sidebar__placeholder_initial"></div> <div class="tm-sexy-sidebar tm-sexy-sidebar_initial" style="margin-top:0px;"><!----> <section class="tm-block tm-block_spacing-bottom"><header class="tm-block__header"><h2 class="tm-block__title">Информация</h2> <!----></header> <div class="tm-block__body"><div class="tm-company-basic-info"><dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Дата основания</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><time datetime="1998-10-14T20:00:00.000Z" title="1998-10-15, 00:00">15  октября  1998</time></dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Местоположение</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap">
+    Россия
+  </dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Сайт</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><a href="https://vk.com/vkteam" target="_blank" class="tm-company-basic-info__link">
+      vk.com
+    </a></dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Численность</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap">
+    5 001–10 000 человек
+  </dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Дата регистрации</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><time datetime="2008-08-09T07:42:32.000Z" title="2008-08-09, 11:42">9  августа  2008</time></dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Представитель</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><a href="/ru/users/somuchmich/" class="tm-company-basic-info__link">
+      Миша Буданов
+    </a></dd></dl></div></div> <!----></section> <div class="tm-company-widgets"></div> <!----></div></div></div></div></div></div></main> <!----></div> <div class="tm-footer-menu"><div class="tm-page-width"><div class="tm-footer-menu__container"><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Ваш аккаунт
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr/?back=/ru/company/vk/blog/451542/&amp;hl=ru" rel="nofollow" target="_self">
+                Войти
+              </a></li><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr-register/?back=/ru/company/vk/blog/451542/&amp;hl=ru" rel="nofollow" target="_self">
+                Регистрация
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Разделы
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/" class="footer-menu__item-link router-link-active">
+                Публикации
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/news/" class="footer-menu__item-link">
+                Новости
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/hubs/" class="footer-menu__item-link">
+                Хабы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/companies/" class="footer-menu__item-link">
+                Компании
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/users/" class="footer-menu__item-link">
+                Авторы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/sandbox/" class="footer-menu__item-link">
+                Песочница
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Информация
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/docs/help/" class="footer-menu__item-link">
+                Устройство сайта
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/authors/codex/" class="footer-menu__item-link">
+                Для авторов
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/companies/corpblogs/" class="footer-menu__item-link">
+                Для компаний
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/docs/transparency/" class="footer-menu__item-link">
+                Документы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/agreement" target="_blank">
+                Соглашение
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/confidential/" target="_blank">
+                Конфиденциальность
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Услуги
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQLwRfQmXibiUlWaRg-BAc38s7oM3lJiaPju7qmdJsp8ysIvZ_G-Npem0njJLMozE2bPHMpDqiI5hhy/pub?start=false&amp;loop=false&amp;delayms=60000&amp;slide=id.g91a03369cd_4_297" target="_blank">
+                Реклама
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://habrastorage.org/storage/stuff/habr/service_price.pdf" target="_blank">
+                Тарифы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQJJds8-Di7BQSP_guHxICN7woVYoN5NP_22ra-BIo4bqnTT9FR6fB-Ku2P0AoRpX0Ds-LRkDeAoD8F/pub?start=false&amp;loop=false&amp;delayms=60000" target="_blank">
+                Контент
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://tmtm.timepad.ru/" target="_blank">
+                Семинары
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/megaprojects/" class="footer-menu__item-link">
+                Мегапроекты
+              </a></li></ul></div></div></div></div></div> <div class="tm-footer"><div class="tm-page-width"><div class="tm-footer__container"><!----> <div class="tm-footer__social"><a href="https://www.facebook.com/habrahabr.ru" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Facebook</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-facebook"></use></svg></a><a href="https://twitter.com/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Twitter</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-twitter"></use></svg></a><a href="https://vk.com/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>VK</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-vkontakte"></use></svg></a><a href="https://telegram.me/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Telegram</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-telegram"></use></svg></a><a href="https://www.youtube.com/channel/UCd_sTwKqVrweTt4oAKY5y4w" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Youtube</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-youtube"></use></svg></a><a href="https://zen.yandex.ru/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Яндекс Дзен</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-zen"></use></svg></a></div> <DIV class="v-portal" style="display:none;"></DIV> <button class="tm-footer__link"><!---->
+        Настройка языка
+      </button> <a href="/ru/about" class="tm-footer__link">
+        О сайте
+      </a> <a href="/ru/feedback/" class="tm-footer__link">
+        Техническая поддержка
+      </a> <!----> <a href="/berserk-mode-nope" class="tm-footer__link">
+        Вернуться на старую версию
+      </a> <div class="tm-footer-copyright"><span class="tm-copyright"><span class="tm-copyright__years">© 2006–2021 </span> <span class="tm-copyright__name">«<a href="https://company.habr.com/" rel="noopener" target="_blank" class="tm-copyright__link">Habr</a>»</span></span></div></div></div></div> <!----> <!----></div> <div class="vue-portal-target"></div></div>
+<script>window.__INITIAL_STATE__={"adblock":{"hasAcceptableAdsFilter":false,"hasAdblock":false},"articlesList":{"articlesList":{"451542":{"id":"451542","timePublished":"2019-05-14T10:22:15+00:00","isCorporative":true,"lang":"ru","titleHtml":"Как и зачем мы делали распознавание достопримечательностей в Облаке Mail.ru","leadData":{"textHtml":"\u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fpost_images\u002Fa5d\u002Feeb\u002F615\u002Fa5deeb615e9a57fb482a1a5464ab6fcc.png\"\u003E\u003Cbr\u003E\r\n\u003Cbr\u003E\r\nС появлением качественных камер в мобильных телефонах мы все больше и чаще фотографируем, снимаем видео ярких и важных моментов нашей жизни. У многих из нас фотоархивы насчитывают десятки лет и тысячи фотографий, ориентироваться в которых становится все труднее. Вспомните, сколько времени зачастую занимал поиск нужной фотографии несколько лет назад.\u003Cbr\u003E\r\n\u003Cbr\u003E\r\nОдной из целей Облака Mail.ru является обеспечение наиболее удобного доступа и поиска по своему фото и видеоархиву. Для этого мы — команда машинного зрения Mail.ru — создали и внедрили системы «умной» обработки фотографий: поиск по объектам, сценам, лицам и др. Еще одной такой яркой технологией является распознавание достопримечательностей. И сегодня я расскажу про то, как с помощью Deep Learning мы решили эту задачу.\u003Cbr\u003E","imageUrl":null,"buttonTextHtml":"Читать дальше →","image":null},"editorVersion":"1.0","postType":"article","postLabels":[],"author":{"scoreStats":{"score":28,"votesCount":28},"rating":0,"relatedData":null,"contacts":[{"title":"Сайт","url":"https:\u002F\u002Fwww.linkedin.com\u002Fin\u002Fandrei-boiarov-5367a157\u002F","value":"https:\u002F\u002Fwww.linkedin.com\u002Fin\u002Fandrei-boiarov-5367a157\u002F"}],"authorContacts":[{"title":"Сайт","url":"https:\u002F\u002Fwww.linkedin.com\u002Fin\u002Fandrei-boiarov-5367a157\u002F","value":"https:\u002F\u002Fwww.linkedin.com\u002Fin\u002Fandrei-boiarov-5367a157\u002F"}],"paymentDetails":{"paymentYandexMoney":null,"paymentPayPalMe":null,"paymentWebmoney":null},"id":"1725475","alias":"andrewbo29","fullname":"Андрей Бояров","avatarUrl":"\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Favatars\u002Fba5\u002Fd5d\u002F6ec\u002Fba5d5d6eca24e7c21678277e02d9d8ea.jpg","speciality":"Research Engineer"},"statistics":{"commentsCount":6,"favoritesCount":28,"readingCount":4675,"score":37,"votesCount":39},"hubs":[{"relatedData":null,"id":"4992","alias":"vk","type":"corporative","title":"Блог компании VK","titleHtml":"Блог компании VK","isProfiled":false},{"relatedData":null,"id":"8000","alias":"algorithms","type":"collective","title":"Алгоритмы","titleHtml":"Алгоритмы","isProfiled":true},{"relatedData":null,"id":"17175","alias":"image_processing","type":"collective","title":"Обработка изображений","titleHtml":"Обработка изображений","isProfiled":true},{"relatedData":null,"id":"19439","alias":"machine_learning","type":"collective","title":"Машинное обучение","titleHtml":"Машинное обучение","isProfiled":true},{"relatedData":null,"id":"21922","alias":"artificial_intelligence","type":"collective","title":"Искусственный интеллект","titleHtml":"Искусственный интеллект","isProfiled":false}],"flows":[{"id":"1","alias":"develop","title":"Разработка"},{"id":"7","alias":"popsci","title":"Научпоп"}],"relatedData":null,"textHtml":"\u003Cdiv xmlns=\"http:\u002F\u002Fwww.w3.org\u002F1999\u002Fxhtml\"\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fpost_images\u002Fa5d\u002Feeb\u002F615\u002Fa5deeb615e9a57fb482a1a5464ab6fcc.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nС появлением качественных камер в мобильных телефонах мы все больше и чаще фотографируем, снимаем видео ярких и важных моментов нашей жизни. У многих из нас фотоархивы насчитывают десятки лет и тысячи фотографий, ориентироваться в которых становится все труднее. Вспомните, сколько времени зачастую занимал поиск нужной фотографии несколько лет назад.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nОдной из целей Облака Mail.ru является обеспечение наиболее удобного доступа и поиска по своему фото и видеоархиву. Для этого мы — команда машинного зрения Mail.ru — создали и внедрили системы «умной» обработки фотографий: поиск по объектам, сценам, лицам и др. Еще одной такой яркой технологией является распознавание достопримечательностей. И сегодня я расскажу про то, как с помощью Deep Learning мы решили эту задачу.\u003Cbr\u002F\u003E\r\n\u003Ca name=\"habracut\"\u003E\u003C\u002Fa\u003E\u003Cbr\u002F\u003E\r\nПредставьте ситуацию: вы съездили в отпуск и привезли кучу фотографий. И в разговоре с друзьями вас попросили показать, как вы побывали у какого-нибудь дворца, замка, пирамиды, храма, озера, водопада, горы и т.п. Вы начинаете судорожно скролить папку с фотографиями, пытаясь найти нужную. Скорее всего, вы её не находите среди сотен изображений, и говорите, что покажете потом. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nМы решаем эту проблему с помощью группирования пользовательских фотографий в альбомы. Это позволяет легко находить нужные снимки буквально за несколько кликов. Сейчас у нас есть альбомы по лицам, по объектам и сценам, а также по достопримечательностям. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nФото с достопримечательностями важны, потому что часто они отображают значимые моменты нашей жизни (например, путешествия). Это могут быть фотографии на фоне какого-то архитектурного сооружения или не тронутого человеком уголка природы. Поэтому нам нужно находить эти фотографии и давать пользователям легкий и быстрый доступ к ним. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch1\u003EОсобенности распознавания достопримечательностей\u003C\u002Fh1\u003E\u003Cbr\u002F\u003E\r\nНо тут есть нюанс: нельзя просто взять и обучить какую-то модель, чтобы она распознавала достопримечательности, здесь много сложностей. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003EВо-первых, мы не можем ясно описать, что такое «достопримечательность». Мы не можем сказать, почему одно здание является достопримечательностью, а стоящее рядом с ним — не является. Это не формализованное понятие, что усложняет постановку задачи распознавания. \u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003Cli\u003EВо-вторых, достопримечательности крайне разнообразны. Это могут быть исторические или культурные здания — храмы, дворцы, замки. Это могут быть самые разнообразные памятники. Это могут быть природные объекты — озёра, каньоны, водопады. И одна модель должна уметь находить все эти достопримечательности. \u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003Cli\u003EВ-третьих, изображений с достопримечательностями крайне мало, по нашим подсчётам, они встречаются лишь на 1—3 % пользовательских фотографий. Поэтому мы не можем себе позволить ошибки в распознавании, потому что если покажем человеку фото без достопримечательности, это будет сразу заметно и вызовет недоумение и негативную реакцию. Или, напротив, мы показали человеку фото с достопримечательностью в Нью-Йорке, а он никогда в Америке не был. Так что модель для распознавания должна иметь низкий FPR (false positive rate). \u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003Cli\u003EВ-четвертых, около 50 % пользователей, а то и больше, отключают сохранение геоинформации при фотографировании. Нам это нужно учитывать и определять место исключительно по изображению. Большинство сервисов, которые сегодня каким-то образом умеют работать с достопримечательностями, делают это благодаря геоданным. У нас же исходные требования были жёстче. \u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\nПокажу теперь на примерах.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВот похожие объекты, три французских готических собора. Левый — это Амьенский собор, посредине Реймсский собор, справа — Нотр-Дам-де-Пари. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fpost_images\u002Fbd4\u002Fda6\u002F7f7\u002Fbd4da67f77caa21c8afdd344e1e1a05a.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nДаже человеку нужно некоторое время, чтобы на них посмотреть и понять, что это разные соборы, а машина тоже должна уметь с этим справляться, причём быстрее человека. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nА вот пример другого затруднения: эти три фотографии на слайде — Нотр-Дам-де-Пари, снятый с разных ракурсов. Фотографии получились очень разные, но их все нужно распознавать и находить. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fpost_images\u002F837\u002F0a4\u002Ff9b\u002F8370a4f9b8785814cd4cc7368770aac2.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПриродные объекты полностью отличаются от архитектурных. Слева — Кейсария в Израиле, справа — Английский парк в Мюнхене. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fpost_images\u002F55d\u002F632\u002F245\u002F55d632245cf529e935e25a78de40f020.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nНа этих фотографиях очень мало характерных деталей, за которые модель может «зацепиться». \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch1\u003EНаш метод\u003C\u002Fh1\u003E\u003Cbr\u002F\u003E\r\nНаш метод полностью основан на глубоких свёрточных нейронных сетях. В качестве подхода к обучению выбрали так называемое curriculum learning — обучение в несколько этапов. Чтобы эффективнее работать как при наличии геоданных, так и при их отсутствии, мы сделали особый inference (вывод). Расскажу про каждый из этапов подробнее. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch1\u003EДатасет\u003C\u002Fh1\u003E\u003Cbr\u002F\u003E\r\nТопливом для машинного обучения являются данные. И в первую очередь нам нужно было собрать датасет для обучения модели.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nМы разделили мир на 4 региона, каждый из которых используется на разных этапах обучения. Затем в каждом регионе взяли страны, для каждой страны составили список городов и собрали базу фотографий их достопримечательностей. Примеры данных представлены ниже.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fpost_images\u002F3f6\u002Fe54\u002F629\u002F3f6e546299616e59efd6a1a1464b9b65.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nСначала мы попробовали обучить на получившейся базе нашу модель. Результаты получались плохие. Стали анализировать, и оказалось, что данные очень «грязные». На каждую достопримечательность приходилось большое количество мусора. Что делать? Вручную пересматривать весь огромный объём данных дорого, муторно и не очень умно. Поэтому мы сделали автоматическую чистку базы, в ходе которой лишь на одном шаге используется ручная обработка: для каждой достопримечательности мы вручную отобрали 3—5 эталонных фотографий, которые точно содержат нужную достопримечательность в более-менее правильном ракурсе. Получается довольно быстро, потому что объём таких эталонных данных небольшой относительно всей базы. Затем уже выполняется автоматическая чистка на основе глубоких свёрточных нейронных сетей. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nДальше я буду использовать термин «эмбеддинг», под которым буду понимать следующее. У нас есть свёрточная нейронная сеть, мы обучили её для классификации, отрезали последний классифицирующий слой, взяли некие изображения, прогнали через сеть и на выходе получили числовой вектор. Его я и буду называть эмбеддингом. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nКак я говорил, обучение у нас проводилось в несколько этапов, соответствующих частям нашей базы данных. Поэтому сначала мы берём либо нейросеть с предыдущего этапа, либо инициализирующую сеть.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nФотографии-эталоны достопримечательности прогоняем через сеть и получаем несколько эмбеддингов. Теперь можно чистить базу. Берём все картинки из датасета для этой достопримечательности и каждую картинку тоже прогоняем через сеть. Получаем кучу эмбеддингов и для каждого из них считаем расстояния до эмбеддингов эталонов. Затем вычисляем среднее расстояние, и если оно больше некоторого порога, которым является параметр алгоритма, то мы считаем, что это не достопримечательность. Если же среднее расстояние меньше порога, то мы эту фотографию оставляем. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fpost_images\u002F305\u002F300\u002Fa87\u002F305300a8734289229c57e0d1876fa74e.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВ итоге мы получили базу, которая содержит более 11 тыс. достопримечательностей из более чем 500 городов в 70 странах мира — свыше 2,3 млн фотографий. Теперь пора вспомнить, что большая часть фотографий вообще не содержит достопримечательностей. Эту информацию нужно каким-то образом рассказывать нашим моделям. Поэтому мы добавили в нашу базу 900 тыс. фотографий без достопримечательностей, и обучили на получившемся датасете нашу модель. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nДля измерения качества обучения мы ввели оффлайн-тест. Исходя из того, что достопримечательности встречаются лишь примерно на 1—3 % фотографий, мы вручную составили набор из 290 снимков, на которых достопримечательности есть. Это разные, достаточно сложные фотографии с большим количеством объектов, снятых с разных ракурсов, чтобы тест был как можно сложнее для модели. По тому же принципу мы отобрали 11 тыс. фотографий без достопримечательностей, тоже достаточно сложных, причём постарались найти объекты, которые сильно похожи на достопримечательности, имеющиеся в нашей базе.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nДля оценки качества обучения мы измеряем точность нашей модели по фотографиям с достопримечательностями и без них. Это две наши главные метрики. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch1\u003EСуществующие подходы\u003C\u002Fh1\u003E\u003Cbr\u002F\u003E\r\nВ научной литературе относительно мало информации по распознаванию достопримечательностей. Большинство решений основаны на локальных признаках. Идея в том, что у нас есть некая картинка-запрос и картинка из базы. На этих картинках мы находим локальные признаки — ключевые точки, и сравниваем их. Если количество совпадений достаточно большое, мы считаем, что нашли достопримечательность. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nНа сегодняшний день лучшим является метод, предложенный Google, — DELF (deep local features), в котором сравнение локальных признаков скомбинировано с глубоким обучением. Прогоняя входное изображение через свёрточную сеть, мы получаем некоторые DELF-признаки. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fpost_images\u002Fe17\u002Fa2d\u002F803\u002Fe17a2d803135ba5a7821842f035b1cf8.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nКак происходит распознавание достопримечательности? У нас есть база фотографий и входное изображение, и мы хотим понять, есть на нём достопримечательность или нет. Все снимки прогоняем через DELF, получаем соответствующие признаки для базы и для входного изображения. Затем выполняем поиск по методу ближайших соседей и на выходе получаем изображения-кандидаты с признаками. Сравниваем мы эти признаки с помощью геометрической верификации: если они проходят её успешно, то мы считаем, что на картинке есть достопримечательность.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch1\u003EСвёрточная нейронная сеть\u003C\u002Fh1\u003E\u003Cbr\u002F\u003E\r\nДля Deep Learning крайне важно предварительное обучение. Поэтому мы взяли базу сцен и предобучили на ней нашу нейронную сеть. Почему именно так? Сцена — это комплексный объект, который включает в себя большое количество других объектов. А достопримечательность является частным случаем сцены. Предобучая модель на такой базе, мы можем дать модели представление о некоторых низкоуровневых признаках, которые потом можно обобщать для успешного распознавания достопримечательностей. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВ качестве модели мы использовали нейронную сеть из семейства Residual network. Главной их особенностью является то, что они используют residual block, который включает в себя skip connection, позволяющий сигналу проходить свободно, не попадая в слои с весами. С такой архитектурой можно качественно обучать глубокие сети и бороться с эффектом размытия градиента, что очень важно при обучении. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nНаша модель — это Wide ResNet 50-2, модификация ResNet 50, в которой в два раза увеличено количество сверток во внутреннем bottleneck-блоке. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fpost_images\u002F008\u002Fa1f\u002F544\u002F008a1f544843103423b5bcdb4c8b1fe5.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nСеть работает очень эффективно. Мы провели тесты на нашей базе сцен и вот, что получили:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cdiv class=\"scrollable-table\"\u003E\u003Ctable\u003E\r\n\u003Ctr\u003E\r\n\u003Cth\u003EМодель \u003Cbr\u002F\u003E\r\n\u003C\u002Fth\u003E\r\n\u003Cth\u003ETop 1 err\u003Cbr\u002F\u003E\r\n\u003C\u002Fth\u003E\r\n\u003Cth\u003ETop 5 err\u003Cbr\u002F\u003E\r\n\u003C\u002Fth\u003E\r\n\u003C\u002Ftr\u003E\r\n\u003Ctr\u003E\r\n\u003Ctd\u003EResNet-50 \u003Cbr\u002F\u003E\r\n\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E46.1 % \u003Cbr\u002F\u003E\r\n\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E15,7 %\u003Cbr\u002F\u003E\r\n\u003C\u002Ftd\u003E\r\n\u003C\u002Ftr\u003E\r\n\u003Ctr\u003E\r\n\u003Ctd\u003EResNet-200 \u003Cbr\u002F\u003E\r\n\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E42,6 % \u003Cbr\u002F\u003E\r\n\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E12,9 %\u003Cbr\u002F\u003E\r\n\u003C\u002Ftd\u003E\r\n\u003C\u002Ftr\u003E\r\n\u003Ctr\u003E\r\n\u003Ctd\u003ESE-ResNext-101 \u003Cbr\u002F\u003E\r\n\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E42 % \u003Cbr\u002F\u003E\r\n\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E12,1 %\u003Cbr\u002F\u003E\r\n\u003C\u002Ftd\u003E\r\n\u003C\u002Ftr\u003E\r\n\u003Ctr\u003E\r\n\u003Ctd\u003EWRN-50-2 (быстрая!) \u003Cbr\u002F\u003E\r\n\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E41,8 % \u003Cbr\u002F\u003E\r\n\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E11,8 %\u003Cbr\u002F\u003E\r\n\u003C\u002Ftd\u003E\r\n\u003C\u002Ftr\u003E\r\n\u003C\u002Ftable\u003E\u003C\u002Fdiv\u003E\u003Cbr\u002F\u003E\r\nWide ResNet оказалась практически вдвое быстрее, чем довольно большая сеть ResNet 200. А скорость работы очень важна для эксплуатации. По совокупности этих обстоятельств мы и взяли Wide ResNet 50-2 в качестве нашей основной нейронной сети. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EОбучение\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nДля обучения сети нам нужен loss (функция потерь). Для его подбора мы решили использовать подход metric learning: нейронная сеть обучается так, чтобы представители одного и того же класса стягивались в один кластер. При этом кластеры для разных классов должны быть как можно дальше друг от друга. Для достопримечательностей мы использовали Center loss, который стягивает точки одного и того же класса к некоторому центру. Важной особенностью этого подхода является то, что он не требует негативного сэмплирования, которое на поздних этапах обучения является достаточно трудной процедурой. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fpost_images\u002F27a\u002Fed1\u002Fcfb\u002F27aed1cfbe8d7cffa90bc1a96b578eff.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nНапомню, что у нас есть n классов достопримечательностей и ещё один класс «не достопримечательности», для него Center loss не используется. Мы подразумеваем, что достопримечательность — это один и тот же объект, и в нём есть структура, поэтому целесообразно считать для него центр. А не достопримечательностью может быть всё, что угодно, и считать для него центр неразумно. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЗатем мы собрали всё это вместе и получили модель для обучения. Она состоит из трёх основных частей:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003EСвёрточная нейросети Wide ResNet 50-2, предобученной на базе сцен; \u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003Cli\u003EЧасти эмбеддинга, состоящей из полносвязного слоя и слоя Batch norm;\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003Cli\u003EКлассификатора, который является полносвязным слоем, за которым следует пара из Softmax loss и Centre loss. \u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fr\u002Fw780q1\u002Fgetpro\u002Fhabr\u002Fpost_images\u002F6dd\u002F7bf\u002F338\u002F6dd7bf33835ea1d84565a04c5ff1e281.jpg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fpost_images\u002F6dd\u002F7bf\u002F338\u002F6dd7bf33835ea1d84565a04c5ff1e281.jpg\" data-blurred=\"true\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nКак вы помните, наша база разделена на 4 части по регионам мира. Эти 4 части мы используем в рамках парадигмы curriculum learning. На каждом этапе у нас есть текущий датасет, мы добавляем к нему ещё одну часть света и получается новый обучающий датасет. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nМодель состоит из трёх частей, и для каждой из них мы используем свой learning rate при обучении. Это нужно для того, чтобы сеть не только могла выучивать достопримечательности из новой части датасета, которую мы добавили, но и чтобы она не забывала уже выученные данные. После многих экспериментов такой подход оказался наиболее эффективным. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nИтак, мы обучили модель. Нужно понять, как она работает. Давайте с помощью class activation map посмотрим, на какую часть изображения больше всего реагирует наша нейронная сеть. На картинке ниже в первом ряду входные изображения, а во втором на них наложена class activation map от сетки, которую мы обучили на предыдущем этапе. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fpost_images\u002F5aa\u002F4aa\u002F264\u002F5aa4aa26413082931c28f1a393a64b95.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nТепловая карта показывает, каким частям изображения сеть уделяет больше внимания. Из class activation map видно, что наша нейронная сеть успешно выучила понятие достопримечательности.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EInference\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nТеперь нужно каким-то образом использовать это знание, чтобы получать результат. Поскольку для обучения мы использовали Center loss, то представляется вполне логичным на inference также вычислять цетроиды для достопримечательностей. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nДля этого берём часть изображений из обучающего набора для какой-нибудь достопримечательности, например, для Медного Всадника. Прогоняем их через сеть, получаем эмбеддинги, усредняем и получаем центроид. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fpost_images\u002Fc49\u002Fb0f\u002F69e\u002Fc49b0f69e33581f30c05985a98702f6f.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nНо возникает вопрос: сколько центроидов на одну достопримечательность имеет смысл вычислять? Вначале ответ представляется ясным и логичным: один центроид. Но это оказалось не совсем так. Сначала мы тоже решили сделать по одному центроиду и получили достаточно неплохой результат. Так почему надо брать несколько центроидов? \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВо-первых, данные у нас не совсем чистые. Хотя мы и почистили датасет, но убрали лишь откровенный мусор. А у нас могли остаться изображения, которые вроде бы и нельзя считать мусором, но которые ухудшают результат. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nНапример, у меня есть класс достопримечательности Зимний дворец. Я хочу посчитать для него центроид. Но в наборе оказалось некоторое количество фотографий с Дворцовой площадью и аркой Главного штаба. Если считать центроид по всем изображениям, то получится не слишком устойчиво. Нужно каким-то образом кластеризовать их эмбеддинги, которые получены из обычной сетки, взять только тот центроид, который отвечает за Зимний дворец, и уже по этим данным посчитать среднее. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fpost_images\u002F000\u002F7b7\u002F8ef\u002F0007b78efb3d15296bab0ebef0cf4dfb.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВо-вторых, фотографии могут быть сняты в разных ракурсах. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПриведу в качестве иллюстрации такого поведения колокольню Белфорт в Брюгге. Для неё посчитано два центроида. В верхнем ряду изображения те фото, которые ближе к первому центроиду, а во втором ряду — те, что ближе ко второму центроиду: \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fpost_images\u002Fd13\u002F5f4\u002F105\u002Fd135f4105f2823a612e458f946e25221.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПервый центроид отвечает за более «парадные» фотографии с близкого расстояния, которые сделаны с рыночной площади Брюгге. А второй центроид отвечает за фотографии, сделанные издали, с сопредельных улиц. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПолучается, что, вычисляя по несколько центроидов на класс достопримечательности, мы можем отобразить на inference разные ракурсы этой достопримечательности. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nИтак, как же мы находим эти множества для вычисления центроидов? К наборам данных для каждой достопримечательности мы применяем иерархическую кластеризацию — complete link. С её помощью мы находим валидные кластеры, по которым будем вычислять центроиды. Под валидными кластерами мы понимаем те, которые в результате кластеризации содержат не меньше 50 фотографий. Остальные кластеры мы отбрасываем. В результате у нас получилось, что около 20 % достопримечательностей имеют более одного центроида. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nТеперь inference. Мы вычисляем его в два этапа: сначала прогоняем входное изображение через нашу свёрточную нейронную сеть и получаем эмбеддинг, а затем с помощью скалярного произведения сравниваем эмбеддинг с центроидами. Если изображения содержат геоданные, то мы ограничиваем поиск центроидами, которые относятся к достопримечательностям, расположенным в квадрате 1 на 1 км от места съемки. Это позволяет искать точнее, подобрать меньший порог для последующего сравнения. Если полученное расстояние больше порога, которое является параметром алгоритма, то мы говорим, что на фото есть достопримечательность с максимальным значением скалярного произведения. Если меньше, то это не достопримечательность. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fpost_images\u002Fd01\u002F75c\u002F5a5\u002Fd0175c5a5142647bf9446f7d65df0509.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПредположим, что фото содержит достопримечательность. Если у нас есть геоданные, то мы используем их и выводим ответ. Если геоданных нет, то делаем дополнительную проверку. Когда мы чистили датасет, для каждого класса достопримечательностей делали набор эталонных изображений. Для них мы можем посчитать эмбеддинги, а потом считаем среднее расстояние от них до эмбеддинга картинки-запроса. Если оно больше какого-то порога, то верификация пройдена, подключаем метаданные и выводим результат. Важно отметить, что такую процедуру мы можем делать для нескольких достопримечательностей, которые были найдены на изображении. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fpost_images\u002F14b\u002Fffe\u002F04f\u002F14bffe04fe6ca1b3d09876432e319e53.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch1\u003EРезультаты тестов\u003C\u002Fh1\u003E\u003Cbr\u002F\u003E\r\nМы сравнили нашу модель с DELF, для которой взяли параметры, при которых она показала лучшие результаты на нашем тесте. Результаты оказались практически одинаковые. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cdiv class=\"scrollable-table\"\u003E\u003Ctable\u003E\r\n\u003Ctr\u003E\r\n\u003Cth\u003EМодель \u003Cbr\u002F\u003E\r\n\u003C\u002Fth\u003E\r\n\u003Cth\u003EДостопримечательности \u003Cbr\u002F\u003E\r\n\u003C\u002Fth\u003E\r\n\u003Cth\u003EНе достопримечательности\u003Cbr\u002F\u003E\r\n\u003C\u002Fth\u003E\r\n\u003C\u002Ftr\u003E\r\n\u003Ctr\u003E\r\n\u003Ctd\u003EНаша\u003Cbr\u002F\u003E\r\n\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E80 %\u003Cbr\u002F\u003E\r\n\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E99 %\u003Cbr\u002F\u003E\r\n\u003C\u002Ftd\u003E\r\n\u003C\u002Ftr\u003E\r\n\u003Ctr\u003E\r\n\u003Ctd\u003EDELF\u003Cbr\u002F\u003E\r\n\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E80,1 %\u003Cbr\u002F\u003E\r\n\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E99 %\u003Cbr\u002F\u003E\r\n\u003C\u002Ftd\u003E\r\n\u003C\u002Ftr\u003E\r\n\u003C\u002Ftable\u003E\u003C\u002Fdiv\u003E\u003Cbr\u002F\u003E\r\nЗатем мы разделили достопримечательности на два типа: частые (более 100 фотографий), которые составляют 87 % от всех достопримечательностей в тесте, и редкие. На частых наша модель работает хорошо: точность 85,3 %. С редкими достопримечательностями мы получили 46 %, что тоже очень неплохо — даже при малом количестве данных наш подход показывает приличные результаты. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cdiv class=\"scrollable-table\"\u003E\u003Ctable\u003E\r\n\u003Ctr\u003E\r\n\u003Cth\u003EТип\u003Cbr\u002F\u003E\r\n\u003C\u002Fth\u003E\r\n\u003Cth\u003EТочность\u003Cbr\u002F\u003E\r\n\u003C\u002Fth\u003E\r\n\u003Cth\u003EДоля от общего количества\u003Cbr\u002F\u003E\r\n\u003C\u002Fth\u003E\r\n\u003C\u002Ftr\u003E\r\n\u003Ctr\u003E\r\n\u003Ctd\u003EЧастые\u003Cbr\u002F\u003E\r\n\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E85,3 %\u003Cbr\u002F\u003E\r\n\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E87 %\u003Cbr\u002F\u003E\r\n\u003C\u002Ftd\u003E\r\n\u003C\u002Ftr\u003E\r\n\u003Ctr\u003E\r\n\u003Ctd\u003EРедкие\u003Cbr\u002F\u003E\r\n\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E46 %\u003Cbr\u002F\u003E\r\n\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E13 %\u003Cbr\u002F\u003E\r\n\u003C\u002Ftd\u003E\r\n\u003C\u002Ftr\u003E\r\n\u003C\u002Ftable\u003E\u003C\u002Fdiv\u003E\u003Cbr\u002F\u003E\r\nПосле мы провели А\u002FB-тестирование на пользовательских фотографиях. В результате конверсия покупки места в облаке увеличилась на 10 %, конверсия удаления мобильного приложения упала на 3 %, а количество просмотров альбомов увеличилось на 13 %. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nСравним скорость работы нашего подхода и DELF. На GPU DELF требует 7 прогонов сетки, потому что использует 7 масштабов изображения, а наш подход использует только 1 прогон. На CPU DELF использует более долгий поиск по методу ближайших соседей и очень долгую геометрическую верификацию. В результате наш метод на CPU оказался в 15 раз быстрее. В обоих случаях наш подход выигрывает в скорости, что крайне важно при эксплуатации.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch1\u003EРезультаты: впечатления из отпуска\u003C\u002Fh1\u003E\u003Cbr\u002F\u003E\r\nВ начале статьи я упомянул о решении проблемы скролинга и поиска нужных картинок с достопримечательностями. Вот оно. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fpost_images\u002F72c\u002Fdf4\u002F52e\u002F72cdf452e2105c18f8e4375a1b69d497.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЭто мое облако, и в нём все фотографии разбиты на альбомы. Есть альбом «Люди», «Объекты», «Достопримечательности». Внутри него достопримечательности разбиты по альбомам, которые сгруппированы по городам. Если кликнуть по Цвингеру в Дрездене, то откроется альбом с фотографиями только этой достопримечательности.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fpost_images\u002Fec6\u002F7f8\u002F929\u002Fec67f892964ee568754a86cd48e16b51.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nОчень полезная фича: съездил в отпуск, пофоткал, сложил в облако. А когда захотелось залить их в Instagram или поделиться с друзьями и близкими, не придётся долго искать и выбирать, всего несколько кликов — и вы найдёте нужные фотографии. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch1\u003EРезюме\u003C\u002Fh1\u003E\u003Cbr\u002F\u003E\r\nНапомню о главных моментах нашего решения. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Col\u003E\r\n\u003Cli\u003EПолуавтоматическая чистка базы. Немного ручного труда для начальной разметки, а дальше нейронная сеть справляется сама. Это позволяет быстро чистить новые данные и дообучать на них модель. \u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003Cli\u003EМы используем глубокие свёрточные нейронные сети и deep metric learning, который позволяет нам эффективно выучивать структуру в классах. \u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003Cli\u003EВ качестве парадигмы обучения мы использовали curriculum learning — обучение по частям. Этот подход нам очень сильно помог. На inference мы применяем несколько центроидов, которые позволяют использовать более чистые данные и находить разные ракурсы достопримечательностей. \u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003C\u002Fol\u003E\u003Cbr\u002F\u003E\r\nКазалось бы, распознавание объектов — это хорошо изученная область. Но исследуя потребности реальных пользователей, мы находим новые интересные задачи, такие как распознавание достопримечательностей. Она позволяет с помощью машинного обучения рассказывать людям что-то новое о мире. Это очень сильно вдохновляет и мотивирует!\u003C\u002Fdiv\u003E","tags":[{"titleHtml":"landmark recognition"},{"titleHtml":"deep learning"},{"titleHtml":"machine learning"},{"titleHtml":"computer vision"}],"metadata":{"stylesUrls":[],"scriptUrls":[],"shareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F451542\u002F956c6ecb00490646c96dac09437e5883\u002F","shareImageWidth":1200,"shareImageHeight":630,"vkShareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F451542\u002F956c6ecb00490646c96dac09437e5883\u002F?format=vk","schemaJsonLd":"{\"@context\":\"http:\\\u002F\\\u002Fschema.org\",\"@type\":\"Article\",\"mainEntityOfPage\":{\"@type\":\"WebPage\",\"@id\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fru\\\u002Fcompany\\\u002Fvk\\\u002Fblog\\\u002F451542\\\u002F\"},\"headline\":\"Как и зачем мы делали распознавание достопримечательностей в Облаке Mail.ru\",\"datePublished\":\"2019-05-14T13:22:15+03:00\",\"dateModified\":\"2019-05-14T13:37:56+03:00\",\"author\":{\"@type\":\"Person\",\"name\":\"Андрей Бояров\"},\"publisher\":{\"@type\":\"Organization\",\"name\":\"Habr\",\"logo\":{\"@type\":\"ImageObject\",\"url\":\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fa_\\\u002Flk\\\u002F9m\\\u002Fa_lk9mjkccjox-zccjrpfolmkmq.png\"}},\"description\":\"С появлением качественных камер в мобильных телефонах мы все больше и чаще фотографируем, снимаем видео ярких и важных моментов нашей жизни. У многих из нас фо...\",\"url\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fru\\\u002Fcompany\\\u002Fvk\\\u002Fblog\\\u002F451542\\\u002F#post-content-body\",\"about\":[\"c_vk\",\"h_algorithms\",\"h_image_processing\",\"h_machine_learning\",\"h_artificial_intelligence\",\"f_develop\",\"f_popsci\"],\"image\":[\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fgetpro\\\u002Fhabr\\\u002Fpost_images\\\u002Fa5d\\\u002Feeb\\\u002F615\\\u002Fa5deeb615e9a57fb482a1a5464ab6fcc.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fgetpro\\\u002Fhabr\\\u002Fpost_images\\\u002Fbd4\\\u002Fda6\\\u002F7f7\\\u002Fbd4da67f77caa21c8afdd344e1e1a05a.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fgetpro\\\u002Fhabr\\\u002Fpost_images\\\u002F837\\\u002F0a4\\\u002Ff9b\\\u002F8370a4f9b8785814cd4cc7368770aac2.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fgetpro\\\u002Fhabr\\\u002Fpost_images\\\u002F55d\\\u002F632\\\u002F245\\\u002F55d632245cf529e935e25a78de40f020.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fgetpro\\\u002Fhabr\\\u002Fpost_images\\\u002F3f6\\\u002Fe54\\\u002F629\\\u002F3f6e546299616e59efd6a1a1464b9b65.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fgetpro\\\u002Fhabr\\\u002Fpost_images\\\u002F305\\\u002F300\\\u002Fa87\\\u002F305300a8734289229c57e0d1876fa74e.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fgetpro\\\u002Fhabr\\\u002Fpost_images\\\u002Fe17\\\u002Fa2d\\\u002F803\\\u002Fe17a2d803135ba5a7821842f035b1cf8.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fgetpro\\\u002Fhabr\\\u002Fpost_images\\\u002F008\\\u002Fa1f\\\u002F544\\\u002F008a1f544843103423b5bcdb4c8b1fe5.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fgetpro\\\u002Fhabr\\\u002Fpost_images\\\u002F27a\\\u002Fed1\\\u002Fcfb\\\u002F27aed1cfbe8d7cffa90bc1a96b578eff.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fgetpro\\\u002Fhabr\\\u002Fpost_images\\\u002F6dd\\\u002F7bf\\\u002F338\\\u002F6dd7bf33835ea1d84565a04c5ff1e281.jpg\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fgetpro\\\u002Fhabr\\\u002Fpost_images\\\u002F5aa\\\u002F4aa\\\u002F264\\\u002F5aa4aa26413082931c28f1a393a64b95.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fgetpro\\\u002Fhabr\\\u002Fpost_images\\\u002Fc49\\\u002Fb0f\\\u002F69e\\\u002Fc49b0f69e33581f30c05985a98702f6f.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fgetpro\\\u002Fhabr\\\u002Fpost_images\\\u002F000\\\u002F7b7\\\u002F8ef\\\u002F0007b78efb3d15296bab0ebef0cf4dfb.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fgetpro\\\u002Fhabr\\\u002Fpost_images\\\u002Fd13\\\u002F5f4\\\u002F105\\\u002Fd135f4105f2823a612e458f946e25221.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fgetpro\\\u002Fhabr\\\u002Fpost_images\\\u002Fd01\\\u002F75c\\\u002F5a5\\\u002Fd0175c5a5142647bf9446f7d65df0509.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fgetpro\\\u002Fhabr\\\u002Fpost_images\\\u002F14b\\\u002Fffe\\\u002F04f\\\u002F14bffe04fe6ca1b3d09876432e319e53.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fgetpro\\\u002Fhabr\\\u002Fpost_images\\\u002F72c\\\u002Fdf4\\\u002F52e\\\u002F72cdf452e2105c18f8e4375a1b69d497.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fgetpro\\\u002Fhabr\\\u002Fpost_images\\\u002Fec6\\\u002F7f8\\\u002F929\\\u002Fec67f892964ee568754a86cd48e16b51.png\"]}","metaDescription":"С появлением качественных камер в мобильных телефонах мы все больше и чаще фотографируем, снимаем видео ярких и важных моментов нашей жизни. У многих из нас фотоархивы насчитывают десятки лет и...","mainImageUrl":null,"amp":true},"polls":[],"commentsEnabled":true,"rulesRemindEnabled":false,"votesEnabled":true,"status":"published","plannedPublishTime":null,"checked":null,"isEditorial":false}},"articlesIds":{},"isLoading":false,"pagesCount":{},"route":{},"reasonsList":null,"view":"cards","lastVisitedRoute":{},"ssrCommentsArticleIds":[""],"karma":{}},"authorContribution":{"authors":{}},"betaTest":{"currentAnnouncement":null,"announcements":{},"announcementCards":null,"announcementComments":{},"announcementCommentThreads":{},"announcementCommentingStatuses":{},"archivedList":[]},"authorStatistics":{"articleRefs":{},"articleIds":{},"pagesCount":{},"route":{},"viewsCount":[],"maxStatsCount":{}},"career":{"seoLandings":[],"hubs":""},"comments":{"articleComments":{},"searchCommentsResults":null,"previewComment":null,"pagesCount":null,"commentAccess":{},"scrollParents":{},"pageArticleComments":{"lastViewedComment":0,"postId":null,"lastCommentTimestamp":"","moderated":[],"moderatedIds":[],"commentRoute":""}},"companies":{"companyRefs":{"vk":{"alias":"vk","imageUrl":"\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fcompany\u002F9ed\u002Fc74\u002F6b4\u002F9edc746b484c805ecad1f941b5f7068a.png","titleHtml":"VK","descriptionHtml":"Технологии, которые объединяют","relatedData":null,"statistics":{"postsCount":2250,"newsCount":142,"vacanciesCount":24,"employeesCount":693,"careerRating":4.37,"subscribersCount":124428,"rating":331.85,"invest":null},"foundationDate":{"year":"1998","month":"10","day":"15"},"location":{"city":{"id":"447159","title":"Москва"},"region":{"id":"1885","title":"Москва и Московская обл."},"country":{"id":"168","title":"Россия"}},"siteUrl":"https:\u002F\u002Fvk.com\u002Fvkteam","staffNumber":"5 001–10 000 человек","registrationDate":"2008-08-09T07:42:32+00:00","representativeUser":{"alias":"somuchmich","fullname":"Миша Буданов"},"contacts":[{"title":"Facebook","url":"https:\u002F\u002Ffacebook.com\u002Finsidevk"},{"title":"Twitter","url":"https:\u002F\u002Ftwitter.com\u002Finside_vk"},{"title":"ВКонтакте","url":"https:\u002F\u002Fvk.com\u002Finsidevk"},{"title":"Instagram","url":"https:\u002F\u002Finstagram.com\u002Finside.vk"},{"title":"Telegram","url":"https:\u002F\u002Ftelegram.me\u002Finside_vk"}],"settings":{"analyticsSettings":[{"type":"ga","trackingId":"UA-16546458-6"}],"branding":{"imageUrl":"\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fbranding\u002F174\u002F2c4\u002F3a5\u002F1742c43a5b504987a0fadf577a0bd4de.png","linkUrl":"https:\u002F\u002Fvk.com\u002Fvkteam","pixelUrl":""},"status":"active"},"metadata":{"titleHtml":"VK, Москва - Технологии, которые объединяют с 15 октября 1998 г.","title":"VK, Москва - Технологии, которые объединяют с 15 октября 1998 г.","keywords":["Программирование","DevOps","Kubernetes","Облачные вычисления","Tarantool"],"descriptionHtml":"2 250 статей от авторов компании VK","description":"2 250 статей от авторов компании VK"},"aDeskSettings":null,"careerAlias":"vk","maxCustomTrackerLinks":3}},"companyIds":{},"companyTopIds":{},"pagesCount":{},"companyProfiles":{},"companiesCategories":[],"companiesCategoriesTotalCount":0,"companiesWidgets":{},"companiesWorkers":{},"companiesFans":{},"route":{},"isLoading":false,"companyWorkersLoading":false,"companyFansLoading":false,"vacancies":{}},"companiesContribution":{"hubs":{},"flows":{},"companyRefs":{}},"companyHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"conversation":{"messages":[],"respondent":null,"isLoadMore":false},"conversations":{"conversations":[],"unreadCount":0,"pagesCount":0,"isLoadMore":false},"desktopState":{"desktopFl":null,"desktopHl":null,"isChecked":false,"isLoginDemanded":false},"dfp":{"slotsDict":{}},"docs":{"menu":{},"articles":{},"mainMenu":[],"loading":{"main":false,"dropdown":false,"article":false}},"feature":{"isProbablyVisible":"true"},"flows":{"flows":[{"alias":"develop","id":1,"route":{"name":"FLOW_PAGE","params":{"flowName":"develop"}}},{"alias":"admin","id":6,"route":{"name":"FLOW_PAGE","params":{"flowName":"admin"}}},{"alias":"design","id":2,"route":{"name":"FLOW_PAGE","params":{"flowName":"design"}}},{"alias":"management","id":3,"route":{"name":"FLOW_PAGE","params":{"flowName":"management"}}},{"alias":"marketing","id":4,"route":{"name":"FLOW_PAGE","params":{"flowName":"marketing"}}},{"alias":"popsci","id":7,"route":{"name":"FLOW_PAGE","params":{"flowName":"popsci"}}}]},"global":{"isPwa":false,"device":"desktop","isHabrCom":true},"hubs":{"hubRefs":{},"hubIds":{},"pagesCount":{},"isLoading":false,"route":{}},"hubsBlock":{"hubRefs":{},"hubIds":{}},"i18n":{"fl":"ru","hl":"ru"},"info":{"infoPage":{},"isLoading":true},"location":{"urlStruct":{"protocol":null,"slashes":null,"auth":null,"host":null,"port":null,"hostname":null,"hash":null,"search":null,"query":{},"pathname":null,"path":null,"href":""},"searchQuery":null},"me":{"user":null,"ppgDemanded":false,"karmaResetInfo":{"canReincarnate":null,"wasReincarnated":null,"currentScore":null},"notes":null},"mostReadingList":{"mostReadingListIds":[],"mostReadingListRefs":null,"promoPost":null},"pinnedPost":{"pinnedPost":null},"ppa":{"articles":{},"card":null,"transactions":null,"totalTransactions":null,"isAccessible":null},"projectsBlocks":{"activeBlocks":{}},"pullRefresh":{"shouldRefresh":false},"sandbox":{"articleIds":[],"articleRefs":{},"pagesCount":null,"route":{},"lastVisitedRoute":{},"isLoading":false},"settingsOther":{"inputs":{"uiLang":{"errors":[],"ref":null,"value":""},"articlesLangEnglish":{"errors":[],"ref":null,"value":false},"articlesLangRussian":{"errors":[],"ref":null,"value":false},"agreement":{"errors":[],"ref":null,"value":false},"email":{"errors":[],"ref":null,"value":true},"digest":{"errors":[],"ref":null,"value":true}}},"similarList":{"similarListIds":[],"similarListRefs":null},"ssr":{"error":null,"isDataLoaded":false,"isDataLoading":false,"isHydrationFailed":false,"isServer":false},"userHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"userInvites":{"availableInvites":0,"usedInvitesIds":[],"usedInvitesRefs":{},"usedInvitesPagesCount":0,"unusedInvitesIds":[],"unusedInvitesRefs":{},"unusedInvitesPagesCount":0},"users":{"authorRefs":{},"authorIds":{},"pagesCount":{},"authorProfiles":{},"userHubs":{},"userInvitations":{},"authorFollowers":{},"authorFollowed":{},"karmaStats":[],"statistics":null,"isLoading":false,"authorFollowersLoading":false,"authorFollowedLoading":false,"userHubsLoading":false,"userInvitationsLoading":false,"route":{}},"viewport":{"prevScrollY":{},"scrollY":0,"width":0},"tracker":{"items":{},"pagesCache":{},"markedViewedSilently":{},"markedRead":{},"unreadCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null},"unviewedCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null}}};(function(){var s;(s=document.currentScript||document.scripts[document.scripts.length-1]).parentNode.removeChild(s);}());</script>
+<script src="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" defer></script><script src="https://assets.habr.com/habr-web/js/app.c0af73e7.js" defer></script>
+
+
+
+    <script>
+      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+        (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+        m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+      })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+    </script>
+  
+  <script type="text/javascript" >
+    (function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+    m[i].l=1*new Date();k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})
+    (window, document, "script", "https://mc.yandex.ru/metrika/tag.js", "ym");
+
+    ym(24049213, "init", {
+      defer:true,
+      trackLinks:true,
+      accurateTrackBounce:true,
+      webvisor:false,
+    });
+  </script>
+  <noscript>
+    <div>
+      <img src="https://mc.yandex.ru/watch/24049213" style="position:absolute; left:-9999px;" alt="" />
+    </div>
+  </noscript>
+  
+    <script type="text/javascript">
+      window.addEventListener('load', function () {
+        setTimeout(() => {
+          const img = new Image();
+          img.src = 'https://vk.com/rtrg?p=VK-RTRG-421343-57vKE';
+        }, 0);
+      });
+    </script>
+  
+</body>
+</html>

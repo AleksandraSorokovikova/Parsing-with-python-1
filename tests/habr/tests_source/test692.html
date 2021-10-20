@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="ru" data-vue-meta="%7B%22lang%22:%7B%22ssr%22:%22ru%22%7D%7D">
+<head >
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
+  <title>Заметка о интеграционном тестировании используя Jenkins на Kubernetes / Хабр</title>
+  <style>
+    /* cyrillic-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSxf6TF0.woff2) format('woff2');
+      unicode-range: U+0460-052F, U+1C80-1C88, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+    }
+
+    /* cyrillic */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveQhf6TF0.woff2) format('woff2');
+      unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+    }
+
+    /* latin-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSBf6TF0.woff2) format('woff2');
+      unicode-range: U+0100-024F, U+0259, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20CF, U+2113, U+2C60-2C7F, U+A720-A7FF;
+    }
+
+    /* latin */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveRhf6.woff2) format('woff2');
+      unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+    }
+  </style>
+  <link rel="preload" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" as="script"><link rel="preload" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/app.c0af73e7.js" as="script">
+  <link rel="stylesheet" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css"><link rel="stylesheet" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css">
+  <script>window.i18nFetch = new Promise((res, rej) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open('GET', '/js/i18n/ru-compiled.85eb77f0b17c8235e7b64b9f81ea5ec2.json');
+          xhr.responseType = 'json';
+          xhr.onload = function(e) {
+            if (this.status === 200) {
+              res({ru: xhr.response});
+            } else {
+              rej(e);
+            }
+          };
+          xhr.send();
+        });</script>
+  
+  <script data-vue-meta="ssr" src="/js/ads.js" onload="window['zhY4i4nJ9K'] = true" data-vmid="checkad"></script><script data-vue-meta="ssr" type="application/ld+json" data-vmid="ldjson-schema">{"@context":"http:\/\/schema.org","@type":"Article","mainEntityOfPage":{"@type":"WebPage","@id":"https:\/\/habr.com\/ru\/post\/451588\/"},"headline":"Заметка о интеграционном тестировании используя Jenkins на Kubernetes","datePublished":"2019-05-13T15:17:57+03:00","dateModified":"2019-10-01T19:43:28+03:00","author":{"@type":"Person","name":"Ievgen Degtiarenko"},"publisher":{"@type":"Organization","name":"Habr","logo":{"@type":"ImageObject","url":"https:\/\/habrastorage.org\/webt\/a_\/lk\/9m\/a_lk9mjkccjox-zccjrpfolmkmq.png"}},"description":"Добрый день. Практически сразу после установки и конфигурации CI\/CD по инструкции из предыдущего поста у команды возник вопрос как правильно осуществлять интегра...","url":"https:\/\/habr.com\/ru\/post\/451588\/#post-content-body","about":["h_java","h_web_testing","h_kubernetes","f_develop"],"image":["https:\/\/habr.com\/share\/publication\/451588\/ab9893ec713486d8a4cf4b21c5d29eb3\/"]}</script>
+  <script src="//www.googletagservices.com/tag/js/gpt.js" async></script>
+  <style>.grecaptcha-badge{visibility: hidden;}</style>
+  <meta name="habr-version" content="2.49.0">
+  
+  <meta data-vue-meta="ssr" property="fb:app_id" content="444736788986613"><meta data-vue-meta="ssr" property="fb:pages" content="472597926099084"><meta data-vue-meta="ssr" name="twitter:card" content="summary_large_image"><meta data-vue-meta="ssr" name="twitter:site" content="@habr_eng"><meta data-vue-meta="ssr" property="og:title" content="Заметка о интеграционном тестировании используя Jenkins на Kubernetes" data-vmid="og:title"><meta data-vue-meta="ssr" name="twitter:title" content="Заметка о интеграционном тестировании используя Jenkins на Kubernetes" data-vmid="twitter:title"><meta data-vue-meta="ssr" name="aiturec:title" content="Заметка о интеграционном тестировании используя Jenkins на Kubernetes" data-vmid="aiturec:title"><meta data-vue-meta="ssr" name="description" content="Добрый день.
+Практически сразу после установки и конфигурации CI/CD по инструкции из предыдущего поста у команды возник вопрос как правильно осуществлять интеграционное тестирование. У нас уже был..." data-vmid="description"><meta data-vue-meta="ssr" itemprop="description" content="Добрый день.
+Практически сразу после установки и конфигурации CI/CD по инструкции из предыдущего поста у команды возник вопрос как правильно осуществлять интеграционное тестирование. У нас уже был..." data-vmid="description:itemprop"><meta data-vue-meta="ssr" property="og:description" content="Добрый день.
+Практически сразу после установки и конфигурации CI/CD по инструкции из предыдущего поста у команды возник вопрос как правильно осуществлять интеграционное тестирование. У нас уже был..." data-vmid="og:description"><meta data-vue-meta="ssr" name="twitter:description" content="Добрый день.
+Практически сразу после установки и конфигурации CI/CD по инструкции из предыдущего поста у команды возник вопрос как правильно осуществлять интеграционное тестирование. У нас уже был..." data-vmid="twitter:description"><meta data-vue-meta="ssr" property="aiturec:description" content="Добрый день.
+Практически сразу после установки и конфигурации CI/CD по инструкции из предыдущего поста у команды возник вопрос как правильно осуществлять интеграционное тестирование. У нас уже был..." data-vmid="aiturec:description"><meta data-vue-meta="ssr" itemprop="image" content="https://habr.com/share/publication/451588/ab9893ec713486d8a4cf4b21c5d29eb3/" data-vmid="image:itemprop"><meta data-vue-meta="ssr" property="og:image" content="https://habr.com/share/publication/451588/ab9893ec713486d8a4cf4b21c5d29eb3/" data-vmid="og:image"><meta data-vue-meta="ssr" property="aiturec:image" content="https://habr.com/share/publication/451588/ab9893ec713486d8a4cf4b21c5d29eb3/" data-vmid="aiturec:image"><meta data-vue-meta="ssr" name="twitter:image" content="https://habr.com/share/publication/451588/ab9893ec713486d8a4cf4b21c5d29eb3/" data-vmid="twitter:image"><meta data-vue-meta="ssr" property="vk:image" content="https://habr.com/share/publication/451588/ab9893ec713486d8a4cf4b21c5d29eb3/" data-vmid="vk:image"><meta data-vue-meta="ssr" property="aiturec:item_id" content="451588" data-vmid="aiturec:item_id"><meta data-vue-meta="ssr" property="aiturec:datetime" content="2019-05-13T12:17:57.000Z" data-vmid="aiturec:datetime"><meta data-vue-meta="ssr" property="og:type" content="article" data-vmid="og:type"><meta data-vue-meta="ssr" property="og:locale" content="ru_RU" data-vmid="og:locale"><meta data-vue-meta="ssr" property="og:image:width" content="1200" data-vmid="og:image:width"><meta data-vue-meta="ssr" property="og:image:height" content="630" data-vmid="og:image:height">
+  <link data-vue-meta="ssr" href="https://habr.com/ru/rss/post/451588/?fl=ru" type="application/rss+xml" title="" rel="alternate" name="rss"><link data-vue-meta="ssr" href="https://habr.com/ru/post/451588/" rel="canonical" data-vmid="canonical"><link data-vue-meta="ssr" data-vmid="hreflang"><link data-vue-meta="ssr" image_src="image" href="https://habr.com/share/publication/451588/ab9893ec713486d8a4cf4b21c5d29eb3/" data-vmid="image:href">
+  <meta name="apple-mobile-web-app-status-bar-style" content="#303b44">
+  <meta name="msapplication-TileColor" content="#629FBC">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="16x16"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-16.png"
+  >
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="32x32"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-32.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="76x76"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-76.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="120x120"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="152x152"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-152.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="180x180"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-180.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="256x256"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-256.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1136x640.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2436x1125.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1792x828.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_828x1792.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1334x750.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2208x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1125x2436.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2208.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2732x2048.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2688x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2224x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_750x1334.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x2732.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2388x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2224.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_640x1136.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2388.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x1536.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1536x2048.png"
+  >
+  <link
+    rel="mask-icon"
+    color="#77a2b6"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.svg"
+  >
+  <link
+    crossorigin="use-credentials"
+    href="/manifest.webmanifest"
+    rel="manifest"
+  >
+</head>
+<body>
+
+
+<div id="app" data-server-rendered="true" data-async-called="true"><div class="tm-layout__wrapper"><!----> <div></div> <!----> <header class="tm-header"><div class="tm-page-width"><div class="tm-header__container"><!----> <span class="tm-header__logo-wrap"><a href="/ru/" class="tm-header__logo tm-header__logo_ru"><svg height="16" width="16" class="tm-svg-img tm-header__icon"><title>Хабр</title> <use xlink:href="/img/habr-logo-ru.svg#logo"></use></svg></a> <span class="tm-header__beta-sign" style="display:none;">β</span></span> <div class="tm-dropdown tm-header__projects"><div class="tm-dropdown__head"><button class="tm-header__dropdown-toggle"><svg height="16" width="16" class="tm-svg-img tm-header__icon tm-header__icon_dropdown"><title>Открыть список</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#arrow-down"></use></svg></button></div> <!----></div> <a href="/ru/sandbox/start/" class="tm-header__become-author-btn">
+            Как стать автором
+          </a> <div class="tm-feature tm-header__feature tm-feature_variant-inline"><!----></div> <!----> <!----></div></div></header> <div class="tm-layout"><div class="tm-page-progress-bar"></div> <div data-menu-sticky="true" class="tm-base-layout__header tm-base-layout__header_is-sticky"><div class="tm-page-width"><div class="tm-base-layout__header-wrapper"><div class="tm-main-menu"><div class="tm-main-menu__section"><nav class="tm-main-menu__section-content"><!----> <a href="/ru/all/" class="tm-main-menu__item">
+        Все потоки
+      </a> <a href="/ru/flows/develop/" class="tm-main-menu__item">
+          Разработка
+        </a><a href="/ru/flows/admin/" class="tm-main-menu__item">
+          Администрирование
+        </a><a href="/ru/flows/design/" class="tm-main-menu__item">
+          Дизайн
+        </a><a href="/ru/flows/management/" class="tm-main-menu__item">
+          Менеджмент
+        </a><a href="/ru/flows/marketing/" class="tm-main-menu__item">
+          Маркетинг
+        </a><a href="/ru/flows/popsci/" class="tm-main-menu__item">
+          Научпоп
+        </a></nav></div></div> <div class="tm-header-user-menu tm-base-layout__user-menu"><a href="/ru/search/" class="tm-header-user-menu__item tm-header-user-menu__search"><svg height="24" width="24" class="tm-svg-img tm-header-user-menu__icon tm-header-user-menu__icon_search tm-header-user-menu__icon_dark"><title>Поиск</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#search"></use></svg></a> <!----> <!----> <!----> <div class="tm-header-user-menu__item tm-header-user-menu__user_desktop"><div class="tm-dropdown"><div class="tm-dropdown__head"><svg height="24" width="24" data-test-id="menu-toggle-guest" class="tm-svg-img tm-header-user-menu__icon"><title>Профиль</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#header-user"></use></svg> <!----></div> <!----></div> <!----></div> <!----></div></div></div></div> <!----> <div class="tm-page-width"></div> <main class="tm-layout__container"><div hl="ru" data-async-called="true" class="tm-page"><div class="tm-page-width"><!----> <div class="tm-page__wrapper"><div class="tm-page__main tm-page__main_has-sidebar"><div class="pull-down"><div class="pull-down__header" style="height:0px;"><div class="pull-down__content" style="bottom:10px;"><svg height="24" width="24" class="tm-svg-img pull-down__arrow"><title>Обновить</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#pull-arrow"></use></svg></div></div> <div class="tm-article-presenter"> <div class="tm-article-presenter__body"><div class="tm-misprint-area"><div class="tm-misprint-area__wrapper"><article class="tm-article-presenter__content tm-article-presenter__content_narrow"><div class="tm-article-presenter__header"> <div class="tm-article-snippet tm-article-presenter__snippet"><div class="tm-article-snippet__meta-container"><div class="tm-article-snippet__meta"><span class="tm-user-info tm-article-snippet__author"><a href="/ru/users/gmandnepr/" title="gmandnepr" class="tm-user-info__userpic"><div class="tm-entity-image"><svg height="24" width="24" class="tm-svg-img tm-image-placeholder tm-image-placeholder_blue"><!----> <use xlink:href="/img/megazord-v24.ce74655c.svg#placeholder-user"></use></svg></div></a> <span class="tm-user-info__user"><a href="/ru/users/gmandnepr/" class="tm-user-info__username">
+      gmandnepr
+    </a> </span></span> <span class="tm-article-snippet__datetime-published"><time datetime="2019-05-13T12:17:57.000Z" title="2019-05-13, 15:17">13  мая  2019 в 15:17</time></span></div> <!----></div> <h1 lang="ru" class="tm-article-snippet__title tm-article-snippet__title_h1"><span>Заметка о интеграционном тестировании используя Jenkins на Kubernetes</span></h1> <div class="tm-article-snippet__hubs"><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/java/" class="tm-article-snippet__hubs-item-link"><span>Java</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/web_testing/" class="tm-article-snippet__hubs-item-link"><span>Тестирование веб-сервисов</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/kubernetes/" class="tm-article-snippet__hubs-item-link"><span>Kubernetes</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span></div> <div class="tm-article-snippet__labels"><div class="tm-article-snippet__label"><span>
+        Tutorial
+      </span></div></div> <!----> <!----></div></div> <!----> <div data-gallery-root="" lang="ru" class="tm-article-body"><div id="post-content-body" class="article-formatted-body article-formatted-body_version-1"><div xmlns="http://www.w3.org/1999/xhtml"><p>Добрый день.</p><br/>
+<p>Практически сразу после установки и конфигурации CI/CD по инструкции из <a href="https://habr.com/ru/post/442614/">предыдущего поста</a> у команды возник вопрос как правильно осуществлять интеграционное тестирование. У нас уже был опыт запуска тестовых зависимостей в docker контейнерах, но это стало проблематичным так как теперь сама сборка была запущена в контейнере. В этой заметке я бы хотел описать два возможных способа интеграционного тестирования внутри контейнера, которые подошли моей команде.</p><a name="habracut"></a><br/>
+<h2 id="trebovaniya-k-integracionnomu-testirovaniyu">Требования к интеграционному тестированию</h2><br/>
+<p>По определению интеграционным тестированием называется тестирование, которое проверяет работу приложения с его зависимыми компонентами. Примерами может быть базы данных, очереди а также другие сервисы.</p><br/>
+<p>В рамках тестирования нам хотелось:</p><br/>
+<ul>
+<li>одинаково запускать тесты как локально так и на jenkins</li>
+<li>избежать предварительной установки и конфигурации зависимых приложений</li>
+<li>декларировать и запускать зависимости используя файлы в репозитории проекта</li>
+<li>иметь возможность запускать несколько сборок параллельно</li>
+<li>желательно иметь возможность добавлять новые зависимости в будущем</li>
+<li>желательно иметь возможность тестировать с разными версиями одной и той же зависимости</li>
+</ul><br/>
+<p>Исходя их этих требований мы сразу откинули идею иметь постоянные общие инсталляции тестовых баз данных и очередей из-за проблем с разделением ресурсов между сборками, сложностью поддержания и изменения этой инфраструктуры.</p><br/>
+<h2 id="variant-1-vstroennye-resheniya">Вариант 1: встроенные решения</h2><br/>
+<p>В экосистеме java существует достаточно много библиотек которые запускают зависимость для теста:</p><br/>
+<ul>
+<li>kafka: <a href="https://github.com/chbatey/kafka-unit">https://github.com/chbatey/kafka-unit</a> / <a href="https://github.com/spring-projects/spring-kafka">https://github.com/spring-projects/spring-kafka</a> / <a href="https://github.com/manub/scalatest-embedded-kafka">https://github.com/manub/scalatest-embedded-kafka</a></li>
+<li><a href="https://github.com/jsevellec/cassandra-unit">cassandra</a> </li>
+<li><a href="https://github.com/yandex-qatools/postgresql-embedded">postgres </a></li>
+<li><a href="https://github.com/tomakehurst/wiremock">rest api</a></li>
+</ul><br/>
+<p>Данный подход является максимально простым и удовлетворяет большинство из требований описанных ранее, но не является универсальным с точки зрения добавления новых тестовых зависимостей (mysql?) либо использования конкретных либо многих версий зависимостей.</p><br/>
+<p>Хорошо подходит для простых сервисов с 1-2 зависимостями.</p><br/>
+<h2 id="variant-2-testcontainers">Вариант 2: testcontainers</h2><br/>
+<p>Docker является логичным способом разрешить недостатки предыдущего подхода: можно найти (или создать Docker image) для любой зависимости с любой версией. Вероятно, некоторые из зависимостей и в продакшене запущены используя те же самые образы.</p><br/>
+<p>Если локально запуск образа (или несколько используя docker-compose) не составит проблем, то на CI возникнут сложности так как сама сборка происходит в контейнере. Хотя и возможно запустить docker в docker но это <a href="https://jpetazzo.github.io/2015/09/03/do-not-use-docker-in-docker-for-ci/">не рекомендуется самим создателем dind</a>. Предпочтительным способом обойти эту проблему является переиспользование уже запущенного docker процесса который часто называют sibling docker. Для этого нужно чтобы дочерний docker процесс использовал <code>/var/run/docker.sock</code> от родительского. В предыдущем посте это уже было использовано для публикации docker images с собранным приложением.</p><br/>
+<p>Было принято решение использовать библиотеку <a href="https://github.com/testcontainers/testcontainers-java">testcontainers</a> так как она:</p><br/>
+<ul>
+<li>предоставляет хороший api для управления зависимостями</li>
+<li>имеет интеграции с наиболее популярными <a href="https://www.testcontainers.org/modules/databases/">базами данных</a> и <a href="https://www.testcontainers.org/modules/kafka/">очередей</a></li>
+<li>использует sibling docker подход при запуске <a href="https://www.testcontainers.org/supported_docker_environment/continuous_integration/dind_patterns/">в контейнере</a></li>
+<li>одинаково работает локально и на ci</li>
+<li>останавливает контейнеры после сборки</li>
+</ul><br/>
+<p>Хорошо подходит для более сложных сервисов либо для сервисов с особыми требованиями к зависимостям.</p><br/>
+<h2 id="upravlenie-resursami">Управление ресурсами</h2><br/>
+<p>Далее стоит обратить внимание на потребление ресурсов сборкой проекта (которое может значительно возрасти после добавления интеграционных тестов).</p><br/>
+<p>На текущий момент сборка не указывает необходимое количество памяти и cpu shares, что можеть две потенциальные проблемы:</p><br/>
+<ul>
+<li>Первая — это слишком много параллельных сборок на одной машине, что приведет в высокому load factor. Вероятно, сборки пройдут, но потратят на это намного больше времени.</li>
+<li>Вторая — это OOM kill. Кубернетис может решить что вы потребляете слишком много памяти и просто будет убивать сборки прежде чем они завершаться.</li>
+</ul><br/>
+<p>Ограничить ресурсы контейнера в поде можно используя конструкцию:</p><br/>
+<pre><code class="plaintext">  resources:
+    requests:
+      cpu: 1
+      memory: 512Mi
+    limits:
+      cpu: 1
+      memory: 512Mi</code></pre><br/>
+<p>Jdk9 и выше уже имееют поддержку работы в контейнере (-XX:+UseContainerSupport (включен по умолчанию), работает в комбинации с -XX:InitialRAMPercentage / -XX:MaxRAMPercentage)</p><br/>
+<p>Полный пример можно посмотреть <a href="https://github.com/idegtiarenko/habr-demo-app-testcontainers/blob/master/Jenkinsfile">тут</a>.</p><br/>
+<p>Для корректной работы Jdk8 требуется либо обновление 131 и выше с включенными флагами <code>-XX:+UnlockExperimentalVMOptions -XX:+UseCGroupMemoryLimitForHeap</code> для чтения доступной памяти из cgroup а не из хост машины, либо каждый раз указывать доступный размер хипа вручную используя <code>Xmx</code>.<br/>
+Пример доступен <a href="https://github.com/idegtiarenko/habr-demo-app-testcontainers/blob/java8/Jenkinsfile">тут</a>.</p><br/>
+<p>Стоит заметить, что kubernetes ничего не знает о ресурсах затраченных на контейнеры запущенные используя testcontainers либо sibling-docker. Для корректной работы в данной ситуации можно зарезервировать ресурсы в контейнере maven с учетом всех тестовых зависимостей.</p><br/>
+<h2 id="zaklyuchenie">Заключение</h2><br/>
+<p>Интеграционное тестирование при запуске билда в контейнере возможно и не является сложной задачей.</p><br/>
+<p>Пример приложения с интеграционными тестами используя testcontainers вы можете найти <a href="https://github.com/idegtiarenko/habr-demo-app-testcontainers">здесь</a> и конфигурацию для запуска Jenkins на kubernetes <a href="https://github.com/idegtiarenko/habr-demo-ci-cd/tree/master/jenkins">здесь</a>.</p></div></div> <!----> <!----></div> <div class="tm-article-presenter__meta"><div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Теги:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bci%2Fcd%5D" class="tm-tags-list__link">ci/cd</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bjenkins%5D" class="tm-tags-list__link">jenkins</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bkubernetes%5D" class="tm-tags-list__link">kubernetes</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Btesting%20strategy%5D" class="tm-tags-list__link">testing strategy</a></li></ul></div> <div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Хабы:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/hub/java/" class="tm-hubs-list__link">
+    Java
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/web_testing/" class="tm-hubs-list__link">
+    Тестирование веб-сервисов
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/kubernetes/" class="tm-hubs-list__link">
+    Kubernetes
+  </a></li></ul></div></div></article></div> <!----></div> <div class="tm-article-sticky-panel"><div class="tm-data-icons tm-article-sticky-panel__icons"><div class="tm-article-rating tm-data-icons__item"><div class="tm-votes-meter tm-article-rating__votes-switcher"><svg height="16" width="16" class="tm-svg-img tm-votes-meter__icon tm-votes-meter__icon_medium"><title>Всего голосов 7: ↑6 и ↓1</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-rating"></use></svg> <span title="Всего голосов 7: ↑6 и ↓1" class="tm-votes-meter__value tm-votes-meter__value_positive tm-votes-meter__value_medium">+5</span></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----> <span title="Количество просмотров" class="tm-icon-counter tm-data-icons__item"><svg height="16" width="16" class="tm-svg-img tm-icon-counter__icon"><title>Просмотры</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-views"></use></svg> <span class="tm-icon-counter__value">2.8K</span></span> <button title="Добавить в закладки" type="button" class="bookmarks-button tm-data-icons__item"><span title="Добавить в закладки" class="tm-svg-icon__wrapper bookmarks-button__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Добавить в закладки</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-favorite"></use></svg></span> <span title="Количество пользователей, добавивших публикацию в закладки" class="bookmarks-button__counter">
+    52
+  </span></button> <!----> <div title="Поделиться" class="tm-sharing tm-data-icons__item"><button type="button" class="tm-sharing__button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="tm-sharing__icon"><path fill="currentColor" d="M10.33.275l9.047 7.572a.2.2 0 010 .306l-9.048 7.572a.2.2 0 01-.328-.153V11c-8 0-9.94 6-9.94 6S-1 5 10 5V.428a.2.2 0 01.328-.153z"></path></svg></button> <!----></div> <DIV class="v-portal" style="display:none;"></DIV></div> </div></div> <!----> <!----> <div class="tm-article-presenter__footer"><div class="tm-article-blocks"><!----> <section class="tm-block tm-block_spacing-bottom"><!----> <div class="tm-block__body tm-block__body_variant-balanced"><div class="tm-article-author"> <div class="tm-user-card tm-article-author__user-card tm-user-card_variant-article"><div class="tm-user-card__info-container"><div class="tm-user-card__header"><div class="tm-user-card__header-data"><a href="/ru/users/gmandnepr/" class="tm-user-card__userpic tm-user-card__userpic_size-40"><div class="tm-entity-image"><svg class="tm-svg-img tm-image-placeholder tm-image-placeholder_blue"><!----> <use xlink:href="/img/megazord-v24.ce74655c.svg#placeholder-user"></use></svg></div></a> <div class="tm-user-card__meta"><div title=" 12 голосов " class="tm-karma tm-user-card__karma"><div class="tm-karma__votes tm-karma__votes_positive">
+    12
+  </div> <div class="tm-karma__text">
+    Карма
+  </div></div> <div title="Рейтинг пользователя" class="tm-rating tm-user-card__rating"><div class="tm-rating__header"> <div class="tm-rating__counter">0</div></div> <div class="tm-rating__text">
+    Рейтинг
+  </div></div></div></div></div> <div class="tm-user-card__info tm-user-card__info_variant-article"><div class="tm-user-card__title tm-user-card__title_variant-article"><span class="tm-user-card__name tm-user-card__name_variant-article">Ievgen Degtiarenko</span> <a href="/ru/users/gmandnepr/" class="tm-user-card__nickname tm-user-card__nickname_variant-article">
+          @gmandnepr
+        </a> <!----></div> <p class="tm-user-card__short-info tm-user-card__short-info_variant-article">Пользователь</p></div></div> <div class="tm-user-card__buttons tm-user-card__buttons_variant-article"><!----> <!----> <!----> <!----> <!----></div></div> <!----></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----></section> <div class="tm-article-blocks__comments"><div class="tm-article-page-comments"><div class="tm-article-comments-counter-link tm-article-comments-counter-button"><a href="/ru/post/451588/comments/" class="tm-article-comments-counter-link__link tm-article-comments-counter-link__link_button-style"><svg height="16" width="16" class="tm-svg-img tm-article-comments-counter-link__icon tm-article-comments-counter-link__icon_contrasted"><title>Комментарии</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-comments"></use></svg> <span class="tm-article-comments-counter-link__value tm-article-comments-counter-link__value_contrasted">
+       Комментировать 
+    </span></a> <!----></div></div></div> <div class="tm-ad-banner__container tm-page-article__banner"><!----> <div id="articleBottomBanner" class="tm-ad-banner"></div></div> <!----> <!----> <!----> <!----> </div></div></div></div></div> <div class="tm-page__sidebar"><div class="tm-layout-sidebar"><div class="tm-layout-sidebar__ads tm-layout-sidebar__ads_initial"><div class="tm-ad-banner__container tm-layout-sidebar__banner"><!----> <div id="sidebarBanner" class="tm-ad-banner"></div></div></div> <div class="tm-sexy-sidebar tm-sexy-sidebar_initial" style="margin-top:0px;"><!----> <!----></div></div></div></div></div></div></main> <!----></div> <div class="tm-footer-menu"><div class="tm-page-width"><div class="tm-footer-menu__container"><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Ваш аккаунт
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr/?back=/ru/post/451588/&amp;hl=ru" rel="nofollow" target="_self">
+                Войти
+              </a></li><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr-register/?back=/ru/post/451588/&amp;hl=ru" rel="nofollow" target="_self">
+                Регистрация
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Разделы
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/" class="footer-menu__item-link router-link-active">
+                Публикации
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/news/" class="footer-menu__item-link">
+                Новости
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/hubs/" class="footer-menu__item-link">
+                Хабы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/companies/" class="footer-menu__item-link">
+                Компании
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/users/" class="footer-menu__item-link">
+                Авторы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/sandbox/" class="footer-menu__item-link">
+                Песочница
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Информация
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/docs/help/" class="footer-menu__item-link">
+                Устройство сайта
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/authors/codex/" class="footer-menu__item-link">
+                Для авторов
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/companies/corpblogs/" class="footer-menu__item-link">
+                Для компаний
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/docs/transparency/" class="footer-menu__item-link">
+                Документы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/agreement" target="_blank">
+                Соглашение
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/confidential/" target="_blank">
+                Конфиденциальность
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Услуги
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQLwRfQmXibiUlWaRg-BAc38s7oM3lJiaPju7qmdJsp8ysIvZ_G-Npem0njJLMozE2bPHMpDqiI5hhy/pub?start=false&amp;loop=false&amp;delayms=60000&amp;slide=id.g91a03369cd_4_297" target="_blank">
+                Реклама
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://habrastorage.org/storage/stuff/habr/service_price.pdf" target="_blank">
+                Тарифы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQJJds8-Di7BQSP_guHxICN7woVYoN5NP_22ra-BIo4bqnTT9FR6fB-Ku2P0AoRpX0Ds-LRkDeAoD8F/pub?start=false&amp;loop=false&amp;delayms=60000" target="_blank">
+                Контент
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://tmtm.timepad.ru/" target="_blank">
+                Семинары
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/megaprojects/" class="footer-menu__item-link">
+                Мегапроекты
+              </a></li></ul></div></div></div></div></div> <div class="tm-footer"><div class="tm-page-width"><div class="tm-footer__container"><!----> <div class="tm-footer__social"><a href="https://www.facebook.com/habrahabr.ru" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Facebook</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-facebook"></use></svg></a><a href="https://twitter.com/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Twitter</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-twitter"></use></svg></a><a href="https://vk.com/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>VK</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-vkontakte"></use></svg></a><a href="https://telegram.me/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Telegram</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-telegram"></use></svg></a><a href="https://www.youtube.com/channel/UCd_sTwKqVrweTt4oAKY5y4w" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Youtube</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-youtube"></use></svg></a><a href="https://zen.yandex.ru/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Яндекс Дзен</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-zen"></use></svg></a></div> <DIV class="v-portal" style="display:none;"></DIV> <button class="tm-footer__link"><!---->
+        Настройка языка
+      </button> <a href="/ru/about" class="tm-footer__link">
+        О сайте
+      </a> <a href="/ru/feedback/" class="tm-footer__link">
+        Техническая поддержка
+      </a> <!----> <a href="/berserk-mode-nope" class="tm-footer__link">
+        Вернуться на старую версию
+      </a> <div class="tm-footer-copyright"><span class="tm-copyright"><span class="tm-copyright__years">© 2006–2021 </span> <span class="tm-copyright__name">«<a href="https://company.habr.com/" rel="noopener" target="_blank" class="tm-copyright__link">Habr</a>»</span></span></div></div></div></div> <!----> <!----></div> <div class="vue-portal-target"></div></div>
+<script>window.__INITIAL_STATE__={"adblock":{"hasAcceptableAdsFilter":false,"hasAdblock":false},"articlesList":{"articlesList":{"451588":{"id":"451588","timePublished":"2019-05-13T12:17:57+00:00","isCorporative":false,"lang":"ru","titleHtml":"Заметка о интеграционном тестировании используя Jenkins на Kubernetes","leadData":{"textHtml":"\u003Cp\u003EДобрый день.\u003C\u002Fp\u003E\u003Cbr\u003E\r\n\u003Cp\u003EПрактически сразу после установки и конфигурации CI\u002FCD по инструкции из \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fpost\u002F442614\u002F\"\u003Eпредыдущего поста\u003C\u002Fa\u003E у команды возник вопрос как правильно осуществлять интеграционное тестирование. У нас уже был опыт запуска тестовых зависимостей в docker контейнерах, но это стало проблематичным так как теперь сама сборка была запущена в контейнере. В этой заметке я бы хотел описать два возможных способа интеграционного тестирования внутри контейнера, которые подошли моей команде.\u003C\u002Fp\u003E","imageUrl":null,"buttonTextHtml":"Читать дальше →","image":null},"editorVersion":"1.0","postType":"article","postLabels":[{"type":"tutorial","data":null}],"author":{"scoreStats":{"score":12,"votesCount":12},"rating":0,"relatedData":null,"contacts":[],"authorContacts":[],"paymentDetails":{"paymentYandexMoney":null,"paymentPayPalMe":null,"paymentWebmoney":null},"id":"106605","alias":"gmandnepr","fullname":"Ievgen Degtiarenko","avatarUrl":null,"speciality":null},"statistics":{"commentsCount":0,"favoritesCount":52,"readingCount":2767,"score":5,"votesCount":7},"hubs":[{"relatedData":null,"id":"375","alias":"java","type":"collective","title":"Java","titleHtml":"Java","isProfiled":true},{"relatedData":null,"id":"19279","alias":"web_testing","type":"collective","title":"Тестирование веб-сервисов","titleHtml":"Тестирование веб-сервисов","isProfiled":true},{"relatedData":null,"id":"22196","alias":"kubernetes","type":"collective","title":"Kubernetes","titleHtml":"Kubernetes","isProfiled":true}],"flows":[{"id":"1","alias":"develop","title":"Разработка"}],"relatedData":null,"textHtml":"\u003Cdiv xmlns=\"http:\u002F\u002Fwww.w3.org\u002F1999\u002Fxhtml\"\u003E\u003Cp\u003EДобрый день.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EПрактически сразу после установки и конфигурации CI\u002FCD по инструкции из \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fpost\u002F442614\u002F\"\u003Eпредыдущего поста\u003C\u002Fa\u003E у команды возник вопрос как правильно осуществлять интеграционное тестирование. У нас уже был опыт запуска тестовых зависимостей в docker контейнерах, но это стало проблематичным так как теперь сама сборка была запущена в контейнере. В этой заметке я бы хотел описать два возможных способа интеграционного тестирования внутри контейнера, которые подошли моей команде.\u003C\u002Fp\u003E\u003Ca name=\"habracut\"\u003E\u003C\u002Fa\u003E\u003Cbr\u002F\u003E\r\n\u003Ch2 id=\"trebovaniya-k-integracionnomu-testirovaniyu\"\u003EТребования к интеграционному тестированию\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EПо определению интеграционным тестированием называется тестирование, которое проверяет работу приложения с его зависимыми компонентами. Примерами может быть базы данных, очереди а также другие сервисы.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EВ рамках тестирования нам хотелось:\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003Eодинаково запускать тесты как локально так и на jenkins\u003C\u002Fli\u003E\r\n\u003Cli\u003Eизбежать предварительной установки и конфигурации зависимых приложений\u003C\u002Fli\u003E\r\n\u003Cli\u003Eдекларировать и запускать зависимости используя файлы в репозитории проекта\u003C\u002Fli\u003E\r\n\u003Cli\u003Eиметь возможность запускать несколько сборок параллельно\u003C\u002Fli\u003E\r\n\u003Cli\u003Eжелательно иметь возможность добавлять новые зависимости в будущем\u003C\u002Fli\u003E\r\n\u003Cli\u003Eжелательно иметь возможность тестировать с разными версиями одной и той же зависимости\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EИсходя их этих требований мы сразу откинули идею иметь постоянные общие инсталляции тестовых баз данных и очередей из-за проблем с разделением ресурсов между сборками, сложностью поддержания и изменения этой инфраструктуры.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Ch2 id=\"variant-1-vstroennye-resheniya\"\u003EВариант 1: встроенные решения\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EВ экосистеме java существует достаточно много библиотек которые запускают зависимость для теста:\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003Ekafka: \u003Ca href=\"https:\u002F\u002Fgithub.com\u002Fchbatey\u002Fkafka-unit\"\u003Ehttps:\u002F\u002Fgithub.com\u002Fchbatey\u002Fkafka-unit\u003C\u002Fa\u003E \u002F \u003Ca href=\"https:\u002F\u002Fgithub.com\u002Fspring-projects\u002Fspring-kafka\"\u003Ehttps:\u002F\u002Fgithub.com\u002Fspring-projects\u002Fspring-kafka\u003C\u002Fa\u003E \u002F \u003Ca href=\"https:\u002F\u002Fgithub.com\u002Fmanub\u002Fscalatest-embedded-kafka\"\u003Ehttps:\u002F\u002Fgithub.com\u002Fmanub\u002Fscalatest-embedded-kafka\u003C\u002Fa\u003E\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Ca href=\"https:\u002F\u002Fgithub.com\u002Fjsevellec\u002Fcassandra-unit\"\u003Ecassandra\u003C\u002Fa\u003E \u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Ca href=\"https:\u002F\u002Fgithub.com\u002Fyandex-qatools\u002Fpostgresql-embedded\"\u003Epostgres \u003C\u002Fa\u003E\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Ca href=\"https:\u002F\u002Fgithub.com\u002Ftomakehurst\u002Fwiremock\"\u003Erest api\u003C\u002Fa\u003E\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EДанный подход является максимально простым и удовлетворяет большинство из требований описанных ранее, но не является универсальным с точки зрения добавления новых тестовых зависимостей (mysql?) либо использования конкретных либо многих версий зависимостей.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EХорошо подходит для простых сервисов с 1-2 зависимостями.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Ch2 id=\"variant-2-testcontainers\"\u003EВариант 2: testcontainers\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EDocker является логичным способом разрешить недостатки предыдущего подхода: можно найти (или создать Docker image) для любой зависимости с любой версией. Вероятно, некоторые из зависимостей и в продакшене запущены используя те же самые образы.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EЕсли локально запуск образа (или несколько используя docker-compose) не составит проблем, то на CI возникнут сложности так как сама сборка происходит в контейнере. Хотя и возможно запустить docker в docker но это \u003Ca href=\"https:\u002F\u002Fjpetazzo.github.io\u002F2015\u002F09\u002F03\u002Fdo-not-use-docker-in-docker-for-ci\u002F\"\u003Eне рекомендуется самим создателем dind\u003C\u002Fa\u003E. Предпочтительным способом обойти эту проблему является переиспользование уже запущенного docker процесса который часто называют sibling docker. Для этого нужно чтобы дочерний docker процесс использовал \u003Ccode\u003E\u002Fvar\u002Frun\u002Fdocker.sock\u003C\u002Fcode\u003E от родительского. В предыдущем посте это уже было использовано для публикации docker images с собранным приложением.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EБыло принято решение использовать библиотеку \u003Ca href=\"https:\u002F\u002Fgithub.com\u002Ftestcontainers\u002Ftestcontainers-java\"\u003Etestcontainers\u003C\u002Fa\u003E так как она:\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003Eпредоставляет хороший api для управления зависимостями\u003C\u002Fli\u003E\r\n\u003Cli\u003Eимеет интеграции с наиболее популярными \u003Ca href=\"https:\u002F\u002Fwww.testcontainers.org\u002Fmodules\u002Fdatabases\u002F\"\u003Eбазами данных\u003C\u002Fa\u003E и \u003Ca href=\"https:\u002F\u002Fwww.testcontainers.org\u002Fmodules\u002Fkafka\u002F\"\u003Eочередей\u003C\u002Fa\u003E\u003C\u002Fli\u003E\r\n\u003Cli\u003Eиспользует sibling docker подход при запуске \u003Ca href=\"https:\u002F\u002Fwww.testcontainers.org\u002Fsupported_docker_environment\u002Fcontinuous_integration\u002Fdind_patterns\u002F\"\u003Eв контейнере\u003C\u002Fa\u003E\u003C\u002Fli\u003E\r\n\u003Cli\u003Eодинаково работает локально и на ci\u003C\u002Fli\u003E\r\n\u003Cli\u003Eостанавливает контейнеры после сборки\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EХорошо подходит для более сложных сервисов либо для сервисов с особыми требованиями к зависимостям.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Ch2 id=\"upravlenie-resursami\"\u003EУправление ресурсами\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EДалее стоит обратить внимание на потребление ресурсов сборкой проекта (которое может значительно возрасти после добавления интеграционных тестов).\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EНа текущий момент сборка не указывает необходимое количество памяти и cpu shares, что можеть две потенциальные проблемы:\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003EПервая — это слишком много параллельных сборок на одной машине, что приведет в высокому load factor. Вероятно, сборки пройдут, но потратят на это намного больше времени.\u003C\u002Fli\u003E\r\n\u003Cli\u003EВторая — это OOM kill. Кубернетис может решить что вы потребляете слишком много памяти и просто будет убивать сборки прежде чем они завершаться.\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EОграничить ресурсы контейнера в поде можно используя конструкцию:\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E  resources:\n    requests:\n      cpu: 1\n      memory: 512Mi\n    limits:\n      cpu: 1\n      memory: 512Mi\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EJdk9 и выше уже имееют поддержку работы в контейнере (-XX:+UseContainerSupport (включен по умолчанию), работает в комбинации с -XX:InitialRAMPercentage \u002F -XX:MaxRAMPercentage)\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EПолный пример можно посмотреть \u003Ca href=\"https:\u002F\u002Fgithub.com\u002Fidegtiarenko\u002Fhabr-demo-app-testcontainers\u002Fblob\u002Fmaster\u002FJenkinsfile\"\u003Eтут\u003C\u002Fa\u003E.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EДля корректной работы Jdk8 требуется либо обновление 131 и выше с включенными флагами \u003Ccode\u003E-XX:+UnlockExperimentalVMOptions -XX:+UseCGroupMemoryLimitForHeap\u003C\u002Fcode\u003E для чтения доступной памяти из cgroup а не из хост машины, либо каждый раз указывать доступный размер хипа вручную используя \u003Ccode\u003EXmx\u003C\u002Fcode\u003E.\u003Cbr\u002F\u003E\r\nПример доступен \u003Ca href=\"https:\u002F\u002Fgithub.com\u002Fidegtiarenko\u002Fhabr-demo-app-testcontainers\u002Fblob\u002Fjava8\u002FJenkinsfile\"\u003Eтут\u003C\u002Fa\u003E.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EСтоит заметить, что kubernetes ничего не знает о ресурсах затраченных на контейнеры запущенные используя testcontainers либо sibling-docker. Для корректной работы в данной ситуации можно зарезервировать ресурсы в контейнере maven с учетом всех тестовых зависимостей.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Ch2 id=\"zaklyuchenie\"\u003EЗаключение\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EИнтеграционное тестирование при запуске билда в контейнере возможно и не является сложной задачей.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EПример приложения с интеграционными тестами используя testcontainers вы можете найти \u003Ca href=\"https:\u002F\u002Fgithub.com\u002Fidegtiarenko\u002Fhabr-demo-app-testcontainers\"\u003Eздесь\u003C\u002Fa\u003E и конфигурацию для запуска Jenkins на kubernetes \u003Ca href=\"https:\u002F\u002Fgithub.com\u002Fidegtiarenko\u002Fhabr-demo-ci-cd\u002Ftree\u002Fmaster\u002Fjenkins\"\u003Eздесь\u003C\u002Fa\u003E.\u003C\u002Fp\u003E\u003C\u002Fdiv\u003E","tags":[{"titleHtml":"ci\u002Fcd"},{"titleHtml":"jenkins"},{"titleHtml":"kubernetes"},{"titleHtml":"testing strategy"}],"metadata":{"stylesUrls":[],"scriptUrls":[],"shareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F451588\u002Fab9893ec713486d8a4cf4b21c5d29eb3\u002F","shareImageWidth":1200,"shareImageHeight":630,"vkShareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F451588\u002Fab9893ec713486d8a4cf4b21c5d29eb3\u002F?format=vk","schemaJsonLd":"{\"@context\":\"http:\\\u002F\\\u002Fschema.org\",\"@type\":\"Article\",\"mainEntityOfPage\":{\"@type\":\"WebPage\",\"@id\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fru\\\u002Fpost\\\u002F451588\\\u002F\"},\"headline\":\"Заметка о интеграционном тестировании используя Jenkins на Kubernetes\",\"datePublished\":\"2019-05-13T15:17:57+03:00\",\"dateModified\":\"2019-10-01T19:43:28+03:00\",\"author\":{\"@type\":\"Person\",\"name\":\"Ievgen Degtiarenko\"},\"publisher\":{\"@type\":\"Organization\",\"name\":\"Habr\",\"logo\":{\"@type\":\"ImageObject\",\"url\":\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fa_\\\u002Flk\\\u002F9m\\\u002Fa_lk9mjkccjox-zccjrpfolmkmq.png\"}},\"description\":\"Добрый день. Практически сразу после установки и конфигурации CI\\\u002FCD по инструкции из предыдущего поста у команды возник вопрос как правильно осуществлять интегра...\",\"url\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fru\\\u002Fpost\\\u002F451588\\\u002F#post-content-body\",\"about\":[\"h_java\",\"h_web_testing\",\"h_kubernetes\",\"f_develop\"],\"image\":[\"https:\\\u002F\\\u002Fhabr.com\\\u002Fshare\\\u002Fpublication\\\u002F451588\\\u002Fab9893ec713486d8a4cf4b21c5d29eb3\\\u002F\"]}","metaDescription":"Добрый день.\r\nПрактически сразу после установки и конфигурации CI\u002FCD по инструкции из предыдущего поста у команды возник вопрос как правильно осуществлять интеграционное тестирование. У нас уже был...","mainImageUrl":null,"amp":false},"polls":[],"commentsEnabled":true,"rulesRemindEnabled":false,"votesEnabled":true,"status":"published","plannedPublishTime":null,"checked":null,"isEditorial":false}},"articlesIds":{},"isLoading":false,"pagesCount":{},"route":{},"reasonsList":null,"view":"cards","lastVisitedRoute":{},"ssrCommentsArticleIds":[""],"karma":{}},"authorContribution":{"authors":{}},"betaTest":{"currentAnnouncement":null,"announcements":{},"announcementCards":null,"announcementComments":{},"announcementCommentThreads":{},"announcementCommentingStatuses":{},"archivedList":[]},"authorStatistics":{"articleRefs":{},"articleIds":{},"pagesCount":{},"route":{},"viewsCount":[],"maxStatsCount":{}},"career":{"seoLandings":[],"hubs":"java,web_testing,kubernetes"},"comments":{"articleComments":{},"searchCommentsResults":null,"previewComment":null,"pagesCount":null,"commentAccess":{},"scrollParents":{},"pageArticleComments":{"lastViewedComment":0,"postId":null,"lastCommentTimestamp":"","moderated":[],"moderatedIds":[],"commentRoute":""}},"companies":{"companyRefs":{},"companyIds":{},"companyTopIds":{},"pagesCount":{},"companyProfiles":{},"companiesCategories":[],"companiesCategoriesTotalCount":0,"companiesWidgets":{},"companiesWorkers":{},"companiesFans":{},"route":{},"isLoading":false,"companyWorkersLoading":false,"companyFansLoading":false,"vacancies":{}},"companiesContribution":{"hubs":{},"flows":{},"companyRefs":{}},"companyHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"conversation":{"messages":[],"respondent":null,"isLoadMore":false},"conversations":{"conversations":[],"unreadCount":0,"pagesCount":0,"isLoadMore":false},"desktopState":{"desktopFl":null,"desktopHl":null,"isChecked":false,"isLoginDemanded":false},"dfp":{"slotsDict":{}},"docs":{"menu":{},"articles":{},"mainMenu":[],"loading":{"main":false,"dropdown":false,"article":false}},"feature":{"isProbablyVisible":"true"},"flows":{"flows":[{"alias":"develop","id":1,"route":{"name":"FLOW_PAGE","params":{"flowName":"develop"}}},{"alias":"admin","id":6,"route":{"name":"FLOW_PAGE","params":{"flowName":"admin"}}},{"alias":"design","id":2,"route":{"name":"FLOW_PAGE","params":{"flowName":"design"}}},{"alias":"management","id":3,"route":{"name":"FLOW_PAGE","params":{"flowName":"management"}}},{"alias":"marketing","id":4,"route":{"name":"FLOW_PAGE","params":{"flowName":"marketing"}}},{"alias":"popsci","id":7,"route":{"name":"FLOW_PAGE","params":{"flowName":"popsci"}}}]},"global":{"isPwa":false,"device":"desktop","isHabrCom":true},"hubs":{"hubRefs":{},"hubIds":{},"pagesCount":{},"isLoading":false,"route":{}},"hubsBlock":{"hubRefs":{},"hubIds":{}},"i18n":{"fl":"ru","hl":"ru"},"info":{"infoPage":{},"isLoading":true},"location":{"urlStruct":{"protocol":null,"slashes":null,"auth":null,"host":null,"port":null,"hostname":null,"hash":null,"search":null,"query":{},"pathname":null,"path":null,"href":""},"searchQuery":null},"me":{"user":null,"ppgDemanded":false,"karmaResetInfo":{"canReincarnate":null,"wasReincarnated":null,"currentScore":null},"notes":null},"mostReadingList":{"mostReadingListIds":[],"mostReadingListRefs":null,"promoPost":null},"pinnedPost":{"pinnedPost":null},"ppa":{"articles":{},"card":null,"transactions":null,"totalTransactions":null,"isAccessible":null},"projectsBlocks":{"activeBlocks":{}},"pullRefresh":{"shouldRefresh":false},"sandbox":{"articleIds":[],"articleRefs":{},"pagesCount":null,"route":{},"lastVisitedRoute":{},"isLoading":false},"settingsOther":{"inputs":{"uiLang":{"errors":[],"ref":null,"value":""},"articlesLangEnglish":{"errors":[],"ref":null,"value":false},"articlesLangRussian":{"errors":[],"ref":null,"value":false},"agreement":{"errors":[],"ref":null,"value":false},"email":{"errors":[],"ref":null,"value":true},"digest":{"errors":[],"ref":null,"value":true}}},"similarList":{"similarListIds":[],"similarListRefs":null},"ssr":{"error":null,"isDataLoaded":false,"isDataLoading":false,"isHydrationFailed":false,"isServer":false},"userHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"userInvites":{"availableInvites":0,"usedInvitesIds":[],"usedInvitesRefs":{},"usedInvitesPagesCount":0,"unusedInvitesIds":[],"unusedInvitesRefs":{},"unusedInvitesPagesCount":0},"users":{"authorRefs":{},"authorIds":{},"pagesCount":{},"authorProfiles":{},"userHubs":{},"userInvitations":{},"authorFollowers":{},"authorFollowed":{},"karmaStats":[],"statistics":null,"isLoading":false,"authorFollowersLoading":false,"authorFollowedLoading":false,"userHubsLoading":false,"userInvitationsLoading":false,"route":{}},"viewport":{"prevScrollY":{},"scrollY":0,"width":0},"tracker":{"items":{},"pagesCache":{},"markedViewedSilently":{},"markedRead":{},"unreadCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null},"unviewedCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null}}};(function(){var s;(s=document.currentScript||document.scripts[document.scripts.length-1]).parentNode.removeChild(s);}());</script>
+<script src="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" defer></script><script src="https://assets.habr.com/habr-web/js/app.c0af73e7.js" defer></script>
+
+
+
+    <script>
+      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+        (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+        m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+      })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+    </script>
+  
+  <script type="text/javascript" >
+    (function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+    m[i].l=1*new Date();k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})
+    (window, document, "script", "https://mc.yandex.ru/metrika/tag.js", "ym");
+
+    ym(24049213, "init", {
+      defer:true,
+      trackLinks:true,
+      accurateTrackBounce:true,
+      webvisor:false,
+    });
+  </script>
+  <noscript>
+    <div>
+      <img src="https://mc.yandex.ru/watch/24049213" style="position:absolute; left:-9999px;" alt="" />
+    </div>
+  </noscript>
+  
+    <script type="text/javascript">
+      window.addEventListener('load', function () {
+        setTimeout(() => {
+          const img = new Image();
+          img.src = 'https://vk.com/rtrg?p=VK-RTRG-421343-57vKE';
+        }, 0);
+      });
+    </script>
+  
+</body>
+</html>

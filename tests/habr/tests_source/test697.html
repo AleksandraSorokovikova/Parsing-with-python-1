@@ -1,0 +1,767 @@
+<!DOCTYPE html>
+<html lang="ru" data-vue-meta="%7B%22lang%22:%7B%22ssr%22:%22ru%22%7D%7D">
+<head >
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
+  <title>Волшебная фея для юнит-тестов: DSL в C# / Хабр</title>
+  <style>
+    /* cyrillic-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSxf6TF0.woff2) format('woff2');
+      unicode-range: U+0460-052F, U+1C80-1C88, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+    }
+
+    /* cyrillic */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveQhf6TF0.woff2) format('woff2');
+      unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+    }
+
+    /* latin-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSBf6TF0.woff2) format('woff2');
+      unicode-range: U+0100-024F, U+0259, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20CF, U+2113, U+2C60-2C7F, U+A720-A7FF;
+    }
+
+    /* latin */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveRhf6.woff2) format('woff2');
+      unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+    }
+  </style>
+  <link rel="preload" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" as="script"><link rel="preload" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/app.c0af73e7.js" as="script">
+  <link rel="stylesheet" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css"><link rel="stylesheet" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css">
+  <script>window.i18nFetch = new Promise((res, rej) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open('GET', '/js/i18n/ru-compiled.85eb77f0b17c8235e7b64b9f81ea5ec2.json');
+          xhr.responseType = 'json';
+          xhr.onload = function(e) {
+            if (this.status === 200) {
+              res({ru: xhr.response});
+            } else {
+              rej(e);
+            }
+          };
+          xhr.send();
+        });</script>
+  
+  <script data-vue-meta="ssr" src="/js/ads.js" onload="window['zhY4i4nJ9K'] = true" data-vmid="checkad"></script><script data-vue-meta="ssr" type="application/ld+json" data-vmid="ldjson-schema">{"@context":"http:\/\/schema.org","@type":"Article","mainEntityOfPage":{"@type":"WebPage","@id":"https:\/\/habr.com\/ru\/company\/dododev\/blog\/451598\/"},"headline":"Волшебная фея для юнит-тестов: DSL в C#","datePublished":"2019-05-13T16:51:27+03:00","dateModified":"2019-08-30T14:43:57+03:00","author":{"@type":"Person","name":"Юрий Пастушенко"},"publisher":{"@type":"Organization","name":"Habr","logo":{"@type":"ImageObject","url":"https:\/\/habrastorage.org\/webt\/a_\/lk\/9m\/a_lk9mjkccjox-zccjrpfolmkmq.png"}},"description":"Как часто бывало так, что написав рабочий юнит-тест, ты смотришь на его код, а он&hellip; плохой? И ты такой думаешь: &laquo;Это же тест, оставлю так&hellip;&raquo;. Нет, %username%, так...","url":"https:\/\/habr.com\/ru\/company\/dododev\/blog\/451598\/#post-content-body","about":["c_dododev","h_programming","h_net","h_csharp","f_develop"],"image":["https:\/\/habr.com\/share\/publication\/451598\/d46d35e043a82a41d9aeba50d55a3d76\/","https:\/\/habrastorage.org\/webt\/9_\/cb\/xb\/9_cbxb0psq2mvlfwzkxf0uvpwru.png"]}</script>
+  <script src="//www.googletagservices.com/tag/js/gpt.js" async></script>
+  <style>.grecaptcha-badge{visibility: hidden;}</style>
+  <meta name="habr-version" content="2.49.0">
+  
+  <meta data-vue-meta="ssr" property="fb:app_id" content="444736788986613"><meta data-vue-meta="ssr" property="fb:pages" content="472597926099084"><meta data-vue-meta="ssr" name="twitter:card" content="summary_large_image"><meta data-vue-meta="ssr" name="twitter:site" content="@habr_eng"><meta data-vue-meta="ssr" property="og:title" content="Волшебная фея для юнит-тестов: DSL в C#" data-vmid="og:title"><meta data-vue-meta="ssr" name="twitter:title" content="Волшебная фея для юнит-тестов: DSL в C#" data-vmid="twitter:title"><meta data-vue-meta="ssr" name="aiturec:title" content="Волшебная фея для юнит-тестов: DSL в C#" data-vmid="aiturec:title"><meta data-vue-meta="ssr" name="description" content="Как часто бывало так, что написав рабочий юнит-тест, ты смотришь на его код, а он… плохой? И ты такой думаешь: «Это же тест, оставлю так…». Нет, %username%, так оставлять не надо. Тесты — это значимая..." data-vmid="description"><meta data-vue-meta="ssr" itemprop="description" content="Как часто бывало так, что написав рабочий юнит-тест, ты смотришь на его код, а он… плохой? И ты такой думаешь: «Это же тест, оставлю так…». Нет, %username%, так оставлять не надо. Тесты — это значимая..." data-vmid="description:itemprop"><meta data-vue-meta="ssr" property="og:description" content="Как часто бывало так, что написав рабочий юнит-тест, ты смотришь на его код, а он… плохой? И ты такой думаешь: «Это же тест, оставлю так…». Нет, %username%, так оставлять не надо. Тесты — это значимая..." data-vmid="og:description"><meta data-vue-meta="ssr" name="twitter:description" content="Как часто бывало так, что написав рабочий юнит-тест, ты смотришь на его код, а он… плохой? И ты такой думаешь: «Это же тест, оставлю так…». Нет, %username%, так оставлять не надо. Тесты — это значимая..." data-vmid="twitter:description"><meta data-vue-meta="ssr" property="aiturec:description" content="Как часто бывало так, что написав рабочий юнит-тест, ты смотришь на его код, а он… плохой? И ты такой думаешь: «Это же тест, оставлю так…». Нет, %username%, так оставлять не надо. Тесты — это значимая..." data-vmid="aiturec:description"><meta data-vue-meta="ssr" itemprop="image" content="https://habrastorage.org/webt/9_/cb/xb/9_cbxb0psq2mvlfwzkxf0uvpwru.png" data-vmid="image:itemprop"><meta data-vue-meta="ssr" property="og:image" content="https://habrastorage.org/webt/9_/cb/xb/9_cbxb0psq2mvlfwzkxf0uvpwru.png" data-vmid="og:image"><meta data-vue-meta="ssr" property="aiturec:image" content="https://habrastorage.org/webt/9_/cb/xb/9_cbxb0psq2mvlfwzkxf0uvpwru.png" data-vmid="aiturec:image"><meta data-vue-meta="ssr" name="twitter:image" content="https://habrastorage.org/webt/9_/cb/xb/9_cbxb0psq2mvlfwzkxf0uvpwru.png" data-vmid="twitter:image"><meta data-vue-meta="ssr" property="vk:image" content="https://habrastorage.org/webt/9_/cb/xb/9_cbxb0psq2mvlfwzkxf0uvpwru.png" data-vmid="vk:image"><meta data-vue-meta="ssr" property="aiturec:item_id" content="451598" data-vmid="aiturec:item_id"><meta data-vue-meta="ssr" property="aiturec:datetime" content="2019-05-13T13:51:27.000Z" data-vmid="aiturec:datetime"><meta data-vue-meta="ssr" property="og:type" content="article" data-vmid="og:type"><meta data-vue-meta="ssr" property="og:locale" content="ru_RU" data-vmid="og:locale"><meta data-vue-meta="ssr" property="og:image:width" content="1200" data-vmid="og:image:width"><meta data-vue-meta="ssr" property="og:image:height" content="630" data-vmid="og:image:height">
+  <link data-vue-meta="ssr" href="https://habr.com/ru/rss/post/451598/?fl=ru" type="application/rss+xml" title="" rel="alternate" name="rss"><link data-vue-meta="ssr" href="https://habr.com/ru/company/dododev/blog/451598/" rel="canonical" data-vmid="canonical"><link data-vue-meta="ssr" data-vmid="hreflang"><link data-vue-meta="ssr" image_src="image" href="https://habrastorage.org/webt/9_/cb/xb/9_cbxb0psq2mvlfwzkxf0uvpwru.png" data-vmid="image:href">
+  <meta name="apple-mobile-web-app-status-bar-style" content="#303b44">
+  <meta name="msapplication-TileColor" content="#629FBC">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="16x16"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-16.png"
+  >
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="32x32"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-32.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="76x76"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-76.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="120x120"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="152x152"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-152.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="180x180"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-180.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="256x256"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-256.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1136x640.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2436x1125.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1792x828.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_828x1792.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1334x750.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2208x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1125x2436.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2208.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2732x2048.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2688x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2224x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_750x1334.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x2732.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2388x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2224.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_640x1136.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2388.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x1536.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1536x2048.png"
+  >
+  <link
+    rel="mask-icon"
+    color="#77a2b6"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.svg"
+  >
+  <link
+    crossorigin="use-credentials"
+    href="/manifest.webmanifest"
+    rel="manifest"
+  >
+</head>
+<body>
+
+
+<div id="app" data-server-rendered="true" data-async-called="true"><div class="tm-layout__wrapper"><!----> <div></div> <!----> <header class="tm-header"><div class="tm-page-width"><div class="tm-header__container"><!----> <span class="tm-header__logo-wrap"><a href="/ru/" class="tm-header__logo tm-header__logo_ru"><svg height="16" width="16" class="tm-svg-img tm-header__icon"><title>Хабр</title> <use xlink:href="/img/habr-logo-ru.svg#logo"></use></svg></a> <span class="tm-header__beta-sign" style="display:none;">β</span></span> <div class="tm-dropdown tm-header__projects"><div class="tm-dropdown__head"><button class="tm-header__dropdown-toggle"><svg height="16" width="16" class="tm-svg-img tm-header__icon tm-header__icon_dropdown"><title>Открыть список</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#arrow-down"></use></svg></button></div> <!----></div> <a href="/ru/sandbox/start/" class="tm-header__become-author-btn">
+            Как стать автором
+          </a> <div class="tm-feature tm-header__feature tm-feature_variant-inline"><!----></div> <!----> <!----></div></div></header> <div class="tm-layout"><div class="tm-page-progress-bar"></div> <div data-menu-sticky="true" class="tm-base-layout__header tm-base-layout__header_is-sticky"><div class="tm-page-width"><div class="tm-base-layout__header-wrapper"><div class="tm-main-menu"><div class="tm-main-menu__section"><nav class="tm-main-menu__section-content"><!----> <a href="/ru/all/" class="tm-main-menu__item">
+        Все потоки
+      </a> <a href="/ru/flows/develop/" class="tm-main-menu__item">
+          Разработка
+        </a><a href="/ru/flows/admin/" class="tm-main-menu__item">
+          Администрирование
+        </a><a href="/ru/flows/design/" class="tm-main-menu__item">
+          Дизайн
+        </a><a href="/ru/flows/management/" class="tm-main-menu__item">
+          Менеджмент
+        </a><a href="/ru/flows/marketing/" class="tm-main-menu__item">
+          Маркетинг
+        </a><a href="/ru/flows/popsci/" class="tm-main-menu__item">
+          Научпоп
+        </a></nav></div></div> <div class="tm-header-user-menu tm-base-layout__user-menu"><a href="/ru/search/" class="tm-header-user-menu__item tm-header-user-menu__search"><svg height="24" width="24" class="tm-svg-img tm-header-user-menu__icon tm-header-user-menu__icon_search tm-header-user-menu__icon_dark"><title>Поиск</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#search"></use></svg></a> <!----> <!----> <!----> <div class="tm-header-user-menu__item tm-header-user-menu__user_desktop"><div class="tm-dropdown"><div class="tm-dropdown__head"><svg height="24" width="24" data-test-id="menu-toggle-guest" class="tm-svg-img tm-header-user-menu__icon"><title>Профиль</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#header-user"></use></svg> <!----></div> <!----></div> <!----></div> <!----></div></div></div></div> <!----> <div class="tm-page-width"></div> <main class="tm-layout__container"><div hl="ru" companyName="dododev" data-async-called="true" class="tm-page"><div class="tm-page-width"><div class="tm-page__header"><div class="tm-company-card__branding tm-company-article__branding tm-company-card__branding_loading"><div class="tm-company-card__branding-placeholder"><!----></div> <a href="https://dodo.dev/"><img src="//habrastorage.org/getpro/habr/branding/143/a39/7c7/143a397c7730cd5891424738e008bb7a.png" width="100%" class="tm-company-card__branding-image"></a></div></div> <div class="tm-page__wrapper"><div class="tm-page__main tm-page__main_has-sidebar"><div class="pull-down"><div class="pull-down__header" style="height:0px;"><div class="pull-down__content" style="bottom:10px;"><svg height="24" width="24" class="tm-svg-img pull-down__arrow"><title>Обновить</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#pull-arrow"></use></svg></div></div> <div class="tm-article-presenter"><div class="tm-company-card tm-company-article__company-card"><div class="tm-company-card__info"><div class="tm-company-card__header"><a href="/ru/company/dododev/profile/" class="tm-company-card__avatar"><div class="tm-entity-image"><img alt="" height="48" src="//habrastorage.org/getpro/habr/company/f34/de7/2bf/f34de72bf69944c17797ca6066ecccd5.png" width="48" class="tm-entity-image__pic"></div></a> <!----> <div class="tm-rating tm-company-card__rating"><div class="tm-rating__header"> <div class="tm-rating__counter">181.72</div></div> <div class="tm-rating__text">
+    Рейтинг
+  </div></div></div> <div class="tm-company-card__info"><a href="/ru/company/dododev/profile/" class="tm-company-card__name">
+        Dodo Engineering
+      </a> <div class="tm-company-card__description">О том, как разработчики строят IT в Dodo</div></div></div> <div class="tm-company-card__buttons"><!----> <!----></div></div> <div class="tm-article-presenter__body"><div class="tm-misprint-area"><div class="tm-misprint-area__wrapper"><article class="tm-article-presenter__content tm-article-presenter__content_narrow"><div class="tm-article-presenter__header"> <div class="tm-article-snippet tm-article-presenter__snippet"><div class="tm-article-snippet__meta-container"><div class="tm-article-snippet__meta"><span class="tm-user-info tm-article-snippet__author"><a href="/ru/users/ypastushenko/" title="ypastushenko" class="tm-user-info__userpic"><div class="tm-entity-image"><img alt="" height="24" loading="lazy" src="//habrastorage.org/r/w32/getpro/habr/avatars/12e/457/7f8/12e4577f8d8e464b9eb2946f044e7078.jpg" width="24" class="tm-entity-image__pic"></div></a> <span class="tm-user-info__user"><a href="/ru/users/ypastushenko/" class="tm-user-info__username">
+      ypastushenko
+    </a> </span></span> <span class="tm-article-snippet__datetime-published"><time datetime="2019-05-13T13:51:27.000Z" title="2019-05-13, 16:51">13  мая  2019 в 16:51</time></span></div> <!----></div> <h1 lang="ru" class="tm-article-snippet__title tm-article-snippet__title_h1"><span>Волшебная фея для юнит-тестов: DSL в C#</span></h1> <div class="tm-article-snippet__hubs"><span class="tm-article-snippet__hubs-item"><a href="/ru/company/dododev/blog/" class="tm-article-snippet__hubs-item-link router-link-active"><span>Блог компании Dodo Engineering</span> <!----></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/programming/" class="tm-article-snippet__hubs-item-link"><span>Программирование</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/net/" class="tm-article-snippet__hubs-item-link"><span>.NET</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/csharp/" class="tm-article-snippet__hubs-item-link"><span>C#</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span></div> <!----> <!----> <!----></div></div> <!----> <div data-gallery-root="" lang="ru" class="tm-article-body"><div id="post-content-body" class="article-formatted-body article-formatted-body_version-1"><div xmlns="http://www.w3.org/1999/xhtml">Как часто бывало так, что написав рабочий юнит-тест, ты смотришь на его код, а он… плохой? И ты такой думаешь: «Это же тест, оставлю так…». Нет, %username%, так оставлять не надо. Тесты — это значимая часть системы, которая обеспечивает поддерживаемость кода, и очень важно, чтобы эта часть также была поддерживаемой. К несчастью, у нас не так много способов обеспечить это (не будем же мы писать тесты на тесты), но парочка всё-таки есть.<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/9_/cb/xb/9_cbxb0psq2mvlfwzkxf0uvpwru.png"/><a name="habracut"></a><br/>
+В нашей школе разработчиков «Dodo DevSchool» мы выделяем в числе прочих такие критерии хорошего теста:<br/>
+<br/>
+<ul>
+<li>воспроизводимость: запуск тестов на одном и том же коде и входных данных всегда приводит к одному и тому же результату;</li>
+<li>сфокусированность: должна быть только одна причина для падения теста;</li>
+<li>понятность: ну тут и так понятно. :)</li>
+</ul><br/>
+Как вам такой тест с точки зрения этих критериев?<br/>
+<br/>
+<pre><code class="cs">[Fact]
+public void AcceptOrder_Successful()
+{
+  var ingredient1 = new Ingredient("Ingredient1");
+  var ingredient2 = new Ingredient("Ingredient2");
+  var ingredient3 = new Ingredient("Ingredient3");
+ 
+  var order = new Order(DateTime.Now);
+ 
+  var product1 = new Product("Pizza1");
+  product1.AddIngredient(ingredient1);
+  product1.AddIngredient(ingredient2);
+ 
+  var orderLine1 = new OrderLine(product1, 1, 500);
+  order.AddLine(orderLine1);
+
+  var product2 = new Product("Pizza2");
+  product2.AddIngredient(ingredient1);
+  product2.AddIngredient(ingredient3);
+ 
+  var orderLine2 = new OrderLine(product2, 1, 650);
+  order.AddLine(orderLine2);
+
+  var orderRepositoryMock = new Mock&lt;IOrderRepository>();
+  var ingredientsRepositoryMock = new Mock&lt;IIngredientRepository>();
+
+  var service = new PizzeriaService(orderRepositoryMock.Object, ingredientsRepositoryMock.Object);
+ 
+  service.AcceptOrder(order);
+ 
+  orderRepositoryMock.Verify(r => r.Add(order), Times.Once);
+  ingredientsRepositoryMock.Verify(r => r.ReserveIngredients(order), Times.Once);
+}
+</code></pre><br/>
+По мне — очень плохо.<br/>
+<br/>
+Он непонятный: я, например, не могу даже выделить блоки Arrange, Act и Assert. <br/>
+<br/>
+Невоспроизводимый: используется свойство DateTime.Now. И наконец, он несфокусированный, т.к. имеет 2 причины падения: проверяются вызовы методов двух репозиториев.<br/>
+<br/>
+Кроме того, хотя именование тестов выходит за рамки этой статьи, я всё же обращу внимание на название: при таком наборе отрицательных свойств сложно сформулировать его так, чтобы при взгляде на имя теста, сторонний человек сразу понял для чего этот тест вообще находится в проекте. <br/>
+<blockquote>Если не получается лаконично назвать тест, значит с тестом что-то не так.</blockquote> Раз уж тест непонятный, давайте расскажу что в нём происходит:<br/>
+<br/>
+<ol>
+<li>Создаются ингредиенты.</li>
+<li>Из ингредиентов создаются продукты (пиццы).</li>
+<li>Из продуктов создается заказ.</li>
+<li>Создается сервис, для которого мокаются репозитории.</li>
+<li>Заказ передаётся методу AcceptOrder сервиса.</li>
+<li>Проверяется, что были вызваны методы Add и ReserveIngredients у соответствующих репозиториев.</li>
+</ol><br/>
+Итак, как нам сделать этот тест лучше? Нужно попытаться оставить в теле теста только то, что по-настоящему важно. И для этого умные люди вроде Мартина Фаулера и Ребекки Парсонс придумали <a href="https://www.martinfowler.com/books/dsl.html">DSL (Domain Specific Language)</a>. Здесь я расскажу о паттернах DSL, которые мы в Додо используем для того, чтобы наши юнит-тесты были мягкими и шелковистыми, а разработчики чувствовали себя уверенно каждый день.<br/>
+<br/>
+План такой: сначала мы сделаем этот тест понятным, потом поработаем над воспроизводимостью и закончим тем, что сделаем его сфокусированным. Погнали…<br/>
+<br/>
+<h2>Вынесение ингредиентов (предопределённые доменные объекты)</h2><br/>
+Начнём с блока создания заказа. Заказ — это одна из центральных доменных сущностей. Было бы круто, если бы мы могли описывать заказ так, чтобы даже люди, которые не умеют писать код, но разбираются в доменной логике могли понять что за заказ мы создаём. Для этого, в первую очередь, нам нужно отказаться от использования абстрактных «Ingredient1» и «Pizza1» заменив их на реальные ингредиенты, пиццы и прочие доменные объекты.<br/>
+<br/>
+Первый кандидат на оптимизацию — это ингредиенты. С ними всё просто: для них не нужно никакой кастомизации, только вызов конструктора. Достаточно вынести их в отдельный контейнер и назвать так, чтобы было понятно доменным экспертам:<br/>
+<br/>
+<pre><code class="cs">public static class Ingredients
+{
+  public static readonly Ingredient Dough = new Ingredient("Dough");
+  public static readonly Ingredient Pepperoni = new Ingredient("Pepperoni");
+  public static readonly Ingredient Mozzarella = new Ingredient("Mozzarella");
+}
+</code></pre><br/>
+Вместо совершенно невменяемых Ingredient1, Ingredient2 и Ingredient3 мы получили Тесто, Пепперони и Моцареллу.<br/>
+<blockquote>Используйте предопределение доменных объектов для часто использующихся доменных сущностей.</blockquote> <br/>
+<h2>Builder для продуктов</h2><br/>
+Следующая доменная сущность это продукты. С ними всё немного сложнее: каждый продукт состоит из нескольких ингредиентов и нам придётся добавить их в продукт перед использованием.<br/>
+ <br/>
+Здесь нам пригодится старый добрый паттерн Builder. Вот как выглядит моя версия билдера для продукта:<br/>
+<br/>
+<pre><code class="cs">public class ProductBuilder
+{
+  private Product _product;
+
+  public ProductBuilder(string name)
+  {
+     _product = new Product(name);
+  }
+
+  public ProductBuilder Containing(Ingredient ingredient)
+  {
+     _product.AddIngredient(ingredient);
+     return this;
+  }
+
+  public Product Please()
+  {
+     return _product;
+  }
+}
+</code></pre><br/>
+Он состоит из параметризованного конструктора, кастомизирующего метода <code>Containing </code> и терминального метода <code>Please</code>. Если не любите любезничать с кодом, то можно заменить <code>Please</code> на <code>Now</code>. Билдер скрывает сложные конструкторы и вызовы методов, настраивающих объект. Код становится чище и понятнее. По-хорошему билдер должен упрощать создание объекта настолько, чтобы код был понятен доменному эксперту. Особенно стоит использовать билдер для объектов, которые требуют настройки перед началом работы.<br/>
+<br/>
+Билдер продукта позволит создавать конструкции вроде:<br/>
+<br/>
+<pre><code class="cs">var pepperoni = new ProductBuilder("Pepperoni")
+  .Containing(Ingredients.Dough)
+  .Containing(Ingredients.Pepperoni)
+  .Please();
+</code></pre><br/>
+<blockquote>Билдеры помогают создавать объекты, которым нужна настройка. Рассмотрите возможность создания билдера даже если настройка состоит из одной строчки.</blockquote><br/>
+<h2>Объект ObjectMother</h2><br/>
+Несмотря на то, что создание продукта стало намного приличнее, конструктор <code>new ProductBuilder</code> всё еще выглядит довольно уродливо. Починим это с помощью паттерна ObjectMother (Father). <br/>
+<br/>
+Паттерн простой как 5 копеек: создаём статический класс и собираем в него все билдеры.<br/>
+<br/>
+<pre><code class="cs">public static class Create
+{
+  public static ProductBuilder Product(string name) => new ProductBuilder(name);
+}
+</code></pre><br/>
+Теперь можно писать так:<br/>
+<br/>
+<pre><code class="cs">var pepperoni = Create.Product("Pepperoni")
+  .Containing(Ingredients.Dough)
+  .Containing(Ingredients.Pepperoni)
+  .Please();
+</code></pre><br/>
+ObjectMother придуман для декларативного создания объектов. Кроме того он помогает вводить в домен новых разработчиков, т.к. при написании слова <code>Create</code> IDE сама подскажет что можно создать в этом домене. <br/>
+<br/>
+В нашем коде ObjectMother иногда называют не <code>Create</code>, а <code>Given</code>. Оба варианта мне нравятся. Если у вас есть какие-то еще идеи — поделитесь в комментариях.<br/>
+<blockquote>Для декларативного создания объектов используйте ObjectMother. Код станет чище, а новым разработчикам будет проще вникать в домен.</blockquote><br/>
+<h2>Вынесение продуктов</h2><br/>
+Стало сильно лучше, но продуктам ещё есть куда расти. Продуктов у нас ограниченное количество и их можно подобно ингредиентам собрать в отдельном классе и не инициализировать для каждого теста:<br/>
+<br/>
+<pre><code class="cs">public static class Pizza
+{
+  public static Product Pepperoni => Create.Product("Pepperoni")
+     .Containing(Ingredients.Dough)
+     .Containing(Ingredients.Pepperoni)
+     .Please();
+ 
+  public static Product Margarita => Create.Product("Margarita")
+     .Containing(Ingredients.Dough)
+     .Containing(Ingredients.Mozzarella)
+     .Please();
+}
+</code></pre><br/>
+Здесь я назвал контейнер не <code>Products</code>, а <code>Pizza</code>. Такое название помогает читать тест. Например, оно помогает снять вопросы типа «А Pepperoni — это пицца или колбаска?».<br/>
+<blockquote>Старайтесь использовать реальные доменные объекты, а не заменители вроде Product1.</blockquote><br/>
+<h2>Билдер для заказа (пример с обратной стороны)</h2><br/>
+Теперь применим описанные паттерны для создания билдера заказа, но теперь пойдём не от билдера, а от того, что бы нам хотелось получить. Вот так я хочу создавать заказ:<br/>
+<br/>
+<pre><code class="cs">var order = Create.Order
+  .Dated(DateTime.Now)
+  .With(Pizza.Pepperoni.CountOf(1).For(500))
+  .With(Pizza.Margarita.CountOf(1).For(650))
+  .Please();
+</code></pre><br/>
+Как мы можем этого добиться? Нам, очевидно, понадобится билдеры для заказа и строки заказа. С билдером для заказа всё кристально ясно. Вот он:<br/>
+<br/>
+<pre><code class="cs">public class OrderBuilder
+{
+  private DateTime _date;
+  private readonly List&lt;OrderLine> _lines = new List&lt;OrderLine>();
+  
+  public OrderBuilder Dated(DateTime date)
+  {
+    _date = date;
+    return this;
+  }
+
+  public OrderBuilder With(OrderLine orderLine)
+  {
+    _lines.Add(orderLine);
+    return this;
+  }
+
+  public Order Please()
+  {
+    var order = new Order(_date);
+    foreach (var line in _lines)
+    {
+      order.AddLine(line);
+    }
+    
+    return order;
+  }
+}
+</code></pre><br/>
+А вот с <code>OrderLine</code> ситуация поинтереснее: во-первых, здесь не вызывается терминальный метод Please, а во-вторых, доступ к билдеру предоставляет не статический <code>Create</code> и не конструктор самого билдера. Первую проблему мы решим с помощью <code>implicit operator</code> и наш билдер будет выглядеть так:<br/>
+<br/>
+<pre><code class="cs">public class OrderLineBuilder
+{
+  private Product _product;
+  private decimal _count;
+  private decimal _price;
+ 
+  public OrderLineBuilder Of(decimal count, Product product)
+  {
+     _product = product;
+     _count = count;
+     return this;
+  }
+
+  public OrderLineBuilder For(decimal price)
+  {
+     _price = price;
+     return this;
+  }
+
+  public static implicit operator OrderLine(OrderLineBuilder b)
+  {
+     return new OrderLine(b._product, b._count, b._price);
+  }
+}
+</code></pre><br/>
+Со второй нам поможет разобраться Extension-метод для класса <code>Product</code>:<br/>
+<br/>
+<pre><code class="cs">public static class ProductExtensions
+{
+  public static OrderLineBuilder CountOf(this Product product, decimal count)
+  {
+     return Create.OrderLine.Of(count, product)
+  }
+}</code></pre><br/>
+Вообще Extension-методы — это большие друзья DSL. Они могут из совершенно адской логики сделать декларативное понятное описание.<br/>
+<blockquote>Используйте extension-методы. Просто используйте их. :)</blockquote> Сделав все эти действия мы получили вот такой код теста:<br/>
+<br/>
+<pre><code class="cs">[Fact]
+public void AcceptOrder_Successful()
+{
+  var order = Create.Order
+     .Dated(DateTime.Now)
+     .With(Pizza.Pepperoni.CountOf(1).For(500))
+     .With(Pizza.Margarita.CountOf(1).For(650))
+     .Please();
+ 
+  var orderRepositoryMock = new Mock&lt;IOrderRepository>();
+  var ingredientsRepositoryMock = new Mock&lt;IIngredientRepository>();
+
+  var service = new PizzeriaService(orderRepositoryMock.Object, ingredientsRepositoryMock.Object);
+
+  service.AcceptOrder(order);
+ 
+  orderRepositoryMock.Verify(r => r.Add(order), Times.Once);
+  ingredientsRepositoryMock.Verify(r => r.ReserveIngredients(order), Times.Once);
+}
+</code></pre><br/>
+Здесь мы применили подход, который мы называем «Волшебная фея». Это когда ты сначала пишешь неработающий код так как тебе хотелось бы его видеть, а потом пытаешься завернуть то, что написал, в DSL. Так действовать очень полезно — иногда ты и сам не представляешь на что способен C#.<br/>
+<blockquote>Представьте, что прилетела волшебная фея и разрешила вам писать код так, как хочется, а потом попробуйте обернуть написанное в DSL.</blockquote><br/>
+<h2>Создание сервиса (паттерн Testable)</h2><br/>
+С заказом теперь всё более-менее неплохо. Настало время разобраться с моками репозиториев. Здесь стоит сказать, что сам по себе тест, который мы рассматриваем — это тест на поведение. Тесты на поведение сильно связаны с реализацией методов и, если есть возможность не писать такие тесты, то лучше этого не делать. Однако, иногда они бывают полезны, а временами, без них вообще не обойтись. Следующая техника помогает писать именно тесты на поведение и если вы вдруг понимаете, что хотите воспользоваться ей, то сначала задумайтесь, нельзя ли переписать тесты таким образом, чтобы они проверяли состояние, а не поведение.<br/>
+<br/>
+Итак, я хочу сделать так, чтобы в моём тестовом методе не было ни одного мока. Для этого я создам обёртку для <code>PizzeriaService</code>, в которой инкапсулирую всю логику, которая проверяет вызовы методов:<br/>
+<br/>
+<pre><code class="cs">public class PizzeriaServiceTestable : PizzeriaService
+{
+  private readonly Mock&lt;IOrderRepository> _orderRepositoryMock;
+  private readonly Mock&lt;IIngredientRepository> _ingredientRepositoryMock;
+
+  public PizzeriaServiceTestable(Mock&lt;IOrderRepository> orderRepositoryMock, Mock&lt;IIngredientRepository> ingredientRepositoryMock)
+     : base(orderRepositoryMock.Object, ingredientRepositoryMock.Object)
+  {
+     _orderRepositoryMock = orderRepositoryMock;
+     _ingredientRepositoryMock = ingredientRepositoryMock;
+  }
+
+  public void VerifyAddWasCalledWith(Order order)
+  {
+     _orderRepositoryMock.Verify(r => r.Add(order), Times.Once);
+  }
+
+  public void VerifyReserveIngredientsWasCalledWith(Order order)
+  {
+     _ingredientRepositoryMock.Verify(r => r.ReserveIngredients(order), Times.Once);
+
+  }
+}
+</code></pre><br/>
+Этот класс позволит нам проверять вызовы методов, но нам ещё нужно как-то его создать. Для этого воспользуемся уже знакомым нам билдером:<br/>
+<br/>
+<pre><code class="cs">public class PizzeriaServiceBuilder
+{
+  public PizzeriaServiceTestable Please()
+  {
+     var orderRepositoryMock = new Mock&lt;IOrderRepository>();
+     var ingredientsRepositoryMock = new Mock&lt;IIngredientRepository>();
+
+     return new PizzeriaServiceTestable(orderRepositoryMock, ingredientsRepositoryMock);
+  }
+}
+</code></pre><br/>
+На текущий момент наш тестовый метод выглядит так:<br/>
+<br/>
+<pre><code class="cs">[Fact]
+public void AcceptOrder_Successful()
+{
+  var order = Create.Order
+     .Dated(DateTime.Now)
+     .With(Pizza.Pepperoni.CountOf(1).For(500))
+     .With(Pizza.Margarita.CountOf(1).For(650))
+     .Please();
+ 
+  var service = Create.PizzeriaService.Please();
+
+  service.AcceptOrder(order);
+ 
+  service.VerifyAddWasCalledWith(order);
+  service.VerifyReserveIngredientsWasCalledWith(order);
+}
+</code></pre><br/>
+Проверки вызовов методов — не единственное для чего может использоваться Testable-класс. Вот, например, <a href="https://youtu.be/XejfFBvODxc?t=3746">здесь</a> наш Дима Павлов использует его для сложного рефакторинга легаси-кода.<br/>
+<blockquote>Testable способен спасти положение в самых сложных случаях. Для тестов на поведение он помогает обернуть уродливые проверки вызовов в красивые методы.</blockquote> На этом знаменательном моменте мы закончили разбираться с понятностью теста. Осталось сделать его воспроизводимым и сфокусированным.<br/>
+<br/>
+<h2>Воспроизводимость (Literal Extension)</h2><br/>
+Паттерн Literal Extension не имеет прямого отношения к воспроизводимости, но поможет нам именно с ней. Наша проблема на текущий момент в том, что мы используем дату <code>DateTime.Now</code> в качестве даты заказа. Если вдруг начиная с какой-то даты, логика приёма заказа изменится, то в нашей бизнес-логике мы должны будем хотя бы какое-то время поддерживать 2 логики принятия заказа, разделяя их проверкой вроде <code>if (order.Date > edgeDate)</code>. В этом случае у нашего теста есть шанс упасть при переходе системной даты через граничную. Да, мы быстро это пофиксим, и даже сделаем из одного теста два: один будет проверять логику до граничной даты, а другой после. Тем не менее таких ситуаций лучше избегать и сразу делать все входные данные постоянными.<br/>
+<br/>
+«Причём же здесь DSL?» — спросите вы. Дело в том, что даты в тестах удобно вводить через Extension-методы, например <code>3.May(2019)</code>. Такая форма записи будет понятна не только разработчикам, но и бизнесу. Для этого нужно всего лишь создать такой статический класс<br/>
+<br/>
+<pre><code class="cs">public static class DateConstructionExtensions
+{
+   public static DateTime May(this int day, int year) => new DateTime(year, 5, day);
+}
+</code></pre><br/>
+Естественно, даты — не единственное, для чего можно использовать этот паттерн. Например, если бы мы вводили количество ингредиентов в составе продуктов, то могли бы написать что-то вроде <code>42.Grams("flour")</code>.<br/>
+<blockquote>Количественные объекты и даты удобно создавать через уже знакомые extension-методы.</blockquote><br/>
+<h2>Сфокусированность</h2><br/>
+Почему важно делать тесты сфокусированными? Дело в том, что сфокусированные тесты легче поддерживать, а поддерживать их еще как придется. Например, их приходится менять при изменении кода и удалять при выпиливании старых фич. Если тесты не сфокусированные, то при изменении логики нужно будет разобраться в больших тестах, и выпилить из них куски проверяемой функциональности. Если же тесты сфокусированные и их названия понятны, то нужно просто удалить устаревшие тесты и написать новые. Если в тестах есть хороший DSL, то это вообще не проблема.<br/>
+<br/>
+Итак, после того, как мы закончили писать DSL, у нас появилась возможность сделать этот тест сфокусированным, разделив его на 2 теста:<br/>
+<br/>
+<pre><code class="cs">[Fact]
+public void WhenAcceptOrder_AddIsCalled()
+{
+  var order = Create.Order
+     .Dated(3.May(2019))
+     .With(Pizza.Pepperoni.CountOf(1).For(500))
+     .With(Pizza.Margarita.CountOf(1).For(650))
+     .Please();
+ 
+  var service = Create.PizzeriaService.Please();
+
+  service.AcceptOrder(order);
+ 
+  service.VerifyAddWasCalledWith(order);
+}
+
+[Fact]
+public void WhenAcceptOrder_ReserveIngredientsIsCalled()
+{
+  var order = Create.Order
+     .Dated(3.May(2019))
+     .With(Pizza.Pepperoni.CountOf(1).For(500))
+     .With(Pizza.Margarita.CountOf(1).For(650))
+     .Please();
+ 
+  var service = Create.PizzeriaService.Please();
+
+  service.AcceptOrder(order);
+ 
+  service.VerifyReserveIngredientsWasCalledWith(order);
+}
+</code></pre><br/>
+Оба теста получились короткими, понятными, воспроизводимыми и сфокусированными.<br/>
+<br/>
+Обратите внимание, что теперь названия тестов отражают цель, ради которой они были написаны и теперь любой разработчик, зашедший в мой проект, поймет зачем был написан каждый из тестов и что в этом тесте происходит.<br/>
+<blockquote>Сфокусированность тестов делает их поддерживаемыми. Хороший тест обязан быть сфокусированным.</blockquote> И вот, я уже слышу как вы кричите мне «Юра, ты что охренел? Мы написали миллион кода только для того, чтобы сделать пару тестов красивенькими?». Да, именно так. Пока у нас всего пара тестов, имеет смысл вложиться в DSL и сделать эти тесты понятными. Один раз написав DSL, ты получаешь кучу плюшек:<br/>
+<br/>
+<ul>
+<li>Новые тесты становится писать легко. Не нужно 2 часа настраивать себя на юнит-тестирование, просто берешь и пишешь.</li>
+<li>Тесты становятся понятными и читаемыми. Любой разработчик взглянув на тест понимает, зачем он был написан и что проверяет.</li>
+<li>Снижается порог вхождения в тесты (а может быть и в домен) для новых разработчиков. Например, через ObjectMother можно легко разобраться какие объекты можно создать в домене.</li>
+<li>Ну и наконец, с тестами просто приятно работать, и, как следствие, код становится более поддерживаемым.</li>
+</ul><br/>
+Исходный код примера и тесты доступны <a href="https://github.com/pastushenkoy/dsl-example">здесь</a>.</div></div> <!----> <!----></div> <div class="tm-article-presenter__meta"><div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Теги:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5BC%23%5D" class="tm-tags-list__link">C#</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5B.net%5D" class="tm-tags-list__link">.net</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bunit-testing%5D" class="tm-tags-list__link">unit-testing</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5B%D1%8E%D0%BD%D0%B8%D1%82-%D1%82%D0%B5%D1%81%D1%82%D0%B8%D1%80%D0%BE%D0%B2%D0%B0%D0%BD%D0%B8%D0%B5%5D" class="tm-tags-list__link">юнит-тестирование</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bdsl%5D" class="tm-tags-list__link">dsl</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bdodopizza%5D" class="tm-tags-list__link">dodopizza</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bdodopizzaengineering%5D" class="tm-tags-list__link">dodopizzaengineering</a></li></ul></div> <div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Хабы:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/company/dododev/blog/" class="tm-hubs-list__link router-link-active">
+    Блог компании Dodo Engineering
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/programming/" class="tm-hubs-list__link">
+    Программирование
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/net/" class="tm-hubs-list__link">
+    .NET
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/csharp/" class="tm-hubs-list__link">
+    C#
+  </a></li></ul></div></div></article></div> <!----></div> <div class="tm-article-sticky-panel"><div class="tm-data-icons tm-article-sticky-panel__icons"><div class="tm-article-rating tm-data-icons__item"><div class="tm-votes-meter tm-article-rating__votes-switcher"><svg height="16" width="16" class="tm-svg-img tm-votes-meter__icon tm-votes-meter__icon_medium"><title>Всего голосов 34: ↑27 и ↓7</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-rating"></use></svg> <span title="Всего голосов 34: ↑27 и ↓7" class="tm-votes-meter__value tm-votes-meter__value_positive tm-votes-meter__value_medium">+20</span></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----> <span title="Количество просмотров" class="tm-icon-counter tm-data-icons__item"><svg height="16" width="16" class="tm-svg-img tm-icon-counter__icon"><title>Просмотры</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-views"></use></svg> <span class="tm-icon-counter__value">9.4K</span></span> <button title="Добавить в закладки" type="button" class="bookmarks-button tm-data-icons__item"><span title="Добавить в закладки" class="tm-svg-icon__wrapper bookmarks-button__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Добавить в закладки</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-favorite"></use></svg></span> <span title="Количество пользователей, добавивших публикацию в закладки" class="bookmarks-button__counter">
+    73
+  </span></button> <!----> <div title="Поделиться" class="tm-sharing tm-data-icons__item"><button type="button" class="tm-sharing__button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="tm-sharing__icon"><path fill="currentColor" d="M10.33.275l9.047 7.572a.2.2 0 010 .306l-9.048 7.572a.2.2 0 01-.328-.153V11c-8 0-9.94 6-9.94 6S-1 5 10 5V.428a.2.2 0 01.328-.153z"></path></svg></button> <!----></div> <DIV class="v-portal" style="display:none;"></DIV></div> </div></div> <!----> <!----> <div class="tm-article-presenter__footer"><div class="tm-article-blocks"><!----> <section class="tm-block tm-block_spacing-bottom"><!----> <div class="tm-block__body tm-block__body_variant-balanced"><div class="tm-article-author"><div class="tm-article-author__company"><div class="tm-article-author__company-card"><div class="tm-company-snippet"><a href="/ru/company/dododev/profile/" class="tm-company-snippet__logo-link"><div class="tm-entity-image"><img alt="" height="40" src="//habrastorage.org/getpro/habr/company/f34/de7/2bf/f34de72bf69944c17797ca6066ecccd5.png" width="40" class="tm-entity-image__pic"></div></a> <div class="tm-company-snippet__info"><a href="/ru/company/dododev/profile/" class="tm-company-snippet__title">Dodo Engineering</a> <div class="tm-company-snippet__description">О том, как разработчики строят IT в Dodo</div></div></div> <div class="tm-article-author__buttons"><!----> <!----></div></div> <div class="tm-article-author__company-contacts"><a href="https://dodo.dev/" rel="noopener" target="_blank" class="tm-article-author__contact">
+      Сайт
+    </a><a href="https://facebook.com/dodopizzadev" rel="noopener" target="_blank" class="tm-article-author__contact">
+      Facebook
+    </a><a href="https://twitter.com/dodopizzadev" rel="noopener" target="_blank" class="tm-article-author__contact">
+      Twitter
+    </a><a href="https://vk.com/dododev" rel="noopener" target="_blank" class="tm-article-author__contact">
+      ВКонтакте
+    </a><a href="https://telegram.me/dododev" rel="noopener" target="_blank" class="tm-article-author__contact">
+      Telegram
+    </a></div> <div class="tm-article-author__separator"></div></div> <div class="tm-user-card tm-article-author__user-card tm-user-card_variant-article"><div class="tm-user-card__info-container"><div class="tm-user-card__header"><div class="tm-user-card__header-data"><a href="/ru/users/ypastushenko/" class="tm-user-card__userpic tm-user-card__userpic_size-40"><div class="tm-entity-image"><img alt="" src="//habrastorage.org/getpro/habr/avatars/12e/457/7f8/12e4577f8d8e464b9eb2946f044e7078.jpg" class="tm-entity-image__pic"></div></a> <div class="tm-user-card__meta"><div title=" 45 голосов " class="tm-karma tm-user-card__karma"><div class="tm-karma__votes tm-karma__votes_positive">
+    37
+  </div> <div class="tm-karma__text">
+    Карма
+  </div></div> <div title="Рейтинг пользователя" class="tm-rating tm-user-card__rating"><div class="tm-rating__header"> <div class="tm-rating__counter">0</div></div> <div class="tm-rating__text">
+    Рейтинг
+  </div></div></div></div></div> <div class="tm-user-card__info tm-user-card__info_variant-article"><div class="tm-user-card__title tm-user-card__title_variant-article"><span class="tm-user-card__name tm-user-card__name_variant-article">Юрий Пастушенко</span> <a href="/ru/users/ypastushenko/" class="tm-user-card__nickname tm-user-card__nickname_variant-article">
+          @ypastushenko
+        </a> <!----></div> <p class="tm-user-card__short-info tm-user-card__short-info_variant-article">.net разработчик, Dodo Pizza</p></div></div> <div class="tm-user-card__buttons tm-user-card__buttons_variant-article"><!----> <!----> <!----> <!----> <!----></div></div> <!----></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----></section> <div class="tm-article-blocks__comments"><div class="tm-article-page-comments"><div class="tm-article-comments-counter-link tm-article-comments-counter-button"><a href="/ru/company/dododev/blog/451598/comments/" class="tm-article-comments-counter-link__link tm-article-comments-counter-link__link_button-style"><svg height="16" width="16" class="tm-svg-img tm-article-comments-counter-link__icon tm-article-comments-counter-link__icon_contrasted"><title>Комментарии</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-comments"></use></svg> <span class="tm-article-comments-counter-link__value tm-article-comments-counter-link__value_contrasted">
+       Комментарии 41 
+    </span></a> <!----></div></div></div>  <!---->  <!----> <!----></div></div></div></div></div> <div class="tm-page__sidebar"><div class="tm-layout-sidebar"><div class="tm-layout-sidebar__placeholder_initial"></div> <div class="tm-sexy-sidebar tm-sexy-sidebar_initial" style="margin-top:0px;"><!----> <section class="tm-block tm-block_spacing-bottom"><header class="tm-block__header"><h2 class="tm-block__title">Информация</h2> <!----></header> <div class="tm-block__body"><div class="tm-company-basic-info"><dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Дата основания</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><time datetime="2011-04-22T20:00:00.000Z" title="2011-04-23, 00:00">23  апреля  2011</time></dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Местоположение</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap">
+    Россия
+  </dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Сайт</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><a href="https://dodo.dev/" target="_blank" class="tm-company-basic-info__link">
+      dodo.dev
+    </a></dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Численность</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap">
+    101–200 человек
+  </dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Дата регистрации</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><time datetime="2019-02-14T06:54:29.000Z" title="2019-02-14, 09:54">14  февраля  2019</time></dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Представитель</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><a href="/ru/users/Schvepsss/" class="tm-company-basic-info__link">
+      Schvepsss
+    </a></dd></dl></div></div> <!----></section> <div class="tm-company-widgets"></div> <!----></div></div></div></div></div></div></main> <!----></div> <div class="tm-footer-menu"><div class="tm-page-width"><div class="tm-footer-menu__container"><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Ваш аккаунт
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr/?back=/ru/company/dododev/blog/451598/&amp;hl=ru" rel="nofollow" target="_self">
+                Войти
+              </a></li><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr-register/?back=/ru/company/dododev/blog/451598/&amp;hl=ru" rel="nofollow" target="_self">
+                Регистрация
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Разделы
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/" class="footer-menu__item-link router-link-active">
+                Публикации
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/news/" class="footer-menu__item-link">
+                Новости
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/hubs/" class="footer-menu__item-link">
+                Хабы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/companies/" class="footer-menu__item-link">
+                Компании
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/users/" class="footer-menu__item-link">
+                Авторы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/sandbox/" class="footer-menu__item-link">
+                Песочница
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Информация
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/docs/help/" class="footer-menu__item-link">
+                Устройство сайта
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/authors/codex/" class="footer-menu__item-link">
+                Для авторов
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/companies/corpblogs/" class="footer-menu__item-link">
+                Для компаний
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/docs/transparency/" class="footer-menu__item-link">
+                Документы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/agreement" target="_blank">
+                Соглашение
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/confidential/" target="_blank">
+                Конфиденциальность
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Услуги
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQLwRfQmXibiUlWaRg-BAc38s7oM3lJiaPju7qmdJsp8ysIvZ_G-Npem0njJLMozE2bPHMpDqiI5hhy/pub?start=false&amp;loop=false&amp;delayms=60000&amp;slide=id.g91a03369cd_4_297" target="_blank">
+                Реклама
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://habrastorage.org/storage/stuff/habr/service_price.pdf" target="_blank">
+                Тарифы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQJJds8-Di7BQSP_guHxICN7woVYoN5NP_22ra-BIo4bqnTT9FR6fB-Ku2P0AoRpX0Ds-LRkDeAoD8F/pub?start=false&amp;loop=false&amp;delayms=60000" target="_blank">
+                Контент
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://tmtm.timepad.ru/" target="_blank">
+                Семинары
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/megaprojects/" class="footer-menu__item-link">
+                Мегапроекты
+              </a></li></ul></div></div></div></div></div> <div class="tm-footer"><div class="tm-page-width"><div class="tm-footer__container"><!----> <div class="tm-footer__social"><a href="https://www.facebook.com/habrahabr.ru" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Facebook</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-facebook"></use></svg></a><a href="https://twitter.com/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Twitter</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-twitter"></use></svg></a><a href="https://vk.com/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>VK</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-vkontakte"></use></svg></a><a href="https://telegram.me/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Telegram</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-telegram"></use></svg></a><a href="https://www.youtube.com/channel/UCd_sTwKqVrweTt4oAKY5y4w" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Youtube</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-youtube"></use></svg></a><a href="https://zen.yandex.ru/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Яндекс Дзен</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-zen"></use></svg></a></div> <DIV class="v-portal" style="display:none;"></DIV> <button class="tm-footer__link"><!---->
+        Настройка языка
+      </button> <a href="/ru/about" class="tm-footer__link">
+        О сайте
+      </a> <a href="/ru/feedback/" class="tm-footer__link">
+        Техническая поддержка
+      </a> <!----> <a href="/berserk-mode-nope" class="tm-footer__link">
+        Вернуться на старую версию
+      </a> <div class="tm-footer-copyright"><span class="tm-copyright"><span class="tm-copyright__years">© 2006–2021 </span> <span class="tm-copyright__name">«<a href="https://company.habr.com/" rel="noopener" target="_blank" class="tm-copyright__link">Habr</a>»</span></span></div></div></div></div> <!----> <!----></div> <div class="vue-portal-target"></div></div>
+<script>window.__INITIAL_STATE__={"adblock":{"hasAcceptableAdsFilter":false,"hasAdblock":false},"articlesList":{"articlesList":{"451598":{"id":"451598","timePublished":"2019-05-13T13:51:27+00:00","isCorporative":true,"lang":"ru","titleHtml":"Волшебная фея для юнит-тестов: DSL в C#","leadData":{"textHtml":"Как часто бывало так, что написав рабочий юнит-тест, ты смотришь на его код, а он… плохой? И ты такой думаешь: «Это же тест, оставлю так…». Нет, %username%, так оставлять не надо. Тесты — это значимая часть системы, которая обеспечивает поддерживаемость кода, и очень важно, чтобы эта часть также была поддерживаемой. К несчастью, у нас не так много способов обеспечить это (не будем же мы писать тесты на тесты), но парочка всё-таки есть.\u003Cbr\u003E\r\n\u003Cbr\u003E\r\n\u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002F9_\u002Fcb\u002Fxb\u002F9_cbxb0psq2mvlfwzkxf0uvpwru.png\"\u003E","imageUrl":null,"buttonTextHtml":"Читать дальше →","image":null},"editorVersion":"1.0","postType":"article","postLabels":[],"author":{"scoreStats":{"score":37,"votesCount":45},"rating":0,"relatedData":null,"contacts":[],"authorContacts":[],"paymentDetails":{"paymentYandexMoney":null,"paymentPayPalMe":null,"paymentWebmoney":null},"id":"1925477","alias":"ypastushenko","fullname":"Юрий Пастушенко","avatarUrl":"\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Favatars\u002F12e\u002F457\u002F7f8\u002F12e4577f8d8e464b9eb2946f044e7078.jpg","speciality":".net разработчик, Dodo Pizza"},"statistics":{"commentsCount":41,"favoritesCount":73,"readingCount":9407,"score":20,"votesCount":34},"hubs":[{"relatedData":null,"id":"22194","alias":"dododev","type":"corporative","title":"Блог компании Dodo Engineering","titleHtml":"Блог компании Dodo Engineering","isProfiled":false},{"relatedData":null,"id":"359","alias":"programming","type":"collective","title":"Программирование","titleHtml":"Программирование","isProfiled":true},{"relatedData":null,"id":"546","alias":"net","type":"collective","title":".NET","titleHtml":".NET","isProfiled":true},{"relatedData":null,"id":"17718","alias":"csharp","type":"collective","title":"C#","titleHtml":"C#","isProfiled":true}],"flows":[{"id":"1","alias":"develop","title":"Разработка"}],"relatedData":null,"textHtml":"\u003Cdiv xmlns=\"http:\u002F\u002Fwww.w3.org\u002F1999\u002Fxhtml\"\u003EКак часто бывало так, что написав рабочий юнит-тест, ты смотришь на его код, а он… плохой? И ты такой думаешь: «Это же тест, оставлю так…». Нет, %username%, так оставлять не надо. Тесты — это значимая часть системы, которая обеспечивает поддерживаемость кода, и очень важно, чтобы эта часть также была поддерживаемой. К несчастью, у нас не так много способов обеспечить это (не будем же мы писать тесты на тесты), но парочка всё-таки есть.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002F9_\u002Fcb\u002Fxb\u002F9_cbxb0psq2mvlfwzkxf0uvpwru.png\"\u002F\u003E\u003Ca name=\"habracut\"\u003E\u003C\u002Fa\u003E\u003Cbr\u002F\u003E\r\nВ нашей школе разработчиков «Dodo DevSchool» мы выделяем в числе прочих такие критерии хорошего теста:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003Eвоспроизводимость: запуск тестов на одном и том же коде и входных данных всегда приводит к одному и тому же результату;\u003C\u002Fli\u003E\r\n\u003Cli\u003Eсфокусированность: должна быть только одна причина для падения теста;\u003C\u002Fli\u003E\r\n\u003Cli\u003Eпонятность: ну тут и так понятно. :)\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\nКак вам такой тест с точки зрения этих критериев?\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"cs\"\u003E[Fact]\npublic void AcceptOrder_Successful()\n{\n  var ingredient1 = new Ingredient(\"Ingredient1\");\n  var ingredient2 = new Ingredient(\"Ingredient2\");\n  var ingredient3 = new Ingredient(\"Ingredient3\");\n \n  var order = new Order(DateTime.Now);\n \n  var product1 = new Product(\"Pizza1\");\n  product1.AddIngredient(ingredient1);\n  product1.AddIngredient(ingredient2);\n \n  var orderLine1 = new OrderLine(product1, 1, 500);\n  order.AddLine(orderLine1);\n\n  var product2 = new Product(\"Pizza2\");\n  product2.AddIngredient(ingredient1);\n  product2.AddIngredient(ingredient3);\n \n  var orderLine2 = new OrderLine(product2, 1, 650);\n  order.AddLine(orderLine2);\n\n  var orderRepositoryMock = new Mock&lt;IOrderRepository\u003E();\n  var ingredientsRepositoryMock = new Mock&lt;IIngredientRepository\u003E();\n\n  var service = new PizzeriaService(orderRepositoryMock.Object, ingredientsRepositoryMock.Object);\n \n  service.AcceptOrder(order);\n \n  orderRepositoryMock.Verify(r =\u003E r.Add(order), Times.Once);\n  ingredientsRepositoryMock.Verify(r =\u003E r.ReserveIngredients(order), Times.Once);\n}\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nПо мне — очень плохо.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nОн непонятный: я, например, не могу даже выделить блоки Arrange, Act и Assert. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nНевоспроизводимый: используется свойство DateTime.Now. И наконец, он несфокусированный, т.к. имеет 2 причины падения: проверяются вызовы методов двух репозиториев.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nКроме того, хотя именование тестов выходит за рамки этой статьи, я всё же обращу внимание на название: при таком наборе отрицательных свойств сложно сформулировать его так, чтобы при взгляде на имя теста, сторонний человек сразу понял для чего этот тест вообще находится в проекте. \u003Cbr\u002F\u003E\r\n\u003Cblockquote\u003EЕсли не получается лаконично назвать тест, значит с тестом что-то не так.\u003C\u002Fblockquote\u003E Раз уж тест непонятный, давайте расскажу что в нём происходит:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Col\u003E\r\n\u003Cli\u003EСоздаются ингредиенты.\u003C\u002Fli\u003E\r\n\u003Cli\u003EИз ингредиентов создаются продукты (пиццы).\u003C\u002Fli\u003E\r\n\u003Cli\u003EИз продуктов создается заказ.\u003C\u002Fli\u003E\r\n\u003Cli\u003EСоздается сервис, для которого мокаются репозитории.\u003C\u002Fli\u003E\r\n\u003Cli\u003EЗаказ передаётся методу AcceptOrder сервиса.\u003C\u002Fli\u003E\r\n\u003Cli\u003EПроверяется, что были вызваны методы Add и ReserveIngredients у соответствующих репозиториев.\u003C\u002Fli\u003E\r\n\u003C\u002Fol\u003E\u003Cbr\u002F\u003E\r\nИтак, как нам сделать этот тест лучше? Нужно попытаться оставить в теле теста только то, что по-настоящему важно. И для этого умные люди вроде Мартина Фаулера и Ребекки Парсонс придумали \u003Ca href=\"https:\u002F\u002Fwww.martinfowler.com\u002Fbooks\u002Fdsl.html\"\u003EDSL (Domain Specific Language)\u003C\u002Fa\u003E. Здесь я расскажу о паттернах DSL, которые мы в Додо используем для того, чтобы наши юнит-тесты были мягкими и шелковистыми, а разработчики чувствовали себя уверенно каждый день.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПлан такой: сначала мы сделаем этот тест понятным, потом поработаем над воспроизводимостью и закончим тем, что сделаем его сфокусированным. Погнали…\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EВынесение ингредиентов (предопределённые доменные объекты)\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nНачнём с блока создания заказа. Заказ — это одна из центральных доменных сущностей. Было бы круто, если бы мы могли описывать заказ так, чтобы даже люди, которые не умеют писать код, но разбираются в доменной логике могли понять что за заказ мы создаём. Для этого, в первую очередь, нам нужно отказаться от использования абстрактных «Ingredient1» и «Pizza1» заменив их на реальные ингредиенты, пиццы и прочие доменные объекты.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПервый кандидат на оптимизацию — это ингредиенты. С ними всё просто: для них не нужно никакой кастомизации, только вызов конструктора. Достаточно вынести их в отдельный контейнер и назвать так, чтобы было понятно доменным экспертам:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"cs\"\u003Epublic static class Ingredients\n{\n  public static readonly Ingredient Dough = new Ingredient(\"Dough\");\n  public static readonly Ingredient Pepperoni = new Ingredient(\"Pepperoni\");\n  public static readonly Ingredient Mozzarella = new Ingredient(\"Mozzarella\");\n}\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nВместо совершенно невменяемых Ingredient1, Ingredient2 и Ingredient3 мы получили Тесто, Пепперони и Моцареллу.\u003Cbr\u002F\u003E\r\n\u003Cblockquote\u003EИспользуйте предопределение доменных объектов для часто использующихся доменных сущностей.\u003C\u002Fblockquote\u003E \u003Cbr\u002F\u003E\r\n\u003Ch2\u003EBuilder для продуктов\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nСледующая доменная сущность это продукты. С ними всё немного сложнее: каждый продукт состоит из нескольких ингредиентов и нам придётся добавить их в продукт перед использованием.\u003Cbr\u002F\u003E\r\n \u003Cbr\u002F\u003E\r\nЗдесь нам пригодится старый добрый паттерн Builder. Вот как выглядит моя версия билдера для продукта:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"cs\"\u003Epublic class ProductBuilder\n{\n  private Product _product;\n\n  public ProductBuilder(string name)\n  {\n     _product = new Product(name);\n  }\n\n  public ProductBuilder Containing(Ingredient ingredient)\n  {\n     _product.AddIngredient(ingredient);\n     return this;\n  }\n\n  public Product Please()\n  {\n     return _product;\n  }\n}\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nОн состоит из параметризованного конструктора, кастомизирующего метода \u003Ccode\u003EContaining \u003C\u002Fcode\u003E и терминального метода \u003Ccode\u003EPlease\u003C\u002Fcode\u003E. Если не любите любезничать с кодом, то можно заменить \u003Ccode\u003EPlease\u003C\u002Fcode\u003E на \u003Ccode\u003ENow\u003C\u002Fcode\u003E. Билдер скрывает сложные конструкторы и вызовы методов, настраивающих объект. Код становится чище и понятнее. По-хорошему билдер должен упрощать создание объекта настолько, чтобы код был понятен доменному эксперту. Особенно стоит использовать билдер для объектов, которые требуют настройки перед началом работы.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nБилдер продукта позволит создавать конструкции вроде:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"cs\"\u003Evar pepperoni = new ProductBuilder(\"Pepperoni\")\n  .Containing(Ingredients.Dough)\n  .Containing(Ingredients.Pepperoni)\n  .Please();\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cblockquote\u003EБилдеры помогают создавать объекты, которым нужна настройка. Рассмотрите возможность создания билдера даже если настройка состоит из одной строчки.\u003C\u002Fblockquote\u003E\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EОбъект ObjectMother\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nНесмотря на то, что создание продукта стало намного приличнее, конструктор \u003Ccode\u003Enew ProductBuilder\u003C\u002Fcode\u003E всё еще выглядит довольно уродливо. Починим это с помощью паттерна ObjectMother (Father). \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПаттерн простой как 5 копеек: создаём статический класс и собираем в него все билдеры.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"cs\"\u003Epublic static class Create\n{\n  public static ProductBuilder Product(string name) =\u003E new ProductBuilder(name);\n}\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nТеперь можно писать так:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"cs\"\u003Evar pepperoni = Create.Product(\"Pepperoni\")\n  .Containing(Ingredients.Dough)\n  .Containing(Ingredients.Pepperoni)\n  .Please();\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nObjectMother придуман для декларативного создания объектов. Кроме того он помогает вводить в домен новых разработчиков, т.к. при написании слова \u003Ccode\u003ECreate\u003C\u002Fcode\u003E IDE сама подскажет что можно создать в этом домене. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВ нашем коде ObjectMother иногда называют не \u003Ccode\u003ECreate\u003C\u002Fcode\u003E, а \u003Ccode\u003EGiven\u003C\u002Fcode\u003E. Оба варианта мне нравятся. Если у вас есть какие-то еще идеи — поделитесь в комментариях.\u003Cbr\u002F\u003E\r\n\u003Cblockquote\u003EДля декларативного создания объектов используйте ObjectMother. Код станет чище, а новым разработчикам будет проще вникать в домен.\u003C\u002Fblockquote\u003E\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EВынесение продуктов\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nСтало сильно лучше, но продуктам ещё есть куда расти. Продуктов у нас ограниченное количество и их можно подобно ингредиентам собрать в отдельном классе и не инициализировать для каждого теста:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"cs\"\u003Epublic static class Pizza\n{\n  public static Product Pepperoni =\u003E Create.Product(\"Pepperoni\")\n     .Containing(Ingredients.Dough)\n     .Containing(Ingredients.Pepperoni)\n     .Please();\n \n  public static Product Margarita =\u003E Create.Product(\"Margarita\")\n     .Containing(Ingredients.Dough)\n     .Containing(Ingredients.Mozzarella)\n     .Please();\n}\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nЗдесь я назвал контейнер не \u003Ccode\u003EProducts\u003C\u002Fcode\u003E, а \u003Ccode\u003EPizza\u003C\u002Fcode\u003E. Такое название помогает читать тест. Например, оно помогает снять вопросы типа «А Pepperoni — это пицца или колбаска?».\u003Cbr\u002F\u003E\r\n\u003Cblockquote\u003EСтарайтесь использовать реальные доменные объекты, а не заменители вроде Product1.\u003C\u002Fblockquote\u003E\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EБилдер для заказа (пример с обратной стороны)\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nТеперь применим описанные паттерны для создания билдера заказа, но теперь пойдём не от билдера, а от того, что бы нам хотелось получить. Вот так я хочу создавать заказ:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"cs\"\u003Evar order = Create.Order\n  .Dated(DateTime.Now)\n  .With(Pizza.Pepperoni.CountOf(1).For(500))\n  .With(Pizza.Margarita.CountOf(1).For(650))\n  .Please();\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nКак мы можем этого добиться? Нам, очевидно, понадобится билдеры для заказа и строки заказа. С билдером для заказа всё кристально ясно. Вот он:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"cs\"\u003Epublic class OrderBuilder\n{\n  private DateTime _date;\n  private readonly List&lt;OrderLine\u003E _lines = new List&lt;OrderLine\u003E();\n  \n  public OrderBuilder Dated(DateTime date)\n  {\n    _date = date;\n    return this;\n  }\n\n  public OrderBuilder With(OrderLine orderLine)\n  {\n    _lines.Add(orderLine);\n    return this;\n  }\n\n  public Order Please()\n  {\n    var order = new Order(_date);\n    foreach (var line in _lines)\n    {\n      order.AddLine(line);\n    }\n    \n    return order;\n  }\n}\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nА вот с \u003Ccode\u003EOrderLine\u003C\u002Fcode\u003E ситуация поинтереснее: во-первых, здесь не вызывается терминальный метод Please, а во-вторых, доступ к билдеру предоставляет не статический \u003Ccode\u003ECreate\u003C\u002Fcode\u003E и не конструктор самого билдера. Первую проблему мы решим с помощью \u003Ccode\u003Eimplicit operator\u003C\u002Fcode\u003E и наш билдер будет выглядеть так:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"cs\"\u003Epublic class OrderLineBuilder\n{\n  private Product _product;\n  private decimal _count;\n  private decimal _price;\n \n  public OrderLineBuilder Of(decimal count, Product product)\n  {\n     _product = product;\n     _count = count;\n     return this;\n  }\n\n  public OrderLineBuilder For(decimal price)\n  {\n     _price = price;\n     return this;\n  }\n\n  public static implicit operator OrderLine(OrderLineBuilder b)\n  {\n     return new OrderLine(b._product, b._count, b._price);\n  }\n}\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nСо второй нам поможет разобраться Extension-метод для класса \u003Ccode\u003EProduct\u003C\u002Fcode\u003E:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"cs\"\u003Epublic static class ProductExtensions\n{\n  public static OrderLineBuilder CountOf(this Product product, decimal count)\n  {\n     return Create.OrderLine.Of(count, product)\n  }\n}\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nВообще Extension-методы — это большие друзья DSL. Они могут из совершенно адской логики сделать декларативное понятное описание.\u003Cbr\u002F\u003E\r\n\u003Cblockquote\u003EИспользуйте extension-методы. Просто используйте их. :)\u003C\u002Fblockquote\u003E Сделав все эти действия мы получили вот такой код теста:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"cs\"\u003E[Fact]\npublic void AcceptOrder_Successful()\n{\n  var order = Create.Order\n     .Dated(DateTime.Now)\n     .With(Pizza.Pepperoni.CountOf(1).For(500))\n     .With(Pizza.Margarita.CountOf(1).For(650))\n     .Please();\n \n  var orderRepositoryMock = new Mock&lt;IOrderRepository\u003E();\n  var ingredientsRepositoryMock = new Mock&lt;IIngredientRepository\u003E();\n\n  var service = new PizzeriaService(orderRepositoryMock.Object, ingredientsRepositoryMock.Object);\n\n  service.AcceptOrder(order);\n \n  orderRepositoryMock.Verify(r =\u003E r.Add(order), Times.Once);\n  ingredientsRepositoryMock.Verify(r =\u003E r.ReserveIngredients(order), Times.Once);\n}\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nЗдесь мы применили подход, который мы называем «Волшебная фея». Это когда ты сначала пишешь неработающий код так как тебе хотелось бы его видеть, а потом пытаешься завернуть то, что написал, в DSL. Так действовать очень полезно — иногда ты и сам не представляешь на что способен C#.\u003Cbr\u002F\u003E\r\n\u003Cblockquote\u003EПредставьте, что прилетела волшебная фея и разрешила вам писать код так, как хочется, а потом попробуйте обернуть написанное в DSL.\u003C\u002Fblockquote\u003E\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EСоздание сервиса (паттерн Testable)\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nС заказом теперь всё более-менее неплохо. Настало время разобраться с моками репозиториев. Здесь стоит сказать, что сам по себе тест, который мы рассматриваем — это тест на поведение. Тесты на поведение сильно связаны с реализацией методов и, если есть возможность не писать такие тесты, то лучше этого не делать. Однако, иногда они бывают полезны, а временами, без них вообще не обойтись. Следующая техника помогает писать именно тесты на поведение и если вы вдруг понимаете, что хотите воспользоваться ей, то сначала задумайтесь, нельзя ли переписать тесты таким образом, чтобы они проверяли состояние, а не поведение.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nИтак, я хочу сделать так, чтобы в моём тестовом методе не было ни одного мока. Для этого я создам обёртку для \u003Ccode\u003EPizzeriaService\u003C\u002Fcode\u003E, в которой инкапсулирую всю логику, которая проверяет вызовы методов:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"cs\"\u003Epublic class PizzeriaServiceTestable : PizzeriaService\n{\n  private readonly Mock&lt;IOrderRepository\u003E _orderRepositoryMock;\n  private readonly Mock&lt;IIngredientRepository\u003E _ingredientRepositoryMock;\n\n  public PizzeriaServiceTestable(Mock&lt;IOrderRepository\u003E orderRepositoryMock, Mock&lt;IIngredientRepository\u003E ingredientRepositoryMock)\n     : base(orderRepositoryMock.Object, ingredientRepositoryMock.Object)\n  {\n     _orderRepositoryMock = orderRepositoryMock;\n     _ingredientRepositoryMock = ingredientRepositoryMock;\n  }\n\n  public void VerifyAddWasCalledWith(Order order)\n  {\n     _orderRepositoryMock.Verify(r =\u003E r.Add(order), Times.Once);\n  }\n\n  public void VerifyReserveIngredientsWasCalledWith(Order order)\n  {\n     _ingredientRepositoryMock.Verify(r =\u003E r.ReserveIngredients(order), Times.Once);\n\n  }\n}\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nЭтот класс позволит нам проверять вызовы методов, но нам ещё нужно как-то его создать. Для этого воспользуемся уже знакомым нам билдером:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"cs\"\u003Epublic class PizzeriaServiceBuilder\n{\n  public PizzeriaServiceTestable Please()\n  {\n     var orderRepositoryMock = new Mock&lt;IOrderRepository\u003E();\n     var ingredientsRepositoryMock = new Mock&lt;IIngredientRepository\u003E();\n\n     return new PizzeriaServiceTestable(orderRepositoryMock, ingredientsRepositoryMock);\n  }\n}\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nНа текущий момент наш тестовый метод выглядит так:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"cs\"\u003E[Fact]\npublic void AcceptOrder_Successful()\n{\n  var order = Create.Order\n     .Dated(DateTime.Now)\n     .With(Pizza.Pepperoni.CountOf(1).For(500))\n     .With(Pizza.Margarita.CountOf(1).For(650))\n     .Please();\n \n  var service = Create.PizzeriaService.Please();\n\n  service.AcceptOrder(order);\n \n  service.VerifyAddWasCalledWith(order);\n  service.VerifyReserveIngredientsWasCalledWith(order);\n}\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nПроверки вызовов методов — не единственное для чего может использоваться Testable-класс. Вот, например, \u003Ca href=\"https:\u002F\u002Fyoutu.be\u002FXejfFBvODxc?t=3746\"\u003Eздесь\u003C\u002Fa\u003E наш Дима Павлов использует его для сложного рефакторинга легаси-кода.\u003Cbr\u002F\u003E\r\n\u003Cblockquote\u003ETestable способен спасти положение в самых сложных случаях. Для тестов на поведение он помогает обернуть уродливые проверки вызовов в красивые методы.\u003C\u002Fblockquote\u003E На этом знаменательном моменте мы закончили разбираться с понятностью теста. Осталось сделать его воспроизводимым и сфокусированным.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EВоспроизводимость (Literal Extension)\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nПаттерн Literal Extension не имеет прямого отношения к воспроизводимости, но поможет нам именно с ней. Наша проблема на текущий момент в том, что мы используем дату \u003Ccode\u003EDateTime.Now\u003C\u002Fcode\u003E в качестве даты заказа. Если вдруг начиная с какой-то даты, логика приёма заказа изменится, то в нашей бизнес-логике мы должны будем хотя бы какое-то время поддерживать 2 логики принятия заказа, разделяя их проверкой вроде \u003Ccode\u003Eif (order.Date \u003E edgeDate)\u003C\u002Fcode\u003E. В этом случае у нашего теста есть шанс упасть при переходе системной даты через граничную. Да, мы быстро это пофиксим, и даже сделаем из одного теста два: один будет проверять логику до граничной даты, а другой после. Тем не менее таких ситуаций лучше избегать и сразу делать все входные данные постоянными.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n«Причём же здесь DSL?» — спросите вы. Дело в том, что даты в тестах удобно вводить через Extension-методы, например \u003Ccode\u003E3.May(2019)\u003C\u002Fcode\u003E. Такая форма записи будет понятна не только разработчикам, но и бизнесу. Для этого нужно всего лишь создать такой статический класс\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"cs\"\u003Epublic static class DateConstructionExtensions\n{\n   public static DateTime May(this int day, int year) =\u003E new DateTime(year, 5, day);\n}\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nЕстественно, даты — не единственное, для чего можно использовать этот паттерн. Например, если бы мы вводили количество ингредиентов в составе продуктов, то могли бы написать что-то вроде \u003Ccode\u003E42.Grams(\"flour\")\u003C\u002Fcode\u003E.\u003Cbr\u002F\u003E\r\n\u003Cblockquote\u003EКоличественные объекты и даты удобно создавать через уже знакомые extension-методы.\u003C\u002Fblockquote\u003E\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EСфокусированность\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nПочему важно делать тесты сфокусированными? Дело в том, что сфокусированные тесты легче поддерживать, а поддерживать их еще как придется. Например, их приходится менять при изменении кода и удалять при выпиливании старых фич. Если тесты не сфокусированные, то при изменении логики нужно будет разобраться в больших тестах, и выпилить из них куски проверяемой функциональности. Если же тесты сфокусированные и их названия понятны, то нужно просто удалить устаревшие тесты и написать новые. Если в тестах есть хороший DSL, то это вообще не проблема.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nИтак, после того, как мы закончили писать DSL, у нас появилась возможность сделать этот тест сфокусированным, разделив его на 2 теста:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"cs\"\u003E[Fact]\npublic void WhenAcceptOrder_AddIsCalled()\n{\n  var order = Create.Order\n     .Dated(3.May(2019))\n     .With(Pizza.Pepperoni.CountOf(1).For(500))\n     .With(Pizza.Margarita.CountOf(1).For(650))\n     .Please();\n \n  var service = Create.PizzeriaService.Please();\n\n  service.AcceptOrder(order);\n \n  service.VerifyAddWasCalledWith(order);\n}\n\n[Fact]\npublic void WhenAcceptOrder_ReserveIngredientsIsCalled()\n{\n  var order = Create.Order\n     .Dated(3.May(2019))\n     .With(Pizza.Pepperoni.CountOf(1).For(500))\n     .With(Pizza.Margarita.CountOf(1).For(650))\n     .Please();\n \n  var service = Create.PizzeriaService.Please();\n\n  service.AcceptOrder(order);\n \n  service.VerifyReserveIngredientsWasCalledWith(order);\n}\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nОба теста получились короткими, понятными, воспроизводимыми и сфокусированными.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nОбратите внимание, что теперь названия тестов отражают цель, ради которой они были написаны и теперь любой разработчик, зашедший в мой проект, поймет зачем был написан каждый из тестов и что в этом тесте происходит.\u003Cbr\u002F\u003E\r\n\u003Cblockquote\u003EСфокусированность тестов делает их поддерживаемыми. Хороший тест обязан быть сфокусированным.\u003C\u002Fblockquote\u003E И вот, я уже слышу как вы кричите мне «Юра, ты что охренел? Мы написали миллион кода только для того, чтобы сделать пару тестов красивенькими?». Да, именно так. Пока у нас всего пара тестов, имеет смысл вложиться в DSL и сделать эти тесты понятными. Один раз написав DSL, ты получаешь кучу плюшек:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003EНовые тесты становится писать легко. Не нужно 2 часа настраивать себя на юнит-тестирование, просто берешь и пишешь.\u003C\u002Fli\u003E\r\n\u003Cli\u003EТесты становятся понятными и читаемыми. Любой разработчик взглянув на тест понимает, зачем он был написан и что проверяет.\u003C\u002Fli\u003E\r\n\u003Cli\u003EСнижается порог вхождения в тесты (а может быть и в домен) для новых разработчиков. Например, через ObjectMother можно легко разобраться какие объекты можно создать в домене.\u003C\u002Fli\u003E\r\n\u003Cli\u003EНу и наконец, с тестами просто приятно работать, и, как следствие, код становится более поддерживаемым.\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\nИсходный код примера и тесты доступны \u003Ca href=\"https:\u002F\u002Fgithub.com\u002Fpastushenkoy\u002Fdsl-example\"\u003Eздесь\u003C\u002Fa\u003E.\u003C\u002Fdiv\u003E","tags":[{"titleHtml":"C#"},{"titleHtml":".net"},{"titleHtml":"unit-testing"},{"titleHtml":"юнит-тестирование"},{"titleHtml":"dsl"},{"titleHtml":"dodopizza"},{"titleHtml":"dodopizzaengineering"}],"metadata":{"stylesUrls":[],"scriptUrls":[],"shareImageUrl":"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002F9_\u002Fcb\u002Fxb\u002F9_cbxb0psq2mvlfwzkxf0uvpwru.png","shareImageWidth":1200,"shareImageHeight":630,"vkShareImageUrl":"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002F9_\u002Fcb\u002Fxb\u002F9_cbxb0psq2mvlfwzkxf0uvpwru.png","schemaJsonLd":"{\"@context\":\"http:\\\u002F\\\u002Fschema.org\",\"@type\":\"Article\",\"mainEntityOfPage\":{\"@type\":\"WebPage\",\"@id\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fru\\\u002Fcompany\\\u002Fdododev\\\u002Fblog\\\u002F451598\\\u002F\"},\"headline\":\"Волшебная фея для юнит-тестов: DSL в C#\",\"datePublished\":\"2019-05-13T16:51:27+03:00\",\"dateModified\":\"2019-08-30T14:43:57+03:00\",\"author\":{\"@type\":\"Person\",\"name\":\"Юрий Пастушенко\"},\"publisher\":{\"@type\":\"Organization\",\"name\":\"Habr\",\"logo\":{\"@type\":\"ImageObject\",\"url\":\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fa_\\\u002Flk\\\u002F9m\\\u002Fa_lk9mjkccjox-zccjrpfolmkmq.png\"}},\"description\":\"Как часто бывало так, что написав рабочий юнит-тест, ты смотришь на его код, а он&hellip; плохой? И ты такой думаешь: &laquo;Это же тест, оставлю так&hellip;&raquo;. Нет, %username%, так...\",\"url\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fru\\\u002Fcompany\\\u002Fdododev\\\u002Fblog\\\u002F451598\\\u002F#post-content-body\",\"about\":[\"c_dododev\",\"h_programming\",\"h_net\",\"h_csharp\",\"f_develop\"],\"image\":[\"https:\\\u002F\\\u002Fhabr.com\\\u002Fshare\\\u002Fpublication\\\u002F451598\\\u002Fd46d35e043a82a41d9aeba50d55a3d76\\\u002F\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002F9_\\\u002Fcb\\\u002Fxb\\\u002F9_cbxb0psq2mvlfwzkxf0uvpwru.png\"]}","metaDescription":"Как часто бывало так, что написав рабочий юнит-тест, ты смотришь на его код, а он… плохой? И ты такой думаешь: «Это же тест, оставлю так…». Нет, %username%, так оставлять не надо. Тесты — это значимая...","mainImageUrl":null,"amp":false},"polls":[],"commentsEnabled":true,"rulesRemindEnabled":false,"votesEnabled":true,"status":"published","plannedPublishTime":null,"checked":null,"isEditorial":false}},"articlesIds":{},"isLoading":false,"pagesCount":{},"route":{},"reasonsList":null,"view":"cards","lastVisitedRoute":{},"ssrCommentsArticleIds":[""],"karma":{}},"authorContribution":{"authors":{}},"betaTest":{"currentAnnouncement":null,"announcements":{},"announcementCards":null,"announcementComments":{},"announcementCommentThreads":{},"announcementCommentingStatuses":{},"archivedList":[]},"authorStatistics":{"articleRefs":{},"articleIds":{},"pagesCount":{},"route":{},"viewsCount":[],"maxStatsCount":{}},"career":{"seoLandings":[],"hubs":""},"comments":{"articleComments":{},"searchCommentsResults":null,"previewComment":null,"pagesCount":null,"commentAccess":{},"scrollParents":{},"pageArticleComments":{"lastViewedComment":0,"postId":null,"lastCommentTimestamp":"","moderated":[],"moderatedIds":[],"commentRoute":""}},"companies":{"companyRefs":{"dododev":{"alias":"dododev","imageUrl":"\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fcompany\u002Ff34\u002Fde7\u002F2bf\u002Ff34de72bf69944c17797ca6066ecccd5.png","titleHtml":"Dodo Engineering","descriptionHtml":"О том, как разработчики строят IT в Dodo","relatedData":null,"statistics":{"postsCount":122,"newsCount":1,"vacanciesCount":1,"employeesCount":41,"careerRating":null,"subscribersCount":2868,"rating":181.72,"invest":null},"foundationDate":{"year":"2011","month":"04","day":"23"},"location":{"city":{"id":"447159","title":"Москва"},"region":{"id":"1885","title":"Москва и Московская обл."},"country":{"id":"168","title":"Россия"}},"siteUrl":"https:\u002F\u002Fdodo.dev\u002F","staffNumber":"101–200 человек","registrationDate":"2019-02-14T06:54:29+00:00","representativeUser":{"alias":"Schvepsss","fullname":null},"contacts":[{"title":"Сайт","url":"https:\u002F\u002Fdodo.dev\u002F"},{"title":"Facebook","url":"https:\u002F\u002Ffacebook.com\u002Fdodopizzadev"},{"title":"Twitter","url":"https:\u002F\u002Ftwitter.com\u002Fdodopizzadev"},{"title":"ВКонтакте","url":"https:\u002F\u002Fvk.com\u002Fdododev"},{"title":"Telegram","url":"https:\u002F\u002Ftelegram.me\u002Fdododev"}],"settings":{"analyticsSettings":[{"type":"ym","trackingId":"57121087"}],"branding":{"imageUrl":"\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fbranding\u002F143\u002Fa39\u002F7c7\u002F143a397c7730cd5891424738e008bb7a.png","linkUrl":"https:\u002F\u002Fdodo.dev\u002F","pixelUrl":"https:\u002F\u002Fmc.yandex.ru\u002Fpixel\u002F349169967005105186?rnd=%aw_random%"},"status":"active"},"metadata":{"titleHtml":"Dodo Engineering, Москва - О том, как разработчики строят IT в Dodo с 23 апреля 2011 г.","title":"Dodo Engineering, Москва - О том, как разработчики строят IT в Dodo с 23 апреля 2011 г.","keywords":["Разработка мобильных приложений","Разработка под iOS","Программирование","Карьера в IT-индустрии","Управление персоналом"],"descriptionHtml":"122 статьи от авторов компании Dodo Engineering","description":"122 статьи от авторов компании Dodo Engineering"},"aDeskSettings":null,"careerAlias":"dododev","maxCustomTrackerLinks":3}},"companyIds":{},"companyTopIds":{},"pagesCount":{},"companyProfiles":{},"companiesCategories":[],"companiesCategoriesTotalCount":0,"companiesWidgets":{},"companiesWorkers":{},"companiesFans":{},"route":{},"isLoading":false,"companyWorkersLoading":false,"companyFansLoading":false,"vacancies":{}},"companiesContribution":{"hubs":{},"flows":{},"companyRefs":{}},"companyHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"conversation":{"messages":[],"respondent":null,"isLoadMore":false},"conversations":{"conversations":[],"unreadCount":0,"pagesCount":0,"isLoadMore":false},"desktopState":{"desktopFl":null,"desktopHl":null,"isChecked":false,"isLoginDemanded":false},"dfp":{"slotsDict":{}},"docs":{"menu":{},"articles":{},"mainMenu":[],"loading":{"main":false,"dropdown":false,"article":false}},"feature":{"isProbablyVisible":"true"},"flows":{"flows":[{"alias":"develop","id":1,"route":{"name":"FLOW_PAGE","params":{"flowName":"develop"}}},{"alias":"admin","id":6,"route":{"name":"FLOW_PAGE","params":{"flowName":"admin"}}},{"alias":"design","id":2,"route":{"name":"FLOW_PAGE","params":{"flowName":"design"}}},{"alias":"management","id":3,"route":{"name":"FLOW_PAGE","params":{"flowName":"management"}}},{"alias":"marketing","id":4,"route":{"name":"FLOW_PAGE","params":{"flowName":"marketing"}}},{"alias":"popsci","id":7,"route":{"name":"FLOW_PAGE","params":{"flowName":"popsci"}}}]},"global":{"isPwa":false,"device":"desktop","isHabrCom":true},"hubs":{"hubRefs":{},"hubIds":{},"pagesCount":{},"isLoading":false,"route":{}},"hubsBlock":{"hubRefs":{},"hubIds":{}},"i18n":{"fl":"ru","hl":"ru"},"info":{"infoPage":{},"isLoading":true},"location":{"urlStruct":{"protocol":null,"slashes":null,"auth":null,"host":null,"port":null,"hostname":null,"hash":null,"search":null,"query":{},"pathname":null,"path":null,"href":""},"searchQuery":null},"me":{"user":null,"ppgDemanded":false,"karmaResetInfo":{"canReincarnate":null,"wasReincarnated":null,"currentScore":null},"notes":null},"mostReadingList":{"mostReadingListIds":[],"mostReadingListRefs":null,"promoPost":null},"pinnedPost":{"pinnedPost":null},"ppa":{"articles":{},"card":null,"transactions":null,"totalTransactions":null,"isAccessible":null},"projectsBlocks":{"activeBlocks":{}},"pullRefresh":{"shouldRefresh":false},"sandbox":{"articleIds":[],"articleRefs":{},"pagesCount":null,"route":{},"lastVisitedRoute":{},"isLoading":false},"settingsOther":{"inputs":{"uiLang":{"errors":[],"ref":null,"value":""},"articlesLangEnglish":{"errors":[],"ref":null,"value":false},"articlesLangRussian":{"errors":[],"ref":null,"value":false},"agreement":{"errors":[],"ref":null,"value":false},"email":{"errors":[],"ref":null,"value":true},"digest":{"errors":[],"ref":null,"value":true}}},"similarList":{"similarListIds":[],"similarListRefs":null},"ssr":{"error":null,"isDataLoaded":false,"isDataLoading":false,"isHydrationFailed":false,"isServer":false},"userHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"userInvites":{"availableInvites":0,"usedInvitesIds":[],"usedInvitesRefs":{},"usedInvitesPagesCount":0,"unusedInvitesIds":[],"unusedInvitesRefs":{},"unusedInvitesPagesCount":0},"users":{"authorRefs":{},"authorIds":{},"pagesCount":{},"authorProfiles":{},"userHubs":{},"userInvitations":{},"authorFollowers":{},"authorFollowed":{},"karmaStats":[],"statistics":null,"isLoading":false,"authorFollowersLoading":false,"authorFollowedLoading":false,"userHubsLoading":false,"userInvitationsLoading":false,"route":{}},"viewport":{"prevScrollY":{},"scrollY":0,"width":0},"tracker":{"items":{},"pagesCache":{},"markedViewedSilently":{},"markedRead":{},"unreadCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null},"unviewedCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null}}};(function(){var s;(s=document.currentScript||document.scripts[document.scripts.length-1]).parentNode.removeChild(s);}());</script>
+<script src="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" defer></script><script src="https://assets.habr.com/habr-web/js/app.c0af73e7.js" defer></script>
+
+
+
+    <script>
+      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+        (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+        m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+      })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+    </script>
+  
+  <script type="text/javascript" >
+    (function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+    m[i].l=1*new Date();k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})
+    (window, document, "script", "https://mc.yandex.ru/metrika/tag.js", "ym");
+
+    ym(24049213, "init", {
+      defer:true,
+      trackLinks:true,
+      accurateTrackBounce:true,
+      webvisor:false,
+    });
+  </script>
+  <noscript>
+    <div>
+      <img src="https://mc.yandex.ru/watch/24049213" style="position:absolute; left:-9999px;" alt="" />
+    </div>
+  </noscript>
+  
+    <script type="text/javascript">
+      window.addEventListener('load', function () {
+        setTimeout(() => {
+          const img = new Image();
+          img.src = 'https://vk.com/rtrg?p=VK-RTRG-421343-57vKE';
+        }, 0);
+      });
+    </script>
+  
+</body>
+</html>

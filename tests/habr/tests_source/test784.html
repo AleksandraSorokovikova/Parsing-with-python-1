@@ -1,0 +1,1446 @@
+<!DOCTYPE html>
+<html lang="ru" data-vue-meta="%7B%22lang%22:%7B%22ssr%22:%22ru%22%7D%7D">
+<head >
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
+  <title>Пишем безопасное браузерное расширение / Хабр</title>
+  <style>
+    /* cyrillic-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSxf6TF0.woff2) format('woff2');
+      unicode-range: U+0460-052F, U+1C80-1C88, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+    }
+
+    /* cyrillic */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveQhf6TF0.woff2) format('woff2');
+      unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+    }
+
+    /* latin-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSBf6TF0.woff2) format('woff2');
+      unicode-range: U+0100-024F, U+0259, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20CF, U+2113, U+2C60-2C7F, U+A720-A7FF;
+    }
+
+    /* latin */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveRhf6.woff2) format('woff2');
+      unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+    }
+  </style>
+  <link rel="preload" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" as="script"><link rel="preload" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/app.c0af73e7.js" as="script">
+  <link rel="stylesheet" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css"><link rel="stylesheet" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css">
+  <script>window.i18nFetch = new Promise((res, rej) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open('GET', '/js/i18n/ru-compiled.85eb77f0b17c8235e7b64b9f81ea5ec2.json');
+          xhr.responseType = 'json';
+          xhr.onload = function(e) {
+            if (this.status === 200) {
+              res({ru: xhr.response});
+            } else {
+              rej(e);
+            }
+          };
+          xhr.send();
+        });</script>
+  
+  <script data-vue-meta="ssr" src="/js/ads.js" onload="window['zhY4i4nJ9K'] = true" data-vmid="checkad"></script><script data-vue-meta="ssr" type="application/ld+json" data-vmid="ldjson-schema">{"@context":"http:\/\/schema.org","@type":"Article","mainEntityOfPage":{"@type":"WebPage","@id":"https:\/\/habr.com\/ru\/company\/waves\/blog\/451796\/"},"headline":"Пишем безопасное браузерное расширение","datePublished":"2019-05-14T16:32:14+03:00","dateModified":"2019-05-14T18:40:30+03:00","author":{"@type":"Person","name":"Inal Kardanov"},"publisher":{"@type":"Organization","name":"Habr","logo":{"@type":"ImageObject","url":"https:\/\/habrastorage.org\/webt\/a_\/lk\/9m\/a_lk9mjkccjox-zccjrpfolmkmq.png"}},"description":"В отличие от распространенной &quot;клиент-серверной&quot; архитектуры, для децентрализованных приложений характерно:  Отсутствие необходимости хранить базу данных с логи...","url":"https:\/\/habr.com\/ru\/company\/waves\/blog\/451796\/#post-content-body","about":["c_waves","h_p2p","h_javascript","h_browser_extensions","h_browsers","f_develop","f_admin"],"image":["https:\/\/habrastorage.org\/webt\/nt\/7v\/c8\/nt7vc8scuypj0o2ngtj1n6fqjlw.png","https:\/\/habrastorage.org\/webt\/fa\/b3\/gx\/fab3gxq823kwybj9yk_kv8wlogy.png","https:\/\/habrastorage.org\/webt\/ws\/ng\/qz\/wsngqza3qdcjtxycbcwk4awpfqm.png","https:\/\/habrastorage.org\/webt\/m3\/pr\/9d\/m3pr9dww991nvn9jsfwj8mvndqq.png","https:\/\/habrastorage.org\/webt\/3t\/gn\/6v\/3tgn6vao3ilxdwyz9zxraegz9vo.png","https:\/\/habrastorage.org\/webt\/cy\/r_\/pm\/cyr_pmgm-u5hes5lefaf85gk91m.png","https:\/\/habrastorage.org\/webt\/3p\/fd\/tv\/3pfdtv17ejnjzh94uajezgz0lce.png","https:\/\/habrastorage.org\/webt\/g7\/qq\/og\/g7qqogo60hrjqm5pre7f5miehs0.png","https:\/\/habrastorage.org\/webt\/n7\/xr\/eb\/n7xrebxybxbquxx8z8uozgwpfqm.png","https:\/\/habrastorage.org\/webt\/fr\/dh\/6t\/frdh6tc_bt_v3zywmgjrnptngcw.png","https:\/\/habrastorage.org\/webt\/jt\/bp\/nu\/jtbpnu9tbhryijukstktnti3wbu.png","https:\/\/habrastorage.org\/webt\/yo\/cz\/9b\/yocz9bncoevwxrict_3dl_vphek.png","https:\/\/habrastorage.org\/webt\/ee\/8e\/uj\/ee8eujkmg5iwgfholkyxneqsim4.png"]}</script>
+  <script src="//www.googletagservices.com/tag/js/gpt.js" async></script>
+  <style>.grecaptcha-badge{visibility: hidden;}</style>
+  <meta name="habr-version" content="2.49.0">
+  
+  <meta data-vue-meta="ssr" property="fb:app_id" content="444736788986613"><meta data-vue-meta="ssr" property="fb:pages" content="472597926099084"><meta data-vue-meta="ssr" name="twitter:card" content="summary_large_image"><meta data-vue-meta="ssr" name="twitter:site" content="@habr_eng"><meta data-vue-meta="ssr" property="og:title" content="Пишем безопасное браузерное расширение" data-vmid="og:title"><meta data-vue-meta="ssr" name="twitter:title" content="Пишем безопасное браузерное расширение" data-vmid="twitter:title"><meta data-vue-meta="ssr" name="aiturec:title" content="Пишем безопасное браузерное расширение" data-vmid="aiturec:title"><meta data-vue-meta="ssr" name="description" content="В отличие от распространенной &amp;quot;клиент-серверной&amp;quot; архитектуры, для децентрализованных приложений характерно:
+
+Отсутствие необходимости хранить базу данных с логинами и паролями пользователя...." data-vmid="description"><meta data-vue-meta="ssr" itemprop="description" content="В отличие от распространенной &amp;quot;клиент-серверной&amp;quot; архитектуры, для децентрализованных приложений характерно:
+
+Отсутствие необходимости хранить базу данных с логинами и паролями пользователя...." data-vmid="description:itemprop"><meta data-vue-meta="ssr" property="og:description" content="В отличие от распространенной &amp;quot;клиент-серверной&amp;quot; архитектуры, для децентрализованных приложений характерно:
+
+Отсутствие необходимости хранить базу данных с логинами и паролями пользователя...." data-vmid="og:description"><meta data-vue-meta="ssr" name="twitter:description" content="В отличие от распространенной &amp;quot;клиент-серверной&amp;quot; архитектуры, для децентрализованных приложений характерно:
+
+Отсутствие необходимости хранить базу данных с логинами и паролями пользователя...." data-vmid="twitter:description"><meta data-vue-meta="ssr" property="aiturec:description" content="В отличие от распространенной &amp;quot;клиент-серверной&amp;quot; архитектуры, для децентрализованных приложений характерно:
+
+Отсутствие необходимости хранить базу данных с логинами и паролями пользователя...." data-vmid="aiturec:description"><meta data-vue-meta="ssr" itemprop="image" content="https://habr.com/share/publication/451796/60ab6810a07099a470ab27a938ac3dcf/" data-vmid="image:itemprop"><meta data-vue-meta="ssr" property="og:image" content="https://habr.com/share/publication/451796/60ab6810a07099a470ab27a938ac3dcf/" data-vmid="og:image"><meta data-vue-meta="ssr" property="aiturec:image" content="https://habr.com/share/publication/451796/60ab6810a07099a470ab27a938ac3dcf/" data-vmid="aiturec:image"><meta data-vue-meta="ssr" name="twitter:image" content="https://habr.com/share/publication/451796/60ab6810a07099a470ab27a938ac3dcf/" data-vmid="twitter:image"><meta data-vue-meta="ssr" property="vk:image" content="https://habr.com/share/publication/451796/60ab6810a07099a470ab27a938ac3dcf/" data-vmid="vk:image"><meta data-vue-meta="ssr" property="aiturec:item_id" content="451796" data-vmid="aiturec:item_id"><meta data-vue-meta="ssr" property="aiturec:datetime" content="2019-05-14T13:32:14.000Z" data-vmid="aiturec:datetime"><meta data-vue-meta="ssr" property="og:type" content="article" data-vmid="og:type"><meta data-vue-meta="ssr" property="og:locale" content="ru_RU" data-vmid="og:locale"><meta data-vue-meta="ssr" property="og:image:width" content="1200" data-vmid="og:image:width"><meta data-vue-meta="ssr" property="og:image:height" content="630" data-vmid="og:image:height">
+  <link data-vue-meta="ssr" href="https://habr.com/ru/rss/post/451796/?fl=ru" type="application/rss+xml" title="" rel="alternate" name="rss"><link data-vue-meta="ssr" href="https://habr.com/ru/company/waves/blog/451796/" rel="canonical" data-vmid="canonical"><link data-vue-meta="ssr" data-vmid="hreflang"><link data-vue-meta="ssr" image_src="image" href="https://habr.com/share/publication/451796/60ab6810a07099a470ab27a938ac3dcf/" data-vmid="image:href">
+  <meta name="apple-mobile-web-app-status-bar-style" content="#303b44">
+  <meta name="msapplication-TileColor" content="#629FBC">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="16x16"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-16.png"
+  >
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="32x32"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-32.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="76x76"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-76.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="120x120"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="152x152"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-152.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="180x180"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-180.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="256x256"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-256.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1136x640.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2436x1125.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1792x828.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_828x1792.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1334x750.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2208x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1125x2436.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2208.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2732x2048.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2688x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2224x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_750x1334.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x2732.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2388x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2224.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_640x1136.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2388.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x1536.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1536x2048.png"
+  >
+  <link
+    rel="mask-icon"
+    color="#77a2b6"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.svg"
+  >
+  <link
+    crossorigin="use-credentials"
+    href="/manifest.webmanifest"
+    rel="manifest"
+  >
+</head>
+<body>
+
+
+<div id="app" data-server-rendered="true" data-async-called="true"><div class="tm-layout__wrapper"><!----> <div></div> <!----> <header class="tm-header"><div class="tm-page-width"><div class="tm-header__container"><!----> <span class="tm-header__logo-wrap"><a href="/ru/" class="tm-header__logo tm-header__logo_ru"><svg height="16" width="16" class="tm-svg-img tm-header__icon"><title>Хабр</title> <use xlink:href="/img/habr-logo-ru.svg#logo"></use></svg></a> <span class="tm-header__beta-sign" style="display:none;">β</span></span> <div class="tm-dropdown tm-header__projects"><div class="tm-dropdown__head"><button class="tm-header__dropdown-toggle"><svg height="16" width="16" class="tm-svg-img tm-header__icon tm-header__icon_dropdown"><title>Открыть список</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#arrow-down"></use></svg></button></div> <!----></div> <a href="/ru/sandbox/start/" class="tm-header__become-author-btn">
+            Как стать автором
+          </a> <div class="tm-feature tm-header__feature tm-feature_variant-inline"><!----></div> <!----> <!----></div></div></header> <div class="tm-layout"><div class="tm-page-progress-bar"></div> <div data-menu-sticky="true" class="tm-base-layout__header tm-base-layout__header_is-sticky"><div class="tm-page-width"><div class="tm-base-layout__header-wrapper"><div class="tm-main-menu"><div class="tm-main-menu__section"><nav class="tm-main-menu__section-content"><!----> <a href="/ru/all/" class="tm-main-menu__item">
+        Все потоки
+      </a> <a href="/ru/flows/develop/" class="tm-main-menu__item">
+          Разработка
+        </a><a href="/ru/flows/admin/" class="tm-main-menu__item">
+          Администрирование
+        </a><a href="/ru/flows/design/" class="tm-main-menu__item">
+          Дизайн
+        </a><a href="/ru/flows/management/" class="tm-main-menu__item">
+          Менеджмент
+        </a><a href="/ru/flows/marketing/" class="tm-main-menu__item">
+          Маркетинг
+        </a><a href="/ru/flows/popsci/" class="tm-main-menu__item">
+          Научпоп
+        </a></nav></div></div> <div class="tm-header-user-menu tm-base-layout__user-menu"><a href="/ru/search/" class="tm-header-user-menu__item tm-header-user-menu__search"><svg height="24" width="24" class="tm-svg-img tm-header-user-menu__icon tm-header-user-menu__icon_search tm-header-user-menu__icon_dark"><title>Поиск</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#search"></use></svg></a> <!----> <!----> <!----> <div class="tm-header-user-menu__item tm-header-user-menu__user_desktop"><div class="tm-dropdown"><div class="tm-dropdown__head"><svg height="24" width="24" data-test-id="menu-toggle-guest" class="tm-svg-img tm-header-user-menu__icon"><title>Профиль</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#header-user"></use></svg> <!----></div> <!----></div> <!----></div> <!----></div></div></div></div> <!----> <div class="tm-page-width"></div> <main class="tm-layout__container"><div hl="ru" companyName="waves" data-async-called="true" class="tm-page"><div class="tm-page-width"><div class="tm-page__header"><!----></div> <div class="tm-page__wrapper"><div class="tm-page__main tm-page__main_has-sidebar"><div class="pull-down"><div class="pull-down__header" style="height:0px;"><div class="pull-down__content" style="bottom:10px;"><svg height="24" width="24" class="tm-svg-img pull-down__arrow"><title>Обновить</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#pull-arrow"></use></svg></div></div> <div class="tm-article-presenter"><div class="tm-company-card tm-company-article__company-card"><div class="tm-company-card__info"><div class="tm-company-card__header"><a href="/ru/company/waves/profile/" class="tm-company-card__avatar"><div class="tm-entity-image"><img alt="" height="48" src="//habrastorage.org/getpro/habr/company/4a8/9d5/d98/4a89d5d98e2b907119336fb17a7f11dd.png" width="48" class="tm-entity-image__pic"></div></a> <!----> <div class="tm-rating tm-company-card__rating"><div class="tm-rating__header"> <div class="tm-rating__counter">0</div></div> <div class="tm-rating__text">
+    Рейтинг
+  </div></div></div> <div class="tm-company-card__info"><a href="/ru/company/waves/profile/" class="tm-company-card__name">
+        Waves
+      </a> <div class="tm-company-card__description"></div></div></div> <div class="tm-company-card__buttons"><!----> <!----></div></div> <div class="tm-article-presenter__body"><div class="tm-misprint-area"><div class="tm-misprint-area__wrapper"><article class="tm-article-presenter__content tm-article-presenter__content_narrow"><div class="tm-article-presenter__header"> <div class="tm-article-snippet tm-article-presenter__snippet"><div class="tm-article-snippet__meta-container"><div class="tm-article-snippet__meta"><span class="tm-user-info tm-article-snippet__author"><a href="/ru/users/ikardanoff/" title="ikardanoff" class="tm-user-info__userpic"><div class="tm-entity-image"><img alt="" height="24" loading="lazy" src="//habrastorage.org/r/w32/getpro/habr/avatars/483/fd4/988/483fd49880e437ba7ff87088ccfe9259.jpg" width="24" class="tm-entity-image__pic"></div></a> <span class="tm-user-info__user"><a href="/ru/users/ikardanoff/" class="tm-user-info__username">
+      ikardanoff
+    </a> </span></span> <span class="tm-article-snippet__datetime-published"><time datetime="2019-05-14T13:32:14.000Z" title="2019-05-14, 16:32">14  мая  2019 в 16:32</time></span></div> <!----></div> <h1 lang="ru" class="tm-article-snippet__title tm-article-snippet__title_h1"><span>Пишем безопасное браузерное расширение</span></h1> <div class="tm-article-snippet__hubs"><span class="tm-article-snippet__hubs-item"><a href="/ru/company/waves/blog/" class="tm-article-snippet__hubs-item-link router-link-active"><span>Блог компании Waves</span> <!----></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/p2p/" class="tm-article-snippet__hubs-item-link"><span>Децентрализованные сети</span> <!----></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/javascript/" class="tm-article-snippet__hubs-item-link"><span>JavaScript</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/browser_extensions/" class="tm-article-snippet__hubs-item-link"><span>Расширения для браузеров</span> <!----></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/browsers/" class="tm-article-snippet__hubs-item-link"><span>Браузеры</span> <!----></a></span></div> <div class="tm-article-snippet__labels"><div class="tm-article-snippet__label"><span>
+        Tutorial
+      </span></div></div> <!----> <!----></div></div> <!----> <div data-gallery-root="" lang="ru" class="tm-article-body"><div id="post-content-body" class="article-formatted-body article-formatted-body_version-1"><div xmlns="http://www.w3.org/1999/xhtml"><p><img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/nt/7v/c8/nt7vc8scuypj0o2ngtj1n6fqjlw.png"/></p><br/>
+<p>В отличие от распространенной "клиент-серверной" архитектуры, для децентрализованных приложений характерно:</p><br/>
+<ul>
+<li>Отсутствие необходимости хранить базу данных с логинами и паролями пользователя. Информация для доступа хранится исключительно у самих пользователей, а подтверждение их достоверности происходит на уровне протокола.</li>
+<li>Отсутствие необходимости использовать сервер. Логика приложения может выполняться в блокчейн-сети, где возможно и хранение необходимого количества данных.</li>
+</ul><br/>
+<p>Существует 2 относительно безопасных хранилища для ключей пользователей — хардверные кошельки и браузерные расширения. Хардверные кошельки в большинстве своем максимально безопасны, однако сложны в использовании и далеко не бесплатны, а вот браузерные расширения являются идеальным сочетанием безопасности и простоты в использовании, а еще могут быть совершенно бесплатны для конечных пользователей. </p><br/>
+<p>Учитывая все это, мы захотели сделать максимально безопасное расширение, которое упрощает разработку децентрализованных приложений, предоставляя простой API для работы с транзакциями и подписями.<br/>
+Об этом опыте мы вам и расскажем ниже. </p><br/>
+<p><strong>В статье будет пошаговая инструкция как написать браузерное расширение, с примерами кода и скриншотами.</strong> Весь код вы можете найти в <a href="https://github.com/siemarell/extension-demo">репозитории</a>. Каждый коммит логически соответствует разделу данной статьи. </p><a name="habracut"></a><br/>
+<h2 id="kratkaya-istoriya-brauzernyh-rasshireniy">Краткая история браузерных расширений</h2><br/>
+<p>Браузерные расширения существуют достаточно давно. В Internet Explorer они появились еще в 1999-м году, в Firefox — в 2004-м. Тем не менее, очень долго не было единого стандарта для расширений.</p><br/>
+<p>Можно сказать, что он появился вместе с расширениями в четвертой версии Google Chrome. Конечно, никакой спецификации тогда не было, но именно API Chrome стал ее основой: завоевав большую часть рынка браузеров и имея встроенный магазин приложений, Chrome фактически задал стандарт для браузерных расширений.</p><br/>
+<p>У Mozilla был свой стандарт, но, видя популярность расширений для Chrome, компания решила сделать совместимый API. В 2015 году по инициативе Mozilla в рамках World Wide Web Consortium (W3C) была создана специальная группа для работы над спецификациями кроссбраузерных расширений.</p><br/>
+<p>За основу был взят уже существующий API расширений для Сhrome. Работа велась при поддержке Microsoft (Google в разработке стандарта участвовать отказался), и в результате появился черновик <a href="https://browserext.github.io/browserext/">спецификации</a>.</p><br/>
+<p>Формально спецификацию поддерживают Edge, Firefox и Opera (заметьте, что в этом списке отсутствует Chrome). Но на самом деле стандарт во многом совместим и с Chrome, так как фактически написан на основе его расширений. Подробнее о WebExtensions API можно прочитать <a href="https://wiki.mozilla.org/WebExtensions/FAQ#Is_the_WebExtensions_API_a_Web_standard.3F">здесь</a>.</p><br/>
+<h2 id="struktura-rasshireniya">Структура расширения</h2><br/>
+<p>Единственный файл, который обязательно нужен для расширения — манифест (manifest.json). Он же является “точкой входа” в расширение.</p><br/>
+<h3 id="manifest">Манифест</h3><br/>
+<p>По спецификации файл манифеста является валидным JSON файлом. Полное описание ключей манифеста с информацией о том, какие ключи в поддерживается в каком браузере, можно посмотреть <a href="https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/manifest.json">здесь</a>.</p><br/>
+<p>Ключи, которых нет в спецификации, “могут” быть проигнорированы (и Chrome, и Firefox пишут об ошибках, но расширения продолжают работать).</p><br/>
+<p>А я бы хотел обратить внимание на некоторые моменты.</p><br/>
+<ol>
+<li><strong>background</strong> — объект, который включает в себя следующие поля:<br/>
+<ol>
+<li><strong>scripts</strong> — массив скриптов, которые будут выполнены в background-контексте (поговорим об этом чуть позже);</li>
+<li><strong>page</strong> — вместо скриптов, которые будут выполнятся в пустой странице, можно задать html с контентом. В этом случае поле script будет проигнорировано, а скрипты нужно будет вставить в страницу с контентом;</li>
+<li><strong>persistent</strong> — бинарный флаг, eсли не указан, то браузер будет "убивать" background-процесс, когда посчитает, что он ничего не делает, и перезапускать при необходимости. В противном случае страница будет выгружена только при закрытии браузера. Не поддерживается в Firefox.</li>
+</ol></li>
+<li><strong>content_scripts</strong> — массив объектов, позволяющий загружать разные скрипты к разным веб страницам. Каждый объект содержит следующие важные поля:<br/>
+<ol>
+<li><strong>matches</strong> — <a href="https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/manifest.json/content_scripts#Matching_URL_patterns">паттерн url</a>, по которому определяется, будет включаться конкретный content script или нет.</li>
+<li><strong>js</strong> — список скриптов которые будут загружены в данный матч;</li>
+<li><strong>exclude_matches</strong> — исключает из поля <code>match</code> URL, которые удовлетворяют этому полю.</li>
+</ol></li>
+<li><strong>page_action</strong> — фактически является объектом, который отвечает за иконку, которая отображается рядом с адресной строкой в браузере, и взаимодействие с ней. Позволяет так же показывать popup окно, которое задается с помощью своих HTML, CSS и JS.<br/>
+<ol>
+<li><strong>default_popup</strong> — путь до HTML файла с popup-интерфейсом, может содержать CSS и JS.</li>
+</ol></li>
+<li><strong>permissions</strong> — массив для управления правами расширения. Существует 3 типа прав, которые подробно описаны <a href="https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/manifest.json/permissions#API_permissions">тут</a></li>
+<li><strong>web_accessible_resources</strong> — ресурсы расширения, которые может запрашивать веб страница, например, изображения, файлы JS, CSS, HTML. </li>
+<li><strong>externally_connectable</strong> — здесь можно явно указать ID других расширений и домены веб-страниц, с которых можно подключаться. Домен может быть второго уровня и выше. Не работает в Firefox.</li>
+</ol><br/>
+<h2 id="kontekst-vypolneniya">Контекст выполнения</h2><br/>
+<p>У расширения есть три контекста исполнения кода, то есть, приложение состоит из трех частей с разным уровнем доступа к API браузера.</p><br/>
+<h3 id="extension-context">Extension context</h3><br/>
+<p>Здесь доступна большая часть API. В этом контексте "живут":</p><br/>
+<ol>
+<li><strong>Background page</strong> — “backend” часть расширения. Файл указывается в манифесте по ключу “background”.</li>
+<li><strong>Popup page</strong> — popup страница, которая появляется при нажатии на иконку расширения. В манифесте <code>browser_action</code> -> <code>default_popup</code>.</li>
+<li><strong>Custom page</strong> — страница расширения, "живущая" в отдельной вкладке вида <code>chrome-extension://&lt;id_расширения>/customPage.html</code>.</li>
+</ol><br/>
+<p>Этот контекст существует независимо от окон и вкладок браузера. <strong>Background page</strong> существует в единственном экземпляре и работает всегда (исключение — event page, когда background-скрипт запускается по событию и "умирает" после его выполнения). <strong>Popup page</strong> существует, когда открыто окно popup, а <strong>Custom page</strong> — пока открыта вкладка с ней. Доступа к другим вкладкам и их содержимому из этого контекста нет.</p><br/>
+<h3 id="content-script-context">Content script context</h3><br/>
+<p>Файл контент-скрипта запускается вместе с каждой вкладкой браузера. У него есть доступ к части API расширения и к DOM-дереву веб-страницы. Именно контент-скрипты отвечают за взаимодействие со страницей. Расширения, манипулирующие DOM-деревом, делают это в контент-скриптах – например, блокировщики рекламы или переводчики. Также контент-скрипт может общаться со страницей через стандартный <code>postMessage</code>.</p><br/>
+<h3 id="web-page-context">Web page context</h3><br/>
+<p>Это собственно сама веб-страница. К расширению она не имеет никакого отношения и доступа туда не имеет, кроме случаев, когда в манифесте явно не указан домен этой страницы (об этом — ниже).</p><br/>
+<h2 id="obmen-soobscheniyami">Обмен сообщениями</h2><br/>
+<p>Разные части приложения должны обмениваться сообщениями между собой. Для этого существует API <code>runtime.sendMessage</code> для отправки сообщения <code>background</code> и <code>tabs.sendMessage</code> для отправки сообщения странице (контент-скрипту, popup'у или веб странице при наличии <code>externally_connectable</code>). Ниже приведен пример при обращении к API Chrome.</p><br/>
+<pre><code class="javascript">// Сообщением может быть любой JSON сериализуемый объект
+const msg = {a: 'foo', b: 'bar'};
+
+// extensionId можно не указывать, если мы хотим послать сообщение 'своему' расширению (из ui или контент скрипта)
+chrome.runtime.sendMessage(extensionId, msg);
+
+// Так выглядит обработчик
+chrome.runtime.onMessage.addListener((msg) => console.log(msg))
+
+// Можно слать сообщения вкладкам зная их id
+chrome.tabs.sendMessage(tabId, msg)
+
+// Получить к вкладкам и их id можно, например, вот так
+chrome.tabs.query(
+    {currentWindow: true, active : true},
+    function(tabArray){
+      tabArray.forEach(tab => console.log(tab.id))
+    }
+)</code></pre><br/>
+<p>Для полноценного общения можно создавать соединения через <code>runtime.connect</code>. В ответ мы получим <code>runtime.Port</code>, в который, пока он открыт, можно отправлять любое количество сообщений. На стороне клиента, например, <code>contentscript</code>, это выглядит так:</p><br/>
+<pre><code class="javascript">// Опять же extensionId можно не указывать при коммуникации внутри одного расширения. Подключение можно именовать
+const port = chrome.runtime.connect({name: "knockknock"});
+port.postMessage({joke: "Knock knock"});
+port.onMessage.addListener(function(msg) {
+    if (msg.question === "Who's there?")
+        port.postMessage({answer: "Madame"});
+    else if (msg.question === "Madame who?")
+        port.postMessage({answer: "Madame... Bovary"});
+</code></pre><br/>
+<p>Сервер или background:</p><br/>
+<pre><code class="javascript">// Обработчик для подключения 'своих' вкладок. Контент скриптов, popup или страниц расширения
+chrome.runtime.onConnect.addListener(function(port) {
+    console.assert(port.name === "knockknock");
+    port.onMessage.addListener(function(msg) {
+        if (msg.joke === "Knock knock")
+            port.postMessage({question: "Who's there?"});
+        else if (msg.answer === "Madame")
+            port.postMessage({question: "Madame who?"});
+        else if (msg.answer === "Madame... Bovary")
+            port.postMessage({question: "I don't get it."});
+    });
+});
+
+// Обработчик для подключения внешних вкладок. Других расширений или веб страниц, которым разрешен доступ в манифесте
+chrome.runtime.onConnectExternal.addListener(function(port) {
+    ...
+});</code></pre><br/>
+<p>Также есть событие <code>onDisconnect</code> и метод <code>disconnect</code>.</p><br/>
+<h2 id="shema-prilozheniya">Схема приложения</h2><br/>
+<p>Давайте сделаем браузерное расширение, которое хранит приватные ключи, предоставляет доступ к публичной информации (адрес, публичный ключ общается со страницей и позволяет сторонним приложениям запросить подпись транзакций.</p><br/>
+<h2 id="razrabotka-prilozheniya">Разработка приложения</h2><br/>
+<p>Наше приложение должно как взаимодействовать с пользователем, так и предоставлять странице API для вызова методов (например, для подписи транзакций). Обойтись одним лишь <code>contentscript</code> не получится, так как у него есть доступ только к DOM, но не к JS страницы. Подключаться через <code>runtime.connect</code> мы не можем, потому что API нужен на всех доменах, а в манифесте можно указывать только конкретные. В итоге схема будет выглядеть так:</p><br/>
+<p><img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/fa/b3/gx/fab3gxq823kwybj9yk_kv8wlogy.png"/></p><br/>
+<p>Будет еще один скрипт — <code>inpage</code>, который мы будем инжектить в страницу. Он будет выполняться в ее контексте и предоставлять API для работы с расширением.</p><br/>
+<h3 id="nachalo">Начало</h3><br/>
+<p>Весь код браузерного расширения доступен на <a href="https://github.com/siemarell/extension-demo/tree/transactions">GitHub</a>. В процессе описания будут ссылки на коммиты.</p><br/>
+<p>Начнем с манифеста:</p><br/>
+<pre><code class="javascript">{
+  // Имя и описание, версия. Все это будет видно в браузере в chrome://extensions/?id=&lt;id расширения>
+  "name": "Signer",
+  "description": "Extension demo",
+  "version": "0.0.1",
+  "manifest_version": 2,
+
+  // Скрипты, которые будут исполнятся в background, их может быть несколько
+  "background": {
+    "scripts": ["background.js"]
+  },
+
+  // Какой html использовать для popup
+  "browser_action": {
+    "default_title": "My Extension",
+    "default_popup": "popup.html"
+  },
+
+  // Контент скрипты.
+  // У нас один объект: для всех url начинающихся с http или https мы запускаем
+  // contenscript context со скриптом contentscript.js. Запускать сразу по получении документа для всех фреймов
+  "content_scripts": [
+    {
+      "matches": [
+        "http://*/*",
+        "https://*/*"
+      ],
+      "js": [
+        "contentscript.js"
+      ],
+      "run_at": "document_start",
+      "all_frames": true
+    }
+  ],
+  // Разрешен доступ к localStorage и idle api
+  "permissions": [
+    "storage",
+    // "unlimitedStorage",
+    //"clipboardWrite",
+    "idle"
+    //"activeTab",
+    //"webRequest",
+    //"notifications",
+    //"tabs"
+  ],
+  // Здесь указываются ресурсы, к которым будет иметь доступ веб страница. Тоесть их можно будет запрашивать fetche'м или просто xhr
+  "web_accessible_resources": ["inpage.js"]
+}</code></pre><br/>
+<p>Создаем пустые background.js, popup.js, inpage.js и contentscript.js. Добавляем popup.html — и наше приложение уже можно загрузить в Google Chrome и убедиться, что оно работает.</p><br/>
+<p>Чтобы убедиться в этом, можно взять код <a href="https://github.com/siemarell/extension-demo/tree/manifest-app-template">отсюда</a>. Кроме того, что мы сделали, по ссылке настроена сборка проекта с помощью webpack. Чтобы добавить приложение в браузер, в chrome://extensions нужно выбрать load unpacked и папку с соответствующим расширением — в нашем случае dist.</p><br/>
+<p><img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/ws/ng/qz/wsngqza3qdcjtxycbcwk4awpfqm.png"/></p><br/>
+<p>Теперь наше расширение установлено и работает. Запуститьинструменты для разработчиков для разных контекстов можно следующим образом:</p><br/>
+<p>popup -></p><br/>
+<p><img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/m3/pr/9d/m3pr9dww991nvn9jsfwj8mvndqq.png"/> </p><br/>
+<p>Доступ к консоли контент-скрипта осуществляется через консоль самой страницы, на которой он запущен.<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/3t/gn/6v/3tgn6vao3ilxdwyz9zxraegz9vo.png"/></p><br/>
+<p><strong>Обмен сообщениями</strong></p><br/>
+<p>Итак, нам необходимо установить два канала связи: inpage &lt;-> background и popup &lt;-> background. Можно, конечно, просто отправлять сообщения в порт и изобрести свой протокол, но мне больше нравится подход, который я подсмотрел в проекте с открытым кодом metamask.</p><br/>
+<p>Это браузерное расширение для работы с сетью Ethereum. В нем разные части приложения общаются через RPC при помощи библиотеки dnode. Она позволяет достаточно быстро и удобно организовать обмен, если в качестве транспорта ей предоставить nodejs stream (имеется в виду объект, реализующий тот же интерфейс): </p><br/>
+<pre><code class="javascript">import Dnode from "dnode/browser";
+
+// В этом примере условимся что клиент удаленно вызывает функции на сервере, хотя ничего нам не мешает сделать это двунаправленным
+
+// Cервер
+// API, которое мы хотим предоставить
+const dnode = Dnode({
+    hello: (cb) => cb(null, "world")
+})
+// Транспорт, поверх которого будет работать dnode. Любой nodejs стрим. В браузере есть бибилиотека 'readable-stream'
+connectionStream.pipe(dnode).pipe(connectionStream)
+
+// Клиент
+const dnodeClient = Dnode() // Вызов без агрумента значит что мы не предоставляем API на другой стороне
+
+// Выведет в консоль world
+dnodeClient.once('remote', remote => {
+    remote.hello(((err, value) => console.log(value)))
+})</code></pre><br/>
+<p>Теперь мы создадим класс приложения. Оно будет создавать объекты API для popup и веб-страницы, а также создавать dnode для них:</p><br/>
+<pre><code class="javascript">import Dnode from 'dnode/browser';
+
+export class SignerApp {
+
+    // Возвращает объект API для ui
+    popupApi(){
+        return {
+            hello: cb => cb(null, 'world')
+        }
+    }
+
+    // Возвращает объет API для страницы
+    pageApi(){
+        return {
+            hello: cb => cb(null, 'world')
+        }
+    }
+
+    // Подключает popup ui
+    connectPopup(connectionStream){
+        const api = this.popupApi();
+        const dnode = Dnode(api);
+
+        connectionStream.pipe(dnode).pipe(connectionStream);
+
+        dnode.on('remote', (remote) => {
+            console.log(remote)
+        })
+    }
+
+    // Подключает страницу
+    connectPage(connectionStream, origin){
+        const api = this.popupApi();
+        const dnode = Dnode(api);
+
+        connectionStream.pipe(dnode).pipe(connectionStream);
+
+        dnode.on('remote', (remote) => {
+            console.log(origin);
+            console.log(remote)
+        })
+    }
+}</code></pre><br/>
+<p>Здесь и далее вместо глобального объекта Chrome мы используем extentionApi, который обращается к Chrome в браузере от Google и к browser в других. Делается это для кроссбраузерности, но в рамках данной статьи можно было бы использовать и просто ‘chrome.runtime.connect’.</p><br/>
+<p>Создадим инстанс приложения в background скрипте:</p><br/>
+<pre><code class="javascript">import {extensionApi} from "./utils/extensionApi";
+import {PortStream} from "./utils/PortStream";
+import {SignerApp} from "./SignerApp";
+
+const app = new SignerApp();
+
+// onConnect срабатывает при подключении 'процессов' (contentscript, popup, или страница расширения)
+extensionApi.runtime.onConnect.addListener(connectRemote);
+
+function connectRemote(remotePort) {
+    const processName = remotePort.name;
+    const portStream = new PortStream(remotePort);
+    // При установке соединения можно указывать имя, по этому имени мы и оппределяем кто к нам подлючился, контентскрипт или ui
+    if (processName === 'contentscript'){
+        const origin = remotePort.sender.url
+        app.connectPage(portStream, origin)
+    }else{
+        app.connectPopup(portStream)
+    }
+}</code></pre><br/>
+<p>Так как dnode работает со стримами, а мы получаем порт, то необходим класс-адаптер. Он сделан при помощи библиотеки readable-stream, которая реализует nodejs-стримы в браузере:</p><br/>
+<pre><code class="javascript">import {Duplex} from 'readable-stream';
+
+export class PortStream extends Duplex{
+    constructor(port){
+        super({objectMode: true});
+        this._port = port;
+        port.onMessage.addListener(this._onMessage.bind(this));
+        port.onDisconnect.addListener(this._onDisconnect.bind(this))
+    }
+
+    _onMessage(msg) {
+        if (Buffer.isBuffer(msg)) {
+            delete msg._isBuffer;
+            const data = new Buffer(msg);
+            this.push(data)
+        } else {
+            this.push(msg)
+        }
+    }
+
+    _onDisconnect() {
+        this.destroy()
+    }
+
+    _read(){}
+
+    _write(msg, encoding, cb) {
+        try {
+            if (Buffer.isBuffer(msg)) {
+                const data = msg.toJSON();
+                data._isBuffer = true;
+                this._port.postMessage(data)
+            } else {
+                this._port.postMessage(msg)
+            }
+        } catch (err) {
+            return cb(new Error('PortStream - disconnected'))
+        }
+        cb()
+    }
+}</code></pre><br/>
+<p>Теперь создаем подключение в UI:</p><br/>
+<pre><code class="javascript">import {extensionApi} from "./utils/extensionApi";
+import {PortStream} from "./utils/PortStream";
+import Dnode from 'dnode/browser';
+
+const DEV_MODE = process.env.NODE_ENV !== 'production';
+
+setupUi().catch(console.error);
+
+async function setupUi(){
+    // Также, как и в классе приложения создаем порт, оборачиваем в stream, делаем  dnode
+    const backgroundPort = extensionApi.runtime.connect({name: 'popup'});
+    const connectionStream = new PortStream(backgroundPort);
+
+    const dnode = Dnode();
+
+    connectionStream.pipe(dnode).pipe(connectionStream);
+
+    const background = await new Promise(resolve => {
+        dnode.once('remote', api => {
+            resolve(api)
+        })
+    });
+
+    // Делаем объект API доступным из консоли
+    if (DEV_MODE){
+        global.background = background;
+    }
+}</code></pre><br/>
+<p>Затем мы создаем подключение в content script:</p><br/>
+<pre><code class="javascript">import {extensionApi} from "./utils/extensionApi";
+import {PortStream} from "./utils/PortStream";
+import PostMessageStream from 'post-message-stream';
+
+setupConnection();
+injectScript();
+
+function setupConnection(){
+    const backgroundPort = extensionApi.runtime.connect({name: 'contentscript'});
+    const backgroundStream = new PortStream(backgroundPort);
+
+    const pageStream = new PostMessageStream({
+        name: 'content',
+        target: 'page',
+    });
+
+    pageStream.pipe(backgroundStream).pipe(pageStream);
+}
+
+function injectScript(){
+    try {
+        // inject in-page script
+        let script = document.createElement('script');
+        script.src = extensionApi.extension.getURL('inpage.js');
+        const container = document.head || document.documentElement;
+        container.insertBefore(script, container.children[0]);
+        script.onload = () => script.remove();
+    } catch (e) {
+        console.error('Injection failed.', e);
+    }
+}</code></pre><br/>
+<p>Так как API нам нужен не в контент-скрипте, а непосредственно на странице, мы делаем две вещи:</p><br/>
+<ol>
+<li>Создаем два стрима. Один — в сторону страницы, поверх postMessage. Для этого мы используем вот <a href="https://www.npmjs.com/package/post-message-stream">этот пакет</a> от создателей metamask. Второй стрим — к background поверх порта, полученного от <code>runtime.connect</code>. Пайпим их. Теперь у страницы будет стрим до бэкграунда.</li>
+<li>Инжектим скрипт в DOM. Выкачиваем скрипт (доступ к нему был разрешен в манифесте) и создаем тег <code>script</code> с его содержимым внутри:</li>
+</ol><br/>
+<pre><code class="javascript">import PostMessageStream from 'post-message-stream';
+import {extensionApi} from "./utils/extensionApi";
+import {PortStream} from "./utils/PortStream";
+
+setupConnection();
+injectScript();
+
+function setupConnection(){
+    // Стрим к бекграунду
+    const backgroundPort = extensionApi.runtime.connect({name: 'contentscript'});
+    const backgroundStream = new PortStream(backgroundPort);
+
+    // Стрим к странице
+    const pageStream = new PostMessageStream({
+        name: 'content',
+        target: 'page',
+    });
+
+    pageStream.pipe(backgroundStream).pipe(pageStream);
+}
+
+function injectScript(){
+    try {
+        // inject in-page script
+        let script = document.createElement('script');
+        script.src = extensionApi.extension.getURL('inpage.js');
+        const container = document.head || document.documentElement;
+        container.insertBefore(script, container.children[0]);
+        script.onload = () => script.remove();
+    } catch (e) {
+        console.error('Injection failed.', e);
+    }
+}</code></pre><br/>
+<p>Теперь создаем объект api в inpage и заводим его global:</p><br/>
+<pre><code class="javascript">import PostMessageStream from 'post-message-stream';
+import Dnode from 'dnode/browser';
+
+setupInpageApi().catch(console.error);
+
+async function setupInpageApi() {
+    // Стрим к контентскрипту
+    const connectionStream = new PostMessageStream({
+        name: 'page',
+        target: 'content',
+    });
+
+    const dnode = Dnode();
+
+    connectionStream.pipe(dnode).pipe(connectionStream);
+
+    // Получаем объект API
+    const pageApi = await new Promise(resolve => {
+        dnode.once('remote', api => {
+            resolve(api)
+        })
+    });
+
+    // Доступ через window
+    global.SignerApp = pageApi;
+}</code></pre><br/>
+<p>У нас готов <a href="https://github.com/siemarell/extension-demo/tree/dnode-setup-callback">Remote Procedure Call (RPC) с отдельным API для страницы и UI</a>. При подключении новой страницы к background мы можем это увидеть:</p><br/>
+<p><img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/cy/r_/pm/cyr_pmgm-u5hes5lefaf85gk91m.png"/></p><br/>
+<p>Пустой API и origin. На стороне страницы мы можем вызвать функцию hello вот так: </p><br/>
+<p><img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/3p/fd/tv/3pfdtv17ejnjzh94uajezgz0lce.png"/></p><br/>
+<p>Работать с callback-функциями в современном JS — моветон, поэтому напишем небольшой хелпер для создания dnode, который позволяет передавать в объект API в utils.</p><br/>
+<p>Объекты API теперь будут выглядеть вот так:</p><br/>
+<pre><code class="javascript">export class SignerApp {
+
+    popupApi() {
+        return {
+            hello: async () => "world"
+        }
+    }
+
+...
+
+}</code></pre><br/>
+<p>Получение объекта от remote следующим образом:</p><br/>
+<pre><code class="javascript">import {cbToPromise, transformMethods} from "../../src/utils/setupDnode";
+
+const pageApi = await new Promise(resolve => {
+    dnode.once('remote', remoteApi => {
+        // С помощью утилит меняем все callback на promise
+        resolve(transformMethods(cbToPromise, remoteApi))
+    })
+});</code></pre><br/>
+<p>А вызов функций возвращает промис:</p><br/>
+<p><img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/g7/qq/og/g7qqogo60hrjqm5pre7f5miehs0.png"/></p><br/>
+<p>Версия с асинхронными функциями доступна <a href="https://github.com/siemarell/extension-demo/tree/dnode-setup-async">здесь</a>.</p><br/>
+<p>В целом, подход с RPC и стримами кажется достаточно гибким: мы можем использовать steam multiplexing и создавать несколько разных API для разных задач. В принципе, dnode можно использовать где угодно, главное — обернуть транспорт в виде nodejs стрима.</p><br/>
+<p>Альтернативой является формат JSON, который реализует протокол JSON RPC 2. Однако он работает с конкретными транспортами (TCP и HTTP(S)), что в нашем случае не применимо.</p><br/>
+<h3 id="vnutrenniy-steyt-i-localstorage">Внутренний стейт и localStorage</h3><br/>
+<p>Нам понадобится хранить внутренний стейт приложения — как минимум, ключи для подписи. Мы можем достаточно легко добавить стейт приложению и методы для его изменения в popup API:</p><br/>
+<pre><code class="javascript">import {setupDnode} from "./utils/setupDnode";
+
+export class SignerApp {
+
+    constructor(){
+        this.store = {
+            keys: [],
+        };
+    }
+
+    addKey(key){
+        this.store.keys.push(key)
+    }
+
+    removeKey(index){
+        this.store.keys.splice(index,1)
+    }
+
+    popupApi(){
+        return {
+            addKey: async (key) => this.addKey(key),
+            removeKey: async (index) => this.removeKey(index)
+        }
+    }
+
+    ...
+
+} </code></pre><br/>
+<p>В background обернем все в функцию и запишем объект приложения в window, чтобы можно было с ним работать из консоли:</p><br/>
+<pre><code class="javascript">import {extensionApi} from "./utils/extensionApi";
+import {PortStream} from "./utils/PortStream";
+import {SignerApp} from "./SignerApp";
+
+const DEV_MODE = process.env.NODE_ENV !== 'production';
+
+setupApp();
+
+function setupApp() {
+    const app = new SignerApp();
+
+    if (DEV_MODE) {
+        global.app = app;
+    }
+
+    extensionApi.runtime.onConnect.addListener(connectRemote);
+
+    function connectRemote(remotePort) {
+        const processName = remotePort.name;
+        const portStream = new PortStream(remotePort);
+        if (processName === 'contentscript') {
+            const origin = remotePort.sender.url;
+            app.connectPage(portStream, origin)
+        } else {
+            app.connectPopup(portStream)
+        }
+    }
+}</code></pre><br/>
+<p>Добавим из консоли UI несколько ключей и посмотрим, что получилось со стейтом:</p><br/>
+<p><img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/n7/xr/eb/n7xrebxybxbquxx8z8uozgwpfqm.png"/></p><br/>
+<p>Стейт нужно сделать персистентным, чтобы при перезапуске ключи не терялись.</p><br/>
+<p>Хранить будем в localStorage, перезаписывая при каждом изменении. Впоследствии доступ к нему также будет необходим для UI, и хочется также подписываться на изменения. Исходя из этого удобно будет сделать наблюдаемое хранилище (observable storage) и подписываться на его изменения.</p><br/>
+<p>Использовать будем библиотеку mobx (<a href="https://github.com/mobxjs/mobx">https://github.com/mobxjs/mobx</a>). Выбор пал на нее, так как работать с ней не приходилось, а очень хотелось ее изучить.</p><br/>
+<p>Добавим инициализацию начального стейта и сделаем store observable:</p><br/>
+<pre><code class="javascript">import {observable, action} from 'mobx';
+import {setupDnode} from "./utils/setupDnode";
+
+export class SignerApp {
+
+    constructor(initState = {}) {
+        // Внешне store так и останется тем же объектом, только теперь все его поля стали proxy, которые отслеживают доступ к ним
+        this.store =  observable.object({
+            keys: initState.keys || [],
+        });
+    }
+
+    // Методы, которые меняют observable принято оборачивать декоратором
+    @action
+    addKey(key) {
+        this.store.keys.push(key)
+    }
+
+    @action
+    removeKey(index) {
+        this.store.keys.splice(index, 1)
+    }
+
+    ...
+
+}</code></pre><br/>
+<p>"Под капотом" mobx заменил все поля store на proxy и перехватывает все обращения к ним. На эти обращения можно будет подписываться.</p><br/>
+<p>Далее я буду часто использовать термин “при изменении”, хотя это не совсем корректно. Mobx отслеживает именно доступ к полям. Используются геттеры и сеттеры прокси-объектов, которые создает библиотека.</p><br/>
+<p>Декораторы action служат двум целям: </p><br/>
+<ol>
+<li>В строгом режиме с флагом enforceActions mobx запрещает менять стейт напрямую. Хорошим тоном считается работа именно в строгом режиме.</li>
+<li>Даже если функция меняет стейт несколько раз – например, мы меняем несколько полей в несколько строк кода, — обсерверы оповещаются только по ее завершении. Это особенно важно для фронтенда, где лишние обновления стейта приводят к ненужному рендеру элементов. В нашем случае ни первое, ни второе особо не актуально, однако мы будем следовать лучшим практикам. Декораторы принято вешать на все функции, которые меняют стейт наблюдаемых полей.</li>
+</ol><br/>
+<p>В background добавим инициализацию и сохранение стейта в localStorage:</p><br/>
+<pre><code class="javascript">import {reaction, toJS} from 'mobx';
+import {extensionApi} from "./utils/extensionApi";
+import {PortStream} from "./utils/PortStream";
+import {SignerApp} from "./SignerApp";
+// Вспомогательные методы. Записывают/читают объект в/из localStorage виде JSON строки по ключу 'store'
+import {loadState, saveState} from "./utils/localStorage";
+
+const DEV_MODE = process.env.NODE_ENV !== 'production';
+
+setupApp();
+
+function setupApp() {
+    const initState = loadState();
+    const app = new SignerApp(initState);
+
+    if (DEV_MODE) {
+        global.app = app;
+    }
+
+    // Setup state persistence
+
+    // Результат reaction присваивается переменной, чтобы подписку можно было отменить. Нам это не нужно, оставлено для примера
+    const localStorageReaction = reaction(
+        () => toJS(app.store), // Функция-селектор данных
+        saveState // Функция, которая будет вызвана при изменении данных, которые возвращает селектор
+    );
+
+    extensionApi.runtime.onConnect.addListener(connectRemote);
+
+    function connectRemote(remotePort) {
+        const processName = remotePort.name;
+        const portStream = new PortStream(remotePort);
+        if (processName === 'contentscript') {
+            const origin = remotePort.sender.url
+            app.connectPage(portStream, origin)
+        } else {
+            app.connectPopup(portStream)
+        }
+    }
+}</code></pre><br/>
+<p>Интересна здесь функция reaction. У нее два аргумента:</p><br/>
+<ol>
+<li>Селектор данных.</li>
+<li>Обработчик, который будет вызван с этими данными каждый раз, когда они изменяются.</li>
+</ol><br/>
+<p>В отличие от redux, где мы явно получаем стейт в качестве аргумента, mobx запоминает к каким именно observable мы обращаемся внутри селектора, и только при их изменении вызывает обработчик.</p><br/>
+<p>Важно понимать, как именно mobx решает, на какие observable мы подписываемся. Если бы в коде я написал селектор вот так<code>() => app.store</code>, то reaction не будет вызван никогда, так как сам по себе хранилище не является наблюдаемым, таковыми являются только его поля.</p><br/>
+<p>Если бы я написал вот так <code>() => app.store.keys</code>, то опять ничего не произошло бы, так как при добавлении/удалении элементов массива ссылка на него меняться не будет.</p><br/>
+<p>Mobx в первый раз выполняет функцию селектора и следит только за теми observable, к которым мы получали доступ. Сделано это через геттеры прокси. Поэтому здесь использована встроенная функция <code>toJS</code>. Она возвращает новый объект, в котором все прокси заменены на оригинальные поля. В процессе выполнения она читает все поля объекта – следовательно, срабатывают геттеры.</p><br/>
+<p>В консоли popup снова добавим несколько ключей. На этот раз они попали еще и в localStorage:</p><br/>
+<p><img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/fr/dh/6t/frdh6tc_bt_v3zywmgjrnptngcw.png"/></p><br/>
+<p>При перезагрузке background-страницы информация остается на месте.</p><br/>
+<p>Весь код приложения до этого момента можно посмотреть <a href="https://github.com/siemarell/extension-demo/tree/app-state">здесь</a>.</p><br/>
+<h2 id="bezopasnoe-hranenie-privatnyh-klyuchey">Безопасное хранение приватных ключей</h2><br/>
+<p>Хранить приватные ключи в открытом виде небезопасно: всегда есть вероятность того, что вас взломают, получат доступ к вашему компьютеру и так далее. Поэтому в localStorage мы будем хранить ключи в зашифрованном паролем виде.</p><br/>
+<p>Для большей безопасности добавим приложению стейт locked, в котором доступа к ключам не будет совсем. Мы будем автоматически переводить расширение в стейт locked по таймауту.</p><br/>
+<p>Mobx позволяет хранить только минимальный набор данных, а остальное автоматически рассчитывать на их основе. Это — так называемые computed properties. Их можно сравнить с view в базах данных:</p><br/>
+<pre><code class="javascript">import {observable, action} from 'mobx';
+import {setupDnode} from "./utils/setupDnode";
+// Утилиты для безопасного шифрования строк. Используют crypto-js
+import {encrypt, decrypt} from "./utils/cryptoUtils";
+
+export class SignerApp {
+    constructor(initState = {}) {
+        this.store = observable.object({
+            // Храним пароль и зашифрованные ключи. Если пароль null - приложение locked
+            password: null,
+            vault: initState.vault,
+
+            // Геттеры для вычислимых полей. Можно провести аналогию с view в бд.
+            get locked(){
+                return this.password == null
+            },
+            get keys(){
+                return this.locked ?
+                    undefined :
+                    SignerApp._decryptVault(this.vault, this.password)
+            },
+            get initialized(){
+                return this.vault !== undefined
+            }
+        })
+    }
+    // Инициализация пустого хранилища новым паролем
+    @action
+    initVault(password){
+        this.store.vault = SignerApp._encryptVault([], password)
+    }
+    @action
+    lock() {
+        this.store.password = null
+    }
+    @action
+    unlock(password) {
+        this._checkPassword(password);
+        this.store.password = password
+    }
+    @action
+    addKey(key) {
+        this._checkLocked();
+        this.store.vault = SignerApp._encryptVault(this.store.keys.concat(key), this.store.password)
+    }
+    @action
+    removeKey(index) {
+        this._checkLocked();
+        this.store.vault = SignerApp._encryptVault([
+                ...this.store.keys.slice(0, index),
+                ...this.store.keys.slice(index + 1)
+            ],
+            this.store.password
+        )
+    }
+
+    ... // код подключения и api
+
+    // private
+    _checkPassword(password) {
+        SignerApp._decryptVault(this.store.vault, password);
+    }
+
+    _checkLocked() {
+        if (this.store.locked){
+            throw new Error('App is locked')
+        }
+    }
+
+    // Методы для шифровки/дешифровки хранилища
+    static _encryptVault(obj, pass){
+        const jsonString = JSON.stringify(obj)
+        return encrypt(jsonString, pass)
+    }
+
+    static _decryptVault(str, pass){
+        if (str === undefined){
+            throw new Error('Vault not initialized')
+        }
+        try {
+            const jsonString = decrypt(str, pass)
+            return JSON.parse(jsonString)
+        }catch (e) {
+            throw new Error('Wrong password')
+        }
+    }
+}</code></pre><br/>
+<p>Теперь мы храним только шифрованные ключи и пароль. Все остальное вычисляется. Перевод в стейт locked мы делаем с помощью удаления пароля из стейта. В публичном API появился метод для инициализации хранилища.</p><br/>
+<p>Для шифрования написаны <a href="https://www.npmjs.com/package/crypto-js">утилиты с использованием сrypto-js</a>:</p><br/>
+<pre><code class="javascript">import CryptoJS from 'crypto-js'
+
+// Используется для осложнения подбора пароля перебором. На каждый вариант пароля злоумышленнику придется сделать 5000 хешей
+function strengthenPassword(pass, rounds = 5000) {
+    while (rounds-- > 0){
+        pass = CryptoJS.SHA256(pass).toString()
+    }
+    return pass
+}
+
+export function encrypt(str, pass){
+    const strongPass = strengthenPassword(pass);
+    return CryptoJS.AES.encrypt(str, strongPass).toString()
+}
+
+export function decrypt(str, pass){
+    const strongPass = strengthenPassword(pass)
+    const decrypted = CryptoJS.AES.decrypt(str, strongPass);
+    return decrypted.toString(CryptoJS.enc.Utf8)
+}</code></pre><br/>
+<p>У браузера есть idle API, через который можно подписаться на событие — изменения стейта. Стейт, соответственно, может быть <code>idle</code>, <code>active</code> и <code>locked</code>. Для idle можно настроить таймаут, а locked устанавливается, когда блокируется сама ОС. Также мы поменяем селектор для сохранения в localStorage:</p><br/>
+<pre><code class="javascript">import {reaction, toJS} from 'mobx';
+import {extensionApi} from "./utils/extensionApi";
+import {PortStream} from "./utils/PortStream";
+import {SignerApp} from "./SignerApp";
+import {loadState, saveState} from "./utils/localStorage";
+
+const DEV_MODE = process.env.NODE_ENV !== 'production';
+const IDLE_INTERVAL = 30;
+
+setupApp();
+
+function setupApp() {
+    const initState = loadState();
+    const app = new SignerApp(initState);
+
+    if (DEV_MODE) {
+        global.app = app;
+    }
+
+    // Теперь мы явно узываем поле, которому будет происходить доступ, reaction отработает нормально
+    reaction(
+        () => ({
+            vault: app.store.vault
+        }),
+        saveState
+    );
+
+    // Таймаут бездействия, когда сработает событие
+    extensionApi.idle.setDetectionInterval(IDLE_INTERVAL);
+    // Если пользователь залочил экран или бездействовал в течение указанного интервала лочим приложение
+    extensionApi.idle.onStateChanged.addListener(state => {
+        if (['locked', 'idle'].indexOf(state) > -1) {
+            app.lock()
+        }
+    });
+
+    // Connect to other contexts
+    extensionApi.runtime.onConnect.addListener(connectRemote);
+
+    function connectRemote(remotePort) {
+        const processName = remotePort.name;
+        const portStream = new PortStream(remotePort);
+        if (processName === 'contentscript') {
+            const origin = remotePort.sender.url
+            app.connectPage(portStream, origin)
+        } else {
+            app.connectPopup(portStream)
+        }
+    }
+}</code></pre><br/>
+<p>Код до этого шага находится <a href="https://github.com/siemarell/extension-demo/tree/secure-keys">здесь</a>.</p><br/>
+<h3 id="tranzakcii">Транзакции</h3><br/>
+<p>Итак, мы подошли к самому главному: созданию и подписи транзакций в блокчейне. Мы будем использовать блокчейн WAVES и библиотеку <a href="https://www.npmjs.com/package/@waves/waves-transactions">waves-transactions</a>.</p><br/>
+<p>Для начала добавим в стейт массив сообщений, которые необходимо подписать, затем — методы добавления нового сообщения, подтверждения подписи и отказа:</p><br/>
+<pre><code class="javascript">import {action, observable, reaction} from 'mobx';
+import uuid from 'uuid/v4';
+import {signTx} from '@waves/waves-transactions'
+import {setupDnode} from "./utils/setupDnode";
+import {decrypt, encrypt} from "./utils/cryptoUtils";
+
+export class SignerApp {
+
+    ...
+
+    @action
+    newMessage(data, origin) {
+        // Для каждого сообщения создаем метаданные с id, статусом, выременем создания и тд.
+        const message = observable.object({
+            id: uuid(), // Идентификатор, используюю uuid
+            origin, // Origin будем впоследствии показывать в интерфейсе
+            data, //
+            status: 'new', // Статусов будет четыре: new, signed, rejected и failed
+            timestamp: Date.now()
+        });
+        console.log(`new message: ${JSON.stringify(message, null, 2)}`);
+
+        this.store.messages.push(message);
+
+        // Возвращаем промис внутри которого mobx мониторит изменения сообщения. Как только статус поменяется мы зарезолвим его
+        return new Promise((resolve, reject) => {
+            reaction(
+                () => message.status, //Будем обсервить статус сообщеня
+                (status, reaction) => { // второй аргумент это ссылка на сам reaction, чтобы его можно было уничтожть внутри вызова
+                    switch (status) {
+                        case 'signed':
+                            resolve(message.data);
+                            break;
+                        case 'rejected':
+                            reject(new Error('User rejected message'));
+                            break;
+                        case 'failed':
+                            reject(new Error(message.err.message));
+                            break;
+                        default:
+                            return
+                    }
+                    reaction.dispose()
+                }
+            )
+        })
+    }
+    @action
+    approve(id, keyIndex = 0) {
+        const message = this.store.messages.find(msg => msg.id === id);
+        if (message == null) throw new Error(`No msg with id:${id}`);
+        try {
+            message.data = signTx(message.data, this.store.keys[keyIndex]);
+            message.status = 'signed'
+        } catch (e) {
+            message.err = {
+                stack: e.stack,
+                message: e.message
+            };
+            message.status = 'failed'
+            throw e
+        }
+    }
+    @action
+    reject(id) {
+        const message = this.store.messages.find(msg => msg.id === id);
+        if (message == null) throw new Error(`No msg with id:${id}`);
+        message.status = 'rejected'
+    }
+
+    ...
+}</code></pre><br/>
+<p>При получении нового сообщения мы добавляем в него метаданные, делаем <code>observable</code> и добавляем в <code>store.messages</code>.</p><br/>
+<p>Если не сделать <code>observable</code> вручную, то mobx сделает это сам при добавлении в массив messages. Однако он создаст новый объект, на который у нас не будет ссылки, а она понадобится для следующего шага.</p><br/>
+<p>Далее мы возвращаем промис, который резолвится при изменении статуса сообщения. За статусом следит reaction, который сам себя "убьет" при смене статуса.</p><br/>
+<p>Код методов <code>approve</code> и <code>reject</code> очень прост: мы просто меняем статус сообщения, предварительно подписав его, если необходимо.</p><br/>
+<p>Approve и reject мы выносим в API UI, newMessage — в API страницы:</p><br/>
+<pre><code class="javascript">export class SignerApp {
+    ...
+    popupApi() {
+        return {
+            addKey: async (key) => this.addKey(key),
+            removeKey: async (index) => this.removeKey(index),
+
+            lock: async () => this.lock(),
+            unlock: async (password) => this.unlock(password),
+            initVault: async (password) => this.initVault(password),
+
+            approve: async (id, keyIndex) => this.approve(id, keyIndex),
+            reject: async (id) => this.reject(id)
+        }
+    }
+
+    pageApi(origin) {
+        return {
+            signTransaction: async (txParams) => this.newMessage(txParams, origin)
+        }
+    }
+
+    ...
+}</code></pre><br/>
+<p>Теперь попробуем подписать транзакцию расширением:</p><br/>
+<p><img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/jt/bp/nu/jtbpnu9tbhryijukstktnti3wbu.png"/></p><br/>
+<p>В целом все готово, осталось <a href="https://github.com/siemarell/extension-demo/tree/transactions">добавить простой UI</a>.</p><br/>
+<h2 id="ui">UI</h2><br/>
+<p>Интерфейсу нужен доступ к стейту приложения. На стороне UI мы сделаем <code>observable</code> стейт и добавим в API функцию, которая будет этот стейт менять. Добавим <code>observable</code> в объект API, полученный от background:</p><br/>
+<pre><code class="javascript">import {observable} from 'mobx'
+import {extensionApi} from "./utils/extensionApi";
+import {PortStream} from "./utils/PortStream";
+import {cbToPromise, setupDnode, transformMethods} from "./utils/setupDnode";
+import {initApp} from "./ui/index";
+
+const DEV_MODE = process.env.NODE_ENV !== 'production';
+
+setupUi().catch(console.error);
+
+async function setupUi() {
+    // Подключаемся к порту, создаем из него стрим
+    const backgroundPort = extensionApi.runtime.connect({name: 'popup'});
+    const connectionStream = new PortStream(backgroundPort);
+
+    // Создаем пустой observable для состояния background'a
+    let backgroundState = observable.object({});
+    const api = {
+        //Отдаем бекграунду функцию, которая будет обновлять observable
+        updateState: async state => {
+            Object.assign(backgroundState, state)
+        }
+    };
+
+    // Делаем RPC объект
+    const dnode = setupDnode(connectionStream, api);
+    const background = await new Promise(resolve => {
+        dnode.once('remote', remoteApi => {
+            resolve(transformMethods(cbToPromise, remoteApi))
+        })
+    });
+
+    // Добавляем в background observable со стейтом
+    background.state = backgroundState;
+
+    if (DEV_MODE) {
+        global.background = background;
+    }
+
+    // Запуск интерфейса
+    await initApp(background)
+}
+</code></pre><br/>
+<p>В конце мы запускаем рендер интерфейса приложения. Это react-приложение. Background-объект просто передается при помощи props. Правильно, конечно, сделать отдельный сервис для методов и store для стейта, но в рамках данной статьи этого достаточно:</p><br/>
+<pre><code class="plaintext">import {render} from 'react-dom'
+import App from './App'
+import React from "react";
+
+// Инициализируем приложение с background объектом в качест ве props
+export async function initApp(background){
+    render(
+        &lt;App background={background}/>,
+        document.getElementById('app-content')
+    );
+}
+</code></pre><br/>
+<p>С помощью mobx очень просто запускать рендер при изменении данных. Мы просто вешаем декоратор observer из пакета <a href="https://www.npmjs.com/package/mobx-react">mobx-react</a> на компонент, и рендер будет автоматически вызываться при изменении любых observable, на которые ссылается компонент. Не нужно никаких mapStateToProps или connect, как в redux. Все работает сразу "из коробки":</p><br/>
+<pre><code class="plaintext">import React, {Component, Fragment} from 'react'
+import {observer} from "mobx-react";
+import Init from './components/Initialize'
+import Keys from './components/Keys'
+import Sign from './components/Sign'
+import Unlock from './components/Unlock'
+
+@observer // У Компонета с этим декоратом будет автоматически вызван метод render, если будут изменены observable на которые он ссылается
+export default class App extends Component {
+
+    // Правильно конечно вынести логику рендера страниц в роутинг и не использовать вложенные тернарные операторы,
+    // и привязывать observable и методы background непосредственно к тем компонентам, которые их используют
+    render() {
+        const {keys, messages, initialized, locked} = this.props.background.state;
+        const {lock, unlock, addKey, removeKey, initVault, deleteVault, approve, reject} = this.props.background;
+
+        return &lt;Fragment>
+            {!initialized
+                ?
+                &lt;Init onInit={initVault}/>
+                :
+                locked
+                    ?
+                    &lt;Unlock onUnlock={unlock}/>
+                    :
+                    messages.length > 0
+                        ?
+                        &lt;Sign keys={keys} message={messages[messages.length - 1]} onApprove={approve} onReject={reject}/>
+                        :
+                        &lt;Keys keys={keys} onAdd={addKey} onRemove={removeKey}/>
+            }
+            &lt;div>
+                {!locked &amp;&amp; &lt;button onClick={() => lock()}>Lock App&lt;/button>}
+                {initialized &amp;&amp; &lt;button onClick={() => deleteVault()}>Delete all keys and init&lt;/button>}
+            &lt;/div>
+        &lt;/Fragment>
+    }
+}</code></pre><br/>
+<p>Остальные компоненты можно посмотреть в коде <a href="https://github.com/siemarell/extension-demo/tree/master/src/ui">в папке UI</a>.</p><br/>
+<p>Теперь в классе приложения необходимо сделать селектор стейта для UI и при его изменении оповещать UI. Для этого добавим метод <code>getState</code> и <code>reaction</code>, вызывающий <code>remote.updateState</code>:</p><br/>
+<pre><code class="javascript">import {action, observable, reaction} from 'mobx';
+import uuid from 'uuid/v4';
+import {signTx} from '@waves/waves-transactions'
+import {setupDnode} from "./utils/setupDnode";
+import {decrypt, encrypt} from "./utils/cryptoUtils";
+
+export class SignerApp {
+
+    ...
+
+    // public
+    getState() {
+        return {
+            keys: this.store.keys,
+            messages: this.store.newMessages,
+            initialized: this.store.initialized,
+            locked: this.store.locked
+        }
+    }
+
+    ...
+
+    //
+    connectPopup(connectionStream) {
+        const api = this.popupApi();
+        const dnode = setupDnode(connectionStream, api);
+
+        dnode.once('remote', (remote) => {
+            // Создаем reaction на изменения стейта, который сделает вызовет удаленну процедуру и обновит стейт в ui процессе
+            const updateStateReaction = reaction(
+                () => this.getState(),
+                (state) => remote.updateState(state),
+                // Третьим аргументом можно передавать параметры. fireImmediatly значит что reaction выполниться первый раз сразу.
+                // Это необходимо, чтобы получить начальное состояние. Delay позволяет установить debounce
+                {fireImmediately: true, delay: 500}
+            );
+            // Удалим подписку при отключении клиента
+            dnode.once('end', () => updateStateReaction.dispose())
+
+        })
+    }
+
+    ...
+}</code></pre><br/>
+<p>При получении объекта <code>remote</code> создается <code>reaction</code> на изменение стейта, который вызывает функцию на стороне UI.</p><br/>
+<p>Последний штрих — добавим отображение новых сообщений на иконке расширения:</p><br/>
+<pre><code class="javascript">function setupApp() {
+...
+
+    // Reaction на выставление текста беджа.
+    reaction(
+        () => app.store.newMessages.length > 0 ? app.store.newMessages.length.toString() : '',
+        text => extensionApi.browserAction.setBadgeText({text}),
+        {fireImmediately: true}
+    );
+
+...
+}</code></pre><br/>
+<p>Итак, приложение готово. Веб-страницы могут запрашивать подпись транзакций:</p><br/>
+<p><img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/yo/cz/9b/yocz9bncoevwxrict_3dl_vphek.png"/></p><br/>
+<p><img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/ee/8e/uj/ee8eujkmg5iwgfholkyxneqsim4.png"/></p><br/>
+<p>Код доступен по этой <a href="https://github.com/siemarell/extension-demo/tree/ui">ссылке</a>.</p><br/>
+<p><strong>Заключение</strong></p><br/>
+<p>Если вы дочитали статью до конца, но у вас остались вопросы, вы можете задать их в <a href="https://github.com/siemarell/extension-demo">репозитории с расширением</a>. Там же вы найдете коммиты под каждый обозначенный шаг. </p><br/>
+<p>А если вам интересно посмотреть код настоящего расширения, то вы сможете найти это <a href="https://github.com/wavesplatform/WavesKeeper">здесь</a>.</p><br/>
+<p><strong>Код, репозиторий и описание работы от <a href="https://habr.com/ru/users/siemarell/" class="user_link">siemarell</a></strong></p></div></div> <!----> <!----></div> <div class="tm-article-presenter__meta"><div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Теги:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bweb-%D1%80%D0%B0%D0%B7%D1%80%D0%B0%D0%B1%D0%BE%D1%82%D0%BA%D0%B0%5D" class="tm-tags-list__link">web-разработка</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5BJS%5D" class="tm-tags-list__link">JS</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5BCSS%5D" class="tm-tags-list__link">CSS</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5BHTML%5D" class="tm-tags-list__link">HTML</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bmobx%5D" class="tm-tags-list__link">mobx</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Breact%5D" class="tm-tags-list__link">react</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bextensions%5D" class="tm-tags-list__link">extensions</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5B%D0%B1%D1%80%D0%B0%D1%83%D0%B7%D0%B5%D1%80%D1%8B%5D" class="tm-tags-list__link">браузеры</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5B%D0%B1%D0%BB%D0%BE%D0%BA%D1%87%D0%B5%D0%B9%D0%BD%20%D1%82%D0%B5%D1%85%D0%BD%D0%BE%D0%BB%D0%BE%D0%B3%D0%B8%D0%B8%5D" class="tm-tags-list__link">блокчейн технологии</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5B%D0%B1%D0%BB%D0%BE%D0%BA%D1%87%D0%B5%D0%B9%D0%BD%5D" class="tm-tags-list__link">блокчейн</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bblockchain%5D" class="tm-tags-list__link">blockchain</a></li></ul></div> <div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Хабы:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/company/waves/blog/" class="tm-hubs-list__link router-link-active">
+    Блог компании Waves
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/p2p/" class="tm-hubs-list__link">
+    Децентрализованные сети
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/javascript/" class="tm-hubs-list__link">
+    JavaScript
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/browser_extensions/" class="tm-hubs-list__link">
+    Расширения для браузеров
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/browsers/" class="tm-hubs-list__link">
+    Браузеры
+  </a></li></ul></div></div></article></div> <!----></div> <div class="tm-article-sticky-panel"><div class="tm-data-icons tm-article-sticky-panel__icons"><div class="tm-article-rating tm-data-icons__item"><div class="tm-votes-meter tm-article-rating__votes-switcher"><svg height="16" width="16" class="tm-svg-img tm-votes-meter__icon tm-votes-meter__icon_medium"><title>Всего голосов 10: ↑10 и ↓0</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-rating"></use></svg> <span title="Всего голосов 10: ↑10 и ↓0" class="tm-votes-meter__value tm-votes-meter__value_positive tm-votes-meter__value_medium">+10</span></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----> <span title="Количество просмотров" class="tm-icon-counter tm-data-icons__item"><svg height="16" width="16" class="tm-svg-img tm-icon-counter__icon"><title>Просмотры</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-views"></use></svg> <span class="tm-icon-counter__value">7.1K</span></span> <button title="Добавить в закладки" type="button" class="bookmarks-button tm-data-icons__item"><span title="Добавить в закладки" class="tm-svg-icon__wrapper bookmarks-button__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Добавить в закладки</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-favorite"></use></svg></span> <span title="Количество пользователей, добавивших публикацию в закладки" class="bookmarks-button__counter">
+    92
+  </span></button> <!----> <div title="Поделиться" class="tm-sharing tm-data-icons__item"><button type="button" class="tm-sharing__button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="tm-sharing__icon"><path fill="currentColor" d="M10.33.275l9.047 7.572a.2.2 0 010 .306l-9.048 7.572a.2.2 0 01-.328-.153V11c-8 0-9.94 6-9.94 6S-1 5 10 5V.428a.2.2 0 01.328-.153z"></path></svg></button> <!----></div> <DIV class="v-portal" style="display:none;"></DIV></div> </div></div> <!----> <!----> <div class="tm-article-presenter__footer"><div class="tm-article-blocks"><!----> <section class="tm-block tm-block_spacing-bottom"><!----> <div class="tm-block__body tm-block__body_variant-balanced"><div class="tm-article-author"><div class="tm-article-author__company"><div class="tm-article-author__company-card"><div class="tm-company-snippet"><a href="/ru/company/waves/profile/" class="tm-company-snippet__logo-link"><div class="tm-entity-image"><img alt="" height="40" src="//habrastorage.org/getpro/habr/company/4a8/9d5/d98/4a89d5d98e2b907119336fb17a7f11dd.png" width="40" class="tm-entity-image__pic"></div></a> <div class="tm-company-snippet__info"><a href="/ru/company/waves/profile/" class="tm-company-snippet__title">Waves</a> <div class="tm-company-snippet__description">Компания</div></div></div> <div class="tm-article-author__buttons"><!----> <!----></div></div> <div class="tm-article-author__company-contacts"><a href="https://wavesplatform.com/" rel="noopener" target="_blank" class="tm-article-author__contact">
+      Сайт
+    </a><a href="https://career.habr.com/companies/wavesplatform-com" rel="noopener" target="_blank" class="tm-article-author__contact">
+      Хабр Карьера
+    </a><a href="https://facebook.com/wavesplatform" rel="noopener" target="_blank" class="tm-article-author__contact">
+      Facebook
+    </a><a href="https://vk.com/wavesplatform" rel="noopener" target="_blank" class="tm-article-author__contact">
+      ВКонтакте
+    </a><a href="https://github.com/WAVESPLATFORM" rel="noopener" target="_blank" class="tm-article-author__contact">
+      Github
+    </a></div> <div class="tm-article-author__separator"></div></div> <div class="tm-user-card tm-article-author__user-card tm-user-card_variant-article"><div class="tm-user-card__info-container"><div class="tm-user-card__header"><div class="tm-user-card__header-data"><a href="/ru/users/ikardanoff/" class="tm-user-card__userpic tm-user-card__userpic_size-40"><div class="tm-entity-image"><img alt="" src="//habrastorage.org/getpro/habr/avatars/483/fd4/988/483fd49880e437ba7ff87088ccfe9259.jpg" class="tm-entity-image__pic"></div></a> <div class="tm-user-card__meta"><div title=" 14 голосов " class="tm-karma tm-user-card__karma"><div class="tm-karma__votes tm-karma__votes_positive">
+    2
+  </div> <div class="tm-karma__text">
+    Карма
+  </div></div> <div title="Рейтинг пользователя" class="tm-rating tm-user-card__rating"><div class="tm-rating__header"> <div class="tm-rating__counter">0</div></div> <div class="tm-rating__text">
+    Рейтинг
+  </div></div></div></div></div> <div class="tm-user-card__info tm-user-card__info_variant-article"><div class="tm-user-card__title tm-user-card__title_variant-article"><span class="tm-user-card__name tm-user-card__name_variant-article">Inal Kardanov</span> <a href="/ru/users/ikardanoff/" class="tm-user-card__nickname tm-user-card__nickname_variant-article">
+          @ikardanoff
+        </a> <!----></div> <p class="tm-user-card__short-info tm-user-card__short-info_variant-article">DevRel, JS, Java, Blockchain</p></div></div> <div class="tm-user-card__buttons tm-user-card__buttons_variant-article"><!----> <!----> <!----> <!----> <!----></div></div> <!----></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----></section> <div class="tm-article-blocks__comments"><div class="tm-article-page-comments"><div class="tm-article-comments-counter-link tm-article-comments-counter-button"><a href="/ru/company/waves/blog/451796/comments/" class="tm-article-comments-counter-link__link tm-article-comments-counter-link__link_button-style"><svg height="16" width="16" class="tm-svg-img tm-article-comments-counter-link__icon tm-article-comments-counter-link__icon_contrasted"><title>Комментарии</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-comments"></use></svg> <span class="tm-article-comments-counter-link__value tm-article-comments-counter-link__value_contrasted">
+       Комментарии 1 
+    </span></a> <!----></div></div></div>  <!---->  <!----> <!----></div></div></div></div></div> <div class="tm-page__sidebar"><div class="tm-layout-sidebar"><div class="tm-layout-sidebar__placeholder_initial"></div> <div class="tm-sexy-sidebar tm-sexy-sidebar_initial" style="margin-top:0px;"><!----> <section class="tm-block tm-block_spacing-bottom"><header class="tm-block__header"><h2 class="tm-block__title">Информация</h2> <!----></header> <div class="tm-block__body"><div class="tm-company-basic-info"><dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Дата основания</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><span>
+      2016
+    </span></dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Местоположение</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap">
+    Россия
+  </dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Сайт</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><a href="https://wavesplatform.com/" target="_blank" class="tm-company-basic-info__link">
+      wavesplatform.com
+    </a></dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Численность</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap">
+    101–200 человек
+  </dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Дата регистрации</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><time datetime="2016-09-26T07:52:25.000Z" title="2016-09-26, 10:52">26  сентября  2016</time></dd></dl> <!----></div></div> <!----></section> <!----> <!----></div></div></div></div></div></div></main> <!----></div> <div class="tm-footer-menu"><div class="tm-page-width"><div class="tm-footer-menu__container"><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Ваш аккаунт
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr/?back=/ru/company/waves/blog/451796/&amp;hl=ru" rel="nofollow" target="_self">
+                Войти
+              </a></li><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr-register/?back=/ru/company/waves/blog/451796/&amp;hl=ru" rel="nofollow" target="_self">
+                Регистрация
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Разделы
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/" class="footer-menu__item-link router-link-active">
+                Публикации
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/news/" class="footer-menu__item-link">
+                Новости
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/hubs/" class="footer-menu__item-link">
+                Хабы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/companies/" class="footer-menu__item-link">
+                Компании
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/users/" class="footer-menu__item-link">
+                Авторы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/sandbox/" class="footer-menu__item-link">
+                Песочница
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Информация
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/docs/help/" class="footer-menu__item-link">
+                Устройство сайта
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/authors/codex/" class="footer-menu__item-link">
+                Для авторов
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/companies/corpblogs/" class="footer-menu__item-link">
+                Для компаний
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/docs/transparency/" class="footer-menu__item-link">
+                Документы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/agreement" target="_blank">
+                Соглашение
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/confidential/" target="_blank">
+                Конфиденциальность
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Услуги
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQLwRfQmXibiUlWaRg-BAc38s7oM3lJiaPju7qmdJsp8ysIvZ_G-Npem0njJLMozE2bPHMpDqiI5hhy/pub?start=false&amp;loop=false&amp;delayms=60000&amp;slide=id.g91a03369cd_4_297" target="_blank">
+                Реклама
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://habrastorage.org/storage/stuff/habr/service_price.pdf" target="_blank">
+                Тарифы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQJJds8-Di7BQSP_guHxICN7woVYoN5NP_22ra-BIo4bqnTT9FR6fB-Ku2P0AoRpX0Ds-LRkDeAoD8F/pub?start=false&amp;loop=false&amp;delayms=60000" target="_blank">
+                Контент
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://tmtm.timepad.ru/" target="_blank">
+                Семинары
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/megaprojects/" class="footer-menu__item-link">
+                Мегапроекты
+              </a></li></ul></div></div></div></div></div> <div class="tm-footer"><div class="tm-page-width"><div class="tm-footer__container"><!----> <div class="tm-footer__social"><a href="https://www.facebook.com/habrahabr.ru" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Facebook</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-facebook"></use></svg></a><a href="https://twitter.com/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Twitter</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-twitter"></use></svg></a><a href="https://vk.com/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>VK</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-vkontakte"></use></svg></a><a href="https://telegram.me/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Telegram</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-telegram"></use></svg></a><a href="https://www.youtube.com/channel/UCd_sTwKqVrweTt4oAKY5y4w" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Youtube</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-youtube"></use></svg></a><a href="https://zen.yandex.ru/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Яндекс Дзен</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-zen"></use></svg></a></div> <DIV class="v-portal" style="display:none;"></DIV> <button class="tm-footer__link"><!---->
+        Настройка языка
+      </button> <a href="/ru/about" class="tm-footer__link">
+        О сайте
+      </a> <a href="/ru/feedback/" class="tm-footer__link">
+        Техническая поддержка
+      </a> <!----> <a href="/berserk-mode-nope" class="tm-footer__link">
+        Вернуться на старую версию
+      </a> <div class="tm-footer-copyright"><span class="tm-copyright"><span class="tm-copyright__years">© 2006–2021 </span> <span class="tm-copyright__name">«<a href="https://company.habr.com/" rel="noopener" target="_blank" class="tm-copyright__link">Habr</a>»</span></span></div></div></div></div> <!----> <!----></div> <div class="vue-portal-target"></div></div>
+<script>window.__INITIAL_STATE__={"adblock":{"hasAcceptableAdsFilter":false,"hasAdblock":false},"articlesList":{"articlesList":{"451796":{"id":"451796","timePublished":"2019-05-14T13:32:14+00:00","isCorporative":true,"lang":"ru","titleHtml":"Пишем безопасное браузерное расширение","leadData":{"textHtml":"\u003Cp\u003E\u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fnt\u002F7v\u002Fc8\u002Fnt7vc8scuypj0o2ngtj1n6fqjlw.png\"\u003E\u003C\u002Fp\u003E\u003Cbr\u003E\r\n\u003Cp\u003EВ отличие от распространенной \"клиент-серверной\" архитектуры, для децентрализованных приложений характерно:\u003C\u002Fp\u003E\u003Cbr\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003EОтсутствие необходимости хранить базу данных с логинами и паролями пользователя. Информация для доступа хранится исключительно у самих пользователей, а подтверждение их достоверности происходит на уровне протокола.\u003C\u002Fli\u003E\r\n\u003Cli\u003EОтсутствие необходимости использовать сервер. Логика приложения может выполняться в блокчейн-сети, где возможно и хранение необходимого количества данных.\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u003E\r\n\u003Cp\u003EСуществует 2 относительно безопасных хранилища для ключей пользователей — хардверные кошельки и браузерные расширения. Хардверные кошельки в большинстве своем максимально безопасны, однако сложны в использовании и далеко не бесплатны, а вот браузерные расширения являются идеальным сочетанием безопасности и простоты в использовании, а еще могут быть совершенно бесплатны для конечных пользователей. \u003C\u002Fp\u003E\u003Cbr\u003E\r\n\u003Cp\u003EУчитывая все это, мы захотели сделать максимально безопасное расширение, которое упрощает разработку децентрализованных приложений, предоставляя простой API для работы с транзакциями и подписями.\u003Cbr\u003E\r\nОб этом опыте мы вам и расскажем ниже. \u003C\u002Fp\u003E\u003Cbr\u003E\r\n\u003Cp\u003E\u003Cstrong\u003EВ статье будет пошаговая инструкция как написать браузерное расширение, с примерами кода и скриншотами.\u003C\u002Fstrong\u003E Весь код вы можете найти в \u003Ca href=\"https:\u002F\u002Fgithub.com\u002Fsiemarell\u002Fextension-demo\"\u003Eрепозитории\u003C\u002Fa\u003E. Каждый коммит логически соответствует разделу данной статьи. \u003C\u002Fp\u003E","imageUrl":null,"buttonTextHtml":"Читать дальше →","image":null},"editorVersion":"1.0","postType":"article","postLabels":[{"type":"tutorial","data":null}],"author":{"scoreStats":{"score":2,"votesCount":14},"rating":0,"relatedData":null,"contacts":[],"authorContacts":[],"paymentDetails":{"paymentYandexMoney":null,"paymentPayPalMe":null,"paymentWebmoney":null},"id":"1837797","alias":"ikardanoff","fullname":"Inal Kardanov","avatarUrl":"\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Favatars\u002F483\u002Ffd4\u002F988\u002F483fd49880e437ba7ff87088ccfe9259.jpg","speciality":"DevRel, JS, Java, Blockchain"},"statistics":{"commentsCount":1,"favoritesCount":92,"readingCount":7116,"score":10,"votesCount":10},"hubs":[{"relatedData":null,"id":"21770","alias":"waves","type":"corporative","title":"Блог компании Waves","titleHtml":"Блог компании Waves","isProfiled":false},{"relatedData":null,"id":"33","alias":"p2p","type":"collective","title":"Децентрализованные сети","titleHtml":"Децентрализованные сети","isProfiled":false},{"relatedData":null,"id":"357","alias":"javascript","type":"collective","title":"JavaScript","titleHtml":"JavaScript","isProfiled":true},{"relatedData":null,"id":"18921","alias":"browser_extensions","type":"collective","title":"Расширения для браузеров","titleHtml":"Расширения для браузеров","isProfiled":false},{"relatedData":null,"id":"19257","alias":"browsers","type":"collective","title":"Браузеры","titleHtml":"Браузеры","isProfiled":false}],"flows":[{"id":"1","alias":"develop","title":"Разработка"},{"id":"6","alias":"admin","title":"Администрирование"}],"relatedData":null,"textHtml":"\u003Cdiv xmlns=\"http:\u002F\u002Fwww.w3.org\u002F1999\u002Fxhtml\"\u003E\u003Cp\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fnt\u002F7v\u002Fc8\u002Fnt7vc8scuypj0o2ngtj1n6fqjlw.png\"\u002F\u003E\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EВ отличие от распространенной \"клиент-серверной\" архитектуры, для децентрализованных приложений характерно:\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003EОтсутствие необходимости хранить базу данных с логинами и паролями пользователя. Информация для доступа хранится исключительно у самих пользователей, а подтверждение их достоверности происходит на уровне протокола.\u003C\u002Fli\u003E\r\n\u003Cli\u003EОтсутствие необходимости использовать сервер. Логика приложения может выполняться в блокчейн-сети, где возможно и хранение необходимого количества данных.\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EСуществует 2 относительно безопасных хранилища для ключей пользователей — хардверные кошельки и браузерные расширения. Хардверные кошельки в большинстве своем максимально безопасны, однако сложны в использовании и далеко не бесплатны, а вот браузерные расширения являются идеальным сочетанием безопасности и простоты в использовании, а еще могут быть совершенно бесплатны для конечных пользователей. \u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EУчитывая все это, мы захотели сделать максимально безопасное расширение, которое упрощает разработку децентрализованных приложений, предоставляя простой API для работы с транзакциями и подписями.\u003Cbr\u002F\u003E\r\nОб этом опыте мы вам и расскажем ниже. \u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003E\u003Cstrong\u003EВ статье будет пошаговая инструкция как написать браузерное расширение, с примерами кода и скриншотами.\u003C\u002Fstrong\u003E Весь код вы можете найти в \u003Ca href=\"https:\u002F\u002Fgithub.com\u002Fsiemarell\u002Fextension-demo\"\u003Eрепозитории\u003C\u002Fa\u003E. Каждый коммит логически соответствует разделу данной статьи. \u003C\u002Fp\u003E\u003Ca name=\"habracut\"\u003E\u003C\u002Fa\u003E\u003Cbr\u002F\u003E\r\n\u003Ch2 id=\"kratkaya-istoriya-brauzernyh-rasshireniy\"\u003EКраткая история браузерных расширений\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EБраузерные расширения существуют достаточно давно. В Internet Explorer они появились еще в 1999-м году, в Firefox — в 2004-м. Тем не менее, очень долго не было единого стандарта для расширений.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EМожно сказать, что он появился вместе с расширениями в четвертой версии Google Chrome. Конечно, никакой спецификации тогда не было, но именно API Chrome стал ее основой: завоевав большую часть рынка браузеров и имея встроенный магазин приложений, Chrome фактически задал стандарт для браузерных расширений.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EУ Mozilla был свой стандарт, но, видя популярность расширений для Chrome, компания решила сделать совместимый API. В 2015 году по инициативе Mozilla в рамках World Wide Web Consortium (W3C) была создана специальная группа для работы над спецификациями кроссбраузерных расширений.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EЗа основу был взят уже существующий API расширений для Сhrome. Работа велась при поддержке Microsoft (Google в разработке стандарта участвовать отказался), и в результате появился черновик \u003Ca href=\"https:\u002F\u002Fbrowserext.github.io\u002Fbrowserext\u002F\"\u003Eспецификации\u003C\u002Fa\u003E.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EФормально спецификацию поддерживают Edge, Firefox и Opera (заметьте, что в этом списке отсутствует Chrome). Но на самом деле стандарт во многом совместим и с Chrome, так как фактически написан на основе его расширений. Подробнее о WebExtensions API можно прочитать \u003Ca href=\"https:\u002F\u002Fwiki.mozilla.org\u002FWebExtensions\u002FFAQ#Is_the_WebExtensions_API_a_Web_standard.3F\"\u003Eздесь\u003C\u002Fa\u003E.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Ch2 id=\"struktura-rasshireniya\"\u003EСтруктура расширения\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EЕдинственный файл, который обязательно нужен для расширения — манифест (manifest.json). Он же является “точкой входа” в расширение.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Ch3 id=\"manifest\"\u003EМанифест\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EПо спецификации файл манифеста является валидным JSON файлом. Полное описание ключей манифеста с информацией о том, какие ключи в поддерживается в каком браузере, можно посмотреть \u003Ca href=\"https:\u002F\u002Fdeveloper.mozilla.org\u002Fen-US\u002Fdocs\u002FMozilla\u002FAdd-ons\u002FWebExtensions\u002Fmanifest.json\"\u003Eздесь\u003C\u002Fa\u003E.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EКлючи, которых нет в спецификации, “могут” быть проигнорированы (и Chrome, и Firefox пишут об ошибках, но расширения продолжают работать).\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EА я бы хотел обратить внимание на некоторые моменты.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Col\u003E\r\n\u003Cli\u003E\u003Cstrong\u003Ebackground\u003C\u002Fstrong\u003E — объект, который включает в себя следующие поля:\u003Cbr\u002F\u003E\r\n\u003Col\u003E\r\n\u003Cli\u003E\u003Cstrong\u003Escripts\u003C\u002Fstrong\u003E — массив скриптов, которые будут выполнены в background-контексте (поговорим об этом чуть позже);\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Cstrong\u003Epage\u003C\u002Fstrong\u003E — вместо скриптов, которые будут выполнятся в пустой странице, можно задать html с контентом. В этом случае поле script будет проигнорировано, а скрипты нужно будет вставить в страницу с контентом;\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Cstrong\u003Epersistent\u003C\u002Fstrong\u003E — бинарный флаг, eсли не указан, то браузер будет \"убивать\" background-процесс, когда посчитает, что он ничего не делает, и перезапускать при необходимости. В противном случае страница будет выгружена только при закрытии браузера. Не поддерживается в Firefox.\u003C\u002Fli\u003E\r\n\u003C\u002Fol\u003E\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Cstrong\u003Econtent_scripts\u003C\u002Fstrong\u003E — массив объектов, позволяющий загружать разные скрипты к разным веб страницам. Каждый объект содержит следующие важные поля:\u003Cbr\u002F\u003E\r\n\u003Col\u003E\r\n\u003Cli\u003E\u003Cstrong\u003Ematches\u003C\u002Fstrong\u003E — \u003Ca href=\"https:\u002F\u002Fdeveloper.mozilla.org\u002Fen-US\u002Fdocs\u002FMozilla\u002FAdd-ons\u002FWebExtensions\u002Fmanifest.json\u002Fcontent_scripts#Matching_URL_patterns\"\u003Eпаттерн url\u003C\u002Fa\u003E, по которому определяется, будет включаться конкретный content script или нет.\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Cstrong\u003Ejs\u003C\u002Fstrong\u003E — список скриптов которые будут загружены в данный матч;\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Cstrong\u003Eexclude_matches\u003C\u002Fstrong\u003E — исключает из поля \u003Ccode\u003Ematch\u003C\u002Fcode\u003E URL, которые удовлетворяют этому полю.\u003C\u002Fli\u003E\r\n\u003C\u002Fol\u003E\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Cstrong\u003Epage_action\u003C\u002Fstrong\u003E — фактически является объектом, который отвечает за иконку, которая отображается рядом с адресной строкой в браузере, и взаимодействие с ней. Позволяет так же показывать popup окно, которое задается с помощью своих HTML, CSS и JS.\u003Cbr\u002F\u003E\r\n\u003Col\u003E\r\n\u003Cli\u003E\u003Cstrong\u003Edefault_popup\u003C\u002Fstrong\u003E — путь до HTML файла с popup-интерфейсом, может содержать CSS и JS.\u003C\u002Fli\u003E\r\n\u003C\u002Fol\u003E\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Cstrong\u003Epermissions\u003C\u002Fstrong\u003E — массив для управления правами расширения. Существует 3 типа прав, которые подробно описаны \u003Ca href=\"https:\u002F\u002Fdeveloper.mozilla.org\u002Fen-US\u002Fdocs\u002FMozilla\u002FAdd-ons\u002FWebExtensions\u002Fmanifest.json\u002Fpermissions#API_permissions\"\u003Eтут\u003C\u002Fa\u003E\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Cstrong\u003Eweb_accessible_resources\u003C\u002Fstrong\u003E — ресурсы расширения, которые может запрашивать веб страница, например, изображения, файлы JS, CSS, HTML. \u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Cstrong\u003Eexternally_connectable\u003C\u002Fstrong\u003E — здесь можно явно указать ID других расширений и домены веб-страниц, с которых можно подключаться. Домен может быть второго уровня и выше. Не работает в Firefox.\u003C\u002Fli\u003E\r\n\u003C\u002Fol\u003E\u003Cbr\u002F\u003E\r\n\u003Ch2 id=\"kontekst-vypolneniya\"\u003EКонтекст выполнения\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EУ расширения есть три контекста исполнения кода, то есть, приложение состоит из трех частей с разным уровнем доступа к API браузера.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Ch3 id=\"extension-context\"\u003EExtension context\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EЗдесь доступна большая часть API. В этом контексте \"живут\":\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Col\u003E\r\n\u003Cli\u003E\u003Cstrong\u003EBackground page\u003C\u002Fstrong\u003E — “backend” часть расширения. Файл указывается в манифесте по ключу “background”.\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Cstrong\u003EPopup page\u003C\u002Fstrong\u003E — popup страница, которая появляется при нажатии на иконку расширения. В манифесте \u003Ccode\u003Ebrowser_action\u003C\u002Fcode\u003E -\u003E \u003Ccode\u003Edefault_popup\u003C\u002Fcode\u003E.\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Cstrong\u003ECustom page\u003C\u002Fstrong\u003E — страница расширения, \"живущая\" в отдельной вкладке вида \u003Ccode\u003Echrome-extension:\u002F\u002F&lt;id_расширения\u003E\u002FcustomPage.html\u003C\u002Fcode\u003E.\u003C\u002Fli\u003E\r\n\u003C\u002Fol\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EЭтот контекст существует независимо от окон и вкладок браузера. \u003Cstrong\u003EBackground page\u003C\u002Fstrong\u003E существует в единственном экземпляре и работает всегда (исключение — event page, когда background-скрипт запускается по событию и \"умирает\" после его выполнения). \u003Cstrong\u003EPopup page\u003C\u002Fstrong\u003E существует, когда открыто окно popup, а \u003Cstrong\u003ECustom page\u003C\u002Fstrong\u003E — пока открыта вкладка с ней. Доступа к другим вкладкам и их содержимому из этого контекста нет.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Ch3 id=\"content-script-context\"\u003EContent script context\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EФайл контент-скрипта запускается вместе с каждой вкладкой браузера. У него есть доступ к части API расширения и к DOM-дереву веб-страницы. Именно контент-скрипты отвечают за взаимодействие со страницей. Расширения, манипулирующие DOM-деревом, делают это в контент-скриптах – например, блокировщики рекламы или переводчики. Также контент-скрипт может общаться со страницей через стандартный \u003Ccode\u003EpostMessage\u003C\u002Fcode\u003E.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Ch3 id=\"web-page-context\"\u003EWeb page context\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EЭто собственно сама веб-страница. К расширению она не имеет никакого отношения и доступа туда не имеет, кроме случаев, когда в манифесте явно не указан домен этой страницы (об этом — ниже).\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Ch2 id=\"obmen-soobscheniyami\"\u003EОбмен сообщениями\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EРазные части приложения должны обмениваться сообщениями между собой. Для этого существует API \u003Ccode\u003Eruntime.sendMessage\u003C\u002Fcode\u003E для отправки сообщения \u003Ccode\u003Ebackground\u003C\u002Fcode\u003E и \u003Ccode\u003Etabs.sendMessage\u003C\u002Fcode\u003E для отправки сообщения странице (контент-скрипту, popup'у или веб странице при наличии \u003Ccode\u003Eexternally_connectable\u003C\u002Fcode\u003E). Ниже приведен пример при обращении к API Chrome.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"javascript\"\u003E\u002F\u002F Сообщением может быть любой JSON сериализуемый объект\nconst msg = {a: 'foo', b: 'bar'};\n\n\u002F\u002F extensionId можно не указывать, если мы хотим послать сообщение 'своему' расширению (из ui или контент скрипта)\nchrome.runtime.sendMessage(extensionId, msg);\n\n\u002F\u002F Так выглядит обработчик\nchrome.runtime.onMessage.addListener((msg) =\u003E console.log(msg))\n\n\u002F\u002F Можно слать сообщения вкладкам зная их id\nchrome.tabs.sendMessage(tabId, msg)\n\n\u002F\u002F Получить к вкладкам и их id можно, например, вот так\nchrome.tabs.query(\n    {currentWindow: true, active : true},\n    function(tabArray){\n      tabArray.forEach(tab =\u003E console.log(tab.id))\n    }\n)\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EДля полноценного общения можно создавать соединения через \u003Ccode\u003Eruntime.connect\u003C\u002Fcode\u003E. В ответ мы получим \u003Ccode\u003Eruntime.Port\u003C\u002Fcode\u003E, в который, пока он открыт, можно отправлять любое количество сообщений. На стороне клиента, например, \u003Ccode\u003Econtentscript\u003C\u002Fcode\u003E, это выглядит так:\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"javascript\"\u003E\u002F\u002F Опять же extensionId можно не указывать при коммуникации внутри одного расширения. Подключение можно именовать\nconst port = chrome.runtime.connect({name: \"knockknock\"});\nport.postMessage({joke: \"Knock knock\"});\nport.onMessage.addListener(function(msg) {\n    if (msg.question === \"Who's there?\")\n        port.postMessage({answer: \"Madame\"});\n    else if (msg.question === \"Madame who?\")\n        port.postMessage({answer: \"Madame... Bovary\"});\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EСервер или background:\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"javascript\"\u003E\u002F\u002F Обработчик для подключения 'своих' вкладок. Контент скриптов, popup или страниц расширения\nchrome.runtime.onConnect.addListener(function(port) {\n    console.assert(port.name === \"knockknock\");\n    port.onMessage.addListener(function(msg) {\n        if (msg.joke === \"Knock knock\")\n            port.postMessage({question: \"Who's there?\"});\n        else if (msg.answer === \"Madame\")\n            port.postMessage({question: \"Madame who?\"});\n        else if (msg.answer === \"Madame... Bovary\")\n            port.postMessage({question: \"I don't get it.\"});\n    });\n});\n\n\u002F\u002F Обработчик для подключения внешних вкладок. Других расширений или веб страниц, которым разрешен доступ в манифесте\nchrome.runtime.onConnectExternal.addListener(function(port) {\n    ...\n});\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EТакже есть событие \u003Ccode\u003EonDisconnect\u003C\u002Fcode\u003E и метод \u003Ccode\u003Edisconnect\u003C\u002Fcode\u003E.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Ch2 id=\"shema-prilozheniya\"\u003EСхема приложения\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EДавайте сделаем браузерное расширение, которое хранит приватные ключи, предоставляет доступ к публичной информации (адрес, публичный ключ общается со страницей и позволяет сторонним приложениям запросить подпись транзакций.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Ch2 id=\"razrabotka-prilozheniya\"\u003EРазработка приложения\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EНаше приложение должно как взаимодействовать с пользователем, так и предоставлять странице API для вызова методов (например, для подписи транзакций). Обойтись одним лишь \u003Ccode\u003Econtentscript\u003C\u002Fcode\u003E не получится, так как у него есть доступ только к DOM, но не к JS страницы. Подключаться через \u003Ccode\u003Eruntime.connect\u003C\u002Fcode\u003E мы не можем, потому что API нужен на всех доменах, а в манифесте можно указывать только конкретные. В итоге схема будет выглядеть так:\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Ffa\u002Fb3\u002Fgx\u002Ffab3gxq823kwybj9yk_kv8wlogy.png\"\u002F\u003E\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EБудет еще один скрипт — \u003Ccode\u003Einpage\u003C\u002Fcode\u003E, который мы будем инжектить в страницу. Он будет выполняться в ее контексте и предоставлять API для работы с расширением.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Ch3 id=\"nachalo\"\u003EНачало\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EВесь код браузерного расширения доступен на \u003Ca href=\"https:\u002F\u002Fgithub.com\u002Fsiemarell\u002Fextension-demo\u002Ftree\u002Ftransactions\"\u003EGitHub\u003C\u002Fa\u003E. В процессе описания будут ссылки на коммиты.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EНачнем с манифеста:\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"javascript\"\u003E{\n  \u002F\u002F Имя и описание, версия. Все это будет видно в браузере в chrome:\u002F\u002Fextensions\u002F?id=&lt;id расширения\u003E\n  \"name\": \"Signer\",\n  \"description\": \"Extension demo\",\n  \"version\": \"0.0.1\",\n  \"manifest_version\": 2,\n\n  \u002F\u002F Скрипты, которые будут исполнятся в background, их может быть несколько\n  \"background\": {\n    \"scripts\": [\"background.js\"]\n  },\n\n  \u002F\u002F Какой html использовать для popup\n  \"browser_action\": {\n    \"default_title\": \"My Extension\",\n    \"default_popup\": \"popup.html\"\n  },\n\n  \u002F\u002F Контент скрипты.\n  \u002F\u002F У нас один объект: для всех url начинающихся с http или https мы запускаем\n  \u002F\u002F contenscript context со скриптом contentscript.js. Запускать сразу по получении документа для всех фреймов\n  \"content_scripts\": [\n    {\n      \"matches\": [\n        \"http:\u002F\u002F*\u002F*\",\n        \"https:\u002F\u002F*\u002F*\"\n      ],\n      \"js\": [\n        \"contentscript.js\"\n      ],\n      \"run_at\": \"document_start\",\n      \"all_frames\": true\n    }\n  ],\n  \u002F\u002F Разрешен доступ к localStorage и idle api\n  \"permissions\": [\n    \"storage\",\n    \u002F\u002F \"unlimitedStorage\",\n    \u002F\u002F\"clipboardWrite\",\n    \"idle\"\n    \u002F\u002F\"activeTab\",\n    \u002F\u002F\"webRequest\",\n    \u002F\u002F\"notifications\",\n    \u002F\u002F\"tabs\"\n  ],\n  \u002F\u002F Здесь указываются ресурсы, к которым будет иметь доступ веб страница. Тоесть их можно будет запрашивать fetche'м или просто xhr\n  \"web_accessible_resources\": [\"inpage.js\"]\n}\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EСоздаем пустые background.js, popup.js, inpage.js и contentscript.js. Добавляем popup.html — и наше приложение уже можно загрузить в Google Chrome и убедиться, что оно работает.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EЧтобы убедиться в этом, можно взять код \u003Ca href=\"https:\u002F\u002Fgithub.com\u002Fsiemarell\u002Fextension-demo\u002Ftree\u002Fmanifest-app-template\"\u003Eотсюда\u003C\u002Fa\u003E. Кроме того, что мы сделали, по ссылке настроена сборка проекта с помощью webpack. Чтобы добавить приложение в браузер, в chrome:\u002F\u002Fextensions нужно выбрать load unpacked и папку с соответствующим расширением — в нашем случае dist.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fws\u002Fng\u002Fqz\u002Fwsngqza3qdcjtxycbcwk4awpfqm.png\"\u002F\u003E\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EТеперь наше расширение установлено и работает. Запуститьинструменты для разработчиков для разных контекстов можно следующим образом:\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003Epopup -\u003E\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fm3\u002Fpr\u002F9d\u002Fm3pr9dww991nvn9jsfwj8mvndqq.png\"\u002F\u003E \u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EДоступ к консоли контент-скрипта осуществляется через консоль самой страницы, на которой он запущен.\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002F3t\u002Fgn\u002F6v\u002F3tgn6vao3ilxdwyz9zxraegz9vo.png\"\u002F\u003E\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003E\u003Cstrong\u003EОбмен сообщениями\u003C\u002Fstrong\u003E\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EИтак, нам необходимо установить два канала связи: inpage &lt;-\u003E background и popup &lt;-\u003E background. Можно, конечно, просто отправлять сообщения в порт и изобрести свой протокол, но мне больше нравится подход, который я подсмотрел в проекте с открытым кодом metamask.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EЭто браузерное расширение для работы с сетью Ethereum. В нем разные части приложения общаются через RPC при помощи библиотеки dnode. Она позволяет достаточно быстро и удобно организовать обмен, если в качестве транспорта ей предоставить nodejs stream (имеется в виду объект, реализующий тот же интерфейс): \u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"javascript\"\u003Eimport Dnode from \"dnode\u002Fbrowser\";\n\n\u002F\u002F В этом примере условимся что клиент удаленно вызывает функции на сервере, хотя ничего нам не мешает сделать это двунаправленным\n\n\u002F\u002F Cервер\n\u002F\u002F API, которое мы хотим предоставить\nconst dnode = Dnode({\n    hello: (cb) =\u003E cb(null, \"world\")\n})\n\u002F\u002F Транспорт, поверх которого будет работать dnode. Любой nodejs стрим. В браузере есть бибилиотека 'readable-stream'\nconnectionStream.pipe(dnode).pipe(connectionStream)\n\n\u002F\u002F Клиент\nconst dnodeClient = Dnode() \u002F\u002F Вызов без агрумента значит что мы не предоставляем API на другой стороне\n\n\u002F\u002F Выведет в консоль world\ndnodeClient.once('remote', remote =\u003E {\n    remote.hello(((err, value) =\u003E console.log(value)))\n})\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EТеперь мы создадим класс приложения. Оно будет создавать объекты API для popup и веб-страницы, а также создавать dnode для них:\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"javascript\"\u003Eimport Dnode from 'dnode\u002Fbrowser';\n\nexport class SignerApp {\n\n    \u002F\u002F Возвращает объект API для ui\n    popupApi(){\n        return {\n            hello: cb =\u003E cb(null, 'world')\n        }\n    }\n\n    \u002F\u002F Возвращает объет API для страницы\n    pageApi(){\n        return {\n            hello: cb =\u003E cb(null, 'world')\n        }\n    }\n\n    \u002F\u002F Подключает popup ui\n    connectPopup(connectionStream){\n        const api = this.popupApi();\n        const dnode = Dnode(api);\n\n        connectionStream.pipe(dnode).pipe(connectionStream);\n\n        dnode.on('remote', (remote) =\u003E {\n            console.log(remote)\n        })\n    }\n\n    \u002F\u002F Подключает страницу\n    connectPage(connectionStream, origin){\n        const api = this.popupApi();\n        const dnode = Dnode(api);\n\n        connectionStream.pipe(dnode).pipe(connectionStream);\n\n        dnode.on('remote', (remote) =\u003E {\n            console.log(origin);\n            console.log(remote)\n        })\n    }\n}\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EЗдесь и далее вместо глобального объекта Chrome мы используем extentionApi, который обращается к Chrome в браузере от Google и к browser в других. Делается это для кроссбраузерности, но в рамках данной статьи можно было бы использовать и просто ‘chrome.runtime.connect’.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EСоздадим инстанс приложения в background скрипте:\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"javascript\"\u003Eimport {extensionApi} from \".\u002Futils\u002FextensionApi\";\nimport {PortStream} from \".\u002Futils\u002FPortStream\";\nimport {SignerApp} from \".\u002FSignerApp\";\n\nconst app = new SignerApp();\n\n\u002F\u002F onConnect срабатывает при подключении 'процессов' (contentscript, popup, или страница расширения)\nextensionApi.runtime.onConnect.addListener(connectRemote);\n\nfunction connectRemote(remotePort) {\n    const processName = remotePort.name;\n    const portStream = new PortStream(remotePort);\n    \u002F\u002F При установке соединения можно указывать имя, по этому имени мы и оппределяем кто к нам подлючился, контентскрипт или ui\n    if (processName === 'contentscript'){\n        const origin = remotePort.sender.url\n        app.connectPage(portStream, origin)\n    }else{\n        app.connectPopup(portStream)\n    }\n}\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EТак как dnode работает со стримами, а мы получаем порт, то необходим класс-адаптер. Он сделан при помощи библиотеки readable-stream, которая реализует nodejs-стримы в браузере:\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"javascript\"\u003Eimport {Duplex} from 'readable-stream';\n\nexport class PortStream extends Duplex{\n    constructor(port){\n        super({objectMode: true});\n        this._port = port;\n        port.onMessage.addListener(this._onMessage.bind(this));\n        port.onDisconnect.addListener(this._onDisconnect.bind(this))\n    }\n\n    _onMessage(msg) {\n        if (Buffer.isBuffer(msg)) {\n            delete msg._isBuffer;\n            const data = new Buffer(msg);\n            this.push(data)\n        } else {\n            this.push(msg)\n        }\n    }\n\n    _onDisconnect() {\n        this.destroy()\n    }\n\n    _read(){}\n\n    _write(msg, encoding, cb) {\n        try {\n            if (Buffer.isBuffer(msg)) {\n                const data = msg.toJSON();\n                data._isBuffer = true;\n                this._port.postMessage(data)\n            } else {\n                this._port.postMessage(msg)\n            }\n        } catch (err) {\n            return cb(new Error('PortStream - disconnected'))\n        }\n        cb()\n    }\n}\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EТеперь создаем подключение в UI:\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"javascript\"\u003Eimport {extensionApi} from \".\u002Futils\u002FextensionApi\";\nimport {PortStream} from \".\u002Futils\u002FPortStream\";\nimport Dnode from 'dnode\u002Fbrowser';\n\nconst DEV_MODE = process.env.NODE_ENV !== 'production';\n\nsetupUi().catch(console.error);\n\nasync function setupUi(){\n    \u002F\u002F Также, как и в классе приложения создаем порт, оборачиваем в stream, делаем  dnode\n    const backgroundPort = extensionApi.runtime.connect({name: 'popup'});\n    const connectionStream = new PortStream(backgroundPort);\n\n    const dnode = Dnode();\n\n    connectionStream.pipe(dnode).pipe(connectionStream);\n\n    const background = await new Promise(resolve =\u003E {\n        dnode.once('remote', api =\u003E {\n            resolve(api)\n        })\n    });\n\n    \u002F\u002F Делаем объект API доступным из консоли\n    if (DEV_MODE){\n        global.background = background;\n    }\n}\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EЗатем мы создаем подключение в content script:\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"javascript\"\u003Eimport {extensionApi} from \".\u002Futils\u002FextensionApi\";\nimport {PortStream} from \".\u002Futils\u002FPortStream\";\nimport PostMessageStream from 'post-message-stream';\n\nsetupConnection();\ninjectScript();\n\nfunction setupConnection(){\n    const backgroundPort = extensionApi.runtime.connect({name: 'contentscript'});\n    const backgroundStream = new PortStream(backgroundPort);\n\n    const pageStream = new PostMessageStream({\n        name: 'content',\n        target: 'page',\n    });\n\n    pageStream.pipe(backgroundStream).pipe(pageStream);\n}\n\nfunction injectScript(){\n    try {\n        \u002F\u002F inject in-page script\n        let script = document.createElement('script');\n        script.src = extensionApi.extension.getURL('inpage.js');\n        const container = document.head || document.documentElement;\n        container.insertBefore(script, container.children[0]);\n        script.onload = () =\u003E script.remove();\n    } catch (e) {\n        console.error('Injection failed.', e);\n    }\n}\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EТак как API нам нужен не в контент-скрипте, а непосредственно на странице, мы делаем две вещи:\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Col\u003E\r\n\u003Cli\u003EСоздаем два стрима. Один — в сторону страницы, поверх postMessage. Для этого мы используем вот \u003Ca href=\"https:\u002F\u002Fwww.npmjs.com\u002Fpackage\u002Fpost-message-stream\"\u003Eэтот пакет\u003C\u002Fa\u003E от создателей metamask. Второй стрим — к background поверх порта, полученного от \u003Ccode\u003Eruntime.connect\u003C\u002Fcode\u003E. Пайпим их. Теперь у страницы будет стрим до бэкграунда.\u003C\u002Fli\u003E\r\n\u003Cli\u003EИнжектим скрипт в DOM. Выкачиваем скрипт (доступ к нему был разрешен в манифесте) и создаем тег \u003Ccode\u003Escript\u003C\u002Fcode\u003E с его содержимым внутри:\u003C\u002Fli\u003E\r\n\u003C\u002Fol\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"javascript\"\u003Eimport PostMessageStream from 'post-message-stream';\nimport {extensionApi} from \".\u002Futils\u002FextensionApi\";\nimport {PortStream} from \".\u002Futils\u002FPortStream\";\n\nsetupConnection();\ninjectScript();\n\nfunction setupConnection(){\n    \u002F\u002F Стрим к бекграунду\n    const backgroundPort = extensionApi.runtime.connect({name: 'contentscript'});\n    const backgroundStream = new PortStream(backgroundPort);\n\n    \u002F\u002F Стрим к странице\n    const pageStream = new PostMessageStream({\n        name: 'content',\n        target: 'page',\n    });\n\n    pageStream.pipe(backgroundStream).pipe(pageStream);\n}\n\nfunction injectScript(){\n    try {\n        \u002F\u002F inject in-page script\n        let script = document.createElement('script');\n        script.src = extensionApi.extension.getURL('inpage.js');\n        const container = document.head || document.documentElement;\n        container.insertBefore(script, container.children[0]);\n        script.onload = () =\u003E script.remove();\n    } catch (e) {\n        console.error('Injection failed.', e);\n    }\n}\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EТеперь создаем объект api в inpage и заводим его global:\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"javascript\"\u003Eimport PostMessageStream from 'post-message-stream';\nimport Dnode from 'dnode\u002Fbrowser';\n\nsetupInpageApi().catch(console.error);\n\nasync function setupInpageApi() {\n    \u002F\u002F Стрим к контентскрипту\n    const connectionStream = new PostMessageStream({\n        name: 'page',\n        target: 'content',\n    });\n\n    const dnode = Dnode();\n\n    connectionStream.pipe(dnode).pipe(connectionStream);\n\n    \u002F\u002F Получаем объект API\n    const pageApi = await new Promise(resolve =\u003E {\n        dnode.once('remote', api =\u003E {\n            resolve(api)\n        })\n    });\n\n    \u002F\u002F Доступ через window\n    global.SignerApp = pageApi;\n}\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EУ нас готов \u003Ca href=\"https:\u002F\u002Fgithub.com\u002Fsiemarell\u002Fextension-demo\u002Ftree\u002Fdnode-setup-callback\"\u003ERemote Procedure Call (RPC) с отдельным API для страницы и UI\u003C\u002Fa\u003E. При подключении новой страницы к background мы можем это увидеть:\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fcy\u002Fr_\u002Fpm\u002Fcyr_pmgm-u5hes5lefaf85gk91m.png\"\u002F\u003E\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EПустой API и origin. На стороне страницы мы можем вызвать функцию hello вот так: \u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002F3p\u002Ffd\u002Ftv\u002F3pfdtv17ejnjzh94uajezgz0lce.png\"\u002F\u003E\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EРаботать с callback-функциями в современном JS — моветон, поэтому напишем небольшой хелпер для создания dnode, который позволяет передавать в объект API в utils.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EОбъекты API теперь будут выглядеть вот так:\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"javascript\"\u003Eexport class SignerApp {\n\n    popupApi() {\n        return {\n            hello: async () =\u003E \"world\"\n        }\n    }\n\n...\n\n}\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EПолучение объекта от remote следующим образом:\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"javascript\"\u003Eimport {cbToPromise, transformMethods} from \"..\u002F..\u002Fsrc\u002Futils\u002FsetupDnode\";\n\nconst pageApi = await new Promise(resolve =\u003E {\n    dnode.once('remote', remoteApi =\u003E {\n        \u002F\u002F С помощью утилит меняем все callback на promise\n        resolve(transformMethods(cbToPromise, remoteApi))\n    })\n});\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EА вызов функций возвращает промис:\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fg7\u002Fqq\u002Fog\u002Fg7qqogo60hrjqm5pre7f5miehs0.png\"\u002F\u003E\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EВерсия с асинхронными функциями доступна \u003Ca href=\"https:\u002F\u002Fgithub.com\u002Fsiemarell\u002Fextension-demo\u002Ftree\u002Fdnode-setup-async\"\u003Eздесь\u003C\u002Fa\u003E.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EВ целом, подход с RPC и стримами кажется достаточно гибким: мы можем использовать steam multiplexing и создавать несколько разных API для разных задач. В принципе, dnode можно использовать где угодно, главное — обернуть транспорт в виде nodejs стрима.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EАльтернативой является формат JSON, который реализует протокол JSON RPC 2. Однако он работает с конкретными транспортами (TCP и HTTP(S)), что в нашем случае не применимо.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Ch3 id=\"vnutrenniy-steyt-i-localstorage\"\u003EВнутренний стейт и localStorage\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EНам понадобится хранить внутренний стейт приложения — как минимум, ключи для подписи. Мы можем достаточно легко добавить стейт приложению и методы для его изменения в popup API:\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"javascript\"\u003Eimport {setupDnode} from \".\u002Futils\u002FsetupDnode\";\n\nexport class SignerApp {\n\n    constructor(){\n        this.store = {\n            keys: [],\n        };\n    }\n\n    addKey(key){\n        this.store.keys.push(key)\n    }\n\n    removeKey(index){\n        this.store.keys.splice(index,1)\n    }\n\n    popupApi(){\n        return {\n            addKey: async (key) =\u003E this.addKey(key),\n            removeKey: async (index) =\u003E this.removeKey(index)\n        }\n    }\n\n    ...\n\n} \u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EВ background обернем все в функцию и запишем объект приложения в window, чтобы можно было с ним работать из консоли:\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"javascript\"\u003Eimport {extensionApi} from \".\u002Futils\u002FextensionApi\";\nimport {PortStream} from \".\u002Futils\u002FPortStream\";\nimport {SignerApp} from \".\u002FSignerApp\";\n\nconst DEV_MODE = process.env.NODE_ENV !== 'production';\n\nsetupApp();\n\nfunction setupApp() {\n    const app = new SignerApp();\n\n    if (DEV_MODE) {\n        global.app = app;\n    }\n\n    extensionApi.runtime.onConnect.addListener(connectRemote);\n\n    function connectRemote(remotePort) {\n        const processName = remotePort.name;\n        const portStream = new PortStream(remotePort);\n        if (processName === 'contentscript') {\n            const origin = remotePort.sender.url;\n            app.connectPage(portStream, origin)\n        } else {\n            app.connectPopup(portStream)\n        }\n    }\n}\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EДобавим из консоли UI несколько ключей и посмотрим, что получилось со стейтом:\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fn7\u002Fxr\u002Feb\u002Fn7xrebxybxbquxx8z8uozgwpfqm.png\"\u002F\u003E\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EСтейт нужно сделать персистентным, чтобы при перезапуске ключи не терялись.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EХранить будем в localStorage, перезаписывая при каждом изменении. Впоследствии доступ к нему также будет необходим для UI, и хочется также подписываться на изменения. Исходя из этого удобно будет сделать наблюдаемое хранилище (observable storage) и подписываться на его изменения.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EИспользовать будем библиотеку mobx (\u003Ca href=\"https:\u002F\u002Fgithub.com\u002Fmobxjs\u002Fmobx\"\u003Ehttps:\u002F\u002Fgithub.com\u002Fmobxjs\u002Fmobx\u003C\u002Fa\u003E). Выбор пал на нее, так как работать с ней не приходилось, а очень хотелось ее изучить.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EДобавим инициализацию начального стейта и сделаем store observable:\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"javascript\"\u003Eimport {observable, action} from 'mobx';\nimport {setupDnode} from \".\u002Futils\u002FsetupDnode\";\n\nexport class SignerApp {\n\n    constructor(initState = {}) {\n        \u002F\u002F Внешне store так и останется тем же объектом, только теперь все его поля стали proxy, которые отслеживают доступ к ним\n        this.store =  observable.object({\n            keys: initState.keys || [],\n        });\n    }\n\n    \u002F\u002F Методы, которые меняют observable принято оборачивать декоратором\n    @action\n    addKey(key) {\n        this.store.keys.push(key)\n    }\n\n    @action\n    removeKey(index) {\n        this.store.keys.splice(index, 1)\n    }\n\n    ...\n\n}\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003E\"Под капотом\" mobx заменил все поля store на proxy и перехватывает все обращения к ним. На эти обращения можно будет подписываться.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EДалее я буду часто использовать термин “при изменении”, хотя это не совсем корректно. Mobx отслеживает именно доступ к полям. Используются геттеры и сеттеры прокси-объектов, которые создает библиотека.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EДекораторы action служат двум целям: \u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Col\u003E\r\n\u003Cli\u003EВ строгом режиме с флагом enforceActions mobx запрещает менять стейт напрямую. Хорошим тоном считается работа именно в строгом режиме.\u003C\u002Fli\u003E\r\n\u003Cli\u003EДаже если функция меняет стейт несколько раз – например, мы меняем несколько полей в несколько строк кода, — обсерверы оповещаются только по ее завершении. Это особенно важно для фронтенда, где лишние обновления стейта приводят к ненужному рендеру элементов. В нашем случае ни первое, ни второе особо не актуально, однако мы будем следовать лучшим практикам. Декораторы принято вешать на все функции, которые меняют стейт наблюдаемых полей.\u003C\u002Fli\u003E\r\n\u003C\u002Fol\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EВ background добавим инициализацию и сохранение стейта в localStorage:\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"javascript\"\u003Eimport {reaction, toJS} from 'mobx';\nimport {extensionApi} from \".\u002Futils\u002FextensionApi\";\nimport {PortStream} from \".\u002Futils\u002FPortStream\";\nimport {SignerApp} from \".\u002FSignerApp\";\n\u002F\u002F Вспомогательные методы. Записывают\u002Fчитают объект в\u002Fиз localStorage виде JSON строки по ключу 'store'\nimport {loadState, saveState} from \".\u002Futils\u002FlocalStorage\";\n\nconst DEV_MODE = process.env.NODE_ENV !== 'production';\n\nsetupApp();\n\nfunction setupApp() {\n    const initState = loadState();\n    const app = new SignerApp(initState);\n\n    if (DEV_MODE) {\n        global.app = app;\n    }\n\n    \u002F\u002F Setup state persistence\n\n    \u002F\u002F Результат reaction присваивается переменной, чтобы подписку можно было отменить. Нам это не нужно, оставлено для примера\n    const localStorageReaction = reaction(\n        () =\u003E toJS(app.store), \u002F\u002F Функция-селектор данных\n        saveState \u002F\u002F Функция, которая будет вызвана при изменении данных, которые возвращает селектор\n    );\n\n    extensionApi.runtime.onConnect.addListener(connectRemote);\n\n    function connectRemote(remotePort) {\n        const processName = remotePort.name;\n        const portStream = new PortStream(remotePort);\n        if (processName === 'contentscript') {\n            const origin = remotePort.sender.url\n            app.connectPage(portStream, origin)\n        } else {\n            app.connectPopup(portStream)\n        }\n    }\n}\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EИнтересна здесь функция reaction. У нее два аргумента:\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Col\u003E\r\n\u003Cli\u003EСелектор данных.\u003C\u002Fli\u003E\r\n\u003Cli\u003EОбработчик, который будет вызван с этими данными каждый раз, когда они изменяются.\u003C\u002Fli\u003E\r\n\u003C\u002Fol\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EВ отличие от redux, где мы явно получаем стейт в качестве аргумента, mobx запоминает к каким именно observable мы обращаемся внутри селектора, и только при их изменении вызывает обработчик.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EВажно понимать, как именно mobx решает, на какие observable мы подписываемся. Если бы в коде я написал селектор вот так\u003Ccode\u003E() =\u003E app.store\u003C\u002Fcode\u003E, то reaction не будет вызван никогда, так как сам по себе хранилище не является наблюдаемым, таковыми являются только его поля.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EЕсли бы я написал вот так \u003Ccode\u003E() =\u003E app.store.keys\u003C\u002Fcode\u003E, то опять ничего не произошло бы, так как при добавлении\u002Fудалении элементов массива ссылка на него меняться не будет.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EMobx в первый раз выполняет функцию селектора и следит только за теми observable, к которым мы получали доступ. Сделано это через геттеры прокси. Поэтому здесь использована встроенная функция \u003Ccode\u003EtoJS\u003C\u002Fcode\u003E. Она возвращает новый объект, в котором все прокси заменены на оригинальные поля. В процессе выполнения она читает все поля объекта – следовательно, срабатывают геттеры.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EВ консоли popup снова добавим несколько ключей. На этот раз они попали еще и в localStorage:\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Ffr\u002Fdh\u002F6t\u002Ffrdh6tc_bt_v3zywmgjrnptngcw.png\"\u002F\u003E\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EПри перезагрузке background-страницы информация остается на месте.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EВесь код приложения до этого момента можно посмотреть \u003Ca href=\"https:\u002F\u002Fgithub.com\u002Fsiemarell\u002Fextension-demo\u002Ftree\u002Fapp-state\"\u003Eздесь\u003C\u002Fa\u003E.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Ch2 id=\"bezopasnoe-hranenie-privatnyh-klyuchey\"\u003EБезопасное хранение приватных ключей\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EХранить приватные ключи в открытом виде небезопасно: всегда есть вероятность того, что вас взломают, получат доступ к вашему компьютеру и так далее. Поэтому в localStorage мы будем хранить ключи в зашифрованном паролем виде.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EДля большей безопасности добавим приложению стейт locked, в котором доступа к ключам не будет совсем. Мы будем автоматически переводить расширение в стейт locked по таймауту.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EMobx позволяет хранить только минимальный набор данных, а остальное автоматически рассчитывать на их основе. Это — так называемые computed properties. Их можно сравнить с view в базах данных:\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"javascript\"\u003Eimport {observable, action} from 'mobx';\nimport {setupDnode} from \".\u002Futils\u002FsetupDnode\";\n\u002F\u002F Утилиты для безопасного шифрования строк. Используют crypto-js\nimport {encrypt, decrypt} from \".\u002Futils\u002FcryptoUtils\";\n\nexport class SignerApp {\n    constructor(initState = {}) {\n        this.store = observable.object({\n            \u002F\u002F Храним пароль и зашифрованные ключи. Если пароль null - приложение locked\n            password: null,\n            vault: initState.vault,\n\n            \u002F\u002F Геттеры для вычислимых полей. Можно провести аналогию с view в бд.\n            get locked(){\n                return this.password == null\n            },\n            get keys(){\n                return this.locked ?\n                    undefined :\n                    SignerApp._decryptVault(this.vault, this.password)\n            },\n            get initialized(){\n                return this.vault !== undefined\n            }\n        })\n    }\n    \u002F\u002F Инициализация пустого хранилища новым паролем\n    @action\n    initVault(password){\n        this.store.vault = SignerApp._encryptVault([], password)\n    }\n    @action\n    lock() {\n        this.store.password = null\n    }\n    @action\n    unlock(password) {\n        this._checkPassword(password);\n        this.store.password = password\n    }\n    @action\n    addKey(key) {\n        this._checkLocked();\n        this.store.vault = SignerApp._encryptVault(this.store.keys.concat(key), this.store.password)\n    }\n    @action\n    removeKey(index) {\n        this._checkLocked();\n        this.store.vault = SignerApp._encryptVault([\n                ...this.store.keys.slice(0, index),\n                ...this.store.keys.slice(index + 1)\n            ],\n            this.store.password\n        )\n    }\n\n    ... \u002F\u002F код подключения и api\n\n    \u002F\u002F private\n    _checkPassword(password) {\n        SignerApp._decryptVault(this.store.vault, password);\n    }\n\n    _checkLocked() {\n        if (this.store.locked){\n            throw new Error('App is locked')\n        }\n    }\n\n    \u002F\u002F Методы для шифровки\u002Fдешифровки хранилища\n    static _encryptVault(obj, pass){\n        const jsonString = JSON.stringify(obj)\n        return encrypt(jsonString, pass)\n    }\n\n    static _decryptVault(str, pass){\n        if (str === undefined){\n            throw new Error('Vault not initialized')\n        }\n        try {\n            const jsonString = decrypt(str, pass)\n            return JSON.parse(jsonString)\n        }catch (e) {\n            throw new Error('Wrong password')\n        }\n    }\n}\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EТеперь мы храним только шифрованные ключи и пароль. Все остальное вычисляется. Перевод в стейт locked мы делаем с помощью удаления пароля из стейта. В публичном API появился метод для инициализации хранилища.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EДля шифрования написаны \u003Ca href=\"https:\u002F\u002Fwww.npmjs.com\u002Fpackage\u002Fcrypto-js\"\u003Eутилиты с использованием сrypto-js\u003C\u002Fa\u003E:\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"javascript\"\u003Eimport CryptoJS from 'crypto-js'\n\n\u002F\u002F Используется для осложнения подбора пароля перебором. На каждый вариант пароля злоумышленнику придется сделать 5000 хешей\nfunction strengthenPassword(pass, rounds = 5000) {\n    while (rounds-- \u003E 0){\n        pass = CryptoJS.SHA256(pass).toString()\n    }\n    return pass\n}\n\nexport function encrypt(str, pass){\n    const strongPass = strengthenPassword(pass);\n    return CryptoJS.AES.encrypt(str, strongPass).toString()\n}\n\nexport function decrypt(str, pass){\n    const strongPass = strengthenPassword(pass)\n    const decrypted = CryptoJS.AES.decrypt(str, strongPass);\n    return decrypted.toString(CryptoJS.enc.Utf8)\n}\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EУ браузера есть idle API, через который можно подписаться на событие — изменения стейта. Стейт, соответственно, может быть \u003Ccode\u003Eidle\u003C\u002Fcode\u003E, \u003Ccode\u003Eactive\u003C\u002Fcode\u003E и \u003Ccode\u003Elocked\u003C\u002Fcode\u003E. Для idle можно настроить таймаут, а locked устанавливается, когда блокируется сама ОС. Также мы поменяем селектор для сохранения в localStorage:\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"javascript\"\u003Eimport {reaction, toJS} from 'mobx';\nimport {extensionApi} from \".\u002Futils\u002FextensionApi\";\nimport {PortStream} from \".\u002Futils\u002FPortStream\";\nimport {SignerApp} from \".\u002FSignerApp\";\nimport {loadState, saveState} from \".\u002Futils\u002FlocalStorage\";\n\nconst DEV_MODE = process.env.NODE_ENV !== 'production';\nconst IDLE_INTERVAL = 30;\n\nsetupApp();\n\nfunction setupApp() {\n    const initState = loadState();\n    const app = new SignerApp(initState);\n\n    if (DEV_MODE) {\n        global.app = app;\n    }\n\n    \u002F\u002F Теперь мы явно узываем поле, которому будет происходить доступ, reaction отработает нормально\n    reaction(\n        () =\u003E ({\n            vault: app.store.vault\n        }),\n        saveState\n    );\n\n    \u002F\u002F Таймаут бездействия, когда сработает событие\n    extensionApi.idle.setDetectionInterval(IDLE_INTERVAL);\n    \u002F\u002F Если пользователь залочил экран или бездействовал в течение указанного интервала лочим приложение\n    extensionApi.idle.onStateChanged.addListener(state =\u003E {\n        if (['locked', 'idle'].indexOf(state) \u003E -1) {\n            app.lock()\n        }\n    });\n\n    \u002F\u002F Connect to other contexts\n    extensionApi.runtime.onConnect.addListener(connectRemote);\n\n    function connectRemote(remotePort) {\n        const processName = remotePort.name;\n        const portStream = new PortStream(remotePort);\n        if (processName === 'contentscript') {\n            const origin = remotePort.sender.url\n            app.connectPage(portStream, origin)\n        } else {\n            app.connectPopup(portStream)\n        }\n    }\n}\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EКод до этого шага находится \u003Ca href=\"https:\u002F\u002Fgithub.com\u002Fsiemarell\u002Fextension-demo\u002Ftree\u002Fsecure-keys\"\u003Eздесь\u003C\u002Fa\u003E.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Ch3 id=\"tranzakcii\"\u003EТранзакции\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EИтак, мы подошли к самому главному: созданию и подписи транзакций в блокчейне. Мы будем использовать блокчейн WAVES и библиотеку \u003Ca href=\"https:\u002F\u002Fwww.npmjs.com\u002Fpackage\u002F@waves\u002Fwaves-transactions\"\u003Ewaves-transactions\u003C\u002Fa\u003E.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EДля начала добавим в стейт массив сообщений, которые необходимо подписать, затем — методы добавления нового сообщения, подтверждения подписи и отказа:\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"javascript\"\u003Eimport {action, observable, reaction} from 'mobx';\nimport uuid from 'uuid\u002Fv4';\nimport {signTx} from '@waves\u002Fwaves-transactions'\nimport {setupDnode} from \".\u002Futils\u002FsetupDnode\";\nimport {decrypt, encrypt} from \".\u002Futils\u002FcryptoUtils\";\n\nexport class SignerApp {\n\n    ...\n\n    @action\n    newMessage(data, origin) {\n        \u002F\u002F Для каждого сообщения создаем метаданные с id, статусом, выременем создания и тд.\n        const message = observable.object({\n            id: uuid(), \u002F\u002F Идентификатор, используюю uuid\n            origin, \u002F\u002F Origin будем впоследствии показывать в интерфейсе\n            data, \u002F\u002F\n            status: 'new', \u002F\u002F Статусов будет четыре: new, signed, rejected и failed\n            timestamp: Date.now()\n        });\n        console.log(`new message: ${JSON.stringify(message, null, 2)}`);\n\n        this.store.messages.push(message);\n\n        \u002F\u002F Возвращаем промис внутри которого mobx мониторит изменения сообщения. Как только статус поменяется мы зарезолвим его\n        return new Promise((resolve, reject) =\u003E {\n            reaction(\n                () =\u003E message.status, \u002F\u002FБудем обсервить статус сообщеня\n                (status, reaction) =\u003E { \u002F\u002F второй аргумент это ссылка на сам reaction, чтобы его можно было уничтожть внутри вызова\n                    switch (status) {\n                        case 'signed':\n                            resolve(message.data);\n                            break;\n                        case 'rejected':\n                            reject(new Error('User rejected message'));\n                            break;\n                        case 'failed':\n                            reject(new Error(message.err.message));\n                            break;\n                        default:\n                            return\n                    }\n                    reaction.dispose()\n                }\n            )\n        })\n    }\n    @action\n    approve(id, keyIndex = 0) {\n        const message = this.store.messages.find(msg =\u003E msg.id === id);\n        if (message == null) throw new Error(`No msg with id:${id}`);\n        try {\n            message.data = signTx(message.data, this.store.keys[keyIndex]);\n            message.status = 'signed'\n        } catch (e) {\n            message.err = {\n                stack: e.stack,\n                message: e.message\n            };\n            message.status = 'failed'\n            throw e\n        }\n    }\n    @action\n    reject(id) {\n        const message = this.store.messages.find(msg =\u003E msg.id === id);\n        if (message == null) throw new Error(`No msg with id:${id}`);\n        message.status = 'rejected'\n    }\n\n    ...\n}\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EПри получении нового сообщения мы добавляем в него метаданные, делаем \u003Ccode\u003Eobservable\u003C\u002Fcode\u003E и добавляем в \u003Ccode\u003Estore.messages\u003C\u002Fcode\u003E.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EЕсли не сделать \u003Ccode\u003Eobservable\u003C\u002Fcode\u003E вручную, то mobx сделает это сам при добавлении в массив messages. Однако он создаст новый объект, на который у нас не будет ссылки, а она понадобится для следующего шага.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EДалее мы возвращаем промис, который резолвится при изменении статуса сообщения. За статусом следит reaction, который сам себя \"убьет\" при смене статуса.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EКод методов \u003Ccode\u003Eapprove\u003C\u002Fcode\u003E и \u003Ccode\u003Ereject\u003C\u002Fcode\u003E очень прост: мы просто меняем статус сообщения, предварительно подписав его, если необходимо.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EApprove и reject мы выносим в API UI, newMessage — в API страницы:\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"javascript\"\u003Eexport class SignerApp {\n    ...\n    popupApi() {\n        return {\n            addKey: async (key) =\u003E this.addKey(key),\n            removeKey: async (index) =\u003E this.removeKey(index),\n\n            lock: async () =\u003E this.lock(),\n            unlock: async (password) =\u003E this.unlock(password),\n            initVault: async (password) =\u003E this.initVault(password),\n\n            approve: async (id, keyIndex) =\u003E this.approve(id, keyIndex),\n            reject: async (id) =\u003E this.reject(id)\n        }\n    }\n\n    pageApi(origin) {\n        return {\n            signTransaction: async (txParams) =\u003E this.newMessage(txParams, origin)\n        }\n    }\n\n    ...\n}\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EТеперь попробуем подписать транзакцию расширением:\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fjt\u002Fbp\u002Fnu\u002Fjtbpnu9tbhryijukstktnti3wbu.png\"\u002F\u003E\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EВ целом все готово, осталось \u003Ca href=\"https:\u002F\u002Fgithub.com\u002Fsiemarell\u002Fextension-demo\u002Ftree\u002Ftransactions\"\u003Eдобавить простой UI\u003C\u002Fa\u003E.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Ch2 id=\"ui\"\u003EUI\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EИнтерфейсу нужен доступ к стейту приложения. На стороне UI мы сделаем \u003Ccode\u003Eobservable\u003C\u002Fcode\u003E стейт и добавим в API функцию, которая будет этот стейт менять. Добавим \u003Ccode\u003Eobservable\u003C\u002Fcode\u003E в объект API, полученный от background:\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"javascript\"\u003Eimport {observable} from 'mobx'\nimport {extensionApi} from \".\u002Futils\u002FextensionApi\";\nimport {PortStream} from \".\u002Futils\u002FPortStream\";\nimport {cbToPromise, setupDnode, transformMethods} from \".\u002Futils\u002FsetupDnode\";\nimport {initApp} from \".\u002Fui\u002Findex\";\n\nconst DEV_MODE = process.env.NODE_ENV !== 'production';\n\nsetupUi().catch(console.error);\n\nasync function setupUi() {\n    \u002F\u002F Подключаемся к порту, создаем из него стрим\n    const backgroundPort = extensionApi.runtime.connect({name: 'popup'});\n    const connectionStream = new PortStream(backgroundPort);\n\n    \u002F\u002F Создаем пустой observable для состояния background'a\n    let backgroundState = observable.object({});\n    const api = {\n        \u002F\u002FОтдаем бекграунду функцию, которая будет обновлять observable\n        updateState: async state =\u003E {\n            Object.assign(backgroundState, state)\n        }\n    };\n\n    \u002F\u002F Делаем RPC объект\n    const dnode = setupDnode(connectionStream, api);\n    const background = await new Promise(resolve =\u003E {\n        dnode.once('remote', remoteApi =\u003E {\n            resolve(transformMethods(cbToPromise, remoteApi))\n        })\n    });\n\n    \u002F\u002F Добавляем в background observable со стейтом\n    background.state = backgroundState;\n\n    if (DEV_MODE) {\n        global.background = background;\n    }\n\n    \u002F\u002F Запуск интерфейса\n    await initApp(background)\n}\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EВ конце мы запускаем рендер интерфейса приложения. Это react-приложение. Background-объект просто передается при помощи props. Правильно, конечно, сделать отдельный сервис для методов и store для стейта, но в рамках данной статьи этого достаточно:\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003Eimport {render} from 'react-dom'\nimport App from '.\u002FApp'\nimport React from \"react\";\n\n\u002F\u002F Инициализируем приложение с background объектом в качест ве props\nexport async function initApp(background){\n    render(\n        &lt;App background={background}\u002F\u003E,\n        document.getElementById('app-content')\n    );\n}\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EС помощью mobx очень просто запускать рендер при изменении данных. Мы просто вешаем декоратор observer из пакета \u003Ca href=\"https:\u002F\u002Fwww.npmjs.com\u002Fpackage\u002Fmobx-react\"\u003Emobx-react\u003C\u002Fa\u003E на компонент, и рендер будет автоматически вызываться при изменении любых observable, на которые ссылается компонент. Не нужно никаких mapStateToProps или connect, как в redux. Все работает сразу \"из коробки\":\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003Eimport React, {Component, Fragment} from 'react'\nimport {observer} from \"mobx-react\";\nimport Init from '.\u002Fcomponents\u002FInitialize'\nimport Keys from '.\u002Fcomponents\u002FKeys'\nimport Sign from '.\u002Fcomponents\u002FSign'\nimport Unlock from '.\u002Fcomponents\u002FUnlock'\n\n@observer \u002F\u002F У Компонета с этим декоратом будет автоматически вызван метод render, если будут изменены observable на которые он ссылается\nexport default class App extends Component {\n\n    \u002F\u002F Правильно конечно вынести логику рендера страниц в роутинг и не использовать вложенные тернарные операторы,\n    \u002F\u002F и привязывать observable и методы background непосредственно к тем компонентам, которые их используют\n    render() {\n        const {keys, messages, initialized, locked} = this.props.background.state;\n        const {lock, unlock, addKey, removeKey, initVault, deleteVault, approve, reject} = this.props.background;\n\n        return &lt;Fragment\u003E\n            {!initialized\n                ?\n                &lt;Init onInit={initVault}\u002F\u003E\n                :\n                locked\n                    ?\n                    &lt;Unlock onUnlock={unlock}\u002F\u003E\n                    :\n                    messages.length \u003E 0\n                        ?\n                        &lt;Sign keys={keys} message={messages[messages.length - 1]} onApprove={approve} onReject={reject}\u002F\u003E\n                        :\n                        &lt;Keys keys={keys} onAdd={addKey} onRemove={removeKey}\u002F\u003E\n            }\n            &lt;div\u003E\n                {!locked &amp;&amp; &lt;button onClick={() =\u003E lock()}\u003ELock App&lt;\u002Fbutton\u003E}\n                {initialized &amp;&amp; &lt;button onClick={() =\u003E deleteVault()}\u003EDelete all keys and init&lt;\u002Fbutton\u003E}\n            &lt;\u002Fdiv\u003E\n        &lt;\u002FFragment\u003E\n    }\n}\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EОстальные компоненты можно посмотреть в коде \u003Ca href=\"https:\u002F\u002Fgithub.com\u002Fsiemarell\u002Fextension-demo\u002Ftree\u002Fmaster\u002Fsrc\u002Fui\"\u003Eв папке UI\u003C\u002Fa\u003E.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EТеперь в классе приложения необходимо сделать селектор стейта для UI и при его изменении оповещать UI. Для этого добавим метод \u003Ccode\u003EgetState\u003C\u002Fcode\u003E и \u003Ccode\u003Ereaction\u003C\u002Fcode\u003E, вызывающий \u003Ccode\u003Eremote.updateState\u003C\u002Fcode\u003E:\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"javascript\"\u003Eimport {action, observable, reaction} from 'mobx';\nimport uuid from 'uuid\u002Fv4';\nimport {signTx} from '@waves\u002Fwaves-transactions'\nimport {setupDnode} from \".\u002Futils\u002FsetupDnode\";\nimport {decrypt, encrypt} from \".\u002Futils\u002FcryptoUtils\";\n\nexport class SignerApp {\n\n    ...\n\n    \u002F\u002F public\n    getState() {\n        return {\n            keys: this.store.keys,\n            messages: this.store.newMessages,\n            initialized: this.store.initialized,\n            locked: this.store.locked\n        }\n    }\n\n    ...\n\n    \u002F\u002F\n    connectPopup(connectionStream) {\n        const api = this.popupApi();\n        const dnode = setupDnode(connectionStream, api);\n\n        dnode.once('remote', (remote) =\u003E {\n            \u002F\u002F Создаем reaction на изменения стейта, который сделает вызовет удаленну процедуру и обновит стейт в ui процессе\n            const updateStateReaction = reaction(\n                () =\u003E this.getState(),\n                (state) =\u003E remote.updateState(state),\n                \u002F\u002F Третьим аргументом можно передавать параметры. fireImmediatly значит что reaction выполниться первый раз сразу.\n                \u002F\u002F Это необходимо, чтобы получить начальное состояние. Delay позволяет установить debounce\n                {fireImmediately: true, delay: 500}\n            );\n            \u002F\u002F Удалим подписку при отключении клиента\n            dnode.once('end', () =\u003E updateStateReaction.dispose())\n\n        })\n    }\n\n    ...\n}\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EПри получении объекта \u003Ccode\u003Eremote\u003C\u002Fcode\u003E создается \u003Ccode\u003Ereaction\u003C\u002Fcode\u003E на изменение стейта, который вызывает функцию на стороне UI.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EПоследний штрих — добавим отображение новых сообщений на иконке расширения:\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"javascript\"\u003Efunction setupApp() {\n...\n\n    \u002F\u002F Reaction на выставление текста беджа.\n    reaction(\n        () =\u003E app.store.newMessages.length \u003E 0 ? app.store.newMessages.length.toString() : '',\n        text =\u003E extensionApi.browserAction.setBadgeText({text}),\n        {fireImmediately: true}\n    );\n\n...\n}\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EИтак, приложение готово. Веб-страницы могут запрашивать подпись транзакций:\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fyo\u002Fcz\u002F9b\u002Fyocz9bncoevwxrict_3dl_vphek.png\"\u002F\u003E\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fee\u002F8e\u002Fuj\u002Fee8eujkmg5iwgfholkyxneqsim4.png\"\u002F\u003E\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EКод доступен по этой \u003Ca href=\"https:\u002F\u002Fgithub.com\u002Fsiemarell\u002Fextension-demo\u002Ftree\u002Fui\"\u003Eссылке\u003C\u002Fa\u003E.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003E\u003Cstrong\u003EЗаключение\u003C\u002Fstrong\u003E\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EЕсли вы дочитали статью до конца, но у вас остались вопросы, вы можете задать их в \u003Ca href=\"https:\u002F\u002Fgithub.com\u002Fsiemarell\u002Fextension-demo\"\u003Eрепозитории с расширением\u003C\u002Fa\u003E. Там же вы найдете коммиты под каждый обозначенный шаг. \u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EА если вам интересно посмотреть код настоящего расширения, то вы сможете найти это \u003Ca href=\"https:\u002F\u002Fgithub.com\u002Fwavesplatform\u002FWavesKeeper\"\u003Eздесь\u003C\u002Fa\u003E.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003E\u003Cstrong\u003EКод, репозиторий и описание работы от \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fusers\u002Fsiemarell\u002F\" class=\"user_link\"\u003Esiemarell\u003C\u002Fa\u003E\u003C\u002Fstrong\u003E\u003C\u002Fp\u003E\u003C\u002Fdiv\u003E","tags":[{"titleHtml":"web-разработка"},{"titleHtml":"JS"},{"titleHtml":"CSS"},{"titleHtml":"HTML"},{"titleHtml":"mobx"},{"titleHtml":"react"},{"titleHtml":"extensions"},{"titleHtml":"браузеры"},{"titleHtml":"блокчейн технологии"},{"titleHtml":"блокчейн"},{"titleHtml":"blockchain"}],"metadata":{"stylesUrls":[],"scriptUrls":[],"shareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F451796\u002F60ab6810a07099a470ab27a938ac3dcf\u002F","shareImageWidth":1200,"shareImageHeight":630,"vkShareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F451796\u002F60ab6810a07099a470ab27a938ac3dcf\u002F?format=vk","schemaJsonLd":"{\"@context\":\"http:\\\u002F\\\u002Fschema.org\",\"@type\":\"Article\",\"mainEntityOfPage\":{\"@type\":\"WebPage\",\"@id\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fru\\\u002Fcompany\\\u002Fwaves\\\u002Fblog\\\u002F451796\\\u002F\"},\"headline\":\"Пишем безопасное браузерное расширение\",\"datePublished\":\"2019-05-14T16:32:14+03:00\",\"dateModified\":\"2019-05-14T18:40:30+03:00\",\"author\":{\"@type\":\"Person\",\"name\":\"Inal Kardanov\"},\"publisher\":{\"@type\":\"Organization\",\"name\":\"Habr\",\"logo\":{\"@type\":\"ImageObject\",\"url\":\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fa_\\\u002Flk\\\u002F9m\\\u002Fa_lk9mjkccjox-zccjrpfolmkmq.png\"}},\"description\":\"В отличие от распространенной &quot;клиент-серверной&quot; архитектуры, для децентрализованных приложений характерно:  Отсутствие необходимости хранить базу данных с логи...\",\"url\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fru\\\u002Fcompany\\\u002Fwaves\\\u002Fblog\\\u002F451796\\\u002F#post-content-body\",\"about\":[\"c_waves\",\"h_p2p\",\"h_javascript\",\"h_browser_extensions\",\"h_browsers\",\"f_develop\",\"f_admin\"],\"image\":[\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fnt\\\u002F7v\\\u002Fc8\\\u002Fnt7vc8scuypj0o2ngtj1n6fqjlw.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Ffa\\\u002Fb3\\\u002Fgx\\\u002Ffab3gxq823kwybj9yk_kv8wlogy.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fws\\\u002Fng\\\u002Fqz\\\u002Fwsngqza3qdcjtxycbcwk4awpfqm.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fm3\\\u002Fpr\\\u002F9d\\\u002Fm3pr9dww991nvn9jsfwj8mvndqq.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002F3t\\\u002Fgn\\\u002F6v\\\u002F3tgn6vao3ilxdwyz9zxraegz9vo.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fcy\\\u002Fr_\\\u002Fpm\\\u002Fcyr_pmgm-u5hes5lefaf85gk91m.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002F3p\\\u002Ffd\\\u002Ftv\\\u002F3pfdtv17ejnjzh94uajezgz0lce.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fg7\\\u002Fqq\\\u002Fog\\\u002Fg7qqogo60hrjqm5pre7f5miehs0.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fn7\\\u002Fxr\\\u002Feb\\\u002Fn7xrebxybxbquxx8z8uozgwpfqm.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Ffr\\\u002Fdh\\\u002F6t\\\u002Ffrdh6tc_bt_v3zywmgjrnptngcw.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fjt\\\u002Fbp\\\u002Fnu\\\u002Fjtbpnu9tbhryijukstktnti3wbu.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fyo\\\u002Fcz\\\u002F9b\\\u002Fyocz9bncoevwxrict_3dl_vphek.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fee\\\u002F8e\\\u002Fuj\\\u002Fee8eujkmg5iwgfholkyxneqsim4.png\"]}","metaDescription":"В отличие от распространенной &quot;клиент-серверной&quot; архитектуры, для децентрализованных приложений характерно:\r\n\r\nОтсутствие необходимости хранить базу данных с логинами и паролями пользователя....","mainImageUrl":null,"amp":false},"polls":[],"commentsEnabled":true,"rulesRemindEnabled":false,"votesEnabled":true,"status":"published","plannedPublishTime":null,"checked":null,"isEditorial":false}},"articlesIds":{},"isLoading":false,"pagesCount":{},"route":{},"reasonsList":null,"view":"cards","lastVisitedRoute":{},"ssrCommentsArticleIds":[""],"karma":{}},"authorContribution":{"authors":{}},"betaTest":{"currentAnnouncement":null,"announcements":{},"announcementCards":null,"announcementComments":{},"announcementCommentThreads":{},"announcementCommentingStatuses":{},"archivedList":[]},"authorStatistics":{"articleRefs":{},"articleIds":{},"pagesCount":{},"route":{},"viewsCount":[],"maxStatsCount":{}},"career":{"seoLandings":[],"hubs":""},"comments":{"articleComments":{},"searchCommentsResults":null,"previewComment":null,"pagesCount":null,"commentAccess":{},"scrollParents":{},"pageArticleComments":{"lastViewedComment":0,"postId":null,"lastCommentTimestamp":"","moderated":[],"moderatedIds":[],"commentRoute":""}},"companies":{"companyRefs":{"waves":{"alias":"waves","imageUrl":"\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fcompany\u002F4a8\u002F9d5\u002Fd98\u002F4a89d5d98e2b907119336fb17a7f11dd.png","titleHtml":"Waves","descriptionHtml":null,"relatedData":null,"statistics":{"postsCount":54,"newsCount":0,"vacanciesCount":0,"employeesCount":17,"careerRating":null,"subscribersCount":227,"rating":0,"invest":null},"foundationDate":{"year":"2016","month":"03","day":null},"location":{"city":{"id":"447159","title":"Москва"},"region":{"id":"1885","title":"Москва и Московская обл."},"country":{"id":"168","title":"Россия"}},"siteUrl":"https:\u002F\u002Fwavesplatform.com\u002F","staffNumber":"101–200 человек","registrationDate":"2016-09-26T07:52:25+00:00","representativeUser":null,"contacts":[{"title":"Сайт","url":"https:\u002F\u002Fwavesplatform.com\u002F"},{"title":"Хабр Карьера","url":"https:\u002F\u002Fcareer.habr.com\u002Fcompanies\u002Fwavesplatform-com"},{"title":"Facebook","url":"https:\u002F\u002Ffacebook.com\u002Fwavesplatform"},{"title":"ВКонтакте","url":"https:\u002F\u002Fvk.com\u002Fwavesplatform"},{"title":"Github","url":"https:\u002F\u002Fgithub.com\u002FWAVESPLATFORM"}],"settings":{"analyticsSettings":[],"branding":null,"status":"expired"},"metadata":{"titleHtml":"Waves, Москва -  с март 2016 года","title":"Waves, Москва -  с март 2016 года","keywords":[],"descriptionHtml":"54 статьи от авторов компании Waves","description":"54 статьи от авторов компании Waves"},"aDeskSettings":null,"careerAlias":null,"maxCustomTrackerLinks":0}},"companyIds":{},"companyTopIds":{},"pagesCount":{},"companyProfiles":{},"companiesCategories":[],"companiesCategoriesTotalCount":0,"companiesWidgets":{},"companiesWorkers":{},"companiesFans":{},"route":{},"isLoading":false,"companyWorkersLoading":false,"companyFansLoading":false,"vacancies":{}},"companiesContribution":{"hubs":{},"flows":{},"companyRefs":{}},"companyHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"conversation":{"messages":[],"respondent":null,"isLoadMore":false},"conversations":{"conversations":[],"unreadCount":0,"pagesCount":0,"isLoadMore":false},"desktopState":{"desktopFl":null,"desktopHl":null,"isChecked":false,"isLoginDemanded":false},"dfp":{"slotsDict":{}},"docs":{"menu":{},"articles":{},"mainMenu":[],"loading":{"main":false,"dropdown":false,"article":false}},"feature":{"isProbablyVisible":"true"},"flows":{"flows":[{"alias":"develop","id":1,"route":{"name":"FLOW_PAGE","params":{"flowName":"develop"}}},{"alias":"admin","id":6,"route":{"name":"FLOW_PAGE","params":{"flowName":"admin"}}},{"alias":"design","id":2,"route":{"name":"FLOW_PAGE","params":{"flowName":"design"}}},{"alias":"management","id":3,"route":{"name":"FLOW_PAGE","params":{"flowName":"management"}}},{"alias":"marketing","id":4,"route":{"name":"FLOW_PAGE","params":{"flowName":"marketing"}}},{"alias":"popsci","id":7,"route":{"name":"FLOW_PAGE","params":{"flowName":"popsci"}}}]},"global":{"isPwa":false,"device":"desktop","isHabrCom":true},"hubs":{"hubRefs":{},"hubIds":{},"pagesCount":{},"isLoading":false,"route":{}},"hubsBlock":{"hubRefs":{},"hubIds":{}},"i18n":{"fl":"ru","hl":"ru"},"info":{"infoPage":{},"isLoading":true},"location":{"urlStruct":{"protocol":null,"slashes":null,"auth":null,"host":null,"port":null,"hostname":null,"hash":null,"search":null,"query":{},"pathname":null,"path":null,"href":""},"searchQuery":null},"me":{"user":null,"ppgDemanded":false,"karmaResetInfo":{"canReincarnate":null,"wasReincarnated":null,"currentScore":null},"notes":null},"mostReadingList":{"mostReadingListIds":[],"mostReadingListRefs":null,"promoPost":null},"pinnedPost":{"pinnedPost":null},"ppa":{"articles":{},"card":null,"transactions":null,"totalTransactions":null,"isAccessible":null},"projectsBlocks":{"activeBlocks":{}},"pullRefresh":{"shouldRefresh":false},"sandbox":{"articleIds":[],"articleRefs":{},"pagesCount":null,"route":{},"lastVisitedRoute":{},"isLoading":false},"settingsOther":{"inputs":{"uiLang":{"errors":[],"ref":null,"value":""},"articlesLangEnglish":{"errors":[],"ref":null,"value":false},"articlesLangRussian":{"errors":[],"ref":null,"value":false},"agreement":{"errors":[],"ref":null,"value":false},"email":{"errors":[],"ref":null,"value":true},"digest":{"errors":[],"ref":null,"value":true}}},"similarList":{"similarListIds":[],"similarListRefs":null},"ssr":{"error":null,"isDataLoaded":false,"isDataLoading":false,"isHydrationFailed":false,"isServer":false},"userHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"userInvites":{"availableInvites":0,"usedInvitesIds":[],"usedInvitesRefs":{},"usedInvitesPagesCount":0,"unusedInvitesIds":[],"unusedInvitesRefs":{},"unusedInvitesPagesCount":0},"users":{"authorRefs":{},"authorIds":{},"pagesCount":{},"authorProfiles":{},"userHubs":{},"userInvitations":{},"authorFollowers":{},"authorFollowed":{},"karmaStats":[],"statistics":null,"isLoading":false,"authorFollowersLoading":false,"authorFollowedLoading":false,"userHubsLoading":false,"userInvitationsLoading":false,"route":{}},"viewport":{"prevScrollY":{},"scrollY":0,"width":0},"tracker":{"items":{},"pagesCache":{},"markedViewedSilently":{},"markedRead":{},"unreadCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null},"unviewedCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null}}};(function(){var s;(s=document.currentScript||document.scripts[document.scripts.length-1]).parentNode.removeChild(s);}());</script>
+<script src="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" defer></script><script src="https://assets.habr.com/habr-web/js/app.c0af73e7.js" defer></script>
+
+
+
+    <script>
+      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+        (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+        m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+      })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+    </script>
+  
+  <script type="text/javascript" >
+    (function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+    m[i].l=1*new Date();k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})
+    (window, document, "script", "https://mc.yandex.ru/metrika/tag.js", "ym");
+
+    ym(24049213, "init", {
+      defer:true,
+      trackLinks:true,
+      accurateTrackBounce:true,
+      webvisor:false,
+    });
+  </script>
+  <noscript>
+    <div>
+      <img src="https://mc.yandex.ru/watch/24049213" style="position:absolute; left:-9999px;" alt="" />
+    </div>
+  </noscript>
+  
+    <script type="text/javascript">
+      window.addEventListener('load', function () {
+        setTimeout(() => {
+          const img = new Image();
+          img.src = 'https://vk.com/rtrg?p=VK-RTRG-421343-57vKE';
+        }, 0);
+      });
+    </script>
+  
+</body>
+</html>

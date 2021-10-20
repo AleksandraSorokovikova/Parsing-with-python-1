@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="ru" data-vue-meta="%7B%22lang%22:%7B%22ssr%22:%22ru%22%7D%7D">
+<head >
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
+  <title>Опыт создания позиционных карт для Википедии / Хабр</title>
+  <style>
+    /* cyrillic-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSxf6TF0.woff2) format('woff2');
+      unicode-range: U+0460-052F, U+1C80-1C88, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+    }
+
+    /* cyrillic */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveQhf6TF0.woff2) format('woff2');
+      unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+    }
+
+    /* latin-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSBf6TF0.woff2) format('woff2');
+      unicode-range: U+0100-024F, U+0259, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20CF, U+2113, U+2C60-2C7F, U+A720-A7FF;
+    }
+
+    /* latin */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveRhf6.woff2) format('woff2');
+      unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+    }
+  </style>
+  <link rel="preload" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" as="script"><link rel="preload" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/app.c0af73e7.js" as="script">
+  <link rel="stylesheet" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css"><link rel="stylesheet" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css">
+  <script>window.i18nFetch = new Promise((res, rej) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open('GET', '/js/i18n/ru-compiled.85eb77f0b17c8235e7b64b9f81ea5ec2.json');
+          xhr.responseType = 'json';
+          xhr.onload = function(e) {
+            if (this.status === 200) {
+              res({ru: xhr.response});
+            } else {
+              rej(e);
+            }
+          };
+          xhr.send();
+        });</script>
+  
+  <script data-vue-meta="ssr" src="/js/ads.js" onload="window['zhY4i4nJ9K'] = true" data-vmid="checkad"></script><script data-vue-meta="ssr" type="application/ld+json" data-vmid="ldjson-schema">{"@context":"http:\/\/schema.org","@type":"Article","mainEntityOfPage":{"@type":"WebPage","@id":"https:\/\/habr.com\/ru\/post\/451418\/"},"headline":"Опыт создания позиционных карт для Википедии","datePublished":"2019-05-12T22:36:37+03:00","dateModified":"2019-05-13T01:48:32+03:00","author":{"@type":"Person","name":"nzeemin"},"publisher":{"@type":"Organization","name":"Habr","logo":{"@type":"ImageObject","url":"https:\/\/habrastorage.org\/webt\/a_\/lk\/9m\/a_lk9mjkccjox-zccjrpfolmkmq.png"}},"description":"В течение нескольких лет я работал над картами, которые используются в русском и других языковых разделах Википедии. Всего мной было создано более 300 карт. Я не...","url":"https:\/\/habr.com\/ru\/post\/451418\/#post-content-body","about":["h_creative_commons","h_crowdsourcing","h_social_networks","f_management","f_popsci"],"image":["https:\/\/habrastorage.org\/webt\/hp\/su\/4t\/hpsu4tdkk6v9rrd8kn3n45agwc4.png","https:\/\/habrastorage.org\/webt\/b_\/kt\/fd\/b_ktfd2ti_blmrd0szjrvbelzs4.png","https:\/\/habrastorage.org\/webt\/yd\/ym\/mf\/ydymmfiypxl56rgwzefe6uooaoq.png","https:\/\/habrastorage.org\/webt\/5t\/za\/e9\/5tzae9e1eymokaachw8zt2faejc.png"]}</script>
+  <script src="//www.googletagservices.com/tag/js/gpt.js" async></script>
+  <style>.grecaptcha-badge{visibility: hidden;}</style>
+  <meta name="habr-version" content="2.49.0">
+  
+  <meta data-vue-meta="ssr" property="fb:app_id" content="444736788986613"><meta data-vue-meta="ssr" property="fb:pages" content="472597926099084"><meta data-vue-meta="ssr" name="twitter:card" content="summary_large_image"><meta data-vue-meta="ssr" name="twitter:site" content="@habr_eng"><meta data-vue-meta="ssr" property="og:title" content="Опыт создания позиционных карт для Википедии" data-vmid="og:title"><meta data-vue-meta="ssr" name="twitter:title" content="Опыт создания позиционных карт для Википедии" data-vmid="twitter:title"><meta data-vue-meta="ssr" name="aiturec:title" content="Опыт создания позиционных карт для Википедии" data-vmid="aiturec:title"><meta data-vue-meta="ssr" name="description" content="В течение нескольких лет я работал над картами, которые используются в русском и других языковых разделах Википедии. Всего мной было создано более 300 карт. Я не являюсь профессиональным картографом,..." data-vmid="description"><meta data-vue-meta="ssr" itemprop="description" content="В течение нескольких лет я работал над картами, которые используются в русском и других языковых разделах Википедии. Всего мной было создано более 300 карт. Я не являюсь профессиональным картографом,..." data-vmid="description:itemprop"><meta data-vue-meta="ssr" property="og:description" content="В течение нескольких лет я работал над картами, которые используются в русском и других языковых разделах Википедии. Всего мной было создано более 300 карт. Я не являюсь профессиональным картографом,..." data-vmid="og:description"><meta data-vue-meta="ssr" name="twitter:description" content="В течение нескольких лет я работал над картами, которые используются в русском и других языковых разделах Википедии. Всего мной было создано более 300 карт. Я не являюсь профессиональным картографом,..." data-vmid="twitter:description"><meta data-vue-meta="ssr" property="aiturec:description" content="В течение нескольких лет я работал над картами, которые используются в русском и других языковых разделах Википедии. Всего мной было создано более 300 карт. Я не являюсь профессиональным картографом,..." data-vmid="aiturec:description"><meta data-vue-meta="ssr" itemprop="image" content="https://habr.com/share/publication/451418/0bdca5d754420257cf73e1a429dd87d0/" data-vmid="image:itemprop"><meta data-vue-meta="ssr" property="og:image" content="https://habr.com/share/publication/451418/0bdca5d754420257cf73e1a429dd87d0/" data-vmid="og:image"><meta data-vue-meta="ssr" property="aiturec:image" content="https://habr.com/share/publication/451418/0bdca5d754420257cf73e1a429dd87d0/" data-vmid="aiturec:image"><meta data-vue-meta="ssr" name="twitter:image" content="https://habr.com/share/publication/451418/0bdca5d754420257cf73e1a429dd87d0/" data-vmid="twitter:image"><meta data-vue-meta="ssr" property="vk:image" content="https://habr.com/share/publication/451418/0bdca5d754420257cf73e1a429dd87d0/" data-vmid="vk:image"><meta data-vue-meta="ssr" property="aiturec:item_id" content="451418" data-vmid="aiturec:item_id"><meta data-vue-meta="ssr" property="aiturec:datetime" content="2019-05-12T19:36:37.000Z" data-vmid="aiturec:datetime"><meta data-vue-meta="ssr" property="og:type" content="article" data-vmid="og:type"><meta data-vue-meta="ssr" property="og:locale" content="ru_RU" data-vmid="og:locale"><meta data-vue-meta="ssr" property="og:image:width" content="1200" data-vmid="og:image:width"><meta data-vue-meta="ssr" property="og:image:height" content="630" data-vmid="og:image:height">
+  <link data-vue-meta="ssr" href="https://habr.com/ru/rss/post/451418/?fl=ru" type="application/rss+xml" title="" rel="alternate" name="rss"><link data-vue-meta="ssr" href="https://habr.com/ru/post/451418/" rel="canonical" data-vmid="canonical"><link data-vue-meta="ssr" data-vmid="hreflang"><link data-vue-meta="ssr" image_src="image" href="https://habr.com/share/publication/451418/0bdca5d754420257cf73e1a429dd87d0/" data-vmid="image:href">
+  <meta name="apple-mobile-web-app-status-bar-style" content="#303b44">
+  <meta name="msapplication-TileColor" content="#629FBC">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="16x16"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-16.png"
+  >
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="32x32"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-32.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="76x76"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-76.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="120x120"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="152x152"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-152.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="180x180"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-180.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="256x256"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-256.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1136x640.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2436x1125.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1792x828.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_828x1792.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1334x750.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2208x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1125x2436.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2208.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2732x2048.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2688x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2224x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_750x1334.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x2732.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2388x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2224.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_640x1136.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2388.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x1536.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1536x2048.png"
+  >
+  <link
+    rel="mask-icon"
+    color="#77a2b6"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.svg"
+  >
+  <link
+    crossorigin="use-credentials"
+    href="/manifest.webmanifest"
+    rel="manifest"
+  >
+</head>
+<body>
+
+
+<div id="app" data-server-rendered="true" data-async-called="true"><div class="tm-layout__wrapper"><!----> <div></div> <!----> <header class="tm-header"><div class="tm-page-width"><div class="tm-header__container"><!----> <span class="tm-header__logo-wrap"><a href="/ru/" class="tm-header__logo tm-header__logo_ru"><svg height="16" width="16" class="tm-svg-img tm-header__icon"><title>Хабр</title> <use xlink:href="/img/habr-logo-ru.svg#logo"></use></svg></a> <span class="tm-header__beta-sign" style="display:none;">β</span></span> <div class="tm-dropdown tm-header__projects"><div class="tm-dropdown__head"><button class="tm-header__dropdown-toggle"><svg height="16" width="16" class="tm-svg-img tm-header__icon tm-header__icon_dropdown"><title>Открыть список</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#arrow-down"></use></svg></button></div> <!----></div> <a href="/ru/sandbox/start/" class="tm-header__become-author-btn">
+            Как стать автором
+          </a> <div class="tm-feature tm-header__feature tm-feature_variant-inline"><!----></div> <!----> <!----></div></div></header> <div class="tm-layout"><div class="tm-page-progress-bar"></div> <div data-menu-sticky="true" class="tm-base-layout__header tm-base-layout__header_is-sticky"><div class="tm-page-width"><div class="tm-base-layout__header-wrapper"><div class="tm-main-menu"><div class="tm-main-menu__section"><nav class="tm-main-menu__section-content"><!----> <a href="/ru/all/" class="tm-main-menu__item">
+        Все потоки
+      </a> <a href="/ru/flows/develop/" class="tm-main-menu__item">
+          Разработка
+        </a><a href="/ru/flows/admin/" class="tm-main-menu__item">
+          Администрирование
+        </a><a href="/ru/flows/design/" class="tm-main-menu__item">
+          Дизайн
+        </a><a href="/ru/flows/management/" class="tm-main-menu__item">
+          Менеджмент
+        </a><a href="/ru/flows/marketing/" class="tm-main-menu__item">
+          Маркетинг
+        </a><a href="/ru/flows/popsci/" class="tm-main-menu__item">
+          Научпоп
+        </a></nav></div></div> <div class="tm-header-user-menu tm-base-layout__user-menu"><a href="/ru/search/" class="tm-header-user-menu__item tm-header-user-menu__search"><svg height="24" width="24" class="tm-svg-img tm-header-user-menu__icon tm-header-user-menu__icon_search tm-header-user-menu__icon_dark"><title>Поиск</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#search"></use></svg></a> <!----> <!----> <!----> <div class="tm-header-user-menu__item tm-header-user-menu__user_desktop"><div class="tm-dropdown"><div class="tm-dropdown__head"><svg height="24" width="24" data-test-id="menu-toggle-guest" class="tm-svg-img tm-header-user-menu__icon"><title>Профиль</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#header-user"></use></svg> <!----></div> <!----></div> <!----></div> <!----></div></div></div></div> <!----> <div class="tm-page-width"></div> <main class="tm-layout__container"><div hl="ru" data-async-called="true" class="tm-page"><div class="tm-page-width"><!----> <div class="tm-page__wrapper"><div class="tm-page__main tm-page__main_has-sidebar"><div class="pull-down"><div class="pull-down__header" style="height:0px;"><div class="pull-down__content" style="bottom:10px;"><svg height="24" width="24" class="tm-svg-img pull-down__arrow"><title>Обновить</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#pull-arrow"></use></svg></div></div> <div class="tm-article-presenter"> <div class="tm-article-presenter__body"><div class="tm-misprint-area"><div class="tm-misprint-area__wrapper"><article class="tm-article-presenter__content tm-article-presenter__content_narrow"><div class="tm-article-presenter__header"> <div class="tm-article-snippet tm-article-presenter__snippet"><div class="tm-article-snippet__meta-container"><div class="tm-article-snippet__meta"><span class="tm-user-info tm-article-snippet__author"><a href="/ru/users/nzeemin/" title="nzeemin" class="tm-user-info__userpic"><div class="tm-entity-image"><img alt="" height="24" loading="lazy" src="//habrastorage.org/r/w32/getpro/habr/avatars/c9c/a54/c25/c9ca54c253e51952cd6230f5d9719945.png" width="24" class="tm-entity-image__pic"></div></a> <span class="tm-user-info__user"><a href="/ru/users/nzeemin/" class="tm-user-info__username">
+      nzeemin
+    </a> </span></span> <span class="tm-article-snippet__datetime-published"><time datetime="2019-05-12T19:36:37.000Z" title="2019-05-12, 22:36">12  мая  2019 в 22:36</time></span></div> <!----></div> <h1 lang="ru" class="tm-article-snippet__title tm-article-snippet__title_h1"><span>Опыт создания позиционных карт для Википедии</span></h1> <div class="tm-article-snippet__hubs"><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/creative_commons/" class="tm-article-snippet__hubs-item-link"><span>Creative Commons</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/crowdsourcing/" class="tm-article-snippet__hubs-item-link"><span>Краудсорсинг</span> <!----></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/social_networks/" class="tm-article-snippet__hubs-item-link"><span>Социальные сети и сообщества</span> <!----></a></span></div> <!----> <!----> <!----></div></div> <!----> <div data-gallery-root="" lang="ru" class="tm-article-body"><div id="post-content-body" class="article-formatted-body article-formatted-body_version-1"><div xmlns="http://www.w3.org/1999/xhtml"><p>В течение нескольких лет я работал над картами, которые используются в русском и других языковых разделах Википедии. Всего мной было создано <a href="https://ru.wikipedia.org/wiki/%D0%A3%D1%87%D0%B0%D1%81%D1%82%D0%BD%D0%B8%D0%BA:Nzeemin/%D0%9A%D0%B0%D1%80%D1%82%D1%8B">более 300 карт</a>. Я не являюсь профессиональным картографом, и не имею специального образования в этой области. Видимо, мне просто нравилось делать карты :)</p><br/>
+<p>В рамках этой статьи я хочу поделиться опытом создания карт для Википедии, с фокусом на позиционных картах.</p><br/>
+<p><img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/hp/su/4t/hpsu4tdkk6v9rrd8kn3n45agwc4.png"/><br/>
+<em><a href="https://commons.wikimedia.org/wiki/File:Relief_map_of_Canada.png">Физическая карта Канады</a></em></p><a name="habracut"></a><br/>
+<h2 id="pozicionnye-karty">Позиционные карты</h2><br/>
+<p>Все графические материалы для Википедии, опубликованные под свободными лицензиями, размещаются на <a href="https://commons.wikimedia.org">Викискладе</a>, это позволяет использовать их в любых проектах Wikimedia и во всех языковых разделах Википедии.</p><br/>
+<p>Среди всех типов карт в Википедии особо выделяются так называемые «позиционные карты». Особенность тут в том, что это не просто изображение карты, но изображение в известной проекции, с известными географическими координатами для углов. Для такой карты, в каждом языковом разделе где она используется, создаётся специальный шаблон, описывающий эти метаданные. Имея такой шаблон, мы можем применять его на любой странице, размещая поверх карты маркеры для интересующих нас объектов. Координаты объектов описываются в виде географических координат, формулы в шаблонах рассчитывают куда именно поставить маркер. Так, например, на страницу о регионе можно вставить карту этого региона и отметить на ней районные центры и крупные города.</p><br/>
+<p><img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/b_/kt/fd/b_ktfd2ti_blmrd0szjrvbelzs4.png"/><br/>
+<em>Пример использования <a href="https://ru.wikipedia.org/wiki/%D0%A8%D0%B0%D0%B1%D0%BB%D0%BE%D0%BD:%D0%9F%D0%BE%D0%B7%D0%9A%D0%B0%D1%80%D1%82%D0%B0_%D0%92%D0%B5%D0%BB%D0%B8%D0%BA%D0%BE%D0%B1%D1%80%D0%B8%D1%82%D0%B0%D0%BD%D0%B8%D1%8F_%D0%A4%D0%BE%D0%BB%D0%BA%D0%BB%D0%B5%D0%BD%D0%B4%D1%81%D0%BA%D0%B8%D0%B5_%D0%BE%D1%81%D1%82%D1%80%D0%BE%D0%B2%D0%B0">позиционной карты</a> в карточке статьи об острове <a href="https://ru.wikipedia.org/wiki/%D0%9F%D0%B5%D0%B1%D0%B1%D0%BB">Пеббл</a>. Красный маркер и надпись автоматически размещены на месте объекта поверх изображения карты.</em></p><br/>
+<p>Позиционные карты используются во всех статьях об административных единицах: страны/районы/города/посёлки итд., а также во многих статьях о географических объектах. Часто получается так, что сразу после создания позиционной карты она применяется в 20-50 существующих статьях Википедии.</p><br/>
+<p>В шаблоне позиционной карты, по идее, должны использоваться сразу два рисунка карты: «контурная»/«политическая» карта, и «физическая»/«географическая» карта с теми же самыми координатами, проекцией и размерами. Контурная карта как правило векторная (SVG), физическая карта может быть векторной, но чаще всего это растр (обычно PNG).</p><br/>
+<p><img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/yd/ym/mf/ydymmfiypxl56rgwzefe6uooaoq.png"/><br/>
+<em><a href="https://ru.wikipedia.org/wiki/%D0%A8%D0%B0%D0%B1%D0%BB%D0%BE%D0%BD:%D0%9F%D0%BE%D0%B7%D0%9A%D0%B0%D1%80%D1%82%D0%B0_%D0%9A%D0%B0%D0%B7%D0%B0%D1%85%D1%81%D1%82%D0%B0%D0%BD_%D0%92%D0%BE%D1%81%D1%82%D0%BE%D1%87%D0%BD%D0%BE-%D0%9A%D0%B0%D0%B7%D0%B0%D1%85%D1%81%D1%82%D0%B0%D0%BD%D1%81%D0%BA%D0%B0%D1%8F_%D0%BE%D0%B1%D0%BB%D0%B0%D1%81%D1%82%D1%8C">Пример шаблона позиционной карты с двумя типами карт</a></em></p><br/>
+<p>Позиционных карт нужно много: они должны покрывать все уровни от мира в целом до отдельных районов, небольших островов и т.д. Кроме позиционной карты, для всех административных объектов создаётся т.н. «локатор», это карта, на которой ярким цветом подсвечен интересующий нас район (<a href="https://ru.wikipedia.org/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:East_Kazakhstan_in_Kazakhstan.svg">пример</a> карты-локатора). На «верхнем» уровне (мир, страна) с позиционными картами всё относительно хорошо, но на «нижнем» (уровня районов) часто всё довольно плохо: нет позиционных карт или есть, но недостаточного качества, или выполненные в неподходящем/нестандартном стиле.</p><br/>
+<p>Только для РФ мы имеем 83 субъекта, если добавить к этому районы, то получим уже наверное тысячу или больше административных единиц, на каждую из которых нужна позиционная карта, включая контурную карту, физическую карту, карту-локатор… К тому же, время от времени происходят изменения вида «вышло новое постановление»: появляется юридический документ, который меняет границы административных единиц, разделяет/объединяет их и т.п. И конечно, во всех таких случаях нужно перерисовать одну или несколько позиционных карт.</p><br/>
+<p>В общем, я думаю вы уже поняли — карты очень нужны и их нужно много :)</p><br/>
+<h2 id="ishodnye-dannye-dlya-kart">Исходные данные для карт</h2><br/>
+<p>Для позиционных карт должны использоваться изображения со свободной лицензией. Это значит, что и исходные данные для таких карт должны быть свободными.</p><br/>
+<p>Исходные данные для карт, которыми я пользовался:</p><br/>
+<ul>
+<li>OpenStreetMap — основной источник векторных данных; но нужно учитывать, что данные получаются краудсорсингом, поэтому местами они плотные и качественные, местами очень неполные. Встречаются и ошибки в данных, поэтому полученные карты нужно аккуратно проверять.</li>
+<li>GSHHG — векторные данные в составе GMT (см. ниже); можно использовать для карт крупных масштабов, плохо подходит для мелких масштабов.</li>
+<li>ETOPO1 (разрешение ~1,85 км, объём ~890 МБ), ETOPO2 (разрешение 2' ~= 3,6 км) — карты высот, включая рельеф морского дна (батиметрию).</li>
+<li>TOPO30 (разрешение ~= 0,9 км, объём ~1800 МБ) — карта высот, включая рельеф морского дна.</li>
+<li>GLOBE (разрешение 30" ~= 0,9 км) — карта высот.</li>
+<li><a href="https://ru.wikipedia.org/wiki/Shuttle_Radar_Topography_Mission">SRTM</a> (разрешение SRTM3: 3" ~= 90m) — довольно подробная карта высот, но из-за этого и довольно «увесистая» (каждый файл с данными размером 1x1 градус весит ~2,8 МБ), поэтому обычно приходится скачивать только нужные файлы. Кроме того, исходные данные SRTM имеют разрывы, которые нужно закрывать, интерполируя отсутствующие точки по соседним. Это можно сделать самому, либо использовать «void-filled» исходники, такие как SRTM-Plus. SRTM это карта высот только для суши, не содержит данных о рельефе морского дна.</li>
+</ul><br/>
+<h2 id="proekcii">Проекции</h2><br/>
+<p>В подавляющем большинстве случаев мы работаем с проекцией которая называется «равнопромежуточная цилиндрическая». К этому же семейству проекций относится проекция Меркатора и её частный случай — «проекция Гугла» или «Web Mercator projection», которую используют все основные веб-карты. Формулы для этой проекции довольно просты, к тому же шаблоны позиционных карт уже «знают» эту проекцию.</p><br/>
+<p>В немногих остальных случаях придётся погуглить нужную проекцию и почитать специальную литературу, чтобы понять, как именно получаются координаты x,y из широты и долготы. Mediawiki имеет развитый механизм вычисления выражений (в том числе с тригонометрическими функциями), его можно использовать для проверки своих карт, ещё до того как вы сделаете по ним шаблон позиционной карты (примеры можно посмотреть <a href="https://ru.wikipedia.org/wiki/%D0%A3%D1%87%D0%B0%D1%81%D1%82%D0%BD%D0%B8%D0%BA:Nzeemin/%D0%9F%D0%BE%D0%B7%D0%9A%D0%B0%D1%80%D1%82%D0%B0_%D0%BF%D1%80%D0%BE%D0%B5%D0%BA%D1%86%D0%B8%D0%B8">здесь</a>).</p><br/>
+<h2 id="instrumenty-dlya-sozdaniya-kart">Инструменты для создания карт</h2><br/>
+<p>Инструментов для создания карт (геоинформационные системы, ГИС) довольно много, в том числе бесплатных и с открытым исходным кодом. Но для того чтобы карта была открытой не обязательно использовать открытую и бесплатную систему, достаточно того чтобы исходные данные были открытыми, и того чтобы вы сами поставили на готовую карту открытую лицензию. (Но тут наверняка есть много нюансов, не берусь залезать в область авторского права, не моё :)</p><br/>
+<p>Для создания карт я пользовался в основном тремя программами, описанными ниже.</p><br/>
+<h3 id="maperitive">Maperitive</h3><br/>
+<p><a href="http://maperitive.net/">Maperitive</a> — бесплатный, но закрытый продукт. Крайне полезен при работе с данными OpenStreetMap, работает с данными как с сайта OSM, так и с сохранёнными дампами. Позволяет выбрать стилевик и сохранить карту в формате SVG. Есть ряд готовых стилевиков и можно писать свои. Я подготовил несколько файлов стилей, и использую их для экспорта в SVG границ районов, и карт самих районов с поселениями.</p><br/>
+<h3 id="generic-mapping-tools-gmt">Generic Mapping Tools (GMT)</h3><br/>
+<p>Вообще, Generic Mapping Tools (GMT) это бесплатный набор утилит командной строки, предназначенный для обработки и визуализации научных данных, в том числе ряд его инструментов позволяют работать с геоданными, т.е. мы можем использовать GMT как консольную ГИС. Готовая карта (или отдельный слой для будущей карты) получается в результате последовательности вызова утилит. Обычно я пишу командный файл, в котором задаются все параметры и выполняется вызов утилит. С первого взгляда выглядит сложно, но мне как программисту такой подход кажется понятным и привычным. Кроме того, здесь обеспечивается повторяемость: чтобы создать карту снова, я всегда могу запустить скрипт ещё раз.</p><br/>
+<p>Пример командного файла (см. также <a href="https://ru.wikipedia.org/wiki/%D0%A3%D1%87%D0%B0%D1%81%D1%82%D0%BD%D0%B8%D0%BA:Nzeemin/%D0%9A%D0%B0%D1%80%D1%82%D1%8B/%D0%A1%D0%BE%D0%B7%D0%B4%D0%B0%D0%BD%D0%B8%D0%B5_%D1%80%D0%B5%D0%BB%D1%8C%D0%B5%D1%84%D0%B0">здесь</a>):</p><br/>
+<pre><code class="plaintext">set PATH=C:\programs\GMT5\bin;%PATH%
+set GSBIN=C:\PROGRA~1\gs\gs9.04/bin
+
+set COORDSCUT=144.7492/157.3007/42.9694/51.3837
+rem width = xmaxsvg / 150.0 * 2.54
+set PAPERX=14.9352
+rem height = ymaxsvg / 150.0 * 2.54
+set PAPERY=16.0189333333333
+
+grdcut.exe ETOPO1_Bed_g_gmt4.grd -R%COORDSCUT% -Gh_cor_cut.grd
+grdgradient h_cor_cut.grd -Ne0.3 -A315 -M -Ghi.grd  
+grdimage h_cor_cut.grd -Ihi.grd -Cwiki-water-verlauf2.cpt -P -R%COORDSCUT% -JX%PAPERX%cd/%PAPERY%cd --PAPER_MEDIA=Custom_%PAPERX%cx%PAPERY%c -X0 -Y0 -K > map.eps
+pscoast.exe -JX%PAPERX%cd/%PAPERY%cd -R%COORDSCUT% -Gc -P -Df --PAPER_MEDIA=Custom_%PAPERX%cx%PAPERY%c -X0 -Y0 -O -K >> map.eps
+grdimage h_cor_cut.grd -Ihi.grd -Cmount.cpt -P -R%COORDSCUT% -JX%PAPERX%cd/%PAPERY%cd --PAPER_MEDIA=Custom_%PAPERX%cx%PAPERY%c -X0 -Y0 -O -K >> map.eps
+pscoast.exe -JX%PAPERX%cd/%PAPERY%cd -R%COORDSCUT% -Q -P -Df --PAPER_MEDIA=Custom_%PAPERX%cx%PAPERY%c -X0 -Y0 -O -K >> map.eps
+pscoast.exe -JX%PAPERX%cd/%PAPERY%cd -R%COORDSCUT% -Na -Ia/0.25p,#0978AB -W0.25,#0978AB -P -Df --PAPER_MEDIA=Custom_%PAPERX%cx%PAPERY%c -X0 -Y0 -O >> map.eps
+
+%GSBIN%\gswin32c.exe -dSAFER -dBATCH -dNOPAUSE -dGraphicsAlphaBits=4 -sDEVICE=pngalpha -dEPSCrop -r150 -sOutputFile=Oblast_etopo.png map.eps</code></pre><br/>
+<p>Результат:<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/5t/za/e9/5tzae9e1eymokaachw8zt2faejc.png"/></p><br/>
+<p>В составе GMT, вместе с инструментами командной строки также поставляются и данные, этот набор называется <a href="http://www.soest.hawaii.edu/pwessel/gshhg/">GSHHG</a>, карты из этих данных создаются с помощью утилиты <code>pscoast</code>, входящей в GMT.</p><br/>
+<h3 id="inkscape">Inkscape</h3><br/>
+<p><a href="https://inkscape.org/">Inkscape</a> — свободный и открытый векторный графический редактор, основным форматом которого является SVG.</p><br/>
+<p>Maperitive и GMT я обычно использую как инструменты для подготовки отдельных слоёв будущей карты. Затем полученные слои импортируются в отдельные слои в документе Inkscape, и вся завершающая работа над картой проходит уже там. Так, например, для позиционной карты нужно, чтобы район, показанный на карте, был «подсвечен» — цветом на контурной карте и затенением на физической карте. Это уже ручная работа над объектами и слоями в Inkscape.</p><br/>
+<p>Последним шагом по подготовке изображений карты будет сохранение SVG (для векторной карты) или экспорт PNG (для растровой).</p><br/>
+<h2 id="process-sozdaniya-karty">Процесс создания карты</h2><br/>
+<ol>
+<li>Начинаю я обычно с того, что беру область будущей карты и смотрю на исходные данные, которые у меня есть для этой области. Создаю примитивную контурную карту через GMT на данных GSHHG, пробую рендерить рельеф той же области на данных ETOPO1, TOPO30, смотрю как эта область выглядит в OpenStreetMap. Бывает так, что я отказываюсь от создания карты на этом этапе, если вижу что имеющихся данных недостаточно или они плохого качества, содержат ошибки или крупные пробелы.</li>
+<li>Дальше, исходя из прикидочных рендеров, выбираю, на каких именно данных буду делать карту.</li>
+<li>Создаём отдельные слои карты. Как правило, отдельно получается слой границ (например, вектор из OSM), отдельно рисунок рельефа для суши и отдельно слой подводного рельефа (батиметрии), отдельно слой береговых линий и слой рек и водоёмов. Часто бывает так, что два растровых слоя имеют разное разрешение, и тут приходится играть с интерполяцией, чтобы вместе они смотрелись более-менее органично. Например, карта рельефа для суши берётся из ETOPO1, потому что этот участок там представлен лучше, а батиметрия взята из TOPO30, и разрешение этих двух источников различается в два раза. Тогда для меньшего разрешения делаем увеличение разрешения с интерполяцией, чтобы не возникало «квадратиков», не появлялся эффект муара и т.п.</li>
+<li>Используя Inkscape, собираем вместе отдельные слои карты. Выполняем необходимую ручную работу, если это нужно. Пробуем экспортировать карту в растр, внимательно рассматриваем и выявляем недочёты, исправляем и повторяем. Результатом являются файлы карты, готовые для загрузки на Викисклад.</li>
+<li>Загружаем файлы карты на Викисклад, выполняем там документирование. Про каждый файл должно быть написано что это за карта, какого объекта, с какими координатами и в какой проекции, какие использованы исходные данные с какими лицензиями, какими инструментами выполнена работа.</li>
+<li>Создаём или обновляем шаблон позиционной карты в ру-вики, проверяем его использование. Убеждаемся, что объекты встают в правильные места карты, т.е. что координаты углов карты заданы правильно, и сама карта этим координатам соответствует. После этого обновляем шаблоны для этой позиционной карты в других языковых разделах.</li>
+</ol><br/>
+<h2 id="zaklyuchenie">Заключение</h2><br/>
+<p>На создание одной карты у меня уходило от 20-30 минут (в простых случаях, когда ряд однотипных карт районов делается как на конвейере), до 4-6 часов (в сложных случаях, когда возникали проблемы с исходными данными и нужно было делать много ручной работы). На физическую карту Канады (см. КДПВ) у меня ушло несколько дней: потребовалось подобрать проекцию, которая уже использовалась на контурной карте.</p><br/>
+<p>Если говорить о том «что я от этого получаю», то наверное — массу эстетического удовольствия, от того какие получаются карты.</p><br/>
+<p>Спасибо что дочитали, надеюсь, мой опыт вам как-нибудь пригодится :)</p></div></div> <!----> <!----></div> <div class="tm-article-presenter__meta"><div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Теги:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5B%D0%B2%D0%B8%D0%BA%D0%B8%D0%BF%D0%B5%D0%B4%D0%B8%D1%8F%5D" class="tm-tags-list__link">википедия</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5B%D0%BA%D0%B0%D1%80%D1%82%D1%8B%5D" class="tm-tags-list__link">карты</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5B%D0%BA%D0%B0%D1%80%D1%82%D0%BE%D0%B3%D1%80%D0%B0%D1%84%D0%B8%D1%8F%5D" class="tm-tags-list__link">картография</a></li></ul></div> <div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Хабы:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/hub/creative_commons/" class="tm-hubs-list__link">
+    Creative Commons
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/crowdsourcing/" class="tm-hubs-list__link">
+    Краудсорсинг
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/social_networks/" class="tm-hubs-list__link">
+    Социальные сети и сообщества
+  </a></li></ul></div></div></article></div> <!----></div> <div class="tm-article-sticky-panel"><div class="tm-data-icons tm-article-sticky-panel__icons"><div class="tm-article-rating tm-data-icons__item"><div class="tm-votes-meter tm-article-rating__votes-switcher"><svg height="16" width="16" class="tm-svg-img tm-votes-meter__icon tm-votes-meter__icon_medium"><title>Всего голосов 37: ↑37 и ↓0</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-rating"></use></svg> <span title="Всего голосов 37: ↑37 и ↓0" class="tm-votes-meter__value tm-votes-meter__value_positive tm-votes-meter__value_medium">+37</span></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----> <span title="Количество просмотров" class="tm-icon-counter tm-data-icons__item"><svg height="16" width="16" class="tm-svg-img tm-icon-counter__icon"><title>Просмотры</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-views"></use></svg> <span class="tm-icon-counter__value">6.3K</span></span> <button title="Добавить в закладки" type="button" class="bookmarks-button tm-data-icons__item"><span title="Добавить в закладки" class="tm-svg-icon__wrapper bookmarks-button__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Добавить в закладки</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-favorite"></use></svg></span> <span title="Количество пользователей, добавивших публикацию в закладки" class="bookmarks-button__counter">
+    43
+  </span></button> <!----> <div title="Поделиться" class="tm-sharing tm-data-icons__item"><button type="button" class="tm-sharing__button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="tm-sharing__icon"><path fill="currentColor" d="M10.33.275l9.047 7.572a.2.2 0 010 .306l-9.048 7.572a.2.2 0 01-.328-.153V11c-8 0-9.94 6-9.94 6S-1 5 10 5V.428a.2.2 0 01.328-.153z"></path></svg></button> <!----></div> <DIV class="v-portal" style="display:none;"></DIV></div> </div></div> <!----> <!----> <div class="tm-article-presenter__footer"><div class="tm-article-blocks"><!----> <section class="tm-block tm-block_spacing-bottom"><!----> <div class="tm-block__body tm-block__body_variant-balanced"><div class="tm-article-author"> <div class="tm-user-card tm-article-author__user-card tm-user-card_variant-article"><div class="tm-user-card__info-container"><div class="tm-user-card__header"><div class="tm-user-card__header-data"><a href="/ru/users/nzeemin/" class="tm-user-card__userpic tm-user-card__userpic_size-40"><div class="tm-entity-image"><img alt="" src="//habrastorage.org/getpro/habr/avatars/c9c/a54/c25/c9ca54c253e51952cd6230f5d9719945.png" class="tm-entity-image__pic"></div></a> <div class="tm-user-card__meta"><div title=" 158 голосов " class="tm-karma tm-user-card__karma"><div class="tm-karma__votes tm-karma__votes_positive">
+    103
+  </div> <div class="tm-karma__text">
+    Карма
+  </div></div> <div title="Рейтинг пользователя" class="tm-rating tm-user-card__rating"><div class="tm-rating__header"> <div class="tm-rating__counter">0</div></div> <div class="tm-rating__text">
+    Рейтинг
+  </div></div></div></div></div> <div class="tm-user-card__info tm-user-card__info_variant-article"><div class="tm-user-card__title tm-user-card__title_variant-article"><span class="tm-user-card__name tm-user-card__name_variant-article">nzeemin</span> <a href="/ru/users/nzeemin/" class="tm-user-card__nickname tm-user-card__nickname_variant-article">
+          @nzeemin
+        </a> <!----></div> <p class="tm-user-card__short-info tm-user-card__short-info_variant-article">Программист</p></div></div> <div class="tm-user-card__buttons tm-user-card__buttons_variant-article"><!----> <!----> <button type="submit" class="tm-user-card__button btn btn_transparent btn_small">
+      Задонатить
+    </button> <!----> <!----></div></div> <!----></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----></section> <div class="tm-article-blocks__comments"><div class="tm-article-page-comments"><div class="tm-article-comments-counter-link tm-article-comments-counter-button"><a href="/ru/post/451418/comments/" class="tm-article-comments-counter-link__link tm-article-comments-counter-link__link_button-style"><svg height="16" width="16" class="tm-svg-img tm-article-comments-counter-link__icon tm-article-comments-counter-link__icon_contrasted"><title>Комментарии</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-comments"></use></svg> <span class="tm-article-comments-counter-link__value tm-article-comments-counter-link__value_contrasted">
+       Комментарии 19 
+    </span></a> <!----></div></div></div> <div class="tm-ad-banner__container tm-page-article__banner"><!----> <div id="articleBottomBanner" class="tm-ad-banner"></div></div> <!----> <!----> <!----> <!----> </div></div></div></div></div> <div class="tm-page__sidebar"><div class="tm-layout-sidebar"><div class="tm-layout-sidebar__ads tm-layout-sidebar__ads_initial"><div class="tm-ad-banner__container tm-layout-sidebar__banner"><!----> <div id="sidebarBanner" class="tm-ad-banner"></div></div></div> <div class="tm-sexy-sidebar tm-sexy-sidebar_initial" style="margin-top:0px;"><!----> <!----></div></div></div></div></div></div></main> <!----></div> <div class="tm-footer-menu"><div class="tm-page-width"><div class="tm-footer-menu__container"><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Ваш аккаунт
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr/?back=/ru/post/451418/&amp;hl=ru" rel="nofollow" target="_self">
+                Войти
+              </a></li><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr-register/?back=/ru/post/451418/&amp;hl=ru" rel="nofollow" target="_self">
+                Регистрация
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Разделы
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/" class="footer-menu__item-link router-link-active">
+                Публикации
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/news/" class="footer-menu__item-link">
+                Новости
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/hubs/" class="footer-menu__item-link">
+                Хабы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/companies/" class="footer-menu__item-link">
+                Компании
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/users/" class="footer-menu__item-link">
+                Авторы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/sandbox/" class="footer-menu__item-link">
+                Песочница
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Информация
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/docs/help/" class="footer-menu__item-link">
+                Устройство сайта
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/authors/codex/" class="footer-menu__item-link">
+                Для авторов
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/companies/corpblogs/" class="footer-menu__item-link">
+                Для компаний
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/docs/transparency/" class="footer-menu__item-link">
+                Документы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/agreement" target="_blank">
+                Соглашение
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/confidential/" target="_blank">
+                Конфиденциальность
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Услуги
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQLwRfQmXibiUlWaRg-BAc38s7oM3lJiaPju7qmdJsp8ysIvZ_G-Npem0njJLMozE2bPHMpDqiI5hhy/pub?start=false&amp;loop=false&amp;delayms=60000&amp;slide=id.g91a03369cd_4_297" target="_blank">
+                Реклама
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://habrastorage.org/storage/stuff/habr/service_price.pdf" target="_blank">
+                Тарифы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQJJds8-Di7BQSP_guHxICN7woVYoN5NP_22ra-BIo4bqnTT9FR6fB-Ku2P0AoRpX0Ds-LRkDeAoD8F/pub?start=false&amp;loop=false&amp;delayms=60000" target="_blank">
+                Контент
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://tmtm.timepad.ru/" target="_blank">
+                Семинары
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/megaprojects/" class="footer-menu__item-link">
+                Мегапроекты
+              </a></li></ul></div></div></div></div></div> <div class="tm-footer"><div class="tm-page-width"><div class="tm-footer__container"><!----> <div class="tm-footer__social"><a href="https://www.facebook.com/habrahabr.ru" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Facebook</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-facebook"></use></svg></a><a href="https://twitter.com/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Twitter</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-twitter"></use></svg></a><a href="https://vk.com/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>VK</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-vkontakte"></use></svg></a><a href="https://telegram.me/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Telegram</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-telegram"></use></svg></a><a href="https://www.youtube.com/channel/UCd_sTwKqVrweTt4oAKY5y4w" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Youtube</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-youtube"></use></svg></a><a href="https://zen.yandex.ru/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Яндекс Дзен</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-zen"></use></svg></a></div> <DIV class="v-portal" style="display:none;"></DIV> <button class="tm-footer__link"><!---->
+        Настройка языка
+      </button> <a href="/ru/about" class="tm-footer__link">
+        О сайте
+      </a> <a href="/ru/feedback/" class="tm-footer__link">
+        Техническая поддержка
+      </a> <!----> <a href="/berserk-mode-nope" class="tm-footer__link">
+        Вернуться на старую версию
+      </a> <div class="tm-footer-copyright"><span class="tm-copyright"><span class="tm-copyright__years">© 2006–2021 </span> <span class="tm-copyright__name">«<a href="https://company.habr.com/" rel="noopener" target="_blank" class="tm-copyright__link">Habr</a>»</span></span></div></div></div></div> <!----> <!----></div> <div class="vue-portal-target"></div></div>
+<script>window.__INITIAL_STATE__={"adblock":{"hasAcceptableAdsFilter":false,"hasAdblock":false},"articlesList":{"articlesList":{"451418":{"id":"451418","timePublished":"2019-05-12T19:36:37+00:00","isCorporative":false,"lang":"ru","titleHtml":"Опыт создания позиционных карт для Википедии","leadData":{"textHtml":"\u003Cp\u003EВ течение нескольких лет я работал над картами, которые используются в русском и других языковых разделах Википедии. Всего мной было создано \u003Ca href=\"https:\u002F\u002Fru.wikipedia.org\u002Fwiki\u002F%D0%A3%D1%87%D0%B0%D1%81%D1%82%D0%BD%D0%B8%D0%BA:Nzeemin\u002F%D0%9A%D0%B0%D1%80%D1%82%D1%8B\"\u003Eболее 300 карт\u003C\u002Fa\u003E. Я не являюсь профессиональным картографом, и не имею специального образования в этой области. Видимо, мне просто нравилось делать карты :)\u003C\u002Fp\u003E\u003Cbr\u003E\r\n\u003Cp\u003EВ рамках этой статьи я хочу поделиться опытом создания карт для Википедии, с фокусом на позиционных картах.\u003C\u002Fp\u003E\u003Cbr\u003E\r\n\u003Cp\u003E\u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fhp\u002Fsu\u002F4t\u002Fhpsu4tdkk6v9rrd8kn3n45agwc4.png\"\u003E\u003Cbr\u003E\r\n\u003Cem\u003E\u003Ca href=\"https:\u002F\u002Fcommons.wikimedia.org\u002Fwiki\u002FFile:Relief_map_of_Canada.png\"\u003EФизическая карта Канады\u003C\u002Fa\u003E\u003C\u002Fem\u003E\u003C\u002Fp\u003E","imageUrl":null,"buttonTextHtml":"Читать дальше →","image":null},"editorVersion":"1.0","postType":"article","postLabels":[],"author":{"scoreStats":{"score":103,"votesCount":158},"rating":0,"relatedData":null,"contacts":[],"authorContacts":[],"paymentDetails":{"paymentYandexMoney":null,"paymentPayPalMe":"nzeemin","paymentWebmoney":null},"id":"2024","alias":"nzeemin","fullname":"nzeemin","avatarUrl":"\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Favatars\u002Fc9c\u002Fa54\u002Fc25\u002Fc9ca54c253e51952cd6230f5d9719945.png","speciality":"Программист"},"statistics":{"commentsCount":19,"favoritesCount":43,"readingCount":6296,"score":37,"votesCount":37},"hubs":[{"relatedData":null,"id":"16995","alias":"creative_commons","type":"collective","title":"Creative Commons","titleHtml":"Creative Commons","isProfiled":true},{"relatedData":null,"id":"21916","alias":"crowdsourcing","type":"collective","title":"Краудсорсинг","titleHtml":"Краудсорсинг","isProfiled":false},{"relatedData":null,"id":"21924","alias":"social_networks","type":"collective","title":"Социальные сети и сообщества","titleHtml":"Социальные сети и сообщества","isProfiled":false}],"flows":[{"id":"3","alias":"management","title":"Менеджмент"},{"id":"7","alias":"popsci","title":"Научпоп"}],"relatedData":null,"textHtml":"\u003Cdiv xmlns=\"http:\u002F\u002Fwww.w3.org\u002F1999\u002Fxhtml\"\u003E\u003Cp\u003EВ течение нескольких лет я работал над картами, которые используются в русском и других языковых разделах Википедии. Всего мной было создано \u003Ca href=\"https:\u002F\u002Fru.wikipedia.org\u002Fwiki\u002F%D0%A3%D1%87%D0%B0%D1%81%D1%82%D0%BD%D0%B8%D0%BA:Nzeemin\u002F%D0%9A%D0%B0%D1%80%D1%82%D1%8B\"\u003Eболее 300 карт\u003C\u002Fa\u003E. Я не являюсь профессиональным картографом, и не имею специального образования в этой области. Видимо, мне просто нравилось делать карты :)\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EВ рамках этой статьи я хочу поделиться опытом создания карт для Википедии, с фокусом на позиционных картах.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fhp\u002Fsu\u002F4t\u002Fhpsu4tdkk6v9rrd8kn3n45agwc4.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cem\u003E\u003Ca href=\"https:\u002F\u002Fcommons.wikimedia.org\u002Fwiki\u002FFile:Relief_map_of_Canada.png\"\u003EФизическая карта Канады\u003C\u002Fa\u003E\u003C\u002Fem\u003E\u003C\u002Fp\u003E\u003Ca name=\"habracut\"\u003E\u003C\u002Fa\u003E\u003Cbr\u002F\u003E\r\n\u003Ch2 id=\"pozicionnye-karty\"\u003EПозиционные карты\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EВсе графические материалы для Википедии, опубликованные под свободными лицензиями, размещаются на \u003Ca href=\"https:\u002F\u002Fcommons.wikimedia.org\"\u003EВикискладе\u003C\u002Fa\u003E, это позволяет использовать их в любых проектах Wikimedia и во всех языковых разделах Википедии.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EСреди всех типов карт в Википедии особо выделяются так называемые «позиционные карты». Особенность тут в том, что это не просто изображение карты, но изображение в известной проекции, с известными географическими координатами для углов. Для такой карты, в каждом языковом разделе где она используется, создаётся специальный шаблон, описывающий эти метаданные. Имея такой шаблон, мы можем применять его на любой странице, размещая поверх карты маркеры для интересующих нас объектов. Координаты объектов описываются в виде географических координат, формулы в шаблонах рассчитывают куда именно поставить маркер. Так, например, на страницу о регионе можно вставить карту этого региона и отметить на ней районные центры и крупные города.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fb_\u002Fkt\u002Ffd\u002Fb_ktfd2ti_blmrd0szjrvbelzs4.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cem\u003EПример использования \u003Ca href=\"https:\u002F\u002Fru.wikipedia.org\u002Fwiki\u002F%D0%A8%D0%B0%D0%B1%D0%BB%D0%BE%D0%BD:%D0%9F%D0%BE%D0%B7%D0%9A%D0%B0%D1%80%D1%82%D0%B0_%D0%92%D0%B5%D0%BB%D0%B8%D0%BA%D0%BE%D0%B1%D1%80%D0%B8%D1%82%D0%B0%D0%BD%D0%B8%D1%8F_%D0%A4%D0%BE%D0%BB%D0%BA%D0%BB%D0%B5%D0%BD%D0%B4%D1%81%D0%BA%D0%B8%D0%B5_%D0%BE%D1%81%D1%82%D1%80%D0%BE%D0%B2%D0%B0\"\u003Eпозиционной карты\u003C\u002Fa\u003E в карточке статьи об острове \u003Ca href=\"https:\u002F\u002Fru.wikipedia.org\u002Fwiki\u002F%D0%9F%D0%B5%D0%B1%D0%B1%D0%BB\"\u003EПеббл\u003C\u002Fa\u003E. Красный маркер и надпись автоматически размещены на месте объекта поверх изображения карты.\u003C\u002Fem\u003E\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EПозиционные карты используются во всех статьях об административных единицах: страны\u002Fрайоны\u002Fгорода\u002Fпосёлки итд., а также во многих статьях о географических объектах. Часто получается так, что сразу после создания позиционной карты она применяется в 20-50 существующих статьях Википедии.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EВ шаблоне позиционной карты, по идее, должны использоваться сразу два рисунка карты: «контурная»\u002F«политическая» карта, и «физическая»\u002F«географическая» карта с теми же самыми координатами, проекцией и размерами. Контурная карта как правило векторная (SVG), физическая карта может быть векторной, но чаще всего это растр (обычно PNG).\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fyd\u002Fym\u002Fmf\u002Fydymmfiypxl56rgwzefe6uooaoq.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cem\u003E\u003Ca href=\"https:\u002F\u002Fru.wikipedia.org\u002Fwiki\u002F%D0%A8%D0%B0%D0%B1%D0%BB%D0%BE%D0%BD:%D0%9F%D0%BE%D0%B7%D0%9A%D0%B0%D1%80%D1%82%D0%B0_%D0%9A%D0%B0%D0%B7%D0%B0%D1%85%D1%81%D1%82%D0%B0%D0%BD_%D0%92%D0%BE%D1%81%D1%82%D0%BE%D1%87%D0%BD%D0%BE-%D0%9A%D0%B0%D0%B7%D0%B0%D1%85%D1%81%D1%82%D0%B0%D0%BD%D1%81%D0%BA%D0%B0%D1%8F_%D0%BE%D0%B1%D0%BB%D0%B0%D1%81%D1%82%D1%8C\"\u003EПример шаблона позиционной карты с двумя типами карт\u003C\u002Fa\u003E\u003C\u002Fem\u003E\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EПозиционных карт нужно много: они должны покрывать все уровни от мира в целом до отдельных районов, небольших островов и т.д. Кроме позиционной карты, для всех административных объектов создаётся т.н. «локатор», это карта, на которой ярким цветом подсвечен интересующий нас район (\u003Ca href=\"https:\u002F\u002Fru.wikipedia.org\u002Fwiki\u002F%D0%A4%D0%B0%D0%B9%D0%BB:East_Kazakhstan_in_Kazakhstan.svg\"\u003Eпример\u003C\u002Fa\u003E карты-локатора). На «верхнем» уровне (мир, страна) с позиционными картами всё относительно хорошо, но на «нижнем» (уровня районов) часто всё довольно плохо: нет позиционных карт или есть, но недостаточного качества, или выполненные в неподходящем\u002Fнестандартном стиле.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EТолько для РФ мы имеем 83 субъекта, если добавить к этому районы, то получим уже наверное тысячу или больше административных единиц, на каждую из которых нужна позиционная карта, включая контурную карту, физическую карту, карту-локатор… К тому же, время от времени происходят изменения вида «вышло новое постановление»: появляется юридический документ, который меняет границы административных единиц, разделяет\u002Fобъединяет их и т.п. И конечно, во всех таких случаях нужно перерисовать одну или несколько позиционных карт.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EВ общем, я думаю вы уже поняли — карты очень нужны и их нужно много :)\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Ch2 id=\"ishodnye-dannye-dlya-kart\"\u003EИсходные данные для карт\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EДля позиционных карт должны использоваться изображения со свободной лицензией. Это значит, что и исходные данные для таких карт должны быть свободными.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EИсходные данные для карт, которыми я пользовался:\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003EOpenStreetMap — основной источник векторных данных; но нужно учитывать, что данные получаются краудсорсингом, поэтому местами они плотные и качественные, местами очень неполные. Встречаются и ошибки в данных, поэтому полученные карты нужно аккуратно проверять.\u003C\u002Fli\u003E\r\n\u003Cli\u003EGSHHG — векторные данные в составе GMT (см. ниже); можно использовать для карт крупных масштабов, плохо подходит для мелких масштабов.\u003C\u002Fli\u003E\r\n\u003Cli\u003EETOPO1 (разрешение ~1,85 км, объём ~890 МБ), ETOPO2 (разрешение 2' ~= 3,6 км) — карты высот, включая рельеф морского дна (батиметрию).\u003C\u002Fli\u003E\r\n\u003Cli\u003ETOPO30 (разрешение ~= 0,9 км, объём ~1800 МБ) — карта высот, включая рельеф морского дна.\u003C\u002Fli\u003E\r\n\u003Cli\u003EGLOBE (разрешение 30\" ~= 0,9 км) — карта высот.\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Ca href=\"https:\u002F\u002Fru.wikipedia.org\u002Fwiki\u002FShuttle_Radar_Topography_Mission\"\u003ESRTM\u003C\u002Fa\u003E (разрешение SRTM3: 3\" ~= 90m) — довольно подробная карта высот, но из-за этого и довольно «увесистая» (каждый файл с данными размером 1x1 градус весит ~2,8 МБ), поэтому обычно приходится скачивать только нужные файлы. Кроме того, исходные данные SRTM имеют разрывы, которые нужно закрывать, интерполируя отсутствующие точки по соседним. Это можно сделать самому, либо использовать «void-filled» исходники, такие как SRTM-Plus. SRTM это карта высот только для суши, не содержит данных о рельефе морского дна.\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\n\u003Ch2 id=\"proekcii\"\u003EПроекции\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EВ подавляющем большинстве случаев мы работаем с проекцией которая называется «равнопромежуточная цилиндрическая». К этому же семейству проекций относится проекция Меркатора и её частный случай — «проекция Гугла» или «Web Mercator projection», которую используют все основные веб-карты. Формулы для этой проекции довольно просты, к тому же шаблоны позиционных карт уже «знают» эту проекцию.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EВ немногих остальных случаях придётся погуглить нужную проекцию и почитать специальную литературу, чтобы понять, как именно получаются координаты x,y из широты и долготы. Mediawiki имеет развитый механизм вычисления выражений (в том числе с тригонометрическими функциями), его можно использовать для проверки своих карт, ещё до того как вы сделаете по ним шаблон позиционной карты (примеры можно посмотреть \u003Ca href=\"https:\u002F\u002Fru.wikipedia.org\u002Fwiki\u002F%D0%A3%D1%87%D0%B0%D1%81%D1%82%D0%BD%D0%B8%D0%BA:Nzeemin\u002F%D0%9F%D0%BE%D0%B7%D0%9A%D0%B0%D1%80%D1%82%D0%B0_%D0%BF%D1%80%D0%BE%D0%B5%D0%BA%D1%86%D0%B8%D0%B8\"\u003Eздесь\u003C\u002Fa\u003E).\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Ch2 id=\"instrumenty-dlya-sozdaniya-kart\"\u003EИнструменты для создания карт\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EИнструментов для создания карт (геоинформационные системы, ГИС) довольно много, в том числе бесплатных и с открытым исходным кодом. Но для того чтобы карта была открытой не обязательно использовать открытую и бесплатную систему, достаточно того чтобы исходные данные были открытыми, и того чтобы вы сами поставили на готовую карту открытую лицензию. (Но тут наверняка есть много нюансов, не берусь залезать в область авторского права, не моё :)\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EДля создания карт я пользовался в основном тремя программами, описанными ниже.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Ch3 id=\"maperitive\"\u003EMaperitive\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003E\u003Ca href=\"http:\u002F\u002Fmaperitive.net\u002F\"\u003EMaperitive\u003C\u002Fa\u003E — бесплатный, но закрытый продукт. Крайне полезен при работе с данными OpenStreetMap, работает с данными как с сайта OSM, так и с сохранёнными дампами. Позволяет выбрать стилевик и сохранить карту в формате SVG. Есть ряд готовых стилевиков и можно писать свои. Я подготовил несколько файлов стилей, и использую их для экспорта в SVG границ районов, и карт самих районов с поселениями.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Ch3 id=\"generic-mapping-tools-gmt\"\u003EGeneric Mapping Tools (GMT)\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EВообще, Generic Mapping Tools (GMT) это бесплатный набор утилит командной строки, предназначенный для обработки и визуализации научных данных, в том числе ряд его инструментов позволяют работать с геоданными, т.е. мы можем использовать GMT как консольную ГИС. Готовая карта (или отдельный слой для будущей карты) получается в результате последовательности вызова утилит. Обычно я пишу командный файл, в котором задаются все параметры и выполняется вызов утилит. С первого взгляда выглядит сложно, но мне как программисту такой подход кажется понятным и привычным. Кроме того, здесь обеспечивается повторяемость: чтобы создать карту снова, я всегда могу запустить скрипт ещё раз.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EПример командного файла (см. также \u003Ca href=\"https:\u002F\u002Fru.wikipedia.org\u002Fwiki\u002F%D0%A3%D1%87%D0%B0%D1%81%D1%82%D0%BD%D0%B8%D0%BA:Nzeemin\u002F%D0%9A%D0%B0%D1%80%D1%82%D1%8B\u002F%D0%A1%D0%BE%D0%B7%D0%B4%D0%B0%D0%BD%D0%B8%D0%B5_%D1%80%D0%B5%D0%BB%D1%8C%D0%B5%D1%84%D0%B0\"\u003Eздесь\u003C\u002Fa\u003E):\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003Eset PATH=C:\\programs\\GMT5\\bin;%PATH%\nset GSBIN=C:\\PROGRA~1\\gs\\gs9.04\u002Fbin\n\nset COORDSCUT=144.7492\u002F157.3007\u002F42.9694\u002F51.3837\nrem width = xmaxsvg \u002F 150.0 * 2.54\nset PAPERX=14.9352\nrem height = ymaxsvg \u002F 150.0 * 2.54\nset PAPERY=16.0189333333333\n\ngrdcut.exe ETOPO1_Bed_g_gmt4.grd -R%COORDSCUT% -Gh_cor_cut.grd\ngrdgradient h_cor_cut.grd -Ne0.3 -A315 -M -Ghi.grd  \ngrdimage h_cor_cut.grd -Ihi.grd -Cwiki-water-verlauf2.cpt -P -R%COORDSCUT% -JX%PAPERX%cd\u002F%PAPERY%cd --PAPER_MEDIA=Custom_%PAPERX%cx%PAPERY%c -X0 -Y0 -K \u003E map.eps\npscoast.exe -JX%PAPERX%cd\u002F%PAPERY%cd -R%COORDSCUT% -Gc -P -Df --PAPER_MEDIA=Custom_%PAPERX%cx%PAPERY%c -X0 -Y0 -O -K \u003E\u003E map.eps\ngrdimage h_cor_cut.grd -Ihi.grd -Cmount.cpt -P -R%COORDSCUT% -JX%PAPERX%cd\u002F%PAPERY%cd --PAPER_MEDIA=Custom_%PAPERX%cx%PAPERY%c -X0 -Y0 -O -K \u003E\u003E map.eps\npscoast.exe -JX%PAPERX%cd\u002F%PAPERY%cd -R%COORDSCUT% -Q -P -Df --PAPER_MEDIA=Custom_%PAPERX%cx%PAPERY%c -X0 -Y0 -O -K \u003E\u003E map.eps\npscoast.exe -JX%PAPERX%cd\u002F%PAPERY%cd -R%COORDSCUT% -Na -Ia\u002F0.25p,#0978AB -W0.25,#0978AB -P -Df --PAPER_MEDIA=Custom_%PAPERX%cx%PAPERY%c -X0 -Y0 -O \u003E\u003E map.eps\n\n%GSBIN%\\gswin32c.exe -dSAFER -dBATCH -dNOPAUSE -dGraphicsAlphaBits=4 -sDEVICE=pngalpha -dEPSCrop -r150 -sOutputFile=Oblast_etopo.png map.eps\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EРезультат:\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002F5t\u002Fza\u002Fe9\u002F5tzae9e1eymokaachw8zt2faejc.png\"\u002F\u003E\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EВ составе GMT, вместе с инструментами командной строки также поставляются и данные, этот набор называется \u003Ca href=\"http:\u002F\u002Fwww.soest.hawaii.edu\u002Fpwessel\u002Fgshhg\u002F\"\u003EGSHHG\u003C\u002Fa\u003E, карты из этих данных создаются с помощью утилиты \u003Ccode\u003Epscoast\u003C\u002Fcode\u003E, входящей в GMT.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Ch3 id=\"inkscape\"\u003EInkscape\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003E\u003Ca href=\"https:\u002F\u002Finkscape.org\u002F\"\u003EInkscape\u003C\u002Fa\u003E — свободный и открытый векторный графический редактор, основным форматом которого является SVG.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EMaperitive и GMT я обычно использую как инструменты для подготовки отдельных слоёв будущей карты. Затем полученные слои импортируются в отдельные слои в документе Inkscape, и вся завершающая работа над картой проходит уже там. Так, например, для позиционной карты нужно, чтобы район, показанный на карте, был «подсвечен» — цветом на контурной карте и затенением на физической карте. Это уже ручная работа над объектами и слоями в Inkscape.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EПоследним шагом по подготовке изображений карты будет сохранение SVG (для векторной карты) или экспорт PNG (для растровой).\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Ch2 id=\"process-sozdaniya-karty\"\u003EПроцесс создания карты\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\n\u003Col\u003E\r\n\u003Cli\u003EНачинаю я обычно с того, что беру область будущей карты и смотрю на исходные данные, которые у меня есть для этой области. Создаю примитивную контурную карту через GMT на данных GSHHG, пробую рендерить рельеф той же области на данных ETOPO1, TOPO30, смотрю как эта область выглядит в OpenStreetMap. Бывает так, что я отказываюсь от создания карты на этом этапе, если вижу что имеющихся данных недостаточно или они плохого качества, содержат ошибки или крупные пробелы.\u003C\u002Fli\u003E\r\n\u003Cli\u003EДальше, исходя из прикидочных рендеров, выбираю, на каких именно данных буду делать карту.\u003C\u002Fli\u003E\r\n\u003Cli\u003EСоздаём отдельные слои карты. Как правило, отдельно получается слой границ (например, вектор из OSM), отдельно рисунок рельефа для суши и отдельно слой подводного рельефа (батиметрии), отдельно слой береговых линий и слой рек и водоёмов. Часто бывает так, что два растровых слоя имеют разное разрешение, и тут приходится играть с интерполяцией, чтобы вместе они смотрелись более-менее органично. Например, карта рельефа для суши берётся из ETOPO1, потому что этот участок там представлен лучше, а батиметрия взята из TOPO30, и разрешение этих двух источников различается в два раза. Тогда для меньшего разрешения делаем увеличение разрешения с интерполяцией, чтобы не возникало «квадратиков», не появлялся эффект муара и т.п.\u003C\u002Fli\u003E\r\n\u003Cli\u003EИспользуя Inkscape, собираем вместе отдельные слои карты. Выполняем необходимую ручную работу, если это нужно. Пробуем экспортировать карту в растр, внимательно рассматриваем и выявляем недочёты, исправляем и повторяем. Результатом являются файлы карты, готовые для загрузки на Викисклад.\u003C\u002Fli\u003E\r\n\u003Cli\u003EЗагружаем файлы карты на Викисклад, выполняем там документирование. Про каждый файл должно быть написано что это за карта, какого объекта, с какими координатами и в какой проекции, какие использованы исходные данные с какими лицензиями, какими инструментами выполнена работа.\u003C\u002Fli\u003E\r\n\u003Cli\u003EСоздаём или обновляем шаблон позиционной карты в ру-вики, проверяем его использование. Убеждаемся, что объекты встают в правильные места карты, т.е. что координаты углов карты заданы правильно, и сама карта этим координатам соответствует. После этого обновляем шаблоны для этой позиционной карты в других языковых разделах.\u003C\u002Fli\u003E\r\n\u003C\u002Fol\u003E\u003Cbr\u002F\u003E\r\n\u003Ch2 id=\"zaklyuchenie\"\u003EЗаключение\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EНа создание одной карты у меня уходило от 20-30 минут (в простых случаях, когда ряд однотипных карт районов делается как на конвейере), до 4-6 часов (в сложных случаях, когда возникали проблемы с исходными данными и нужно было делать много ручной работы). На физическую карту Канады (см. КДПВ) у меня ушло несколько дней: потребовалось подобрать проекцию, которая уже использовалась на контурной карте.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EЕсли говорить о том «что я от этого получаю», то наверное — массу эстетического удовольствия, от того какие получаются карты.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EСпасибо что дочитали, надеюсь, мой опыт вам как-нибудь пригодится :)\u003C\u002Fp\u003E\u003C\u002Fdiv\u003E","tags":[{"titleHtml":"википедия"},{"titleHtml":"карты"},{"titleHtml":"картография"}],"metadata":{"stylesUrls":[],"scriptUrls":[],"shareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F451418\u002F0bdca5d754420257cf73e1a429dd87d0\u002F","shareImageWidth":1200,"shareImageHeight":630,"vkShareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F451418\u002F0bdca5d754420257cf73e1a429dd87d0\u002F?format=vk","schemaJsonLd":"{\"@context\":\"http:\\\u002F\\\u002Fschema.org\",\"@type\":\"Article\",\"mainEntityOfPage\":{\"@type\":\"WebPage\",\"@id\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fru\\\u002Fpost\\\u002F451418\\\u002F\"},\"headline\":\"Опыт создания позиционных карт для Википедии\",\"datePublished\":\"2019-05-12T22:36:37+03:00\",\"dateModified\":\"2019-05-13T01:48:32+03:00\",\"author\":{\"@type\":\"Person\",\"name\":\"nzeemin\"},\"publisher\":{\"@type\":\"Organization\",\"name\":\"Habr\",\"logo\":{\"@type\":\"ImageObject\",\"url\":\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fa_\\\u002Flk\\\u002F9m\\\u002Fa_lk9mjkccjox-zccjrpfolmkmq.png\"}},\"description\":\"В течение нескольких лет я работал над картами, которые используются в русском и других языковых разделах Википедии. Всего мной было создано более 300 карт. Я не...\",\"url\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fru\\\u002Fpost\\\u002F451418\\\u002F#post-content-body\",\"about\":[\"h_creative_commons\",\"h_crowdsourcing\",\"h_social_networks\",\"f_management\",\"f_popsci\"],\"image\":[\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fhp\\\u002Fsu\\\u002F4t\\\u002Fhpsu4tdkk6v9rrd8kn3n45agwc4.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fb_\\\u002Fkt\\\u002Ffd\\\u002Fb_ktfd2ti_blmrd0szjrvbelzs4.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fyd\\\u002Fym\\\u002Fmf\\\u002Fydymmfiypxl56rgwzefe6uooaoq.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002F5t\\\u002Fza\\\u002Fe9\\\u002F5tzae9e1eymokaachw8zt2faejc.png\"]}","metaDescription":"В течение нескольких лет я работал над картами, которые используются в русском и других языковых разделах Википедии. Всего мной было создано более 300 карт. Я не являюсь профессиональным картографом,...","mainImageUrl":null,"amp":false},"polls":[],"commentsEnabled":true,"rulesRemindEnabled":false,"votesEnabled":true,"status":"published","plannedPublishTime":null,"checked":null,"isEditorial":false}},"articlesIds":{},"isLoading":false,"pagesCount":{},"route":{},"reasonsList":null,"view":"cards","lastVisitedRoute":{},"ssrCommentsArticleIds":[""],"karma":{}},"authorContribution":{"authors":{}},"betaTest":{"currentAnnouncement":null,"announcements":{},"announcementCards":null,"announcementComments":{},"announcementCommentThreads":{},"announcementCommentingStatuses":{},"archivedList":[]},"authorStatistics":{"articleRefs":{},"articleIds":{},"pagesCount":{},"route":{},"viewsCount":[],"maxStatsCount":{}},"career":{"seoLandings":[],"hubs":"creative_commons,crowdsourcing,social_networks"},"comments":{"articleComments":{},"searchCommentsResults":null,"previewComment":null,"pagesCount":null,"commentAccess":{},"scrollParents":{},"pageArticleComments":{"lastViewedComment":0,"postId":null,"lastCommentTimestamp":"","moderated":[],"moderatedIds":[],"commentRoute":""}},"companies":{"companyRefs":{},"companyIds":{},"companyTopIds":{},"pagesCount":{},"companyProfiles":{},"companiesCategories":[],"companiesCategoriesTotalCount":0,"companiesWidgets":{},"companiesWorkers":{},"companiesFans":{},"route":{},"isLoading":false,"companyWorkersLoading":false,"companyFansLoading":false,"vacancies":{}},"companiesContribution":{"hubs":{},"flows":{},"companyRefs":{}},"companyHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"conversation":{"messages":[],"respondent":null,"isLoadMore":false},"conversations":{"conversations":[],"unreadCount":0,"pagesCount":0,"isLoadMore":false},"desktopState":{"desktopFl":null,"desktopHl":null,"isChecked":false,"isLoginDemanded":false},"dfp":{"slotsDict":{}},"docs":{"menu":{},"articles":{},"mainMenu":[],"loading":{"main":false,"dropdown":false,"article":false}},"feature":{"isProbablyVisible":"true"},"flows":{"flows":[{"alias":"develop","id":1,"route":{"name":"FLOW_PAGE","params":{"flowName":"develop"}}},{"alias":"admin","id":6,"route":{"name":"FLOW_PAGE","params":{"flowName":"admin"}}},{"alias":"design","id":2,"route":{"name":"FLOW_PAGE","params":{"flowName":"design"}}},{"alias":"management","id":3,"route":{"name":"FLOW_PAGE","params":{"flowName":"management"}}},{"alias":"marketing","id":4,"route":{"name":"FLOW_PAGE","params":{"flowName":"marketing"}}},{"alias":"popsci","id":7,"route":{"name":"FLOW_PAGE","params":{"flowName":"popsci"}}}]},"global":{"isPwa":false,"device":"desktop","isHabrCom":true},"hubs":{"hubRefs":{},"hubIds":{},"pagesCount":{},"isLoading":false,"route":{}},"hubsBlock":{"hubRefs":{},"hubIds":{}},"i18n":{"fl":"ru","hl":"ru"},"info":{"infoPage":{},"isLoading":true},"location":{"urlStruct":{"protocol":null,"slashes":null,"auth":null,"host":null,"port":null,"hostname":null,"hash":null,"search":null,"query":{},"pathname":null,"path":null,"href":""},"searchQuery":null},"me":{"user":null,"ppgDemanded":false,"karmaResetInfo":{"canReincarnate":null,"wasReincarnated":null,"currentScore":null},"notes":null},"mostReadingList":{"mostReadingListIds":[],"mostReadingListRefs":null,"promoPost":null},"pinnedPost":{"pinnedPost":null},"ppa":{"articles":{},"card":null,"transactions":null,"totalTransactions":null,"isAccessible":null},"projectsBlocks":{"activeBlocks":{}},"pullRefresh":{"shouldRefresh":false},"sandbox":{"articleIds":[],"articleRefs":{},"pagesCount":null,"route":{},"lastVisitedRoute":{},"isLoading":false},"settingsOther":{"inputs":{"uiLang":{"errors":[],"ref":null,"value":""},"articlesLangEnglish":{"errors":[],"ref":null,"value":false},"articlesLangRussian":{"errors":[],"ref":null,"value":false},"agreement":{"errors":[],"ref":null,"value":false},"email":{"errors":[],"ref":null,"value":true},"digest":{"errors":[],"ref":null,"value":true}}},"similarList":{"similarListIds":[],"similarListRefs":null},"ssr":{"error":null,"isDataLoaded":false,"isDataLoading":false,"isHydrationFailed":false,"isServer":false},"userHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"userInvites":{"availableInvites":0,"usedInvitesIds":[],"usedInvitesRefs":{},"usedInvitesPagesCount":0,"unusedInvitesIds":[],"unusedInvitesRefs":{},"unusedInvitesPagesCount":0},"users":{"authorRefs":{},"authorIds":{},"pagesCount":{},"authorProfiles":{},"userHubs":{},"userInvitations":{},"authorFollowers":{},"authorFollowed":{},"karmaStats":[],"statistics":null,"isLoading":false,"authorFollowersLoading":false,"authorFollowedLoading":false,"userHubsLoading":false,"userInvitationsLoading":false,"route":{}},"viewport":{"prevScrollY":{},"scrollY":0,"width":0},"tracker":{"items":{},"pagesCache":{},"markedViewedSilently":{},"markedRead":{},"unreadCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null},"unviewedCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null}}};(function(){var s;(s=document.currentScript||document.scripts[document.scripts.length-1]).parentNode.removeChild(s);}());</script>
+<script src="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" defer></script><script src="https://assets.habr.com/habr-web/js/app.c0af73e7.js" defer></script>
+
+
+
+    <script>
+      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+        (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+        m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+      })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+    </script>
+  
+  <script type="text/javascript" >
+    (function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+    m[i].l=1*new Date();k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})
+    (window, document, "script", "https://mc.yandex.ru/metrika/tag.js", "ym");
+
+    ym(24049213, "init", {
+      defer:true,
+      trackLinks:true,
+      accurateTrackBounce:true,
+      webvisor:false,
+    });
+  </script>
+  <noscript>
+    <div>
+      <img src="https://mc.yandex.ru/watch/24049213" style="position:absolute; left:-9999px;" alt="" />
+    </div>
+  </noscript>
+  
+    <script type="text/javascript">
+      window.addEventListener('load', function () {
+        setTimeout(() => {
+          const img = new Image();
+          img.src = 'https://vk.com/rtrg?p=VK-RTRG-421343-57vKE';
+        }, 0);
+      });
+    </script>
+  
+</body>
+</html>

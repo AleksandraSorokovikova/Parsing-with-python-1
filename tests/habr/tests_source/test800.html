@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="ru" data-vue-meta="%7B%22lang%22:%7B%22ssr%22:%22ru%22%7D%7D">
+<head >
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
+  <title>Кратко с реализацией о AES 128 ECB / Хабр</title>
+  <style>
+    /* cyrillic-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSxf6TF0.woff2) format('woff2');
+      unicode-range: U+0460-052F, U+1C80-1C88, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+    }
+
+    /* cyrillic */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveQhf6TF0.woff2) format('woff2');
+      unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+    }
+
+    /* latin-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSBf6TF0.woff2) format('woff2');
+      unicode-range: U+0100-024F, U+0259, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20CF, U+2113, U+2C60-2C7F, U+A720-A7FF;
+    }
+
+    /* latin */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveRhf6.woff2) format('woff2');
+      unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+    }
+  </style>
+  <link rel="preload" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" as="script"><link rel="preload" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/app.c0af73e7.js" as="script">
+  <link rel="stylesheet" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css"><link rel="stylesheet" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css">
+  <script>window.i18nFetch = new Promise((res, rej) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open('GET', '/js/i18n/ru-compiled.85eb77f0b17c8235e7b64b9f81ea5ec2.json');
+          xhr.responseType = 'json';
+          xhr.onload = function(e) {
+            if (this.status === 200) {
+              res({ru: xhr.response});
+            } else {
+              rej(e);
+            }
+          };
+          xhr.send();
+        });</script>
+  
+  <script data-vue-meta="ssr" src="/js/ads.js" onload="window['zhY4i4nJ9K'] = true" data-vmid="checkad"></script><script data-vue-meta="ssr" type="application/ld+json" data-vmid="ldjson-schema">{"@context":"http:\/\/schema.org","@type":"Article","mainEntityOfPage":{"@type":"WebPage","@id":"https:\/\/habr.com\/ru\/post\/451830\/"},"headline":"Кратко с реализацией о AES 128 ECB","datePublished":"2019-05-14T18:39:49+03:00","dateModified":"2019-05-14T21:20:44+03:00","author":{"@type":"Person","name":"xyli0o"},"publisher":{"@type":"Organization","name":"Habr","logo":{"@type":"ImageObject","url":"https:\/\/habrastorage.org\/webt\/a_\/lk\/9m\/a_lk9mjkccjox-zccjrpfolmkmq.png"}},"description":"Если вбить в яндекс 'aes 128 ecb mode', найдутся хорошие статьи ребят на &quot;хабре&quot;: раз и два &mdash; толковые и одновременно слишком подробные. Рассказ об алгоритме в к...","url":"https:\/\/habr.com\/ru\/post\/451830\/#post-content-body","about":["h_crypto","h_cpp","h_algorithms","f_develop"],"image":["https:\/\/habr.com\/share\/publication\/451830\/c7caa74a4b2445b46a4acbf9fa2d4085\/"]}</script>
+  <script src="//www.googletagservices.com/tag/js/gpt.js" async></script>
+  <style>.grecaptcha-badge{visibility: hidden;}</style>
+  <meta name="habr-version" content="2.49.0">
+  
+  <meta data-vue-meta="ssr" property="fb:app_id" content="444736788986613"><meta data-vue-meta="ssr" property="fb:pages" content="472597926099084"><meta data-vue-meta="ssr" name="twitter:card" content="summary_large_image"><meta data-vue-meta="ssr" name="twitter:site" content="@habr_eng"><meta data-vue-meta="ssr" property="og:title" content="Кратко с реализацией о AES 128 ECB" data-vmid="og:title"><meta data-vue-meta="ssr" name="twitter:title" content="Кратко с реализацией о AES 128 ECB" data-vmid="twitter:title"><meta data-vue-meta="ssr" name="aiturec:title" content="Кратко с реализацией о AES 128 ECB" data-vmid="aiturec:title"><meta data-vue-meta="ssr" name="description" content="Если вбить в яндекс &amp;#039;aes 128 ecb mode&amp;#039;, найдутся хорошие статьи ребят на &amp;quot;хабре&amp;quot;: раз и два — толковые и одновременно слишком подробные.
+Рассказ об алгоритме в картинках находится здесь (который..." data-vmid="description"><meta data-vue-meta="ssr" itemprop="description" content="Если вбить в яндекс &amp;#039;aes 128 ecb mode&amp;#039;, найдутся хорошие статьи ребят на &amp;quot;хабре&amp;quot;: раз и два — толковые и одновременно слишком подробные.
+Рассказ об алгоритме в картинках находится здесь (который..." data-vmid="description:itemprop"><meta data-vue-meta="ssr" property="og:description" content="Если вбить в яндекс &amp;#039;aes 128 ecb mode&amp;#039;, найдутся хорошие статьи ребят на &amp;quot;хабре&amp;quot;: раз и два — толковые и одновременно слишком подробные.
+Рассказ об алгоритме в картинках находится здесь (который..." data-vmid="og:description"><meta data-vue-meta="ssr" name="twitter:description" content="Если вбить в яндекс &amp;#039;aes 128 ecb mode&amp;#039;, найдутся хорошие статьи ребят на &amp;quot;хабре&amp;quot;: раз и два — толковые и одновременно слишком подробные.
+Рассказ об алгоритме в картинках находится здесь (который..." data-vmid="twitter:description"><meta data-vue-meta="ssr" property="aiturec:description" content="Если вбить в яндекс &amp;#039;aes 128 ecb mode&amp;#039;, найдутся хорошие статьи ребят на &amp;quot;хабре&amp;quot;: раз и два — толковые и одновременно слишком подробные.
+Рассказ об алгоритме в картинках находится здесь (который..." data-vmid="aiturec:description"><meta data-vue-meta="ssr" itemprop="image" content="https://habr.com/share/publication/451830/c7caa74a4b2445b46a4acbf9fa2d4085/" data-vmid="image:itemprop"><meta data-vue-meta="ssr" property="og:image" content="https://habr.com/share/publication/451830/c7caa74a4b2445b46a4acbf9fa2d4085/" data-vmid="og:image"><meta data-vue-meta="ssr" property="aiturec:image" content="https://habr.com/share/publication/451830/c7caa74a4b2445b46a4acbf9fa2d4085/" data-vmid="aiturec:image"><meta data-vue-meta="ssr" name="twitter:image" content="https://habr.com/share/publication/451830/c7caa74a4b2445b46a4acbf9fa2d4085/" data-vmid="twitter:image"><meta data-vue-meta="ssr" property="vk:image" content="https://habr.com/share/publication/451830/c7caa74a4b2445b46a4acbf9fa2d4085/" data-vmid="vk:image"><meta data-vue-meta="ssr" property="aiturec:item_id" content="451830" data-vmid="aiturec:item_id"><meta data-vue-meta="ssr" property="aiturec:datetime" content="2019-05-14T15:39:49.000Z" data-vmid="aiturec:datetime"><meta data-vue-meta="ssr" property="og:type" content="article" data-vmid="og:type"><meta data-vue-meta="ssr" property="og:locale" content="ru_RU" data-vmid="og:locale"><meta data-vue-meta="ssr" property="og:image:width" content="1200" data-vmid="og:image:width"><meta data-vue-meta="ssr" property="og:image:height" content="630" data-vmid="og:image:height">
+  <link data-vue-meta="ssr" href="https://habr.com/ru/rss/post/451830/?fl=ru" type="application/rss+xml" title="" rel="alternate" name="rss"><link data-vue-meta="ssr" href="https://habr.com/ru/post/451830/" rel="canonical" data-vmid="canonical"><link data-vue-meta="ssr" data-vmid="hreflang"><link data-vue-meta="ssr" image_src="image" href="https://habr.com/share/publication/451830/c7caa74a4b2445b46a4acbf9fa2d4085/" data-vmid="image:href">
+  <meta name="apple-mobile-web-app-status-bar-style" content="#303b44">
+  <meta name="msapplication-TileColor" content="#629FBC">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="16x16"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-16.png"
+  >
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="32x32"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-32.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="76x76"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-76.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="120x120"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="152x152"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-152.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="180x180"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-180.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="256x256"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-256.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1136x640.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2436x1125.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1792x828.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_828x1792.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1334x750.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2208x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1125x2436.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2208.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2732x2048.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2688x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2224x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_750x1334.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x2732.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2388x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2224.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_640x1136.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2388.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x1536.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1536x2048.png"
+  >
+  <link
+    rel="mask-icon"
+    color="#77a2b6"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.svg"
+  >
+  <link
+    crossorigin="use-credentials"
+    href="/manifest.webmanifest"
+    rel="manifest"
+  >
+</head>
+<body>
+
+
+<div id="app" data-server-rendered="true" data-async-called="true"><div class="tm-layout__wrapper"><!----> <div></div> <!----> <header class="tm-header"><div class="tm-page-width"><div class="tm-header__container"><!----> <span class="tm-header__logo-wrap"><a href="/ru/" class="tm-header__logo tm-header__logo_ru"><svg height="16" width="16" class="tm-svg-img tm-header__icon"><title>Хабр</title> <use xlink:href="/img/habr-logo-ru.svg#logo"></use></svg></a> <span class="tm-header__beta-sign" style="display:none;">β</span></span> <div class="tm-dropdown tm-header__projects"><div class="tm-dropdown__head"><button class="tm-header__dropdown-toggle"><svg height="16" width="16" class="tm-svg-img tm-header__icon tm-header__icon_dropdown"><title>Открыть список</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#arrow-down"></use></svg></button></div> <!----></div> <a href="/ru/sandbox/start/" class="tm-header__become-author-btn">
+            Как стать автором
+          </a> <div class="tm-feature tm-header__feature tm-feature_variant-inline"><!----></div> <!----> <!----></div></div></header> <div class="tm-layout"><div class="tm-page-progress-bar"></div> <div data-menu-sticky="true" class="tm-base-layout__header tm-base-layout__header_is-sticky"><div class="tm-page-width"><div class="tm-base-layout__header-wrapper"><div class="tm-main-menu"><div class="tm-main-menu__section"><nav class="tm-main-menu__section-content"><!----> <a href="/ru/all/" class="tm-main-menu__item">
+        Все потоки
+      </a> <a href="/ru/flows/develop/" class="tm-main-menu__item">
+          Разработка
+        </a><a href="/ru/flows/admin/" class="tm-main-menu__item">
+          Администрирование
+        </a><a href="/ru/flows/design/" class="tm-main-menu__item">
+          Дизайн
+        </a><a href="/ru/flows/management/" class="tm-main-menu__item">
+          Менеджмент
+        </a><a href="/ru/flows/marketing/" class="tm-main-menu__item">
+          Маркетинг
+        </a><a href="/ru/flows/popsci/" class="tm-main-menu__item">
+          Научпоп
+        </a></nav></div></div> <div class="tm-header-user-menu tm-base-layout__user-menu"><a href="/ru/search/" class="tm-header-user-menu__item tm-header-user-menu__search"><svg height="24" width="24" class="tm-svg-img tm-header-user-menu__icon tm-header-user-menu__icon_search tm-header-user-menu__icon_dark"><title>Поиск</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#search"></use></svg></a> <!----> <!----> <!----> <div class="tm-header-user-menu__item tm-header-user-menu__user_desktop"><div class="tm-dropdown"><div class="tm-dropdown__head"><svg height="24" width="24" data-test-id="menu-toggle-guest" class="tm-svg-img tm-header-user-menu__icon"><title>Профиль</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#header-user"></use></svg> <!----></div> <!----></div> <!----></div> <!----></div></div></div></div> <!----> <div class="tm-page-width"></div> <main class="tm-layout__container"><div hl="ru" data-async-called="true" class="tm-page"><div class="tm-page-width"><!----> <div class="tm-page__wrapper"><div class="tm-page__main tm-page__main_has-sidebar"><div class="pull-down"><div class="pull-down__header" style="height:0px;"><div class="pull-down__content" style="bottom:10px;"><svg height="24" width="24" class="tm-svg-img pull-down__arrow"><title>Обновить</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#pull-arrow"></use></svg></div></div> <div class="tm-article-presenter"> <div class="tm-article-presenter__body"><div class="tm-misprint-area"><div class="tm-misprint-area__wrapper"><article class="tm-article-presenter__content tm-article-presenter__content_narrow"><div class="tm-article-presenter__header"> <div class="tm-article-snippet tm-article-presenter__snippet"><div class="tm-article-snippet__meta-container"><div class="tm-article-snippet__meta"><span class="tm-user-info tm-article-snippet__author"><a href="/ru/users/xyli0o/" title="xyli0o" class="tm-user-info__userpic"><div class="tm-entity-image"><svg height="24" width="24" class="tm-svg-img tm-image-placeholder tm-image-placeholder_pink"><!----> <use xlink:href="/img/megazord-v24.ce74655c.svg#placeholder-user"></use></svg></div></a> <span class="tm-user-info__user"><a href="/ru/users/xyli0o/" class="tm-user-info__username">
+      xyli0o
+    </a> </span></span> <span class="tm-article-snippet__datetime-published"><time datetime="2019-05-14T15:39:49.000Z" title="2019-05-14, 18:39">14  мая  2019 в 18:39</time></span></div> <!----></div> <h1 lang="ru" class="tm-article-snippet__title tm-article-snippet__title_h1"><span>Кратко с реализацией о AES 128 ECB</span></h1> <div class="tm-article-snippet__hubs"><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/crypto/" class="tm-article-snippet__hubs-item-link"><span>Криптография</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/cpp/" class="tm-article-snippet__hubs-item-link"><span>C++</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/algorithms/" class="tm-article-snippet__hubs-item-link"><span>Алгоритмы</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span></div> <div class="tm-article-snippet__labels"><div class="tm-article-snippet__label"><span>
+        Из песочницы
+      </span></div></div> <!----> <!----></div></div> <!----> <div data-gallery-root="" lang="ru" class="tm-article-body"><div id="post-content-body" class="article-formatted-body article-formatted-body_version-1"><div xmlns="http://www.w3.org/1999/xhtml"><p>Если вбить в яндекс 'aes 128 ecb mode', найдутся хорошие статьи ребят на "хабре": <a href="https://habr.com/ru/post/112733/">раз</a> и <a href="https://habr.com/ru/post/212235/">два</a> — толковые и одновременно слишком подробные.</p><br/>
+<p>Рассказ об алгоритме в картинках <a href="http://www.moserware.com/2009/09/stick-figure-guide-to-advanced.html">находится здесь</a> (который также можно найти по ссылкам в одной из статей ребят выше).</p><br/>
+<p>Кратко об алгоритме: 1) создаем объект с 16-байтным state и массивом 16-байтных ключей; 2) пишем примитивы для объекта (они же трансформации); 3) запускаем n раз (где n — кол-во раундов). Все трансформации делаем симметричными — для зашифровки и расшифровки одновременно. Расшифровка в терминах алгоритма — это зашифровка наоборот. </p><br/>
+<p>Структура:</p><br/>
+<pre><code class="plaintext">using byte_t = unsigned char;
+struct aes128 {
+  aes128(const std::string&amp; text, const std::string&amp; cipher, bool decrypt = false)
+    : state({begin(text), end(text)}), keys({{begin(cipher), end(cipher)}}), decrypt(decrypt) {}
+  aes128() = default;
+  aes128(const aes128&amp;) = default;
+
+  std::vector&lt;byte_t> state;
+  std::vector&lt;std::vector&lt;byte_t>> keys;
+  bool decrypt;
+}</code></pre><a name="habracut"></a><br/>
+<p>Первым делом после создания генерируем ключи (инфа о sbox и RCON будет ниже):</p><br/>
+<pre><code class="plaintext">void key_expansion() {
+  for (int j = 1; j != 11; j++) { // for 11 rounds
+    std::vector&lt;byte_t> key = keys[j-1];
+    std::vector&lt;byte_t> column = {key[13], key[14], key[15], key[12]}; // rotation
+    for (auto&amp; x: column) x = sbox(x); 
+    column[0] ^= RCON[j];
+
+    std::transform(begin(column), end(column), begin(key), begin(key), std::bit_xor&lt;byte_t>());
+    std::transform(begin(key)+4, end(key), begin(key), begin(key)+4, std::bit_xor&lt;byte_t>());
+    keys.emplace_back(std::move(key));
+  }
+}</code></pre><br/>
+<p>Пишем примитивы (они же трансформации). Трансформация добавляет сложность в state, чтоб было секьюрно.</p><br/>
+<pre><code class="plaintext">void add_round_key(int r) {
+  std::transform(begin(keys[r]), end(keys[r]), begin(state), begin(state), std::bit_xor&lt;byte_t>());
+}
+void substitute_bytes() {
+  std::transform(begin(state), end(state), begin(state), [&amp;](byte_t x) { return sbox(x, decrypt); });
+}
+void shift_rows() {
+  int k = decrypt ? 3 : 1; // coef for rotation point
+  for (int i = 1; i != 4; ++i)
+    shift_row({state[i], state[4+i], state[8+i], state[12+i]}, (k*i) % 4, i);
+}
+void shift_row(std::array&lt;byte_t, 4>&amp;&amp; row, int k, int j) {
+  std::rotate(begin(row), begin(row)+k, end(row));
+  for (int i = 0; i != 4; ++i) { state[i*4+j] = row[i]; }
+}</code></pre><br/>
+<p>Плюс еще одна трансформация (инфу о байтах 0xe, 0x2… берем из статьей ребят выше):</p><br/>
+<pre><code class="plaintext">void mix_columns() {
+  for (int i = 0; i != 4; i++) {
+    const std::array&lt;byte_t, 4> column = {state[i*4], state[i*4+1], state[i*4+2], state[i*4+3]};
+    if (!decrypt) {
+      state[i*4] = vector_mult(column, { 0x2, 0x3, 0x1, 0x1 });
+      state[i*4+1] = vector_mult(column, { 0x1, 0x2, 0x3, 0x1 });
+      state[i*4+2] = vector_mult(column, { 0x1, 0x1, 0x2, 0x3 });
+      state[i*4+3] = vector_mult(column, { 0x3, 0x1, 0x1, 0x2 });
+    } else {
+      state[i*4] = vector_mult(column, { 0xe, 0xb, 0xd, 0x9 });
+      state[i*4+1] = vector_mult(column, { 0x9, 0xe, 0xb, 0xd });
+      state[i*4+2] = vector_mult(column, { 0xd, 0x9, 0xe, 0xb });
+      state[i*4+3] = vector_mult(column, { 0xb, 0xd, 0x9, 0xe });
+    }
+  }
+}</code></pre><br/>
+<p>Собственно, алгоритмы:</p><br/>
+<pre><code class="plaintext">aes128 encrypt(const std::string&amp; text, const std::string&amp; cipher) {
+  aes128 aes(text, cipher);
+  aes.key_expansion();
+  aes.add_round_key(0);
+  for (int i = 1; i != 10; i++) {
+    aes.substitute_bytes();
+    aes.shift_rows();
+    aes.mix_columns();
+    aes.add_round_key(i);
+  }
+  aes.substitute_bytes();
+  aes.shift_rows();
+  aes.add_round_key(10);
+  return aes;
+}
+
+template &lt;typename I>
+aes128 decrypt(I first, I last, const std::string&amp; cipher) {
+  aes128 aes({first, last}, cipher, true);
+  aes.key_expansion();
+  aes.add_round_key(10);
+  aes.shift_rows();
+  aes.substitute_bytes();
+  for (int i = 9; i != 0; --i) {
+    aes.add_round_key(i);
+    aes.mix_columns();
+    aes.shift_rows();
+    aes.substitute_bytes();
+  }
+  aes.add_round_key(0);
+  return aes;
+}</code></pre><br/>
+<p>Утилиты: </p><br/>
+<pre><code class="plaintext">byte_t hex(char ch) { return (ch - '0') % 39; }
+byte_t sbox(byte_t x, bool decrypt = false) {
+  std::string s = (decrypt ? INV_SBOX : SBOX)[x >> 4][x &amp; 15];
+  return hex(s[0]) &lt;&lt; 4 | hex(s[1]);
+}
+byte_t mult_by_2(byte_t x) { return (x &lt; 128) ? x &lt;&lt; 1 : (x &lt;&lt; 1 &amp; 0xff) ^ 0x1b; }
+byte_t mult_by_8(byte_t x) { return mult_by_2(mult_by_2(mult_by_2(x))); }
+
+const std::unordered_map&lt;byte_t, std::function&lt;byte_t(byte_t)>> mapper = {
+  {0x1, [](byte_t x) { return x; }},
+  {0x2, mult_by_2},
+  {0x3, [](byte_t x) { return mult_by_2(x) ^ x; }},
+  {0x9, [](byte_t x) { return mult_by_8(x) ^ x; }},
+  {0xb, [](byte_t x) { return mult_by_8(x) ^ mult_by_2(x) ^ x; }},
+  {0xd, [](byte_t x) { return mult_by_8(x) ^ mult_by_2(mult_by_2(x)) ^ x; }},
+  {0xe, [](byte_t x) { return mult_by_8(x) ^ mult_by_2(mult_by_2(x)) ^ mult_by_2(x); }},
+};
+byte_t vector_mult(const std::array&lt;byte_t, 4>&amp; v1, std::array&lt;byte_t, 4>&amp;&amp; v2) {
+  std::transform(begin(v1), end(v1), begin(v2), begin(v2),
+    [](byte_t x, byte_t y) { return mapper.at(y)(x); });
+  return std::accumulate(begin(v2), end(v2), byte_t(0), std::bit_xor&lt;byte_t>());
+}</code></pre><br/>
+<p>Константы:</p><br/>
+<pre><code class="plaintext">const std::vector&lt;std::vector&lt;std::string>> SBOX = {
+  { "63", "7c", "77", "7b", "f2", "6b", "6f", "c5", "30", "01", "67", "2b", "fe", "d7", "ab", "76" },
+  { "ca", "82", "c9", "7d", "fa", "59", "47", "f0", "ad", "d4", "a2", "af", "9c", "a4", "72", "c0" },
+  { "b7", "fd", "93", "26", "36", "3f", "f7", "cc", "34", "a5", "e5", "f1", "71", "d8", "31", "15" },
+  { "04", "c7", "23", "c3", "18", "96", "05", "9a", "07", "12", "80", "e2", "eb", "27", "b2", "75" },
+  { "09", "83", "2c", "1a", "1b", "6e", "5a", "a0", "52", "3b", "d6", "b3", "29", "e3", "2f", "84" },
+  { "53", "d1", "00", "ed", "20", "fc", "b1", "5b", "6a", "cb", "be", "39", "4a", "4c", "58", "cf" },
+  { "d0", "ef", "aa", "fb", "43", "4d", "33", "85", "45", "f9", "02", "7f", "50", "3c", "9f", "a8" },
+  { "51", "a3", "40", "8f", "92", "9d", "38", "f5", "bc", "b6", "da", "21", "10", "ff", "f3", "d2" },
+  { "cd", "0c", "13", "ec", "5f", "97", "44", "17", "c4", "a7", "7e", "3d", "64", "5d", "19", "73" },
+  { "60", "81", "4f", "dc", "22", "2a", "90", "88", "46", "ee", "b8", "14", "de", "5e", "0b", "db" },
+  { "e0", "32", "3a", "0a", "49", "06", "24", "5c", "c2", "d3", "ac", "62", "91", "95", "e4", "79" },
+  { "e7", "c8", "37", "6d", "8d", "d5", "4e", "a9", "6c", "56", "f4", "ea", "65", "7a", "ae", "08" },
+  { "ba", "78", "25", "2e", "1c", "a6", "b4", "c6", "e8", "dd", "74", "1f", "4b", "bd", "8b", "8a" },
+  { "70", "3e", "b5", "66", "48", "03", "f6", "0e", "61", "35", "57", "b9", "86", "c1", "1d", "9e" },
+  { "e1", "f8", "98", "11", "69", "d9", "8e", "94", "9b", "1e", "87", "e9", "ce", "55", "28", "df" },
+  { "8c", "a1", "89", "0d", "bf", "e6", "42", "68", "41", "99", "2d", "0f", "b0", "54", "bb", "16" }};
+
+const std::vector&lt;int> RCON = { 0, 1, 2, 4, 8, 16, 32, 64, 128, 27, 54 }; // ten rounds
+
+const std::vector&lt;std::vector&lt;std::string>> INV_SBOX = {
+  { "52", "09", "6a", "d5", "30", "36", "a5", "38", "bf", "40", "a3", "9e", "81", "f3", "d7", "fb" },
+  { "7c", "e3", "39", "82", "9b", "2f", "ff", "87", "34", "8e", "43", "44", "c4", "de", "e9", "cb" },
+  { "54", "7b", "94", "32", "a6", "c2", "23", "3d", "ee", "4c", "95", "0b", "42", "fa", "c3", "4e" },
+  { "08", "2e", "a1", "66", "28", "d9", "24", "b2", "76", "5b", "a2", "49", "6d", "8b", "d1", "25" },
+  { "72", "f8", "f6", "64", "86", "68", "98", "16", "d4", "a4", "5c", "cc", "5d", "65", "b6", "92" },
+  { "6c", "70", "48", "50", "fd", "ed", "b9", "da", "5e", "15", "46", "57", "a7", "8d", "9d", "84" },
+  { "90", "d8", "ab", "00", "8c", "bc", "d3", "0a", "f7", "e4", "58", "05", "b8", "b3", "45", "06" },
+  { "d0", "2c", "1e", "8f", "ca", "3f", "0f", "02", "c1", "af", "bd", "03", "01", "13", "8a", "6b" },
+  { "3a", "91", "11", "41", "4f", "67", "dc", "ea", "97", "f2", "cf", "ce", "f0", "b4", "e6", "73" },
+  { "96", "ac", "74", "22", "e7", "ad", "35", "85", "e2", "f9", "37", "e8", "1c", "75", "df", "6e" },
+  { "47", "f1", "1a", "71", "1d", "29", "c5", "89", "6f", "b7", "62", "0e", "aa", "18", "be", "1b" },
+  { "fc", "56", "3e", "4b", "c6", "d2", "79", "20", "9a", "db", "c0", "fe", "78", "cd", "5a", "f4" },
+  { "1f", "dd", "a8", "33", "88", "07", "c7", "31", "b1", "12", "10", "59", "27", "80", "ec", "5f" },
+  { "60", "51", "7f", "a9", "19", "b5", "4a", "0d", "2d", "e5", "7a", "9f", "93", "c9", "9c", "ef" },
+  { "a0", "e0", "3b", "4d", "ae", "2a", "f5", "b0", "c8", "eb", "bb", "3c", "83", "53", "99", "61" },
+  { "17", "2b", "04", "7e", "ba", "77", "d6", "26", "e1", "69", "14", "63", "55", "21", "0c", "7d" }};
+</code></pre><br/>
+<p>Ссылки:</p><br/>
+<ol>
+<li><a href="https://en.wikipedia.org/wiki/Advanced_Encryption_Standard">https://en.wikipedia.org/wiki/Advanced_Encryption_Standard</a></li>
+<li><a href="http://www.moserware.com/2009/09/stick-figure-guide-to-advanced.html">http://www.moserware.com/2009/09/stick-figure-guide-to-advanced.html</a></li>
+</ol></div></div> <!----> <!----></div> <div class="tm-article-presenter__meta"><div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Теги:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Baes-128%5D" class="tm-tags-list__link">aes-128</a></li></ul></div> <div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Хабы:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/hub/crypto/" class="tm-hubs-list__link">
+    Криптография
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/cpp/" class="tm-hubs-list__link">
+    C++
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/algorithms/" class="tm-hubs-list__link">
+    Алгоритмы
+  </a></li></ul></div></div></article></div> <!----></div> <div class="tm-article-sticky-panel"><div class="tm-data-icons tm-article-sticky-panel__icons"><div class="tm-article-rating tm-data-icons__item"><div class="tm-votes-meter tm-article-rating__votes-switcher"><svg height="16" width="16" class="tm-svg-img tm-votes-meter__icon tm-votes-meter__icon_medium"><title>Всего голосов 24: ↑19 и ↓5</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-rating"></use></svg> <span title="Всего голосов 24: ↑19 и ↓5" class="tm-votes-meter__value tm-votes-meter__value_positive tm-votes-meter__value_medium">+14</span></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----> <span title="Количество просмотров" class="tm-icon-counter tm-data-icons__item"><svg height="16" width="16" class="tm-svg-img tm-icon-counter__icon"><title>Просмотры</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-views"></use></svg> <span class="tm-icon-counter__value">6.2K</span></span> <button title="Добавить в закладки" type="button" class="bookmarks-button tm-data-icons__item"><span title="Добавить в закладки" class="tm-svg-icon__wrapper bookmarks-button__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Добавить в закладки</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-favorite"></use></svg></span> <span title="Количество пользователей, добавивших публикацию в закладки" class="bookmarks-button__counter">
+    50
+  </span></button> <!----> <div title="Поделиться" class="tm-sharing tm-data-icons__item"><button type="button" class="tm-sharing__button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="tm-sharing__icon"><path fill="currentColor" d="M10.33.275l9.047 7.572a.2.2 0 010 .306l-9.048 7.572a.2.2 0 01-.328-.153V11c-8 0-9.94 6-9.94 6S-1 5 10 5V.428a.2.2 0 01.328-.153z"></path></svg></button> <!----></div> <DIV class="v-portal" style="display:none;"></DIV></div> </div></div> <!----> <!----> <div class="tm-article-presenter__footer"><div class="tm-article-blocks"><!----> <section class="tm-block tm-block_spacing-bottom"><!----> <div class="tm-block__body tm-block__body_variant-balanced"><div class="tm-article-author"> <div class="tm-user-card tm-article-author__user-card tm-user-card_variant-article"><div class="tm-user-card__info-container"><div class="tm-user-card__header"><div class="tm-user-card__header-data"><a href="/ru/users/xyli0o/" class="tm-user-card__userpic tm-user-card__userpic_size-40"><div class="tm-entity-image"><svg class="tm-svg-img tm-image-placeholder tm-image-placeholder_pink"><!----> <use xlink:href="/img/megazord-v24.ce74655c.svg#placeholder-user"></use></svg></div></a> <div class="tm-user-card__meta"><div title=" 21 голос " class="tm-karma tm-user-card__karma"><div class="tm-karma__votes tm-karma__votes_positive">
+    1
+  </div> <div class="tm-karma__text">
+    Карма
+  </div></div> <div title="Рейтинг пользователя" class="tm-rating tm-user-card__rating"><div class="tm-rating__header"> <div class="tm-rating__counter">0</div></div> <div class="tm-rating__text">
+    Рейтинг
+  </div></div></div></div></div> <div class="tm-user-card__info tm-user-card__info_variant-article"><div class="tm-user-card__title tm-user-card__title_variant-article"><!----> <a href="/ru/users/xyli0o/" class="tm-user-card__nickname tm-user-card__nickname_variant-article">
+          @xyli0o
+        </a> <!----></div> <p class="tm-user-card__short-info tm-user-card__short-info_variant-article">Пользователь</p></div></div> <div class="tm-user-card__buttons tm-user-card__buttons_variant-article"><!----> <!----> <!----> <!----> <!----></div></div> <!----></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----></section> <div class="tm-article-blocks__comments"><div class="tm-article-page-comments"><div class="tm-article-comments-counter-link tm-article-comments-counter-button"><a href="/ru/post/451830/comments/" class="tm-article-comments-counter-link__link tm-article-comments-counter-link__link_button-style"><svg height="16" width="16" class="tm-svg-img tm-article-comments-counter-link__icon tm-article-comments-counter-link__icon_contrasted"><title>Комментарии</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-comments"></use></svg> <span class="tm-article-comments-counter-link__value tm-article-comments-counter-link__value_contrasted">
+       Комментарии 8 
+    </span></a> <!----></div></div></div> <div class="tm-ad-banner__container tm-page-article__banner"><!----> <div id="articleBottomBanner" class="tm-ad-banner"></div></div> <!----> <!----> <!----> <!----> </div></div></div></div></div> <div class="tm-page__sidebar"><div class="tm-layout-sidebar"><div class="tm-layout-sidebar__ads tm-layout-sidebar__ads_initial"><div class="tm-ad-banner__container tm-layout-sidebar__banner"><!----> <div id="sidebarBanner" class="tm-ad-banner"></div></div></div> <div class="tm-sexy-sidebar tm-sexy-sidebar_initial" style="margin-top:0px;"><!----> <!----></div></div></div></div></div></div></main> <!----></div> <div class="tm-footer-menu"><div class="tm-page-width"><div class="tm-footer-menu__container"><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Ваш аккаунт
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr/?back=/ru/post/451830/&amp;hl=ru" rel="nofollow" target="_self">
+                Войти
+              </a></li><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr-register/?back=/ru/post/451830/&amp;hl=ru" rel="nofollow" target="_self">
+                Регистрация
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Разделы
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/" class="footer-menu__item-link router-link-active">
+                Публикации
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/news/" class="footer-menu__item-link">
+                Новости
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/hubs/" class="footer-menu__item-link">
+                Хабы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/companies/" class="footer-menu__item-link">
+                Компании
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/users/" class="footer-menu__item-link">
+                Авторы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/sandbox/" class="footer-menu__item-link">
+                Песочница
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Информация
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/docs/help/" class="footer-menu__item-link">
+                Устройство сайта
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/authors/codex/" class="footer-menu__item-link">
+                Для авторов
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/companies/corpblogs/" class="footer-menu__item-link">
+                Для компаний
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/docs/transparency/" class="footer-menu__item-link">
+                Документы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/agreement" target="_blank">
+                Соглашение
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/confidential/" target="_blank">
+                Конфиденциальность
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Услуги
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQLwRfQmXibiUlWaRg-BAc38s7oM3lJiaPju7qmdJsp8ysIvZ_G-Npem0njJLMozE2bPHMpDqiI5hhy/pub?start=false&amp;loop=false&amp;delayms=60000&amp;slide=id.g91a03369cd_4_297" target="_blank">
+                Реклама
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://habrastorage.org/storage/stuff/habr/service_price.pdf" target="_blank">
+                Тарифы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQJJds8-Di7BQSP_guHxICN7woVYoN5NP_22ra-BIo4bqnTT9FR6fB-Ku2P0AoRpX0Ds-LRkDeAoD8F/pub?start=false&amp;loop=false&amp;delayms=60000" target="_blank">
+                Контент
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://tmtm.timepad.ru/" target="_blank">
+                Семинары
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/megaprojects/" class="footer-menu__item-link">
+                Мегапроекты
+              </a></li></ul></div></div></div></div></div> <div class="tm-footer"><div class="tm-page-width"><div class="tm-footer__container"><!----> <div class="tm-footer__social"><a href="https://www.facebook.com/habrahabr.ru" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Facebook</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-facebook"></use></svg></a><a href="https://twitter.com/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Twitter</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-twitter"></use></svg></a><a href="https://vk.com/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>VK</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-vkontakte"></use></svg></a><a href="https://telegram.me/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Telegram</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-telegram"></use></svg></a><a href="https://www.youtube.com/channel/UCd_sTwKqVrweTt4oAKY5y4w" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Youtube</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-youtube"></use></svg></a><a href="https://zen.yandex.ru/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Яндекс Дзен</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-zen"></use></svg></a></div> <DIV class="v-portal" style="display:none;"></DIV> <button class="tm-footer__link"><!---->
+        Настройка языка
+      </button> <a href="/ru/about" class="tm-footer__link">
+        О сайте
+      </a> <a href="/ru/feedback/" class="tm-footer__link">
+        Техническая поддержка
+      </a> <!----> <a href="/berserk-mode-nope" class="tm-footer__link">
+        Вернуться на старую версию
+      </a> <div class="tm-footer-copyright"><span class="tm-copyright"><span class="tm-copyright__years">© 2006–2021 </span> <span class="tm-copyright__name">«<a href="https://company.habr.com/" rel="noopener" target="_blank" class="tm-copyright__link">Habr</a>»</span></span></div></div></div></div> <!----> <!----></div> <div class="vue-portal-target"></div></div>
+<script>window.__INITIAL_STATE__={"adblock":{"hasAcceptableAdsFilter":false,"hasAdblock":false},"articlesList":{"articlesList":{"451830":{"id":"451830","timePublished":"2019-05-14T15:39:49+00:00","isCorporative":false,"lang":"ru","titleHtml":"Кратко с реализацией о AES 128 ECB","leadData":{"textHtml":"\u003Cp\u003EЕсли вбить в яндекс 'aes 128 ecb mode', найдутся хорошие статьи ребят на \"хабре\": \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fpost\u002F112733\u002F\"\u003Eраз\u003C\u002Fa\u003E и \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fpost\u002F212235\u002F\"\u003Eдва\u003C\u002Fa\u003E — толковые и одновременно слишком подробные.\u003C\u002Fp\u003E\u003Cbr\u003E\r\n\u003Cp\u003EРассказ об алгоритме в картинках \u003Ca href=\"http:\u002F\u002Fwww.moserware.com\u002F2009\u002F09\u002Fstick-figure-guide-to-advanced.html\"\u003Eнаходится здесь\u003C\u002Fa\u003E (который также можно найти по ссылкам в одной из статей ребят выше).\u003C\u002Fp\u003E\u003Cbr\u003E\r\n\u003Cp\u003EКратко об алгоритме: 1) создаем объект с 16-байтным state и массивом 16-байтных ключей; 2) пишем примитивы для объекта (они же трансформации); 3) запускаем n раз (где n — кол-во раундов). Все трансформации делаем симметричными — для зашифровки и расшифровки одновременно. Расшифровка в терминах алгоритма — это зашифровка наоборот. \u003C\u002Fp\u003E\u003Cbr\u003E\r\n\u003Cp\u003EСтруктура:\u003C\u002Fp\u003E\u003Cbr\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003Eusing byte_t = unsigned char;\nstruct aes128 {\n  aes128(const std::string&amp; text, const std::string&amp; cipher, bool decrypt = false)\n    : state({begin(text), end(text)}), keys({{begin(cipher), end(cipher)}}), decrypt(decrypt) {}\n  aes128() = default;\n  aes128(const aes128&amp;) = default;\n\n  std::vector&lt;byte_t&gt; state;\n  std::vector&lt;std::vector&lt;byte_t&gt;&gt; keys;\n  bool decrypt;\n}\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E","imageUrl":null,"buttonTextHtml":"Читать дальше →","image":null},"editorVersion":"1.0","postType":"article","postLabels":[{"type":"sandbox","data":null}],"author":{"scoreStats":{"score":1,"votesCount":21},"rating":0,"relatedData":null,"contacts":[],"authorContacts":[],"paymentDetails":{"paymentYandexMoney":null,"paymentPayPalMe":null,"paymentWebmoney":null},"id":"2051155","alias":"xyli0o","fullname":null,"avatarUrl":null,"speciality":null},"statistics":{"commentsCount":8,"favoritesCount":50,"readingCount":6221,"score":14,"votesCount":24},"hubs":[{"relatedData":null,"id":"118","alias":"crypto","type":"collective","title":"Криптография","titleHtml":"Криптография","isProfiled":true},{"relatedData":null,"id":"559","alias":"cpp","type":"collective","title":"C++","titleHtml":"C++","isProfiled":true},{"relatedData":null,"id":"8000","alias":"algorithms","type":"collective","title":"Алгоритмы","titleHtml":"Алгоритмы","isProfiled":true}],"flows":[{"id":"1","alias":"develop","title":"Разработка"}],"relatedData":null,"textHtml":"\u003Cdiv xmlns=\"http:\u002F\u002Fwww.w3.org\u002F1999\u002Fxhtml\"\u003E\u003Cp\u003EЕсли вбить в яндекс 'aes 128 ecb mode', найдутся хорошие статьи ребят на \"хабре\": \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fpost\u002F112733\u002F\"\u003Eраз\u003C\u002Fa\u003E и \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fpost\u002F212235\u002F\"\u003Eдва\u003C\u002Fa\u003E — толковые и одновременно слишком подробные.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EРассказ об алгоритме в картинках \u003Ca href=\"http:\u002F\u002Fwww.moserware.com\u002F2009\u002F09\u002Fstick-figure-guide-to-advanced.html\"\u003Eнаходится здесь\u003C\u002Fa\u003E (который также можно найти по ссылкам в одной из статей ребят выше).\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EКратко об алгоритме: 1) создаем объект с 16-байтным state и массивом 16-байтных ключей; 2) пишем примитивы для объекта (они же трансформации); 3) запускаем n раз (где n — кол-во раундов). Все трансформации делаем симметричными — для зашифровки и расшифровки одновременно. Расшифровка в терминах алгоритма — это зашифровка наоборот. \u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EСтруктура:\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003Eusing byte_t = unsigned char;\nstruct aes128 {\n  aes128(const std::string&amp; text, const std::string&amp; cipher, bool decrypt = false)\n    : state({begin(text), end(text)}), keys({{begin(cipher), end(cipher)}}), decrypt(decrypt) {}\n  aes128() = default;\n  aes128(const aes128&amp;) = default;\n\n  std::vector&lt;byte_t\u003E state;\n  std::vector&lt;std::vector&lt;byte_t\u003E\u003E keys;\n  bool decrypt;\n}\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Ca name=\"habracut\"\u003E\u003C\u002Fa\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EПервым делом после создания генерируем ключи (инфа о sbox и RCON будет ниже):\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003Evoid key_expansion() {\n  for (int j = 1; j != 11; j++) { \u002F\u002F for 11 rounds\n    std::vector&lt;byte_t\u003E key = keys[j-1];\n    std::vector&lt;byte_t\u003E column = {key[13], key[14], key[15], key[12]}; \u002F\u002F rotation\n    for (auto&amp; x: column) x = sbox(x); \n    column[0] ^= RCON[j];\n\n    std::transform(begin(column), end(column), begin(key), begin(key), std::bit_xor&lt;byte_t\u003E());\n    std::transform(begin(key)+4, end(key), begin(key), begin(key)+4, std::bit_xor&lt;byte_t\u003E());\n    keys.emplace_back(std::move(key));\n  }\n}\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EПишем примитивы (они же трансформации). Трансформация добавляет сложность в state, чтоб было секьюрно.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003Evoid add_round_key(int r) {\n  std::transform(begin(keys[r]), end(keys[r]), begin(state), begin(state), std::bit_xor&lt;byte_t\u003E());\n}\nvoid substitute_bytes() {\n  std::transform(begin(state), end(state), begin(state), [&amp;](byte_t x) { return sbox(x, decrypt); });\n}\nvoid shift_rows() {\n  int k = decrypt ? 3 : 1; \u002F\u002F coef for rotation point\n  for (int i = 1; i != 4; ++i)\n    shift_row({state[i], state[4+i], state[8+i], state[12+i]}, (k*i) % 4, i);\n}\nvoid shift_row(std::array&lt;byte_t, 4\u003E&amp;&amp; row, int k, int j) {\n  std::rotate(begin(row), begin(row)+k, end(row));\n  for (int i = 0; i != 4; ++i) { state[i*4+j] = row[i]; }\n}\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EПлюс еще одна трансформация (инфу о байтах 0xe, 0x2… берем из статьей ребят выше):\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003Evoid mix_columns() {\n  for (int i = 0; i != 4; i++) {\n    const std::array&lt;byte_t, 4\u003E column = {state[i*4], state[i*4+1], state[i*4+2], state[i*4+3]};\n    if (!decrypt) {\n      state[i*4] = vector_mult(column, { 0x2, 0x3, 0x1, 0x1 });\n      state[i*4+1] = vector_mult(column, { 0x1, 0x2, 0x3, 0x1 });\n      state[i*4+2] = vector_mult(column, { 0x1, 0x1, 0x2, 0x3 });\n      state[i*4+3] = vector_mult(column, { 0x3, 0x1, 0x1, 0x2 });\n    } else {\n      state[i*4] = vector_mult(column, { 0xe, 0xb, 0xd, 0x9 });\n      state[i*4+1] = vector_mult(column, { 0x9, 0xe, 0xb, 0xd });\n      state[i*4+2] = vector_mult(column, { 0xd, 0x9, 0xe, 0xb });\n      state[i*4+3] = vector_mult(column, { 0xb, 0xd, 0x9, 0xe });\n    }\n  }\n}\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EСобственно, алгоритмы:\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003Eaes128 encrypt(const std::string&amp; text, const std::string&amp; cipher) {\n  aes128 aes(text, cipher);\n  aes.key_expansion();\n  aes.add_round_key(0);\n  for (int i = 1; i != 10; i++) {\n    aes.substitute_bytes();\n    aes.shift_rows();\n    aes.mix_columns();\n    aes.add_round_key(i);\n  }\n  aes.substitute_bytes();\n  aes.shift_rows();\n  aes.add_round_key(10);\n  return aes;\n}\n\ntemplate &lt;typename I\u003E\naes128 decrypt(I first, I last, const std::string&amp; cipher) {\n  aes128 aes({first, last}, cipher, true);\n  aes.key_expansion();\n  aes.add_round_key(10);\n  aes.shift_rows();\n  aes.substitute_bytes();\n  for (int i = 9; i != 0; --i) {\n    aes.add_round_key(i);\n    aes.mix_columns();\n    aes.shift_rows();\n    aes.substitute_bytes();\n  }\n  aes.add_round_key(0);\n  return aes;\n}\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EУтилиты: \u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003Ebyte_t hex(char ch) { return (ch - '0') % 39; }\nbyte_t sbox(byte_t x, bool decrypt = false) {\n  std::string s = (decrypt ? INV_SBOX : SBOX)[x \u003E\u003E 4][x &amp; 15];\n  return hex(s[0]) &lt;&lt; 4 | hex(s[1]);\n}\nbyte_t mult_by_2(byte_t x) { return (x &lt; 128) ? x &lt;&lt; 1 : (x &lt;&lt; 1 &amp; 0xff) ^ 0x1b; }\nbyte_t mult_by_8(byte_t x) { return mult_by_2(mult_by_2(mult_by_2(x))); }\n\nconst std::unordered_map&lt;byte_t, std::function&lt;byte_t(byte_t)\u003E\u003E mapper = {\n  {0x1, [](byte_t x) { return x; }},\n  {0x2, mult_by_2},\n  {0x3, [](byte_t x) { return mult_by_2(x) ^ x; }},\n  {0x9, [](byte_t x) { return mult_by_8(x) ^ x; }},\n  {0xb, [](byte_t x) { return mult_by_8(x) ^ mult_by_2(x) ^ x; }},\n  {0xd, [](byte_t x) { return mult_by_8(x) ^ mult_by_2(mult_by_2(x)) ^ x; }},\n  {0xe, [](byte_t x) { return mult_by_8(x) ^ mult_by_2(mult_by_2(x)) ^ mult_by_2(x); }},\n};\nbyte_t vector_mult(const std::array&lt;byte_t, 4\u003E&amp; v1, std::array&lt;byte_t, 4\u003E&amp;&amp; v2) {\n  std::transform(begin(v1), end(v1), begin(v2), begin(v2),\n    [](byte_t x, byte_t y) { return mapper.at(y)(x); });\n  return std::accumulate(begin(v2), end(v2), byte_t(0), std::bit_xor&lt;byte_t\u003E());\n}\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EКонстанты:\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003Econst std::vector&lt;std::vector&lt;std::string\u003E\u003E SBOX = {\n  { \"63\", \"7c\", \"77\", \"7b\", \"f2\", \"6b\", \"6f\", \"c5\", \"30\", \"01\", \"67\", \"2b\", \"fe\", \"d7\", \"ab\", \"76\" },\n  { \"ca\", \"82\", \"c9\", \"7d\", \"fa\", \"59\", \"47\", \"f0\", \"ad\", \"d4\", \"a2\", \"af\", \"9c\", \"a4\", \"72\", \"c0\" },\n  { \"b7\", \"fd\", \"93\", \"26\", \"36\", \"3f\", \"f7\", \"cc\", \"34\", \"a5\", \"e5\", \"f1\", \"71\", \"d8\", \"31\", \"15\" },\n  { \"04\", \"c7\", \"23\", \"c3\", \"18\", \"96\", \"05\", \"9a\", \"07\", \"12\", \"80\", \"e2\", \"eb\", \"27\", \"b2\", \"75\" },\n  { \"09\", \"83\", \"2c\", \"1a\", \"1b\", \"6e\", \"5a\", \"a0\", \"52\", \"3b\", \"d6\", \"b3\", \"29\", \"e3\", \"2f\", \"84\" },\n  { \"53\", \"d1\", \"00\", \"ed\", \"20\", \"fc\", \"b1\", \"5b\", \"6a\", \"cb\", \"be\", \"39\", \"4a\", \"4c\", \"58\", \"cf\" },\n  { \"d0\", \"ef\", \"aa\", \"fb\", \"43\", \"4d\", \"33\", \"85\", \"45\", \"f9\", \"02\", \"7f\", \"50\", \"3c\", \"9f\", \"a8\" },\n  { \"51\", \"a3\", \"40\", \"8f\", \"92\", \"9d\", \"38\", \"f5\", \"bc\", \"b6\", \"da\", \"21\", \"10\", \"ff\", \"f3\", \"d2\" },\n  { \"cd\", \"0c\", \"13\", \"ec\", \"5f\", \"97\", \"44\", \"17\", \"c4\", \"a7\", \"7e\", \"3d\", \"64\", \"5d\", \"19\", \"73\" },\n  { \"60\", \"81\", \"4f\", \"dc\", \"22\", \"2a\", \"90\", \"88\", \"46\", \"ee\", \"b8\", \"14\", \"de\", \"5e\", \"0b\", \"db\" },\n  { \"e0\", \"32\", \"3a\", \"0a\", \"49\", \"06\", \"24\", \"5c\", \"c2\", \"d3\", \"ac\", \"62\", \"91\", \"95\", \"e4\", \"79\" },\n  { \"e7\", \"c8\", \"37\", \"6d\", \"8d\", \"d5\", \"4e\", \"a9\", \"6c\", \"56\", \"f4\", \"ea\", \"65\", \"7a\", \"ae\", \"08\" },\n  { \"ba\", \"78\", \"25\", \"2e\", \"1c\", \"a6\", \"b4\", \"c6\", \"e8\", \"dd\", \"74\", \"1f\", \"4b\", \"bd\", \"8b\", \"8a\" },\n  { \"70\", \"3e\", \"b5\", \"66\", \"48\", \"03\", \"f6\", \"0e\", \"61\", \"35\", \"57\", \"b9\", \"86\", \"c1\", \"1d\", \"9e\" },\n  { \"e1\", \"f8\", \"98\", \"11\", \"69\", \"d9\", \"8e\", \"94\", \"9b\", \"1e\", \"87\", \"e9\", \"ce\", \"55\", \"28\", \"df\" },\n  { \"8c\", \"a1\", \"89\", \"0d\", \"bf\", \"e6\", \"42\", \"68\", \"41\", \"99\", \"2d\", \"0f\", \"b0\", \"54\", \"bb\", \"16\" }};\n\nconst std::vector&lt;int\u003E RCON = { 0, 1, 2, 4, 8, 16, 32, 64, 128, 27, 54 }; \u002F\u002F ten rounds\n\nconst std::vector&lt;std::vector&lt;std::string\u003E\u003E INV_SBOX = {\n  { \"52\", \"09\", \"6a\", \"d5\", \"30\", \"36\", \"a5\", \"38\", \"bf\", \"40\", \"a3\", \"9e\", \"81\", \"f3\", \"d7\", \"fb\" },\n  { \"7c\", \"e3\", \"39\", \"82\", \"9b\", \"2f\", \"ff\", \"87\", \"34\", \"8e\", \"43\", \"44\", \"c4\", \"de\", \"e9\", \"cb\" },\n  { \"54\", \"7b\", \"94\", \"32\", \"a6\", \"c2\", \"23\", \"3d\", \"ee\", \"4c\", \"95\", \"0b\", \"42\", \"fa\", \"c3\", \"4e\" },\n  { \"08\", \"2e\", \"a1\", \"66\", \"28\", \"d9\", \"24\", \"b2\", \"76\", \"5b\", \"a2\", \"49\", \"6d\", \"8b\", \"d1\", \"25\" },\n  { \"72\", \"f8\", \"f6\", \"64\", \"86\", \"68\", \"98\", \"16\", \"d4\", \"a4\", \"5c\", \"cc\", \"5d\", \"65\", \"b6\", \"92\" },\n  { \"6c\", \"70\", \"48\", \"50\", \"fd\", \"ed\", \"b9\", \"da\", \"5e\", \"15\", \"46\", \"57\", \"a7\", \"8d\", \"9d\", \"84\" },\n  { \"90\", \"d8\", \"ab\", \"00\", \"8c\", \"bc\", \"d3\", \"0a\", \"f7\", \"e4\", \"58\", \"05\", \"b8\", \"b3\", \"45\", \"06\" },\n  { \"d0\", \"2c\", \"1e\", \"8f\", \"ca\", \"3f\", \"0f\", \"02\", \"c1\", \"af\", \"bd\", \"03\", \"01\", \"13\", \"8a\", \"6b\" },\n  { \"3a\", \"91\", \"11\", \"41\", \"4f\", \"67\", \"dc\", \"ea\", \"97\", \"f2\", \"cf\", \"ce\", \"f0\", \"b4\", \"e6\", \"73\" },\n  { \"96\", \"ac\", \"74\", \"22\", \"e7\", \"ad\", \"35\", \"85\", \"e2\", \"f9\", \"37\", \"e8\", \"1c\", \"75\", \"df\", \"6e\" },\n  { \"47\", \"f1\", \"1a\", \"71\", \"1d\", \"29\", \"c5\", \"89\", \"6f\", \"b7\", \"62\", \"0e\", \"aa\", \"18\", \"be\", \"1b\" },\n  { \"fc\", \"56\", \"3e\", \"4b\", \"c6\", \"d2\", \"79\", \"20\", \"9a\", \"db\", \"c0\", \"fe\", \"78\", \"cd\", \"5a\", \"f4\" },\n  { \"1f\", \"dd\", \"a8\", \"33\", \"88\", \"07\", \"c7\", \"31\", \"b1\", \"12\", \"10\", \"59\", \"27\", \"80\", \"ec\", \"5f\" },\n  { \"60\", \"51\", \"7f\", \"a9\", \"19\", \"b5\", \"4a\", \"0d\", \"2d\", \"e5\", \"7a\", \"9f\", \"93\", \"c9\", \"9c\", \"ef\" },\n  { \"a0\", \"e0\", \"3b\", \"4d\", \"ae\", \"2a\", \"f5\", \"b0\", \"c8\", \"eb\", \"bb\", \"3c\", \"83\", \"53\", \"99\", \"61\" },\n  { \"17\", \"2b\", \"04\", \"7e\", \"ba\", \"77\", \"d6\", \"26\", \"e1\", \"69\", \"14\", \"63\", \"55\", \"21\", \"0c\", \"7d\" }};\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EСсылки:\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Col\u003E\r\n\u003Cli\u003E\u003Ca href=\"https:\u002F\u002Fen.wikipedia.org\u002Fwiki\u002FAdvanced_Encryption_Standard\"\u003Ehttps:\u002F\u002Fen.wikipedia.org\u002Fwiki\u002FAdvanced_Encryption_Standard\u003C\u002Fa\u003E\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Ca href=\"http:\u002F\u002Fwww.moserware.com\u002F2009\u002F09\u002Fstick-figure-guide-to-advanced.html\"\u003Ehttp:\u002F\u002Fwww.moserware.com\u002F2009\u002F09\u002Fstick-figure-guide-to-advanced.html\u003C\u002Fa\u003E\u003C\u002Fli\u003E\r\n\u003C\u002Fol\u003E\u003C\u002Fdiv\u003E","tags":[{"titleHtml":"aes-128"}],"metadata":{"stylesUrls":[],"scriptUrls":[],"shareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F451830\u002Fc7caa74a4b2445b46a4acbf9fa2d4085\u002F","shareImageWidth":1200,"shareImageHeight":630,"vkShareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F451830\u002Fc7caa74a4b2445b46a4acbf9fa2d4085\u002F?format=vk","schemaJsonLd":"{\"@context\":\"http:\\\u002F\\\u002Fschema.org\",\"@type\":\"Article\",\"mainEntityOfPage\":{\"@type\":\"WebPage\",\"@id\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fru\\\u002Fpost\\\u002F451830\\\u002F\"},\"headline\":\"Кратко с реализацией о AES 128 ECB\",\"datePublished\":\"2019-05-14T18:39:49+03:00\",\"dateModified\":\"2019-05-14T21:20:44+03:00\",\"author\":{\"@type\":\"Person\",\"name\":\"xyli0o\"},\"publisher\":{\"@type\":\"Organization\",\"name\":\"Habr\",\"logo\":{\"@type\":\"ImageObject\",\"url\":\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fa_\\\u002Flk\\\u002F9m\\\u002Fa_lk9mjkccjox-zccjrpfolmkmq.png\"}},\"description\":\"Если вбить в яндекс 'aes 128 ecb mode', найдутся хорошие статьи ребят на &quot;хабре&quot;: раз и два &mdash; толковые и одновременно слишком подробные. Рассказ об алгоритме в к...\",\"url\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fru\\\u002Fpost\\\u002F451830\\\u002F#post-content-body\",\"about\":[\"h_crypto\",\"h_cpp\",\"h_algorithms\",\"f_develop\"],\"image\":[\"https:\\\u002F\\\u002Fhabr.com\\\u002Fshare\\\u002Fpublication\\\u002F451830\\\u002Fc7caa74a4b2445b46a4acbf9fa2d4085\\\u002F\"]}","metaDescription":"Если вбить в яндекс &#039;aes 128 ecb mode&#039;, найдутся хорошие статьи ребят на &quot;хабре&quot;: раз и два — толковые и одновременно слишком подробные.\r\nРассказ об алгоритме в картинках находится здесь (который...","mainImageUrl":null,"amp":false},"polls":[],"commentsEnabled":true,"rulesRemindEnabled":false,"votesEnabled":true,"status":"published","plannedPublishTime":null,"checked":null,"isEditorial":false}},"articlesIds":{},"isLoading":false,"pagesCount":{},"route":{},"reasonsList":null,"view":"cards","lastVisitedRoute":{},"ssrCommentsArticleIds":[""],"karma":{}},"authorContribution":{"authors":{}},"betaTest":{"currentAnnouncement":null,"announcements":{},"announcementCards":null,"announcementComments":{},"announcementCommentThreads":{},"announcementCommentingStatuses":{},"archivedList":[]},"authorStatistics":{"articleRefs":{},"articleIds":{},"pagesCount":{},"route":{},"viewsCount":[],"maxStatsCount":{}},"career":{"seoLandings":[],"hubs":"crypto,cpp,algorithms"},"comments":{"articleComments":{},"searchCommentsResults":null,"previewComment":null,"pagesCount":null,"commentAccess":{},"scrollParents":{},"pageArticleComments":{"lastViewedComment":0,"postId":null,"lastCommentTimestamp":"","moderated":[],"moderatedIds":[],"commentRoute":""}},"companies":{"companyRefs":{},"companyIds":{},"companyTopIds":{},"pagesCount":{},"companyProfiles":{},"companiesCategories":[],"companiesCategoriesTotalCount":0,"companiesWidgets":{},"companiesWorkers":{},"companiesFans":{},"route":{},"isLoading":false,"companyWorkersLoading":false,"companyFansLoading":false,"vacancies":{}},"companiesContribution":{"hubs":{},"flows":{},"companyRefs":{}},"companyHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"conversation":{"messages":[],"respondent":null,"isLoadMore":false},"conversations":{"conversations":[],"unreadCount":0,"pagesCount":0,"isLoadMore":false},"desktopState":{"desktopFl":null,"desktopHl":null,"isChecked":false,"isLoginDemanded":false},"dfp":{"slotsDict":{}},"docs":{"menu":{},"articles":{},"mainMenu":[],"loading":{"main":false,"dropdown":false,"article":false}},"feature":{"isProbablyVisible":"true"},"flows":{"flows":[{"alias":"develop","id":1,"route":{"name":"FLOW_PAGE","params":{"flowName":"develop"}}},{"alias":"admin","id":6,"route":{"name":"FLOW_PAGE","params":{"flowName":"admin"}}},{"alias":"design","id":2,"route":{"name":"FLOW_PAGE","params":{"flowName":"design"}}},{"alias":"management","id":3,"route":{"name":"FLOW_PAGE","params":{"flowName":"management"}}},{"alias":"marketing","id":4,"route":{"name":"FLOW_PAGE","params":{"flowName":"marketing"}}},{"alias":"popsci","id":7,"route":{"name":"FLOW_PAGE","params":{"flowName":"popsci"}}}]},"global":{"isPwa":false,"device":"desktop","isHabrCom":true},"hubs":{"hubRefs":{},"hubIds":{},"pagesCount":{},"isLoading":false,"route":{}},"hubsBlock":{"hubRefs":{},"hubIds":{}},"i18n":{"fl":"ru","hl":"ru"},"info":{"infoPage":{},"isLoading":true},"location":{"urlStruct":{"protocol":null,"slashes":null,"auth":null,"host":null,"port":null,"hostname":null,"hash":null,"search":null,"query":{},"pathname":null,"path":null,"href":""},"searchQuery":null},"me":{"user":null,"ppgDemanded":false,"karmaResetInfo":{"canReincarnate":null,"wasReincarnated":null,"currentScore":null},"notes":null},"mostReadingList":{"mostReadingListIds":[],"mostReadingListRefs":null,"promoPost":null},"pinnedPost":{"pinnedPost":null},"ppa":{"articles":{},"card":null,"transactions":null,"totalTransactions":null,"isAccessible":null},"projectsBlocks":{"activeBlocks":{}},"pullRefresh":{"shouldRefresh":false},"sandbox":{"articleIds":[],"articleRefs":{},"pagesCount":null,"route":{},"lastVisitedRoute":{},"isLoading":false},"settingsOther":{"inputs":{"uiLang":{"errors":[],"ref":null,"value":""},"articlesLangEnglish":{"errors":[],"ref":null,"value":false},"articlesLangRussian":{"errors":[],"ref":null,"value":false},"agreement":{"errors":[],"ref":null,"value":false},"email":{"errors":[],"ref":null,"value":true},"digest":{"errors":[],"ref":null,"value":true}}},"similarList":{"similarListIds":[],"similarListRefs":null},"ssr":{"error":null,"isDataLoaded":false,"isDataLoading":false,"isHydrationFailed":false,"isServer":false},"userHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"userInvites":{"availableInvites":0,"usedInvitesIds":[],"usedInvitesRefs":{},"usedInvitesPagesCount":0,"unusedInvitesIds":[],"unusedInvitesRefs":{},"unusedInvitesPagesCount":0},"users":{"authorRefs":{},"authorIds":{},"pagesCount":{},"authorProfiles":{},"userHubs":{},"userInvitations":{},"authorFollowers":{},"authorFollowed":{},"karmaStats":[],"statistics":null,"isLoading":false,"authorFollowersLoading":false,"authorFollowedLoading":false,"userHubsLoading":false,"userInvitationsLoading":false,"route":{}},"viewport":{"prevScrollY":{},"scrollY":0,"width":0},"tracker":{"items":{},"pagesCache":{},"markedViewedSilently":{},"markedRead":{},"unreadCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null},"unviewedCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null}}};(function(){var s;(s=document.currentScript||document.scripts[document.scripts.length-1]).parentNode.removeChild(s);}());</script>
+<script src="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" defer></script><script src="https://assets.habr.com/habr-web/js/app.c0af73e7.js" defer></script>
+
+
+
+    <script>
+      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+        (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+        m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+      })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+    </script>
+  
+  <script type="text/javascript" >
+    (function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+    m[i].l=1*new Date();k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})
+    (window, document, "script", "https://mc.yandex.ru/metrika/tag.js", "ym");
+
+    ym(24049213, "init", {
+      defer:true,
+      trackLinks:true,
+      accurateTrackBounce:true,
+      webvisor:false,
+    });
+  </script>
+  <noscript>
+    <div>
+      <img src="https://mc.yandex.ru/watch/24049213" style="position:absolute; left:-9999px;" alt="" />
+    </div>
+  </noscript>
+  
+    <script type="text/javascript">
+      window.addEventListener('load', function () {
+        setTimeout(() => {
+          const img = new Image();
+          img.src = 'https://vk.com/rtrg?p=VK-RTRG-421343-57vKE';
+        }, 0);
+      });
+    </script>
+  
+</body>
+</html>

@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="ru" data-vue-meta="%7B%22lang%22:%7B%22ssr%22:%22ru%22%7D%7D">
+<head >
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
+  <title>Гид по параллельному масштабированию Amazon Redshift и результаты тестирования / Хабр</title>
+  <style>
+    /* cyrillic-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSxf6TF0.woff2) format('woff2');
+      unicode-range: U+0460-052F, U+1C80-1C88, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+    }
+
+    /* cyrillic */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveQhf6TF0.woff2) format('woff2');
+      unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+    }
+
+    /* latin-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSBf6TF0.woff2) format('woff2');
+      unicode-range: U+0100-024F, U+0259, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20CF, U+2113, U+2C60-2C7F, U+A720-A7FF;
+    }
+
+    /* latin */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveRhf6.woff2) format('woff2');
+      unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+    }
+  </style>
+  <link rel="preload" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" as="script"><link rel="preload" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/app.c0af73e7.js" as="script">
+  <link rel="stylesheet" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css"><link rel="stylesheet" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css">
+  <script>window.i18nFetch = new Promise((res, rej) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open('GET', '/js/i18n/ru-compiled.85eb77f0b17c8235e7b64b9f81ea5ec2.json');
+          xhr.responseType = 'json';
+          xhr.onload = function(e) {
+            if (this.status === 200) {
+              res({ru: xhr.response});
+            } else {
+              rej(e);
+            }
+          };
+          xhr.send();
+        });</script>
+  
+  <script data-vue-meta="ssr" src="/js/ads.js" onload="window['zhY4i4nJ9K'] = true" data-vmid="checkad"></script><script data-vue-meta="ssr" type="application/ld+json" data-vmid="ldjson-schema">{"@context":"http:\/\/schema.org","@type":"Article","mainEntityOfPage":{"@type":"WebPage","@id":"https:\/\/habr.com\/ru\/company\/skyeng\/blog\/451538\/"},"headline":"Гид по параллельному масштабированию Amazon Redshift и результаты тестирования","datePublished":"2019-05-13T14:04:13+03:00","dateModified":"2019-05-13T17:57:24+03:00","author":{"@type":"Person","name":"Edtech на удаленке"},"publisher":{"@type":"Organization","name":"Habr","logo":{"@type":"ImageObject","url":"https:\/\/habrastorage.org\/webt\/a_\/lk\/9m\/a_lk9mjkccjox-zccjrpfolmkmq.png"}},"description":"Мы в Skyeng пользуемся Amazon Redshift, в том числе параллельным масштабированием, поэтому статья Стефана Громолла, основателя dotgo.com, для intermix.io, пока...","url":"https:\/\/habr.com\/ru\/company\/skyeng\/blog\/451538\/#post-content-body","about":["c_skyeng","h_it_testing","h_it-infrastructure","h_aws","h_cloud_services","f_develop","f_admin"],"image":["https:\/\/habrastorage.org\/webt\/mo\/pi\/gt\/mopigtqlz7wpuhwhxsmrlcvgpky.png","https:\/\/habrastorage.org\/webt\/rz\/g9\/mk\/rzg9mkvwxcmlhry2v522jjrtcdk.png","https:\/\/habrastorage.org\/webt\/p6\/we\/qu\/p6wequjhe3-yxannbvr_zndpqdg.png","https:\/\/habrastorage.org\/webt\/ti\/mw\/au\/timwauz4qrbalhetjn3ttccxui4.png","https:\/\/habrastorage.org\/webt\/zq\/ai\/xx\/zqaixxhdn7i-pkwockkal_7ujvw.png","https:\/\/habrastorage.org\/webt\/p-\/sw\/p8\/p-swp8elamy2ecxarcydioa0_ac.png","https:\/\/habrastorage.org\/webt\/kf\/ns\/_4\/kfns_4r21bi4fbmqzpk2nfgv1ba.png","https:\/\/habrastorage.org\/webt\/cn\/3u\/vh\/cn3uvh7rn90c8bydqicyz3zlir8.png","https:\/\/habrastorage.org\/webt\/d4\/0p\/7q\/d40p7qzi5ty79bbw_irhtk4qfzs.png","https:\/\/habrastorage.org\/webt\/ov\/xp\/rn\/ovxprnqxnz1fy9ds4xm4vmn6vte.png","https:\/\/habrastorage.org\/webt\/rm\/f-\/ip\/rmf-ipbke1vkled8fyo8zch9jpu.png","https:\/\/habrastorage.org\/webt\/am\/ho\/yk\/amhoykwqbkcttpfdiv5gvizkvog.png","https:\/\/habrastorage.org\/webt\/fi\/2f\/rb\/fi2frbpdkxqfcj1q-4rp12wrjz4.png"]}</script>
+  <script src="//www.googletagservices.com/tag/js/gpt.js" async></script>
+  <style>.grecaptcha-badge{visibility: hidden;}</style>
+  <meta name="habr-version" content="2.49.0">
+  
+  <meta data-vue-meta="ssr" property="fb:app_id" content="444736788986613"><meta data-vue-meta="ssr" property="fb:pages" content="472597926099084"><meta data-vue-meta="ssr" name="twitter:card" content="summary_large_image"><meta data-vue-meta="ssr" name="twitter:site" content="@habr_eng"><meta data-vue-meta="ssr" property="og:title" content="Гид по параллельному масштабированию Amazon Redshift и результаты тестирования" data-vmid="og:title"><meta data-vue-meta="ssr" name="twitter:title" content="Гид по параллельному масштабированию Amazon Redshift и результаты тестирования" data-vmid="twitter:title"><meta data-vue-meta="ssr" name="aiturec:title" content="Гид по параллельному масштабированию Amazon Redshift и результаты тестирования" data-vmid="aiturec:title"><meta data-vue-meta="ssr" name="description" content="Мы в Skyeng пользуемся Amazon Redshift, в том числе параллельным масштабированием, поэтому статья Стефана Громолла, основателя dotgo.com, для intermix.io, показалась нам интересной. После перевода..." data-vmid="description"><meta data-vue-meta="ssr" itemprop="description" content="Мы в Skyeng пользуемся Amazon Redshift, в том числе параллельным масштабированием, поэтому статья Стефана Громолла, основателя dotgo.com, для intermix.io, показалась нам интересной. После перевода..." data-vmid="description:itemprop"><meta data-vue-meta="ssr" property="og:description" content="Мы в Skyeng пользуемся Amazon Redshift, в том числе параллельным масштабированием, поэтому статья Стефана Громолла, основателя dotgo.com, для intermix.io, показалась нам интересной. После перевода..." data-vmid="og:description"><meta data-vue-meta="ssr" name="twitter:description" content="Мы в Skyeng пользуемся Amazon Redshift, в том числе параллельным масштабированием, поэтому статья Стефана Громолла, основателя dotgo.com, для intermix.io, показалась нам интересной. После перевода..." data-vmid="twitter:description"><meta data-vue-meta="ssr" property="aiturec:description" content="Мы в Skyeng пользуемся Amazon Redshift, в том числе параллельным масштабированием, поэтому статья Стефана Громолла, основателя dotgo.com, для intermix.io, показалась нам интересной. После перевода..." data-vmid="aiturec:description"><meta data-vue-meta="ssr" itemprop="image" content="https://habr.com/share/publication/451538/b7f1714f29ee4edc8118677570a30be9/" data-vmid="image:itemprop"><meta data-vue-meta="ssr" property="og:image" content="https://habr.com/share/publication/451538/b7f1714f29ee4edc8118677570a30be9/" data-vmid="og:image"><meta data-vue-meta="ssr" property="aiturec:image" content="https://habr.com/share/publication/451538/b7f1714f29ee4edc8118677570a30be9/" data-vmid="aiturec:image"><meta data-vue-meta="ssr" name="twitter:image" content="https://habr.com/share/publication/451538/b7f1714f29ee4edc8118677570a30be9/" data-vmid="twitter:image"><meta data-vue-meta="ssr" property="vk:image" content="https://habr.com/share/publication/451538/b7f1714f29ee4edc8118677570a30be9/" data-vmid="vk:image"><meta data-vue-meta="ssr" property="aiturec:item_id" content="451538" data-vmid="aiturec:item_id"><meta data-vue-meta="ssr" property="aiturec:datetime" content="2019-05-13T11:04:13.000Z" data-vmid="aiturec:datetime"><meta data-vue-meta="ssr" property="og:type" content="article" data-vmid="og:type"><meta data-vue-meta="ssr" property="og:locale" content="ru_RU" data-vmid="og:locale"><meta data-vue-meta="ssr" property="og:image:width" content="1200" data-vmid="og:image:width"><meta data-vue-meta="ssr" property="og:image:height" content="630" data-vmid="og:image:height">
+  <link data-vue-meta="ssr" href="https://habr.com/ru/rss/post/451538/?fl=ru" type="application/rss+xml" title="" rel="alternate" name="rss"><link data-vue-meta="ssr" href="https://habr.com/ru/company/skyeng/blog/451538/" rel="canonical" data-vmid="canonical"><link data-vue-meta="ssr" data-vmid="hreflang"><link data-vue-meta="ssr" image_src="image" href="https://habr.com/share/publication/451538/b7f1714f29ee4edc8118677570a30be9/" data-vmid="image:href"><link data-vue-meta="ssr" rel="amphtml" href="https://habr.com/ru/amp/post/451538/">
+  <meta name="apple-mobile-web-app-status-bar-style" content="#303b44">
+  <meta name="msapplication-TileColor" content="#629FBC">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="16x16"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-16.png"
+  >
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="32x32"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-32.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="76x76"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-76.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="120x120"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="152x152"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-152.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="180x180"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-180.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="256x256"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-256.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1136x640.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2436x1125.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1792x828.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_828x1792.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1334x750.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2208x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1125x2436.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2208.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2732x2048.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2688x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2224x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_750x1334.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x2732.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2388x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2224.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_640x1136.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2388.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x1536.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1536x2048.png"
+  >
+  <link
+    rel="mask-icon"
+    color="#77a2b6"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.svg"
+  >
+  <link
+    crossorigin="use-credentials"
+    href="/manifest.webmanifest"
+    rel="manifest"
+  >
+</head>
+<body>
+
+
+<div id="app" data-server-rendered="true" data-async-called="true"><div class="tm-layout__wrapper"><!----> <div></div> <!----> <header class="tm-header"><div class="tm-page-width"><div class="tm-header__container"><!----> <span class="tm-header__logo-wrap"><a href="/ru/" class="tm-header__logo tm-header__logo_ru"><svg height="16" width="16" class="tm-svg-img tm-header__icon"><title>Хабр</title> <use xlink:href="/img/habr-logo-ru.svg#logo"></use></svg></a> <span class="tm-header__beta-sign" style="display:none;">β</span></span> <div class="tm-dropdown tm-header__projects"><div class="tm-dropdown__head"><button class="tm-header__dropdown-toggle"><svg height="16" width="16" class="tm-svg-img tm-header__icon tm-header__icon_dropdown"><title>Открыть список</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#arrow-down"></use></svg></button></div> <!----></div> <a href="/ru/sandbox/start/" class="tm-header__become-author-btn">
+            Как стать автором
+          </a> <div class="tm-feature tm-header__feature tm-feature_variant-inline"><!----></div> <!----> <!----></div></div></header> <div class="tm-layout"><div class="tm-page-progress-bar"></div> <div data-menu-sticky="true" class="tm-base-layout__header tm-base-layout__header_is-sticky"><div class="tm-page-width"><div class="tm-base-layout__header-wrapper"><div class="tm-main-menu"><div class="tm-main-menu__section"><nav class="tm-main-menu__section-content"><!----> <a href="/ru/all/" class="tm-main-menu__item">
+        Все потоки
+      </a> <a href="/ru/flows/develop/" class="tm-main-menu__item">
+          Разработка
+        </a><a href="/ru/flows/admin/" class="tm-main-menu__item">
+          Администрирование
+        </a><a href="/ru/flows/design/" class="tm-main-menu__item">
+          Дизайн
+        </a><a href="/ru/flows/management/" class="tm-main-menu__item">
+          Менеджмент
+        </a><a href="/ru/flows/marketing/" class="tm-main-menu__item">
+          Маркетинг
+        </a><a href="/ru/flows/popsci/" class="tm-main-menu__item">
+          Научпоп
+        </a></nav></div></div> <div class="tm-header-user-menu tm-base-layout__user-menu"><a href="/ru/search/" class="tm-header-user-menu__item tm-header-user-menu__search"><svg height="24" width="24" class="tm-svg-img tm-header-user-menu__icon tm-header-user-menu__icon_search tm-header-user-menu__icon_dark"><title>Поиск</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#search"></use></svg></a> <!----> <!----> <!----> <div class="tm-header-user-menu__item tm-header-user-menu__user_desktop"><div class="tm-dropdown"><div class="tm-dropdown__head"><svg height="24" width="24" data-test-id="menu-toggle-guest" class="tm-svg-img tm-header-user-menu__icon"><title>Профиль</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#header-user"></use></svg> <!----></div> <!----></div> <!----></div> <!----></div></div></div></div> <!----> <div class="tm-page-width"></div> <main class="tm-layout__container"><div hl="ru" companyName="skyeng" data-async-called="true" class="tm-page"><div class="tm-page-width"><div class="tm-page__header"><!----></div> <div class="tm-page__wrapper"><div class="tm-page__main tm-page__main_has-sidebar"><div class="pull-down"><div class="pull-down__header" style="height:0px;"><div class="pull-down__content" style="bottom:10px;"><svg height="24" width="24" class="tm-svg-img pull-down__arrow"><title>Обновить</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#pull-arrow"></use></svg></div></div> <div class="tm-article-presenter"><div class="tm-company-card tm-company-article__company-card"><div class="tm-company-card__info"><div class="tm-company-card__header"><a href="/ru/company/skyeng/profile/" class="tm-company-card__avatar"><div class="tm-entity-image"><img alt="" height="48" src="//habrastorage.org/getpro/habr/company/d09/2f9/6ad/d092f96ad17042a56b4614692bd6983c.jpg" width="48" class="tm-entity-image__pic"></div></a> <!----> <div class="tm-rating tm-company-card__rating"><div class="tm-rating__header"> <div class="tm-rating__counter">124.27</div></div> <div class="tm-rating__text">
+    Рейтинг
+  </div></div></div> <div class="tm-company-card__info"><a href="/ru/company/skyeng/profile/" class="tm-company-card__name">
+        Skyeng
+      </a> <div class="tm-company-card__description">Крутой edtech с удаленкой для айтишников</div></div></div> <div class="tm-company-card__buttons"><!----> <!----></div></div> <div class="tm-article-presenter__body"><div class="tm-misprint-area"><div class="tm-misprint-area__wrapper"><article class="tm-article-presenter__content tm-article-presenter__content_narrow"><div class="tm-article-presenter__header"> <div class="tm-article-snippet tm-article-presenter__snippet"><div class="tm-article-snippet__meta-container"><div class="tm-article-snippet__meta"><span class="tm-user-info tm-article-snippet__author"><a href="/ru/users/Skyeng-Habr/" title="Skyeng-Habr" class="tm-user-info__userpic"><div class="tm-entity-image"><img alt="" height="24" loading="lazy" src="//habrastorage.org/r/w32/getpro/habr/avatars/ae0/bac/95b/ae0bac95b9373812af7b88f4ca0b4b54.png" width="24" class="tm-entity-image__pic"></div></a> <span class="tm-user-info__user"><a href="/ru/users/Skyeng-Habr/" class="tm-user-info__username">
+      Skyeng-Habr
+    </a> </span></span> <span class="tm-article-snippet__datetime-published"><time datetime="2019-05-13T11:04:13.000Z" title="2019-05-13, 14:04">13  мая  2019 в 14:04</time></span></div> <!----></div> <h1 lang="ru" class="tm-article-snippet__title tm-article-snippet__title_h1"><span>Гид по параллельному масштабированию Amazon Redshift и результаты тестирования</span></h1> <div class="tm-article-snippet__hubs"><span class="tm-article-snippet__hubs-item"><a href="/ru/company/skyeng/blog/" class="tm-article-snippet__hubs-item-link router-link-active"><span>Блог компании Skyeng</span> <!----></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/it_testing/" class="tm-article-snippet__hubs-item-link"><span>Тестирование IT-систем</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/it-infrastructure/" class="tm-article-snippet__hubs-item-link"><span>IT-инфраструктура</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/aws/" class="tm-article-snippet__hubs-item-link"><span>Amazon Web Services</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/cloud_services/" class="tm-article-snippet__hubs-item-link"><span>Облачные сервисы</span> <!----></a></span></div> <div class="tm-article-snippet__labels"><div class="tm-article-snippet__label"><span>
+        Перевод
+      </span></div></div> <!----> <!----></div></div> <div class="tm-article-presenter__origin"><a href="https://www.intermix.io/blog/amazon-redshift-concurrency-scaling/" target="_blank" class="tm-article-presenter__origin-link">
+                Автор оригинала:
+                <span>
+                  Stefan Gromoll
+                </span></a></div> <div data-gallery-root="" lang="ru" class="tm-article-body"><div id="post-content-body" class="article-formatted-body article-formatted-body_version-1"><div xmlns="http://www.w3.org/1999/xhtml"><img src="/img/image-loader.svg" alt="image" data-src="https://habrastorage.org/webt/mo/pi/gt/mopigtqlz7wpuhwhxsmrlcvgpky.png"/><br/>
+<br/>
+<i>Мы в Skyeng пользуемся Amazon Redshift, в том числе параллельным масштабированием, поэтому статья Стефана Громолла, основателя dotgo.com, для intermix.io, показалась нам интересной. После перевода — немного нашего опыта от инженера по данным Данияра Белходжаева.</i><br/>
+<br/>
+<a href="https://www.intermix.io/blog/a-dbas-guide-to-the-amazon-redshift-architecture-the-5-components-you-need-to-understand/">Архитектура Amazon Redshift</a> позволяет масштабирование путем добавления новых узлов в кластер. Необходимость справляться с пиковым количеством запросов может привести к избыточному резервированию узлов (over-provisioning). Параллельное масштабирование (Concurrency Scaling), в отличие от добавления новых узлов, наращивает вычислительную мощность по мере необходимости. <br/>
+<br/>
+Параллельное масштабирование Amazon Redshift дает кластерам Redshift дополнительные мощности для обработки пикового количества запросов. Оно работает путем перенесения запросов на новые «параллельные» кластеры в фоновом режиме. Запросы маршрутизируются на основе конфигурации и правил WLM.<br/>
+<a name="habracut"></a><br/>
+Ценообразование для параллельного масштабирования основывается на кредитной модели с нормой бесплатного пользования. Сверх нормы бесплатных кредитов оплата основывается на времени, когда кластер параллельного масштабирования обрабатывает запросы.<br/>
+<br/>
+Автор протестировал параллельное масштабирование на одном из внутренних кластеров. В этом посте он расскажет о результатах тестирования и даст советы о том, как начать работу.<br/>
+<br/>
+<h3>Требования к кластеру</h3><br/>
+Для использования параллельного масштабирования кластер Amazon Redshift должен соответствовать следующим требованиям: <br/>
+<br/>
+<ul>
+<li><b>платформа:</b> EC2-VPC;</li>
+<li><b>тип узла:</b> dc2.8xlarge, ds2.8xlarge, dc2.large или ds2.xlarge;</li>
+<li><b>число узлов:</b> от 2 до 32 (кластеры с одним узлом не поддерживаются).</li>
+</ul><br/>
+<h3>Допустимые типы запросов</h3><br/>
+Параллельное масштабирование подходит не для всех типов запросов. В первой версии оно обрабатывает только запросы на чтение, которые удовлетворяют трем условиям:<br/>
+<br/>
+<ul>
+<li>SELECT-запросы только для чтения (хотя планируется больше типов);</li>
+<li>запрос не ссылается на таблицу со стилем сортировки INTERLEAVED;</li>
+<li>запрос не использует Amazon Redshift Spectrum для ссылки на внешние таблицы.</li>
+</ul><br/>
+Для маршрутизации в кластер параллельного масштабирования запрос должен встать в очередь. Кроме того, запросы, подходящие для очереди <a href="https://www.intermix.io/blog/quick-guide-using-short-query-acceleration-wlm-amazon-redshift-faster-queries-ever/">SQA (Short Query Acceleration)</a>, не будут выполняться в кластерах параллельного масштабирования.<br/>
+<br/>
+Очереди и SQA требуют правильной настройки <a href="https://www.intermix.io/blog/4-simple-steps-to-set-up-your-wlm-in-amazon-redshift-the-right-way/">Redshift Workload Management (WLM)</a>. Мы рекомендуем сначала оптимизировать ваш WLM — это уменьшит потребность в параллельном масштабировании. И это важно, потому что параллельное масштабирование производится бесплатно только в течение определенного количества часов. AWS утверждает, что параллельное масштабирование будет бесплатным для 97% клиентов, что подводит нас к вопросу ценообразования.<br/>
+<br/>
+<h3>Стоимость параллельного масштабирования </h3><br/>
+Для параллельного масштабирования AWS предлагает кредитную модель. Каждый активный кластер <a href="https://www.intermix.io/blog/reducing-amazon-redshift-cost/">Amazon Redshift</a> ежечасно накапливает кредиты, до одного часа бесплатных кредитов параллельного масштабирования в день.<br/>
+<br/>
+Вы платите только тогда, когда использование кластеров параллельного масштабирования превышает сумму кредитов, которые вы получили.<br/>
+<br/>
+Стоимость рассчитывается по посекундному тарифу по требованию для параллельного кластера, который используется сверх бесплатной нормы. Плата производится только за время выполнения ваших запросов, с минимальной оплатой за одну минуту, каждый раз при активации кластера параллельного масштабирования. Посекундный тариф по требованию вычисляется на основании общих принципов ценообразования <a href="https://www.intermix.io/blog/reducing-amazon-redshift-cost/">Amazon Redshift</a>, то есть зависит от типа узла и количества узлов в вашем кластере.<br/>
+<br/>
+<h3>Запуск параллельного масштабирования</h3><br/>
+Параллельное масштабирование запускается для каждой очереди WLM. Перейдите в консоль AWS Redshift и выберите «Workload Management» в левом меню навигации. Выберите группу параметров WLM вашего кластера в следующем раскрывающемся меню.<br/>
+<br/>
+Вы увидите новый столбец под названием «Concurrency Scaling Mode» (Режим параллельного масштабирования) рядом с каждой очередью. По умолчанию установлено значение «Выключено». Нажмите «Изменить», и вы сможете поменять настройки для каждой очереди.<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/rz/g9/mk/rzg9mkvwxcmlhry2v522jjrtcdk.png"/><br/>
+<br/>
+<h3>Конфигурация</h3><br/>
+Параллельное масштабирование работает путем направления соответствующих запросов в новые выделенные кластеры. Новые кластеры имеют тот же размер (тип и количество узлов), что и основной кластер.<br/>
+<br/>
+Количество кластеров, используемых для параллельного масштабирования, по умолчанию равно одному (1) с возможностью настройки в общей сложности до десяти (10) кластеров.<br/>
+Общее количество кластеров для параллельного масштабирования может быть установлено параметром max_concurrency_scaling_clusters. Увеличение значения этого параметра обеспечивает дополнительные резервные кластеры.<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/p6/we/qu/p6wequjhe3-yxannbvr_zndpqdg.png"/><br/>
+<br/>
+<h3>Мониторинг </h3><br/>
+В консоли AWS Redshift есть несколько дополнительных графиков. Диаграмма «Max Configured Concurrency Scaling Clusters» отображает значение max_concurrency_scaling_clusters с течением времени.<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/ti/mw/au/timwauz4qrbalhetjn3ttccxui4.png"/><br/>
+<br/>
+Количество кластеров активного масштабирования отображается в пользовательском интерфейсе в разделе «Concurrency Scaling Activity»:<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/zq/ai/xx/zqaixxhdn7i-pkwockkal_7ujvw.png"/> <br/>
+<br/>
+Во вкладке «Запросы» есть столбец, показывающий, выполнялся ли запрос в основном кластере или в кластере параллельного масштабирования:<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/p-/sw/p8/p-swp8elamy2ecxarcydioa0_ac.png"/><br/>
+<br/>
+Независимо от того, выполнялся ли конкретный запрос в основном кластере или через кластер параллельного масштабирования, он хранится в stl_query.concurrency_scaling_status.<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/kf/ns/_4/kfns_4r21bi4fbmqzpk2nfgv1ba.png"/><br/>
+<br/>
+Значение 1 говорит о том, что запрос выполнялся в кластере параллельного масштабирования, а другие значения говорят о том, что он выполнялся в основном кластере.<br/>
+<br/>
+Пример:<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/cn/3u/vh/cn3uvh7rn90c8bydqicyz3zlir8.png"/><br/>
+<br/>
+Информация о параллельном масштабировании также хранится в некоторых других таблицах и представлениях (views), например, SVCS_CONCURRENCY_SCALING_USAGE. Кроме того, есть ряд catalog таблиц, в которых хранится информация о параллельном масштабировании.<br/>
+<br/>
+<h3>Результаты</h3><br/>
+Авторы запустили параллельное масштабирование для одной очереди во внутреннем кластере примерно в 18:30:00 по Гринвичу 29.03.2019 г. Изменили параметр max_concurrency_scaling_clusters на 3 примерно в 20:30:00 29.03.2019 г.<br/>
+<br/>
+Чтобы смоделировать очередь запросов, и уменьшили количество слотов для этой очереди с 15 до 5.<br/>
+<br/>
+Ниже приведена диаграмма дэшборда intermix.io, показывающая количество выполняющихся и стоящих в очереди запросов после уменьшения количества слотов.<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/d4/0p/7q/d40p7qzi5ty79bbw_irhtk4qfzs.png"/><br/>
+<br/>
+Мы видим, что время ожидания запросов в очереди увеличилось, при этом максимальное время составило более 5 минут.<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/ov/xp/rn/ovxprnqxnz1fy9ds4xm4vmn6vte.png"/><br/>
+<br/>
+Вот соответствующая информация из консоли AWS о том, что произошло за это время:<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/rm/f-/ip/rmf-ipbke1vkled8fyo8zch9jpu.png"/><br/>
+<br/>
+Redshift запустил три (3) кластера параллельного масштабирования в соответствии с настройкой. Похоже, что эти кластеры были использованы не полностью, даже не смотря на то, что многие запросы в нашем кластере стояли в очереди.<br/>
+<br/>
+График использования коррелирует с графиком активности масштабирования:<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/am/ho/yk/amhoykwqbkcttpfdiv5gvizkvog.png"/><br/>
+<br/>
+Через несколько часов авторы проверили очередь, и, похоже, 6 запросов выполнялись с параллельным масштабированием. Также выборочно проверили два запроса через пользовательский интерфейс. Не проверяли, как пользоваться этими значениями, когда активны сразу несколько параллельных кластеров.<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/fi/2f/rb/fi2frbpdkxqfcj1q-4rp12wrjz4.png"/><br/>
+<br/>
+<h3>Выводы</h3><br/>
+Параллельное масштабирование может уменьшить время нахождения в очереди запросов во время пиковых нагрузок.<br/>
+<br/>
+По результатам базового теста получилось, что ситуация с загрузкой запросов частично улучшилась. Однако само по себе параллельное масштабирование не решило всех проблем с параллелизмом. <br/>
+<br/>
+Это связано с ограничениями по типам запросов, которые могут использовать параллельное масштабирование. Например, у авторов есть много таблиц с чередующимися (interleaved) ключами сортировки, и большая часть нашей рабочей нагрузки — это запись.<br/>
+<br/>
+Хотя параллельное масштабирование и не универсальное решение в настройке WLM, в любом случае пользоваться этой функцией просто и понятно. <br/>
+<br/>
+Поэтому автор рекомендует использовать ее для ваших WLM-очередей. Начните с одного параллельного кластера и отслеживайте пиковую нагрузку через консоль, чтобы определить, полностью ли используются новые кластеры.<br/>
+<br/>
+По мере того, как AWS будет добавлять поддержку дополнительных типов запросов и таблиц, параллельное масштабирование постепенно должно становиться все более и более эффективным.<br/>
+<blockquote><b>Комментарий от Белходжаева Данияра, инженера по данным Skyeng</b><br/>
+<br/>
+Мы в Skyeng тоже сразу обратили внимание на появившуюся возможность параллельного масштабирования.<br/>
+Функционал очень привлекательный, особенно с учетом того, что по оценке AWS большинству пользователей даже не придется за это доплачивать.<br/>
+<br/>
+Так получилось, что в середине апреля у нас был необычный шквал запросов к кластеру Redshift. В этот период мы часто прибегали к помощи Concurrency Scaling, иногда дополнительный кластер работал по 24 часа в сутки без остановки.<br/>
+<br/>
+Это позволило если не полностью решить проблему с очередями, то как минимум сделать ситуацию приемлемой.<br/>
+<br/>
+Наши наблюдения во многом совпадают с впечатлением ребят из intermix.io.<br/>
+<br/>
+Мы также заметили, что несмотря на наличие запросов ожидающих в очереди, не все запросы сразу перенаправлялись на параллельный кластер. Видимо это происходит из-за того, что параллельный кластер все-таки требует времени для старта. Как результат, во время кратковременных пиковых нагрузок у нас все равно образуются небольшие очереди, и успевают срабатывать соответствующие алармы.<br/>
+<br/>
+Избавившись от аномальных нагрузок в апреле, мы, как и предполагал AWS, вышли в режим эпизодического использования — в рамках бесплатной нормы.<br/>
+Отслеживать расходы на параллельное масштабирование можно в AWS Cost Explorer. Нужно выбрать Service — Redshift, Usage Type — CS, например USW2-CS:dc2.large.<br/>
+<br/>
+Подробно о ценах на русском языке можно почитать <a href="https://aws.amazon.com/ru/redshift/pricing">здесь.</a> </blockquote></div></div> <!----> <!----></div> <div class="tm-article-presenter__meta"><div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Теги:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5B%D0%B4%D0%B0%D0%BD%D0%BD%D1%8B%D0%B5%5D" class="tm-tags-list__link">данные</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bamazon%20redshift%5D" class="tm-tags-list__link">amazon redshift</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5B%D0%BC%D0%B0%D1%81%D1%88%D1%82%D0%B0%D0%B1%D0%B8%D1%80%D0%BE%D0%B2%D0%B0%D0%BD%D0%B8%D0%B5%5D" class="tm-tags-list__link">масштабирование</a></li></ul></div> <div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Хабы:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/company/skyeng/blog/" class="tm-hubs-list__link router-link-active">
+    Блог компании Skyeng
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/it_testing/" class="tm-hubs-list__link">
+    Тестирование IT-систем
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/it-infrastructure/" class="tm-hubs-list__link">
+    IT-инфраструктура
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/aws/" class="tm-hubs-list__link">
+    Amazon Web Services
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/cloud_services/" class="tm-hubs-list__link">
+    Облачные сервисы
+  </a></li></ul></div></div></article></div> <!----></div> <div class="tm-article-sticky-panel"><div class="tm-data-icons tm-article-sticky-panel__icons"><div class="tm-article-rating tm-data-icons__item"><div class="tm-votes-meter tm-article-rating__votes-switcher"><svg height="16" width="16" class="tm-svg-img tm-votes-meter__icon tm-votes-meter__icon_medium"><title>Всего голосов 9: ↑8 и ↓1</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-rating"></use></svg> <span title="Всего голосов 9: ↑8 и ↓1" class="tm-votes-meter__value tm-votes-meter__value_positive tm-votes-meter__value_medium">+7</span></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----> <span title="Количество просмотров" class="tm-icon-counter tm-data-icons__item"><svg height="16" width="16" class="tm-svg-img tm-icon-counter__icon"><title>Просмотры</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-views"></use></svg> <span class="tm-icon-counter__value">1.6K</span></span> <button title="Добавить в закладки" type="button" class="bookmarks-button tm-data-icons__item"><span title="Добавить в закладки" class="tm-svg-icon__wrapper bookmarks-button__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Добавить в закладки</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-favorite"></use></svg></span> <span title="Количество пользователей, добавивших публикацию в закладки" class="bookmarks-button__counter">
+    8
+  </span></button> <!----> <div title="Поделиться" class="tm-sharing tm-data-icons__item"><button type="button" class="tm-sharing__button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="tm-sharing__icon"><path fill="currentColor" d="M10.33.275l9.047 7.572a.2.2 0 010 .306l-9.048 7.572a.2.2 0 01-.328-.153V11c-8 0-9.94 6-9.94 6S-1 5 10 5V.428a.2.2 0 01.328-.153z"></path></svg></button> <!----></div> <DIV class="v-portal" style="display:none;"></DIV></div> </div></div> <!----> <!----> <div class="tm-article-presenter__footer"><div class="tm-article-blocks"><!----> <section class="tm-block tm-block_spacing-bottom"><!----> <div class="tm-block__body tm-block__body_variant-balanced"><div class="tm-article-author"><div class="tm-article-author__company"><div class="tm-article-author__company-card"><div class="tm-company-snippet"><a href="/ru/company/skyeng/profile/" class="tm-company-snippet__logo-link"><div class="tm-entity-image"><img alt="" height="40" src="//habrastorage.org/getpro/habr/company/d09/2f9/6ad/d092f96ad17042a56b4614692bd6983c.jpg" width="40" class="tm-entity-image__pic"></div></a> <div class="tm-company-snippet__info"><a href="/ru/company/skyeng/profile/" class="tm-company-snippet__title">Skyeng</a> <div class="tm-company-snippet__description">Крутой edtech с удаленкой для айтишников</div></div></div> <div class="tm-article-author__buttons"><!----> <!----></div></div> <div class="tm-article-author__company-contacts"><a href="https://career.habr.com/companies/skyeng" rel="noopener" target="_blank" class="tm-article-author__contact">
+      Хабр Карьера
+    </a><a href="https://facebook.com/skyengteam" rel="noopener" target="_blank" class="tm-article-author__contact">
+      Facebook
+    </a><a href="https://telegram.me/teamleadleonid" rel="noopener" target="_blank" class="tm-article-author__contact">
+      Telegram
+    </a></div> <div class="tm-article-author__separator"></div></div> <div class="tm-user-card tm-article-author__user-card tm-user-card_variant-article"><div class="tm-user-card__info-container"><div class="tm-user-card__header"><div class="tm-user-card__header-data"><a href="/ru/users/Skyeng-Habr/" class="tm-user-card__userpic tm-user-card__userpic_size-40"><div class="tm-entity-image"><img alt="" src="//habrastorage.org/getpro/habr/avatars/ae0/bac/95b/ae0bac95b9373812af7b88f4ca0b4b54.png" class="tm-entity-image__pic"></div></a> <div class="tm-user-card__meta"><div title=" 100 голосов " class="tm-karma tm-user-card__karma"><div class="tm-karma__votes tm-karma__votes_positive">
+    56
+  </div> <div class="tm-karma__text">
+    Карма
+  </div></div> <div title="Рейтинг пользователя" class="tm-rating tm-user-card__rating"><div class="tm-rating__header"> <div class="tm-rating__counter">0</div></div> <div class="tm-rating__text">
+    Рейтинг
+  </div></div></div></div></div> <div class="tm-user-card__info tm-user-card__info_variant-article"><div class="tm-user-card__title tm-user-card__title_variant-article"><span class="tm-user-card__name tm-user-card__name_variant-article">Edtech на удаленке</span> <a href="/ru/users/Skyeng-Habr/" class="tm-user-card__nickname tm-user-card__nickname_variant-article">
+          @Skyeng-Habr
+        </a> <!----></div> <p class="tm-user-card__short-info tm-user-card__short-info_variant-article">Пишем код, который меняет систему образования</p></div></div> <div class="tm-user-card__buttons tm-user-card__buttons_variant-article"><!----> <!----> <!----> <!----> <!----></div></div> <!----></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----></section> <div class="tm-article-blocks__comments"><div class="tm-article-page-comments"><div class="tm-article-comments-counter-link tm-article-comments-counter-button"><a href="/ru/company/skyeng/blog/451538/comments/" class="tm-article-comments-counter-link__link tm-article-comments-counter-link__link_button-style"><svg height="16" width="16" class="tm-svg-img tm-article-comments-counter-link__icon tm-article-comments-counter-link__icon_contrasted"><title>Комментарии</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-comments"></use></svg> <span class="tm-article-comments-counter-link__value tm-article-comments-counter-link__value_contrasted">
+       Комментировать 
+    </span></a> <!----></div></div></div>  <!---->  <!----> <!----></div></div></div></div></div> <div class="tm-page__sidebar"><div class="tm-layout-sidebar"><div class="tm-layout-sidebar__placeholder_initial"></div> <div class="tm-sexy-sidebar tm-sexy-sidebar_initial" style="margin-top:0px;"><!----> <section class="tm-block tm-block_spacing-bottom"><header class="tm-block__header"><h2 class="tm-block__title">Информация</h2> <!----></header> <div class="tm-block__body"><div class="tm-company-basic-info"><dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Дата основания</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><time datetime="2012-08-17T20:00:00.000Z" title="2012-08-18, 00:00">18  августа  2012</time></dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Местоположение</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap">
+    Россия
+  </dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Сайт</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><a href="https://www.skyeng.team/development" target="_blank" class="tm-company-basic-info__link">
+      www.skyeng.team
+    </a></dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Численность</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap">
+    1 001–5 000 человек
+  </dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Дата регистрации</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><time datetime="2015-06-30T07:16:00.000Z" title="2015-06-30, 10:16">30  июня  2015</time></dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Представитель</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><a href="/ru/users/jm_sub/" class="tm-company-basic-info__link">
+      Alisa Kruglova
+    </a></dd></dl></div></div> <!----></section> <div class="tm-company-widgets"></div> <!----></div></div></div></div></div></div></main> <!----></div> <div class="tm-footer-menu"><div class="tm-page-width"><div class="tm-footer-menu__container"><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Ваш аккаунт
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr/?back=/ru/company/skyeng/blog/451538/&amp;hl=ru" rel="nofollow" target="_self">
+                Войти
+              </a></li><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr-register/?back=/ru/company/skyeng/blog/451538/&amp;hl=ru" rel="nofollow" target="_self">
+                Регистрация
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Разделы
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/" class="footer-menu__item-link router-link-active">
+                Публикации
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/news/" class="footer-menu__item-link">
+                Новости
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/hubs/" class="footer-menu__item-link">
+                Хабы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/companies/" class="footer-menu__item-link">
+                Компании
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/users/" class="footer-menu__item-link">
+                Авторы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/sandbox/" class="footer-menu__item-link">
+                Песочница
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Информация
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/docs/help/" class="footer-menu__item-link">
+                Устройство сайта
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/authors/codex/" class="footer-menu__item-link">
+                Для авторов
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/companies/corpblogs/" class="footer-menu__item-link">
+                Для компаний
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/docs/transparency/" class="footer-menu__item-link">
+                Документы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/agreement" target="_blank">
+                Соглашение
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/confidential/" target="_blank">
+                Конфиденциальность
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Услуги
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQLwRfQmXibiUlWaRg-BAc38s7oM3lJiaPju7qmdJsp8ysIvZ_G-Npem0njJLMozE2bPHMpDqiI5hhy/pub?start=false&amp;loop=false&amp;delayms=60000&amp;slide=id.g91a03369cd_4_297" target="_blank">
+                Реклама
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://habrastorage.org/storage/stuff/habr/service_price.pdf" target="_blank">
+                Тарифы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQJJds8-Di7BQSP_guHxICN7woVYoN5NP_22ra-BIo4bqnTT9FR6fB-Ku2P0AoRpX0Ds-LRkDeAoD8F/pub?start=false&amp;loop=false&amp;delayms=60000" target="_blank">
+                Контент
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://tmtm.timepad.ru/" target="_blank">
+                Семинары
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/megaprojects/" class="footer-menu__item-link">
+                Мегапроекты
+              </a></li></ul></div></div></div></div></div> <div class="tm-footer"><div class="tm-page-width"><div class="tm-footer__container"><!----> <div class="tm-footer__social"><a href="https://www.facebook.com/habrahabr.ru" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Facebook</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-facebook"></use></svg></a><a href="https://twitter.com/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Twitter</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-twitter"></use></svg></a><a href="https://vk.com/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>VK</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-vkontakte"></use></svg></a><a href="https://telegram.me/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Telegram</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-telegram"></use></svg></a><a href="https://www.youtube.com/channel/UCd_sTwKqVrweTt4oAKY5y4w" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Youtube</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-youtube"></use></svg></a><a href="https://zen.yandex.ru/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Яндекс Дзен</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-zen"></use></svg></a></div> <DIV class="v-portal" style="display:none;"></DIV> <button class="tm-footer__link"><!---->
+        Настройка языка
+      </button> <a href="/ru/about" class="tm-footer__link">
+        О сайте
+      </a> <a href="/ru/feedback/" class="tm-footer__link">
+        Техническая поддержка
+      </a> <!----> <a href="/berserk-mode-nope" class="tm-footer__link">
+        Вернуться на старую версию
+      </a> <div class="tm-footer-copyright"><span class="tm-copyright"><span class="tm-copyright__years">© 2006–2021 </span> <span class="tm-copyright__name">«<a href="https://company.habr.com/" rel="noopener" target="_blank" class="tm-copyright__link">Habr</a>»</span></span></div></div></div></div> <!----> <!----></div> <div class="vue-portal-target"></div></div>
+<script>window.__INITIAL_STATE__={"adblock":{"hasAcceptableAdsFilter":false,"hasAdblock":false},"articlesList":{"articlesList":{"451538":{"id":"451538","timePublished":"2019-05-13T11:04:13+00:00","isCorporative":true,"lang":"ru","titleHtml":"Гид по параллельному масштабированию Amazon Redshift и результаты тестирования","leadData":{"textHtml":"\u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fmo\u002Fpi\u002Fgt\u002Fmopigtqlz7wpuhwhxsmrlcvgpky.png\" alt=\"image\"\u003E\u003Cbr\u003E\r\n\u003Cbr\u003E\r\n\u003Ci\u003EМы в Skyeng пользуемся Amazon Redshift, в том числе параллельным масштабированием, поэтому статья Стефана Громолла, основателя dotgo.com, для intermix.io, показалась нам интересной. После перевода — немного нашего опыта от инженера по данным Данияра Белходжаева.\u003C\u002Fi\u003E\u003Cbr\u003E\r\n\u003Cbr\u003E\r\n\u003Ca href=\"https:\u002F\u002Fwww.intermix.io\u002Fblog\u002Fa-dbas-guide-to-the-amazon-redshift-architecture-the-5-components-you-need-to-understand\u002F\"\u003EАрхитектура Amazon Redshift\u003C\u002Fa\u003E позволяет масштабирование путем добавления новых узлов в кластер. Необходимость справляться с пиковым количеством запросов может привести к избыточному резервированию узлов (over-provisioning). Параллельное масштабирование (Concurrency Scaling), в отличие от добавления новых узлов, наращивает вычислительную мощность по мере необходимости. \u003Cbr\u003E\r\n\u003Cbr\u003E\r\nПараллельное масштабирование Amazon Redshift дает кластерам Redshift дополнительные мощности для обработки пикового количества запросов. Оно работает путем перенесения запросов на новые «параллельные» кластеры в фоновом режиме. Запросы маршрутизируются на основе конфигурации и правил WLM.\u003Cbr\u003E","imageUrl":null,"buttonTextHtml":"Читать дальше →","image":null},"editorVersion":"1.0","postType":"article","postLabels":[{"type":"translation","data":{"originalAuthorName":"Stefan Gromoll","originalUrl":"https:\u002F\u002Fwww.intermix.io\u002Fblog\u002Famazon-redshift-concurrency-scaling\u002F"}}],"author":{"scoreStats":{"score":56,"votesCount":100},"rating":0,"relatedData":null,"contacts":[],"authorContacts":[],"paymentDetails":{"paymentYandexMoney":null,"paymentPayPalMe":null,"paymentWebmoney":null},"id":"1609621","alias":"Skyeng-Habr","fullname":"Edtech на удаленке","avatarUrl":"\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Favatars\u002Fae0\u002Fbac\u002F95b\u002Fae0bac95b9373812af7b88f4ca0b4b54.png","speciality":"Пишем код, который меняет систему образования"},"statistics":{"commentsCount":0,"favoritesCount":8,"readingCount":1583,"score":7,"votesCount":9},"hubs":[{"relatedData":null,"id":"19603","alias":"skyeng","type":"corporative","title":"Блог компании Skyeng","titleHtml":"Блог компании Skyeng","isProfiled":false},{"relatedData":null,"id":"210","alias":"it_testing","type":"collective","title":"Тестирование IT-систем","titleHtml":"Тестирование IT-систем","isProfiled":true},{"relatedData":null,"id":"6398","alias":"it-infrastructure","type":"collective","title":"IT-инфраструктура","titleHtml":"IT-инфраструктура","isProfiled":true},{"relatedData":null,"id":"17682","alias":"aws","type":"collective","title":"Amazon Web Services","titleHtml":"Amazon Web Services","isProfiled":true},{"relatedData":null,"id":"21470","alias":"cloud_services","type":"collective","title":"Облачные сервисы","titleHtml":"Облачные сервисы","isProfiled":false}],"flows":[{"id":"1","alias":"develop","title":"Разработка"},{"id":"6","alias":"admin","title":"Администрирование"}],"relatedData":null,"textHtml":"\u003Cdiv xmlns=\"http:\u002F\u002Fwww.w3.org\u002F1999\u002Fxhtml\"\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" alt=\"image\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fmo\u002Fpi\u002Fgt\u002Fmopigtqlz7wpuhwhxsmrlcvgpky.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ci\u003EМы в Skyeng пользуемся Amazon Redshift, в том числе параллельным масштабированием, поэтому статья Стефана Громолла, основателя dotgo.com, для intermix.io, показалась нам интересной. После перевода — немного нашего опыта от инженера по данным Данияра Белходжаева.\u003C\u002Fi\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ca href=\"https:\u002F\u002Fwww.intermix.io\u002Fblog\u002Fa-dbas-guide-to-the-amazon-redshift-architecture-the-5-components-you-need-to-understand\u002F\"\u003EАрхитектура Amazon Redshift\u003C\u002Fa\u003E позволяет масштабирование путем добавления новых узлов в кластер. Необходимость справляться с пиковым количеством запросов может привести к избыточному резервированию узлов (over-provisioning). Параллельное масштабирование (Concurrency Scaling), в отличие от добавления новых узлов, наращивает вычислительную мощность по мере необходимости. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПараллельное масштабирование Amazon Redshift дает кластерам Redshift дополнительные мощности для обработки пикового количества запросов. Оно работает путем перенесения запросов на новые «параллельные» кластеры в фоновом режиме. Запросы маршрутизируются на основе конфигурации и правил WLM.\u003Cbr\u002F\u003E\r\n\u003Ca name=\"habracut\"\u003E\u003C\u002Fa\u003E\u003Cbr\u002F\u003E\r\nЦенообразование для параллельного масштабирования основывается на кредитной модели с нормой бесплатного пользования. Сверх нормы бесплатных кредитов оплата основывается на времени, когда кластер параллельного масштабирования обрабатывает запросы.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nАвтор протестировал параллельное масштабирование на одном из внутренних кластеров. В этом посте он расскажет о результатах тестирования и даст советы о том, как начать работу.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch3\u003EТребования к кластеру\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\nДля использования параллельного масштабирования кластер Amazon Redshift должен соответствовать следующим требованиям: \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003E\u003Cb\u003Eплатформа:\u003C\u002Fb\u003E EC2-VPC;\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Cb\u003Eтип узла:\u003C\u002Fb\u003E dc2.8xlarge, ds2.8xlarge, dc2.large или ds2.xlarge;\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Cb\u003Eчисло узлов:\u003C\u002Fb\u003E от 2 до 32 (кластеры с одним узлом не поддерживаются).\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\n\u003Ch3\u003EДопустимые типы запросов\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\nПараллельное масштабирование подходит не для всех типов запросов. В первой версии оно обрабатывает только запросы на чтение, которые удовлетворяют трем условиям:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003ESELECT-запросы только для чтения (хотя планируется больше типов);\u003C\u002Fli\u003E\r\n\u003Cli\u003Eзапрос не ссылается на таблицу со стилем сортировки INTERLEAVED;\u003C\u002Fli\u003E\r\n\u003Cli\u003Eзапрос не использует Amazon Redshift Spectrum для ссылки на внешние таблицы.\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\nДля маршрутизации в кластер параллельного масштабирования запрос должен встать в очередь. Кроме того, запросы, подходящие для очереди \u003Ca href=\"https:\u002F\u002Fwww.intermix.io\u002Fblog\u002Fquick-guide-using-short-query-acceleration-wlm-amazon-redshift-faster-queries-ever\u002F\"\u003ESQA (Short Query Acceleration)\u003C\u002Fa\u003E, не будут выполняться в кластерах параллельного масштабирования.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nОчереди и SQA требуют правильной настройки \u003Ca href=\"https:\u002F\u002Fwww.intermix.io\u002Fblog\u002F4-simple-steps-to-set-up-your-wlm-in-amazon-redshift-the-right-way\u002F\"\u003ERedshift Workload Management (WLM)\u003C\u002Fa\u003E. Мы рекомендуем сначала оптимизировать ваш WLM — это уменьшит потребность в параллельном масштабировании. И это важно, потому что параллельное масштабирование производится бесплатно только в течение определенного количества часов. AWS утверждает, что параллельное масштабирование будет бесплатным для 97% клиентов, что подводит нас к вопросу ценообразования.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch3\u003EСтоимость параллельного масштабирования \u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\nДля параллельного масштабирования AWS предлагает кредитную модель. Каждый активный кластер \u003Ca href=\"https:\u002F\u002Fwww.intermix.io\u002Fblog\u002Freducing-amazon-redshift-cost\u002F\"\u003EAmazon Redshift\u003C\u002Fa\u003E ежечасно накапливает кредиты, до одного часа бесплатных кредитов параллельного масштабирования в день.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВы платите только тогда, когда использование кластеров параллельного масштабирования превышает сумму кредитов, которые вы получили.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nСтоимость рассчитывается по посекундному тарифу по требованию для параллельного кластера, который используется сверх бесплатной нормы. Плата производится только за время выполнения ваших запросов, с минимальной оплатой за одну минуту, каждый раз при активации кластера параллельного масштабирования. Посекундный тариф по требованию вычисляется на основании общих принципов ценообразования \u003Ca href=\"https:\u002F\u002Fwww.intermix.io\u002Fblog\u002Freducing-amazon-redshift-cost\u002F\"\u003EAmazon Redshift\u003C\u002Fa\u003E, то есть зависит от типа узла и количества узлов в вашем кластере.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch3\u003EЗапуск параллельного масштабирования\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\nПараллельное масштабирование запускается для каждой очереди WLM. Перейдите в консоль AWS Redshift и выберите «Workload Management» в левом меню навигации. Выберите группу параметров WLM вашего кластера в следующем раскрывающемся меню.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВы увидите новый столбец под названием «Concurrency Scaling Mode» (Режим параллельного масштабирования) рядом с каждой очередью. По умолчанию установлено значение «Выключено». Нажмите «Изменить», и вы сможете поменять настройки для каждой очереди.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Frz\u002Fg9\u002Fmk\u002Frzg9mkvwxcmlhry2v522jjrtcdk.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch3\u003EКонфигурация\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\nПараллельное масштабирование работает путем направления соответствующих запросов в новые выделенные кластеры. Новые кластеры имеют тот же размер (тип и количество узлов), что и основной кластер.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nКоличество кластеров, используемых для параллельного масштабирования, по умолчанию равно одному (1) с возможностью настройки в общей сложности до десяти (10) кластеров.\u003Cbr\u002F\u003E\r\nОбщее количество кластеров для параллельного масштабирования может быть установлено параметром max_concurrency_scaling_clusters. Увеличение значения этого параметра обеспечивает дополнительные резервные кластеры.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fp6\u002Fwe\u002Fqu\u002Fp6wequjhe3-yxannbvr_zndpqdg.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch3\u003EМониторинг \u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\nВ консоли AWS Redshift есть несколько дополнительных графиков. Диаграмма «Max Configured Concurrency Scaling Clusters» отображает значение max_concurrency_scaling_clusters с течением времени.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fti\u002Fmw\u002Fau\u002Ftimwauz4qrbalhetjn3ttccxui4.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nКоличество кластеров активного масштабирования отображается в пользовательском интерфейсе в разделе «Concurrency Scaling Activity»:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fzq\u002Fai\u002Fxx\u002Fzqaixxhdn7i-pkwockkal_7ujvw.png\"\u002F\u003E \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВо вкладке «Запросы» есть столбец, показывающий, выполнялся ли запрос в основном кластере или в кластере параллельного масштабирования:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fp-\u002Fsw\u002Fp8\u002Fp-swp8elamy2ecxarcydioa0_ac.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nНезависимо от того, выполнялся ли конкретный запрос в основном кластере или через кластер параллельного масштабирования, он хранится в stl_query.concurrency_scaling_status.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fkf\u002Fns\u002F_4\u002Fkfns_4r21bi4fbmqzpk2nfgv1ba.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЗначение 1 говорит о том, что запрос выполнялся в кластере параллельного масштабирования, а другие значения говорят о том, что он выполнялся в основном кластере.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПример:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fcn\u002F3u\u002Fvh\u002Fcn3uvh7rn90c8bydqicyz3zlir8.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nИнформация о параллельном масштабировании также хранится в некоторых других таблицах и представлениях (views), например, SVCS_CONCURRENCY_SCALING_USAGE. Кроме того, есть ряд catalog таблиц, в которых хранится информация о параллельном масштабировании.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch3\u003EРезультаты\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\nАвторы запустили параллельное масштабирование для одной очереди во внутреннем кластере примерно в 18:30:00 по Гринвичу 29.03.2019 г. Изменили параметр max_concurrency_scaling_clusters на 3 примерно в 20:30:00 29.03.2019 г.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЧтобы смоделировать очередь запросов, и уменьшили количество слотов для этой очереди с 15 до 5.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nНиже приведена диаграмма дэшборда intermix.io, показывающая количество выполняющихся и стоящих в очереди запросов после уменьшения количества слотов.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fd4\u002F0p\u002F7q\u002Fd40p7qzi5ty79bbw_irhtk4qfzs.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nМы видим, что время ожидания запросов в очереди увеличилось, при этом максимальное время составило более 5 минут.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fov\u002Fxp\u002Frn\u002Fovxprnqxnz1fy9ds4xm4vmn6vte.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВот соответствующая информация из консоли AWS о том, что произошло за это время:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Frm\u002Ff-\u002Fip\u002Frmf-ipbke1vkled8fyo8zch9jpu.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nRedshift запустил три (3) кластера параллельного масштабирования в соответствии с настройкой. Похоже, что эти кластеры были использованы не полностью, даже не смотря на то, что многие запросы в нашем кластере стояли в очереди.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nГрафик использования коррелирует с графиком активности масштабирования:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fam\u002Fho\u002Fyk\u002Famhoykwqbkcttpfdiv5gvizkvog.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЧерез несколько часов авторы проверили очередь, и, похоже, 6 запросов выполнялись с параллельным масштабированием. Также выборочно проверили два запроса через пользовательский интерфейс. Не проверяли, как пользоваться этими значениями, когда активны сразу несколько параллельных кластеров.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Ffi\u002F2f\u002Frb\u002Ffi2frbpdkxqfcj1q-4rp12wrjz4.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch3\u003EВыводы\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\nПараллельное масштабирование может уменьшить время нахождения в очереди запросов во время пиковых нагрузок.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПо результатам базового теста получилось, что ситуация с загрузкой запросов частично улучшилась. Однако само по себе параллельное масштабирование не решило всех проблем с параллелизмом. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЭто связано с ограничениями по типам запросов, которые могут использовать параллельное масштабирование. Например, у авторов есть много таблиц с чередующимися (interleaved) ключами сортировки, и большая часть нашей рабочей нагрузки — это запись.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nХотя параллельное масштабирование и не универсальное решение в настройке WLM, в любом случае пользоваться этой функцией просто и понятно. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПоэтому автор рекомендует использовать ее для ваших WLM-очередей. Начните с одного параллельного кластера и отслеживайте пиковую нагрузку через консоль, чтобы определить, полностью ли используются новые кластеры.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПо мере того, как AWS будет добавлять поддержку дополнительных типов запросов и таблиц, параллельное масштабирование постепенно должно становиться все более и более эффективным.\u003Cbr\u002F\u003E\r\n\u003Cblockquote\u003E\u003Cb\u003EКомментарий от Белходжаева Данияра, инженера по данным Skyeng\u003C\u002Fb\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nМы в Skyeng тоже сразу обратили внимание на появившуюся возможность параллельного масштабирования.\u003Cbr\u002F\u003E\r\nФункционал очень привлекательный, особенно с учетом того, что по оценке AWS большинству пользователей даже не придется за это доплачивать.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nТак получилось, что в середине апреля у нас был необычный шквал запросов к кластеру Redshift. В этот период мы часто прибегали к помощи Concurrency Scaling, иногда дополнительный кластер работал по 24 часа в сутки без остановки.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЭто позволило если не полностью решить проблему с очередями, то как минимум сделать ситуацию приемлемой.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nНаши наблюдения во многом совпадают с впечатлением ребят из intermix.io.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nМы также заметили, что несмотря на наличие запросов ожидающих в очереди, не все запросы сразу перенаправлялись на параллельный кластер. Видимо это происходит из-за того, что параллельный кластер все-таки требует времени для старта. Как результат, во время кратковременных пиковых нагрузок у нас все равно образуются небольшие очереди, и успевают срабатывать соответствующие алармы.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nИзбавившись от аномальных нагрузок в апреле, мы, как и предполагал AWS, вышли в режим эпизодического использования — в рамках бесплатной нормы.\u003Cbr\u002F\u003E\r\nОтслеживать расходы на параллельное масштабирование можно в AWS Cost Explorer. Нужно выбрать Service — Redshift, Usage Type — CS, например USW2-CS:dc2.large.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПодробно о ценах на русском языке можно почитать \u003Ca href=\"https:\u002F\u002Faws.amazon.com\u002Fru\u002Fredshift\u002Fpricing\"\u003Eздесь.\u003C\u002Fa\u003E \u003C\u002Fblockquote\u003E\u003C\u002Fdiv\u003E","tags":[{"titleHtml":"данные"},{"titleHtml":"amazon redshift"},{"titleHtml":"масштабирование"}],"metadata":{"stylesUrls":[],"scriptUrls":[],"shareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F451538\u002Fb7f1714f29ee4edc8118677570a30be9\u002F","shareImageWidth":1200,"shareImageHeight":630,"vkShareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F451538\u002Fb7f1714f29ee4edc8118677570a30be9\u002F?format=vk","schemaJsonLd":"{\"@context\":\"http:\\\u002F\\\u002Fschema.org\",\"@type\":\"Article\",\"mainEntityOfPage\":{\"@type\":\"WebPage\",\"@id\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fru\\\u002Fcompany\\\u002Fskyeng\\\u002Fblog\\\u002F451538\\\u002F\"},\"headline\":\"Гид по параллельному масштабированию Amazon Redshift и результаты тестирования\",\"datePublished\":\"2019-05-13T14:04:13+03:00\",\"dateModified\":\"2019-05-13T17:57:24+03:00\",\"author\":{\"@type\":\"Person\",\"name\":\"Edtech на удаленке\"},\"publisher\":{\"@type\":\"Organization\",\"name\":\"Habr\",\"logo\":{\"@type\":\"ImageObject\",\"url\":\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fa_\\\u002Flk\\\u002F9m\\\u002Fa_lk9mjkccjox-zccjrpfolmkmq.png\"}},\"description\":\"Мы в Skyeng пользуемся Amazon Redshift, в том числе параллельным масштабированием, поэтому статья Стефана Громолла, основателя dotgo.com, для intermix.io, пока...\",\"url\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fru\\\u002Fcompany\\\u002Fskyeng\\\u002Fblog\\\u002F451538\\\u002F#post-content-body\",\"about\":[\"c_skyeng\",\"h_it_testing\",\"h_it-infrastructure\",\"h_aws\",\"h_cloud_services\",\"f_develop\",\"f_admin\"],\"image\":[\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fmo\\\u002Fpi\\\u002Fgt\\\u002Fmopigtqlz7wpuhwhxsmrlcvgpky.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Frz\\\u002Fg9\\\u002Fmk\\\u002Frzg9mkvwxcmlhry2v522jjrtcdk.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fp6\\\u002Fwe\\\u002Fqu\\\u002Fp6wequjhe3-yxannbvr_zndpqdg.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fti\\\u002Fmw\\\u002Fau\\\u002Ftimwauz4qrbalhetjn3ttccxui4.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fzq\\\u002Fai\\\u002Fxx\\\u002Fzqaixxhdn7i-pkwockkal_7ujvw.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fp-\\\u002Fsw\\\u002Fp8\\\u002Fp-swp8elamy2ecxarcydioa0_ac.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fkf\\\u002Fns\\\u002F_4\\\u002Fkfns_4r21bi4fbmqzpk2nfgv1ba.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fcn\\\u002F3u\\\u002Fvh\\\u002Fcn3uvh7rn90c8bydqicyz3zlir8.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fd4\\\u002F0p\\\u002F7q\\\u002Fd40p7qzi5ty79bbw_irhtk4qfzs.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fov\\\u002Fxp\\\u002Frn\\\u002Fovxprnqxnz1fy9ds4xm4vmn6vte.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Frm\\\u002Ff-\\\u002Fip\\\u002Frmf-ipbke1vkled8fyo8zch9jpu.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fam\\\u002Fho\\\u002Fyk\\\u002Famhoykwqbkcttpfdiv5gvizkvog.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Ffi\\\u002F2f\\\u002Frb\\\u002Ffi2frbpdkxqfcj1q-4rp12wrjz4.png\"]}","metaDescription":"Мы в Skyeng пользуемся Amazon Redshift, в том числе параллельным масштабированием, поэтому статья Стефана Громолла, основателя dotgo.com, для intermix.io, показалась нам интересной. После перевода...","mainImageUrl":null,"amp":true},"polls":[],"commentsEnabled":true,"rulesRemindEnabled":false,"votesEnabled":true,"status":"published","plannedPublishTime":null,"checked":null,"isEditorial":false}},"articlesIds":{},"isLoading":false,"pagesCount":{},"route":{},"reasonsList":null,"view":"cards","lastVisitedRoute":{},"ssrCommentsArticleIds":[""],"karma":{}},"authorContribution":{"authors":{}},"betaTest":{"currentAnnouncement":null,"announcements":{},"announcementCards":null,"announcementComments":{},"announcementCommentThreads":{},"announcementCommentingStatuses":{},"archivedList":[]},"authorStatistics":{"articleRefs":{},"articleIds":{},"pagesCount":{},"route":{},"viewsCount":[],"maxStatsCount":{}},"career":{"seoLandings":[],"hubs":""},"comments":{"articleComments":{},"searchCommentsResults":null,"previewComment":null,"pagesCount":null,"commentAccess":{},"scrollParents":{},"pageArticleComments":{"lastViewedComment":0,"postId":null,"lastCommentTimestamp":"","moderated":[],"moderatedIds":[],"commentRoute":""}},"companies":{"companyRefs":{"skyeng":{"alias":"skyeng","imageUrl":"\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fcompany\u002Fd09\u002F2f9\u002F6ad\u002Fd092f96ad17042a56b4614692bd6983c.jpg","titleHtml":"Skyeng","descriptionHtml":"Крутой edtech с удаленкой для айтишников","relatedData":null,"statistics":{"postsCount":177,"newsCount":4,"vacanciesCount":1,"employeesCount":42,"careerRating":null,"subscribersCount":24286,"rating":124.27,"invest":null},"foundationDate":{"year":"2012","month":"08","day":"18"},"location":{"city":{"id":"447159","title":"Москва"},"region":{"id":"1885","title":"Москва и Московская обл."},"country":{"id":"168","title":"Россия"}},"siteUrl":"https:\u002F\u002Fwww.skyeng.team\u002Fdevelopment","staffNumber":"1 001–5 000 человек","registrationDate":"2015-06-30T07:16:00+00:00","representativeUser":{"alias":"jm_sub","fullname":"Alisa Kruglova"},"contacts":[{"title":"Хабр Карьера","url":"https:\u002F\u002Fcareer.habr.com\u002Fcompanies\u002Fskyeng"},{"title":"Facebook","url":"https:\u002F\u002Ffacebook.com\u002Fskyengteam"},{"title":"Telegram","url":"https:\u002F\u002Ftelegram.me\u002Fteamleadleonid"}],"settings":{"analyticsSettings":[{"type":"ym","trackingId":"57070393"}],"branding":null,"status":"active"},"metadata":{"titleHtml":"Skyeng, Москва - Крутой edtech с удаленкой для айтишников с 18 августа 2012 г.","title":"Skyeng, Москва - Крутой edtech с удаленкой для айтишников с 18 августа 2012 г.","keywords":["PHP","Разработка веб-сайтов","Карьера в IT-индустрии","Программирование","Конференции"],"descriptionHtml":"177 статей от авторов компании Skyeng","description":"177 статей от авторов компании Skyeng"},"aDeskSettings":null,"careerAlias":"skyeng","maxCustomTrackerLinks":0}},"companyIds":{},"companyTopIds":{},"pagesCount":{},"companyProfiles":{},"companiesCategories":[],"companiesCategoriesTotalCount":0,"companiesWidgets":{},"companiesWorkers":{},"companiesFans":{},"route":{},"isLoading":false,"companyWorkersLoading":false,"companyFansLoading":false,"vacancies":{}},"companiesContribution":{"hubs":{},"flows":{},"companyRefs":{}},"companyHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"conversation":{"messages":[],"respondent":null,"isLoadMore":false},"conversations":{"conversations":[],"unreadCount":0,"pagesCount":0,"isLoadMore":false},"desktopState":{"desktopFl":null,"desktopHl":null,"isChecked":false,"isLoginDemanded":false},"dfp":{"slotsDict":{}},"docs":{"menu":{},"articles":{},"mainMenu":[],"loading":{"main":false,"dropdown":false,"article":false}},"feature":{"isProbablyVisible":"true"},"flows":{"flows":[{"alias":"develop","id":1,"route":{"name":"FLOW_PAGE","params":{"flowName":"develop"}}},{"alias":"admin","id":6,"route":{"name":"FLOW_PAGE","params":{"flowName":"admin"}}},{"alias":"design","id":2,"route":{"name":"FLOW_PAGE","params":{"flowName":"design"}}},{"alias":"management","id":3,"route":{"name":"FLOW_PAGE","params":{"flowName":"management"}}},{"alias":"marketing","id":4,"route":{"name":"FLOW_PAGE","params":{"flowName":"marketing"}}},{"alias":"popsci","id":7,"route":{"name":"FLOW_PAGE","params":{"flowName":"popsci"}}}]},"global":{"isPwa":false,"device":"desktop","isHabrCom":true},"hubs":{"hubRefs":{},"hubIds":{},"pagesCount":{},"isLoading":false,"route":{}},"hubsBlock":{"hubRefs":{},"hubIds":{}},"i18n":{"fl":"ru","hl":"ru"},"info":{"infoPage":{},"isLoading":true},"location":{"urlStruct":{"protocol":null,"slashes":null,"auth":null,"host":null,"port":null,"hostname":null,"hash":null,"search":null,"query":{},"pathname":null,"path":null,"href":""},"searchQuery":null},"me":{"user":null,"ppgDemanded":false,"karmaResetInfo":{"canReincarnate":null,"wasReincarnated":null,"currentScore":null},"notes":null},"mostReadingList":{"mostReadingListIds":[],"mostReadingListRefs":null,"promoPost":null},"pinnedPost":{"pinnedPost":null},"ppa":{"articles":{},"card":null,"transactions":null,"totalTransactions":null,"isAccessible":null},"projectsBlocks":{"activeBlocks":{}},"pullRefresh":{"shouldRefresh":false},"sandbox":{"articleIds":[],"articleRefs":{},"pagesCount":null,"route":{},"lastVisitedRoute":{},"isLoading":false},"settingsOther":{"inputs":{"uiLang":{"errors":[],"ref":null,"value":""},"articlesLangEnglish":{"errors":[],"ref":null,"value":false},"articlesLangRussian":{"errors":[],"ref":null,"value":false},"agreement":{"errors":[],"ref":null,"value":false},"email":{"errors":[],"ref":null,"value":true},"digest":{"errors":[],"ref":null,"value":true}}},"similarList":{"similarListIds":[],"similarListRefs":null},"ssr":{"error":null,"isDataLoaded":false,"isDataLoading":false,"isHydrationFailed":false,"isServer":false},"userHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"userInvites":{"availableInvites":0,"usedInvitesIds":[],"usedInvitesRefs":{},"usedInvitesPagesCount":0,"unusedInvitesIds":[],"unusedInvitesRefs":{},"unusedInvitesPagesCount":0},"users":{"authorRefs":{},"authorIds":{},"pagesCount":{},"authorProfiles":{},"userHubs":{},"userInvitations":{},"authorFollowers":{},"authorFollowed":{},"karmaStats":[],"statistics":null,"isLoading":false,"authorFollowersLoading":false,"authorFollowedLoading":false,"userHubsLoading":false,"userInvitationsLoading":false,"route":{}},"viewport":{"prevScrollY":{},"scrollY":0,"width":0},"tracker":{"items":{},"pagesCache":{},"markedViewedSilently":{},"markedRead":{},"unreadCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null},"unviewedCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null}}};(function(){var s;(s=document.currentScript||document.scripts[document.scripts.length-1]).parentNode.removeChild(s);}());</script>
+<script src="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" defer></script><script src="https://assets.habr.com/habr-web/js/app.c0af73e7.js" defer></script>
+
+
+
+    <script>
+      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+        (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+        m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+      })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+    </script>
+  
+  <script type="text/javascript" >
+    (function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+    m[i].l=1*new Date();k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})
+    (window, document, "script", "https://mc.yandex.ru/metrika/tag.js", "ym");
+
+    ym(24049213, "init", {
+      defer:true,
+      trackLinks:true,
+      accurateTrackBounce:true,
+      webvisor:false,
+    });
+  </script>
+  <noscript>
+    <div>
+      <img src="https://mc.yandex.ru/watch/24049213" style="position:absolute; left:-9999px;" alt="" />
+    </div>
+  </noscript>
+  
+    <script type="text/javascript">
+      window.addEventListener('load', function () {
+        setTimeout(() => {
+          const img = new Image();
+          img.src = 'https://vk.com/rtrg?p=VK-RTRG-421343-57vKE';
+        }, 0);
+      });
+    </script>
+  
+</body>
+</html>

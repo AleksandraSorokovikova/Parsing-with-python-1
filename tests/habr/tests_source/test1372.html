@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="ru" data-vue-meta="%7B%22lang%22:%7B%22ssr%22:%22ru%22%7D%7D">
+<head >
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
+  <title>Криптографические токены PKCS#11. Графическая утилита «с функцией подписания и добавлением метки времени». Часть 1 / Хабр</title>
+  <style>
+    /* cyrillic-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSxf6TF0.woff2) format('woff2');
+      unicode-range: U+0460-052F, U+1C80-1C88, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+    }
+
+    /* cyrillic */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveQhf6TF0.woff2) format('woff2');
+      unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+    }
+
+    /* latin-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSBf6TF0.woff2) format('woff2');
+      unicode-range: U+0100-024F, U+0259, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20CF, U+2113, U+2C60-2C7F, U+A720-A7FF;
+    }
+
+    /* latin */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveRhf6.woff2) format('woff2');
+      unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+    }
+  </style>
+  <link rel="preload" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" as="script"><link rel="preload" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/app.c0af73e7.js" as="script">
+  <link rel="stylesheet" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css"><link rel="stylesheet" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css">
+  <script>window.i18nFetch = new Promise((res, rej) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open('GET', '/js/i18n/ru-compiled.85eb77f0b17c8235e7b64b9f81ea5ec2.json');
+          xhr.responseType = 'json';
+          xhr.onload = function(e) {
+            if (this.status === 200) {
+              res({ru: xhr.response});
+            } else {
+              rej(e);
+            }
+          };
+          xhr.send();
+        });</script>
+  
+  <script data-vue-meta="ssr" src="/js/ads.js" onload="window['zhY4i4nJ9K'] = true" data-vmid="checkad"></script><script data-vue-meta="ssr" type="application/ld+json" data-vmid="ldjson-schema">{"@context":"http:\/\/schema.org","@type":"Article","mainEntityOfPage":{"@type":"WebPage","@id":"https:\/\/habr.com\/ru\/post\/453164\/"},"headline":"Криптографические токены PKCS#11. Графическая утилита «с функцией подписания и добавлением метки времени». Часть 1","datePublished":"2019-05-23T17:32:35+03:00","dateModified":"2020-05-12T20:26:44+03:00","author":{"@type":"Person","name":"Орлов Владимир Николаевич"},"publisher":{"@type":"Organization","name":"Habr","logo":{"@type":"ImageObject","url":"https:\/\/habrastorage.org\/webt\/a_\/lk\/9m\/a_lk9mjkccjox-zccjrpfolmkmq.png"}},"description":"В комментариях к статье &laquo;Использование механизмов криптографических токенов PKCS#11 в скриптовых языках&raquo; читатель kovserg написал: &laquo;С нетерпением ждём статью с ф...","url":"https:\/\/habr.com\/ru\/post\/453164\/#post-content-body","about":["h_infosecurity","h_crypto","h_programming","h_desktop_environment","h_itstandarts","f_develop"],"image":["https:\/\/habrastorage.org\/webt\/xh\/tq\/ph\/xhtqphqpspdmceylr6o1duj5vpu.png","https:\/\/habrastorage.org\/webt\/et\/my\/sq\/etmysqfvbidordcaocyqfjqqeem.png","https:\/\/habrastorage.org\/webt\/hr\/1j\/zc\/hr1jzcxcrdug57at8an0in9ahik.png","https:\/\/habrastorage.org\/webt\/wj\/dj\/xy\/wjdjxy2orhsi7op3stcjzpogisa.png","https:\/\/habrastorage.org\/webt\/ws\/ew\/bx\/wsewbxr_8nksvtk9j-ckfs_ixwe.png","https:\/\/habrastorage.org\/webt\/ko\/sk\/sc\/koskscpianfsm5kgw_1peg91t6u.png","https:\/\/habrastorage.org\/webt\/he\/f3\/ky\/hef3kynxtfbmgy6jetmjxp3zhg8.png","https:\/\/habrastorage.org\/webt\/cb\/hn\/5y\/cbhn5yy0qyyremnetuakmcreoia.png","https:\/\/habrastorage.org\/webt\/0z\/d2\/d_\/0zd2d_rk1jpetlsa883wthvye0e.png","https:\/\/habrastorage.org\/webt\/z9\/ef\/lf\/z9eflfzgcrus2an8mc86t9djsv8.png","https:\/\/habrastorage.org\/webt\/gj\/vi\/rx\/gjvirxly5zr2gy1d22h-ifdzoei.png","https:\/\/habrastorage.org\/webt\/kg\/xm\/bm\/kgxmbm_2xtski-x5fhh4jzkyeys.png","https:\/\/habrastorage.org\/webt\/kk\/yv\/gr\/kkyvgr2ayqktgluvfms_ooxhn5w.png","https:\/\/habrastorage.org\/webt\/uo\/hj\/nr\/uohjnrhhbt6ih9qbsbdxzu3wqg0.png","https:\/\/habrastorage.org\/webt\/vv\/rp\/jm\/vvrpjmoqxpgjfolr_mzino1uwhc.png","https:\/\/habrastorage.org\/webt\/hn\/xq\/o7\/hnxqo7b6iqsoa0mcqwxwtjfg5da.png","https:\/\/habrastorage.org\/webt\/nj\/za\/wt\/njzawtbm3ze91qnj2widi-if4wg.png","https:\/\/habrastorage.org\/webt\/so\/pr\/zq\/soprzqefs9b5w0_5phvien6amog.png","https:\/\/habrastorage.org\/webt\/tw\/kx\/ex\/twkxex2i3htjet9bkxm1kdoiuya.png","https:\/\/habrastorage.org\/webt\/hb\/ox\/1c\/hbox1clfovnx8ghzsvne5fvsmys.png","https:\/\/habrastorage.org\/webt\/71\/3r\/zi\/713rzi-nn3sd1v0ockcyfpwphie.png","https:\/\/habrastorage.org\/webt\/vp\/uh\/1n\/vpuh1n5xtmcgzri4vf1im1wfq64.png","https:\/\/habrastorage.org\/webt\/4x\/en\/yf\/4xenyfg6oq0uem5e24pskrf8qgk.png","https:\/\/habrastorage.org\/webt\/vn\/o5\/q0\/vno5q0k5jrvwic9p_4uzqfpjyte.png","https:\/\/habrastorage.org\/webt\/ov\/ja\/kk\/ovjakktrr_aco5_y75htmflyp68.png","https:\/\/habrastorage.org\/webt\/kd\/he\/cb\/kdhecbhcpq7frlxxaa2lw77nhv4.png","https:\/\/habrastorage.org\/webt\/q-\/bq\/sp\/q-bqspoaaal056weiylzz4wchek.png"]}</script>
+  <script src="//www.googletagservices.com/tag/js/gpt.js" async></script>
+  <style>.grecaptcha-badge{visibility: hidden;}</style>
+  <meta name="habr-version" content="2.49.0">
+  
+  <meta data-vue-meta="ssr" property="fb:app_id" content="444736788986613"><meta data-vue-meta="ssr" property="fb:pages" content="472597926099084"><meta data-vue-meta="ssr" name="twitter:card" content="summary_large_image"><meta data-vue-meta="ssr" name="twitter:site" content="@habr_eng"><meta data-vue-meta="ssr" property="og:title" content="Криптографические токены PKCS#11. Графическая утилита «с функцией подписания и добавлением метки времени». Часть 1" data-vmid="og:title"><meta data-vue-meta="ssr" name="twitter:title" content="Криптографические токены PKCS#11. Графическая утилита «с функцией подписания и добавлением метки времени». Часть 1" data-vmid="twitter:title"><meta data-vue-meta="ssr" name="aiturec:title" content="Криптографические токены PKCS#11. Графическая утилита «с функцией подписания и добавлением метки времени». Часть 1" data-vmid="aiturec:title"><meta data-vue-meta="ssr" name="description" content="В комментариях к статье «Использование механизмов криптографических токенов PKCS#11 в скриптовых языках» читатель kovserg написал:
+«С нетерпением ждём статью с функцией подписания документа и..." data-vmid="description"><meta data-vue-meta="ssr" itemprop="description" content="В комментариях к статье «Использование механизмов криптографических токенов PKCS#11 в скриптовых языках» читатель kovserg написал:
+«С нетерпением ждём статью с функцией подписания документа и..." data-vmid="description:itemprop"><meta data-vue-meta="ssr" property="og:description" content="В комментариях к статье «Использование механизмов криптографических токенов PKCS#11 в скриптовых языках» читатель kovserg написал:
+«С нетерпением ждём статью с функцией подписания документа и..." data-vmid="og:description"><meta data-vue-meta="ssr" name="twitter:description" content="В комментариях к статье «Использование механизмов криптографических токенов PKCS#11 в скриптовых языках» читатель kovserg написал:
+«С нетерпением ждём статью с функцией подписания документа и..." data-vmid="twitter:description"><meta data-vue-meta="ssr" property="aiturec:description" content="В комментариях к статье «Использование механизмов криптографических токенов PKCS#11 в скриптовых языках» читатель kovserg написал:
+«С нетерпением ждём статью с функцией подписания документа и..." data-vmid="aiturec:description"><meta data-vue-meta="ssr" itemprop="image" content="https://habr.com/share/publication/453164/cedafe84f20c7a924a0807a5c9f8c1f2/" data-vmid="image:itemprop"><meta data-vue-meta="ssr" property="og:image" content="https://habr.com/share/publication/453164/cedafe84f20c7a924a0807a5c9f8c1f2/" data-vmid="og:image"><meta data-vue-meta="ssr" property="aiturec:image" content="https://habr.com/share/publication/453164/cedafe84f20c7a924a0807a5c9f8c1f2/" data-vmid="aiturec:image"><meta data-vue-meta="ssr" name="twitter:image" content="https://habr.com/share/publication/453164/cedafe84f20c7a924a0807a5c9f8c1f2/" data-vmid="twitter:image"><meta data-vue-meta="ssr" property="vk:image" content="https://habr.com/share/publication/453164/cedafe84f20c7a924a0807a5c9f8c1f2/" data-vmid="vk:image"><meta data-vue-meta="ssr" property="aiturec:item_id" content="453164" data-vmid="aiturec:item_id"><meta data-vue-meta="ssr" property="aiturec:datetime" content="2019-05-23T14:32:35.000Z" data-vmid="aiturec:datetime"><meta data-vue-meta="ssr" property="og:type" content="article" data-vmid="og:type"><meta data-vue-meta="ssr" property="og:locale" content="ru_RU" data-vmid="og:locale"><meta data-vue-meta="ssr" property="og:image:width" content="1200" data-vmid="og:image:width"><meta data-vue-meta="ssr" property="og:image:height" content="630" data-vmid="og:image:height">
+  <link data-vue-meta="ssr" href="https://habr.com/ru/rss/post/453164/?fl=ru" type="application/rss+xml" title="" rel="alternate" name="rss"><link data-vue-meta="ssr" href="https://habr.com/ru/post/453164/" rel="canonical" data-vmid="canonical"><link data-vue-meta="ssr" data-vmid="hreflang"><link data-vue-meta="ssr" image_src="image" href="https://habr.com/share/publication/453164/cedafe84f20c7a924a0807a5c9f8c1f2/" data-vmid="image:href">
+  <meta name="apple-mobile-web-app-status-bar-style" content="#303b44">
+  <meta name="msapplication-TileColor" content="#629FBC">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="16x16"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-16.png"
+  >
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="32x32"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-32.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="76x76"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-76.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="120x120"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="152x152"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-152.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="180x180"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-180.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="256x256"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-256.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1136x640.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2436x1125.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1792x828.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_828x1792.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1334x750.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2208x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1125x2436.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2208.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2732x2048.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2688x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2224x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_750x1334.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x2732.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2388x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2224.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_640x1136.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2388.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x1536.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1536x2048.png"
+  >
+  <link
+    rel="mask-icon"
+    color="#77a2b6"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.svg"
+  >
+  <link
+    crossorigin="use-credentials"
+    href="/manifest.webmanifest"
+    rel="manifest"
+  >
+</head>
+<body>
+
+
+<div id="app" data-server-rendered="true" data-async-called="true"><div class="tm-layout__wrapper"><!----> <div></div> <!----> <header class="tm-header"><div class="tm-page-width"><div class="tm-header__container"><!----> <span class="tm-header__logo-wrap"><a href="/ru/" class="tm-header__logo tm-header__logo_ru"><svg height="16" width="16" class="tm-svg-img tm-header__icon"><title>Хабр</title> <use xlink:href="/img/habr-logo-ru.svg#logo"></use></svg></a> <span class="tm-header__beta-sign" style="display:none;">β</span></span> <div class="tm-dropdown tm-header__projects"><div class="tm-dropdown__head"><button class="tm-header__dropdown-toggle"><svg height="16" width="16" class="tm-svg-img tm-header__icon tm-header__icon_dropdown"><title>Открыть список</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#arrow-down"></use></svg></button></div> <!----></div> <a href="/ru/sandbox/start/" class="tm-header__become-author-btn">
+            Как стать автором
+          </a> <div class="tm-feature tm-header__feature tm-feature_variant-inline"><!----></div> <!----> <!----></div></div></header> <div class="tm-layout"><div class="tm-page-progress-bar"></div> <div data-menu-sticky="true" class="tm-base-layout__header tm-base-layout__header_is-sticky"><div class="tm-page-width"><div class="tm-base-layout__header-wrapper"><div class="tm-main-menu"><div class="tm-main-menu__section"><nav class="tm-main-menu__section-content"><!----> <a href="/ru/all/" class="tm-main-menu__item">
+        Все потоки
+      </a> <a href="/ru/flows/develop/" class="tm-main-menu__item">
+          Разработка
+        </a><a href="/ru/flows/admin/" class="tm-main-menu__item">
+          Администрирование
+        </a><a href="/ru/flows/design/" class="tm-main-menu__item">
+          Дизайн
+        </a><a href="/ru/flows/management/" class="tm-main-menu__item">
+          Менеджмент
+        </a><a href="/ru/flows/marketing/" class="tm-main-menu__item">
+          Маркетинг
+        </a><a href="/ru/flows/popsci/" class="tm-main-menu__item">
+          Научпоп
+        </a></nav></div></div> <div class="tm-header-user-menu tm-base-layout__user-menu"><a href="/ru/search/" class="tm-header-user-menu__item tm-header-user-menu__search"><svg height="24" width="24" class="tm-svg-img tm-header-user-menu__icon tm-header-user-menu__icon_search tm-header-user-menu__icon_dark"><title>Поиск</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#search"></use></svg></a> <!----> <!----> <!----> <div class="tm-header-user-menu__item tm-header-user-menu__user_desktop"><div class="tm-dropdown"><div class="tm-dropdown__head"><svg height="24" width="24" data-test-id="menu-toggle-guest" class="tm-svg-img tm-header-user-menu__icon"><title>Профиль</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#header-user"></use></svg> <!----></div> <!----></div> <!----></div> <!----></div></div></div></div> <!----> <div class="tm-page-width"></div> <main class="tm-layout__container"><div hl="ru" data-async-called="true" class="tm-page"><div class="tm-page-width"><!----> <div class="tm-page__wrapper"><div class="tm-page__main tm-page__main_has-sidebar"><div class="pull-down"><div class="pull-down__header" style="height:0px;"><div class="pull-down__content" style="bottom:10px;"><svg height="24" width="24" class="tm-svg-img pull-down__arrow"><title>Обновить</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#pull-arrow"></use></svg></div></div> <div class="tm-article-presenter"> <div class="tm-article-presenter__body"><div class="tm-misprint-area"><div class="tm-misprint-area__wrapper"><article class="tm-article-presenter__content tm-article-presenter__content_narrow"><div class="tm-article-presenter__header"> <div class="tm-article-snippet tm-article-presenter__snippet"><div class="tm-article-snippet__meta-container"><div class="tm-article-snippet__meta"><span class="tm-user-info tm-article-snippet__author"><a href="/ru/users/saipr/" title="saipr" class="tm-user-info__userpic"><div class="tm-entity-image"><img alt="" height="24" loading="lazy" src="//habrastorage.org/r/w32/getpro/habr/avatars/95d/530/840/95d530840393eb94849d001d3da22703.png" width="24" class="tm-entity-image__pic"></div></a> <span class="tm-user-info__user"><a href="/ru/users/saipr/" class="tm-user-info__username">
+      saipr
+    </a> </span></span> <span class="tm-article-snippet__datetime-published"><time datetime="2019-05-23T14:32:35.000Z" title="2019-05-23, 17:32">23  мая  2019 в 17:32</time></span></div> <!----></div> <h1 lang="ru" class="tm-article-snippet__title tm-article-snippet__title_h1"><span>Криптографические токены PKCS#11. Графическая утилита «с функцией подписания и добавлением метки времени». Часть 1</span></h1> <div class="tm-article-snippet__hubs"><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/infosecurity/" class="tm-article-snippet__hubs-item-link"><span>Информационная безопасность</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/crypto/" class="tm-article-snippet__hubs-item-link"><span>Криптография</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/programming/" class="tm-article-snippet__hubs-item-link"><span>Программирование</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/desktop_environment/" class="tm-article-snippet__hubs-item-link"><span>Графические оболочки</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/itstandarts/" class="tm-article-snippet__hubs-item-link"><span>IT-стандарты</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span></div> <!----> <!----> <!----></div></div> <!----> <div data-gallery-root="" lang="ru" class="tm-article-body"><div id="post-content-body" class="article-formatted-body article-formatted-body_version-1"><div xmlns="http://www.w3.org/1999/xhtml"><img src="/img/image-loader.svg" align="left" data-src="https://habrastorage.org/webt/xh/tq/ph/xhtqphqpspdmceylr6o1duj5vpu.png"/>В комментариях к статье «Использование механизмов криптографических токенов PKCS#11 в скриптовых языках» читатель <a href="https://habr.com/ru/users/kovserg/" class="user_link">kovserg</a> <a href="https://habr.com/ru/post/449462/#comment_20077160">написал</a>:<br/>
+<blockquote>«С нетерпением ждём статью с функцией подписания документа и добавлением метки времени». </blockquote>Еще раньше другой участник хабра <a href="https://habr.com/ru/users/pas/" class="user_link">pas</a> <a href="https://habr.com/ru/post/440754/#comment_19771670">писал о том</a>, что было бы здорово для токенов PKCS#11, «которые сами все умеют считать» (имеются ввиду прежде всего криптографические операции по генерации ключей, формирования и проверки электронной), избавиться от всевозможных прослоек и иметь одну утилиту, которая могла бы, используя механизмы самого токена, и формировать запрос на сертификат, и подписывать документы, проверять подпись документов, проверять подпись и валидность сертификатов. <br/>
+<a name="habracut"></a><br/>
+<h3><font color="1368c2">Знакомство с утилитой</font></h3><br/>
+В итоге мы представляем на суд пользователей утилиту <br/>
+<br/>
+<div class="spoiler" role="button" tabindex="0">
+                        <b class="spoiler_title">guipkcs7_tclpkcs11/cryptoarmpkcs:</b>
+                        <div class="spoiler_text"><ul>
+<li><a href="https://github.com/a513/CryptoArmPKCS/raw/master/distr/cryptoarmpkcs_linux32.tar.bz2" rel="nofollow">Linux32</a></li>
+<li><a href="https://github.com/a513/CryptoArmPKCS/raw/master/distr/cryptoarmpkcs_linux64.tar.bz2" rel="nofollow">Linux64</a></li>
+<li><a href="https://github.com/a513/CryptoArmPKCS/raw/master/distr/cryptoarmpkcs_mac.tar.bz2" rel="nofollow">OS X</a></li>
+<li><a href="https://github.com/a513/CryptoArmPKCS/raw/master/distr/cryptoarmpkcs_setup_win32.exe" rel="nofollow">WIN32</a></li>
+<li><a href="https://github.com/a513/CryptoArmPKCS/raw/master/distr/cryptoarmpkcs_setup_win64.exe" rel="nofollow">WIN64</a></li>
+</ul><br/>
+</div>
+                    </div><br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/et/my/sq/etmysqfvbidordcaocyqfjqqeem.png"/><br/>
+<br/>
+Движущей силой этой утилиты является криптографический <a href="https://habr.com/ru/post/342834/">токен PKCS#11</a> c поддержкой российской криптографии как минимум ГОСТ Р 34.10-2012. Если вы собираетесь пользоваться <a href="https://habr.com/ru/post/334162/">госуслугами</a> и т.п., то необходимо приобрести все же токен, выдерживший сертифицированные испытания в системе сертификации ФСБ России. Если это ваш внутренний электронный документооборот, то это, естественно, на ваше усмотрение. Токены PKCS#11 могут быть разные: программные, аппаратные и даже <a href="https://habr.com/ru/post/403563/">облачные</a>. Утилита написана на скриптовом языке <a href="https://www.linux.org.ru/news/development/14742883" rel="nofollow">Tcl/Tk</a>. Когда вы приобретаете токен PKCS#11 не забудьте получить или поинтересоваться, где можно скачать библиотеки для приобретаемого токена для тех или иных платформ. Библиотеки, как правило, находятся в свободном доступе. Для доступа к криптографическим и другим возможностях токена в утилите используется пакет <a href="https://habr.com/ru/post/449462/">TclPKCS11</a>. Работа утилиты начинается с выбора библиотеки, которая поддерживает ваши токены. Отметим, что библотеки могут поддерживать одновременно работу с несколькими токенами (combobox «выберите токен/смаркарту»):<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/hr/1j/zc/hr1jzcxcrdug57at8an0in9ahik.png"/><br/>
+<br/>
+Может возникнуть вопрос, а что делать, если токен не проинициализирован или требуется поменять PIN-коды и т.д.? Ответ простой – воспользоваться утилитой конфигурирования токенов <a href="https://habr.com/ru/post/342834/">p11conf</a>.<br/>
+<br/>
+Для обновления списка токенов (отключили токен, добавили новый) достаточно щелкнуть <br/>
+по иконке <img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/wj/dj/xy/wjdjxy2orhsi7op3stcjzpogisa.png"/>, находящейся справа от combobox-а «Выберите токен/смарткарту»<br/>
+В combox-е «Сертификат» представлены метки всех сертификатов, хранящихся на выбранном (текущем) токене:<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/ws/ew/bx/wsewbxr_8nksvtk9j-ckfs_ixwe.png"/><br/>
+<br/>
+Если нажать на иконку <img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/ko/sk/sc/koskscpianfsm5kgw_1peg91t6u.png"/>, находящуюся справа от combobox-а «Сертификат», то появится окно с содержимым сертификата:<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/he/f3/ky/hef3kynxtfbmgy6jetmjxp3zhg8.png"/><br/>
+<br/>
+Если нажать на кнопку «Save/Сохранить» в окне просмотра, то содержимое разобранного сертификата в текстовом формате будет сохранено в указанном вами файле.<br/>
+Для просмотра информации о текущем токене можно нажать кнопку « 6. Информация на токене» или подвести курсор на метку токена:<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/cb/hn/5y/cbhn5yy0qyyremnetuakmcreoia.png"/><br/>
+<br/>
+Для того, чтобы узнать, какие криптографические механизмы поддерживает текущий токен, достаточно нажать на кнопку « 5. Список механизмов»:<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/0z/d2/d_/0zd2d_rk1jpetlsa883wthvye0e.png"/><br/>
+<br/>
+<h3><font color="1368c2">Создаем запрос на сертификат</font></h3>Переходим к основным функциям утилиты. И первой такой функцией является создание запроса на сертификат (кнопка « 3. Запрос на сертификат»):<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/z9/ef/lf/z9eflfzgcrus2an8mc86t9djsv8.png"/><br/>
+<br/>
+Сообщение «Токен не поддерживает ключи …» появляется в том случае, если выбранный токен не поддерживает генерацию данного типа ключа. В этом случае необходимо выбрать другой тип ключа или другой токен. В данном примере можно использвать токен RuToken ECP 2.0 (см. второй скриншот). Combobox «Владелец сертификата» позволяет указать кому будет принадлежать сертификат: физическому лицу, юридическому лицу или индивидуальному предпринимателю. В зависимости от этого будут формироваться на следующих страницах поля для заполнения.<br/>
+<br/>
+Значимым полем здесь является поле «Наименование СКЗИ». Оно является неотъемлемой частью квалифицированного сертификата и указывает на то, каким СКЗИ будет сгенерирована ключевая пара. Наименование СКЗИ вы можете узнать в формуляре на изделие или в момент приобретения токена. Совпадает ли поле тип в информации о токене с наименованием СКЗИ, я затрудняюсь сказать. Так что лучше посмотреть формуляр. Нажимаем кнопку Next и заполняем требуемые поля:<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/gj/vi/rx/gjvirxly5zr2gy1d22h-ifdzoei.png"/><br/>
+<br/>
+При заполнении утилита старается контролировать правильность заполнения полей (email, ОГРН и т.п.), выдавая соответствующие предупреждения. После заполнения основных полей будет предложено определиться с форматом и местом хранения на вашем компьютере запроса на сертификата. От вас также потребуется ввести PIN-код вашего токена:<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/kg/xm/bm/kgxmbm_2xtski-x5fhh4jzkyeys.png"/><br/>
+<br/>
+После нажатия кнопки «Next» вам будет предложено еще раз взглянуть на то, что вы ввели, и утвердить ваше решение нажатием клавиши «Finish»:<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/kk/yv/gr/kkyvgr2ayqktgluvfms_ooxhn5w.png"/><br/>
+<br/>
+И, если вы нажмете кнопку «Finish», то на вашем токене будет сгенерирована ключевая пара, создан и подписан запрос:<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/uo/hj/nr/uohjnrhhbt6ih9qbsbdxzu3wqg0.png"/><br/>
+<br/>
+А можно убедиться, что ключи сгенерированы и сохранены на токене? Да. Нажимаем кнопку « 7. Объекты токена», вводим PIN-код для доступа к токену и ищем объекты СКО_PRIVATE_KEY и CKO_PUBLIV_KEY, у которых метки совпадают с полем «COMMON NANE» (CN), которое вы заполнили при создании запроса на сертификат. В нашем примере это было «Всесильный Хабр»:<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/vv/rp/jm/vvrpjmoqxpgjfolr_mzino1uwhc.png"/><br/>
+<br/>
+Посмотрели и сразу уходите на другую страницу. Лучшим доказательством, что ключевая пара успешно создана, является наличие самого подписанного запроса. Для того чтобы убедиться в этом нажимаем кнопку «Просмотр запроса/сертификата», выбираем сохраненный запрос, нажимаем кновку «Просмотр запроса на сертификат» и смотрим информацию о ключевой паре:<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/hn/xq/o7/hnxqo7b6iqsoa0mcqwxwtjfg5da.png"/><br/>
+<br/>
+После того как убедились, что запрос успешно создан, надежно прячем токен с закрытым ключом или кладем поближе к сердцу (люди старшего поколения знают, как хранили партийный или комсомольский билеты), копируем запрос на флэшку, берем необходимые документы (паспорт и т.д) и идем в УЦ для получения сертификата. Да, если это не ведомственный УЦ, то еще придется заплатить деньги. Все как с <a href="https://habr.com/ru/post/357668/">паспортом</a>. <br/>
+<br/>
+<div class="spoiler" role="button" tabindex="0">
+                        <b class="spoiler_title">Отправляемся за сертификатом в УЦ</b>
+                        <div class="spoiler_text">В данном случае для выдачи сертификата достопочтенному Хабру, мы воспользуемся <a href="https://habr.com/ru/post/415423/">УЦ</a> со страниц все тоже Хабра. УЦ начинает рассмотрение нашей заявки:<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/nj/za/wt/njzawtbm3ze91qnj2widi-if4wg.png"/><br/>
+<br/>
+После того как заявка поступила в базу данных УЦ, уполномоченный администратор рассматривает ее и либо отклоняет либо утверждает:<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/so/pr/zq/soprzqefs9b5w0_5phvien6amog.png"/><br/>
+<br/>
+После утверждения заявки заявитель вместе с уполномоченным лицом от УЦ определяют цели использования сертификата:<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/tw/kx/ex/twkxex2i3htjet9bkxm1kdoiuya.png"/><br/>
+<br/>
+И после этого уже ничто не мешает выпуску сертификата:<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/hb/ox/1c/hbox1clfovnx8ghzsvne5fvsmys.png"/><br/>
+</div>
+                    </div><br/>
+После выпуска сертификата сотрудник УЦ экспортирует выпущенный сертификат на флэшку Достопочтенного Хабра:<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/71/3r/zi/713rzi-nn3sd1v0ockcyfpwphie.png"/><br/>
+<br/>
+<h3><font color="1368c2">Кладем сертификат на токен</font></h3><br/>
+И вот счастливый обладатель сертификата возвращается в родные пенаты и первым делом решает положить сертификат на токен рядом с ключевой парой. Для этого на главном окне утилиты нажимаем кнопку « 4. Просмотр запроса/сертификата», выбираем файл с сертификатом и операцию «Просмотр сертификата» и нажимаем кнопку выполнить операцию»:<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/vp/uh/1n/vpuh1n5xtmcgzri4vf1im1wfq64.png"/><br/>
+<br/>
+Мы можем также проверить валидность сертификата (но мы еще не успели его отозвать) или корректность его подписи, выбрав соответствующую операцию:<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/4x/en/yf/4xenyfg6oq0uem5e24pskrf8qgk.png"/><br/>
+<br/>
+<div class="spoiler" role="button" tabindex="0">
+                        <b class="spoiler_title">Код утилиты проверки подписи сертификата</b>
+                        <div class="spoiler_text"><pre><code class="plaintext">#!/usr/bin/env tclsh
+package require pki
+load ./tclpkcs11.so Tclpkcs11
+#Задайте путь к вашей библиотеке PKCS#11
+#set pkcs11_module "/usr/local/lib64/librtpkcs11ecp_2.0.so"
+set pkcs11_module "/usr/local/lib64/libls11sw2016.so"
+puts "Connect the Token and press Enter"
+gets stdin yes
+set handle [pki::pkcs11::loadmodule $pkcs11_module]
+set slots [pki::pkcs11::listslots $handle]
+set i 0
+foreach slotinfo $slots {
+	set slotid [lindex $slotinfo 0]
+	set slotlabel [lindex $slotinfo 1]
+	set slotflags [lindex $slotinfo 2]
+	if {[lsearch -exact $slotflags TOKEN_PRESENT] != -1} {
+		set token_slotlabel $slotlabel
+		set token_slotid $slotid
+#Найден слот с токеном
+		incr i
+		break
+	}
+}
+if {$i == 0} {
+    puts "Нет ни одного токена. Вставьте."
+    exit
+}
+#Из PEM в DER
+proc ::cert_to_der {data} {
+    if {[string first "-----BEGIN CERTIFICATE-----" $data] != -1} {
+	set data [string map {"\r\n" "\n"} $data]
+    }
+    array set parsed_cert [::pki::_parse_pem $data "-----BEGIN CERTIFICATE-----" "-----END CERTIFICATE-----"]
+    if {[string range $parsed_cert(data) 0 0 ] == "0" } {
+#Очень похоже на DER-кодировка "0" == 0x30 
+	set asnblock $parsed_cert(data)
+    } else {
+	set asnblock ""
+    }
+    return $asnblock
+}
+proc usage {use error} {
+    puts "Copyright(C) Orlov Vladimir (http://museum.lissi-crypto.ru/) 2019"
+    if {$use == 1} {
+	puts $error
+	puts "Usage:\nverify_cert_with_pkcs11 &lt;file with certificate> \[&lt;file with CA certificate>\]\n"
+    }
+}
+set countcert [llength $argv]
+if { $countcert &lt; 1 ||  $countcert > 2 } {
+    usage 1 "Bad usage!"
+    exit
+}
+set file [lindex $argv 0]
+if {![file exists $file]} {
+    usage 1 "File $file not exist"
+    exit
+}
+#Проверяемый сертификат cert_user
+puts "Loading user certificate: $file"
+set fd [open $file]
+chan configure $fd -translation binary
+set cert_user [read $fd]
+close $fd
+if {$cert_user == "" } {
+    usage 1 "Bad file with certificate user: $file"
+    exit
+}
+set cert_user [cert_to_der $cert_user]
+if {$cert_user == ""} {
+    puts "User certificate bad"
+    exit
+}
+catch {array set cert_parse [::pki::x509::parse_cert $cert_user]}
+if {![info exists cert_parse]} {
+    puts "User certificate bad"
+    exit
+}
+#parray cert_parse
+if {$countcert == 1} {
+    if {$cert_parse(issuer) != $cert_parse(subject)} {
+	puts "Bad usage: not self signed certificate"
+    } else {
+	set cert_CA $cert_user
+    }
+} else {
+    set fileca [lindex $argv 1]
+    if {![file exists $fileca]} {
+	usage 1 "File $fileca not exist"
+	exit
+    }
+    #Сертификат издателя cert_CA
+    puts "Loading CA certificate: $fileca"
+    set fd [open $fileca]
+    chan configure $fd -translation binary
+    set cert_CA [read $fd]
+    close $fd
+    if {$cert_CA == "" } {
+	usage 1 "Bad file with certificate CA=$fileca"
+	exit
+    }
+    set cert_CA [cert_to_der $cert_CA]
+    if {$cert_CA == ""} {
+	puts "CA certificate bad"
+	exit
+    }
+}
+foreach slotinfo $slots {
+	set slotid [lindex $slotinfo 0]
+	set slotlabel [lindex $slotinfo 1]
+	set slotflags [lindex $slotinfo 2]
+	if {[lsearch -exact $slotflags TOKEN_PRESENT] != -1} {
+		set token_slotlabel $slotlabel
+		set token_slotid $slotid
+	}
+}
+#Ключ от корневого сертификата
+catch {array set cert_parse_CA [::pki::x509::parse_cert $cert_CA]}
+if {![info exists cert_parse_CA]} {
+    puts "CA certificate bad"
+    exit
+}
+#Проверяем издателя
+if {$cert_parse(issuer) != $cert_parse_CA(subject)} {
+    puts "Bad issuer"
+    exit
+}
+set aa [dict create pkcs11_handle $handle pkcs11_slotid $token_slotid]
+set tbs_cert [binary format H* $cert_parse(cert)]
+catch {set signature_algo_number [::pki::_oid_name_to_number $cert_parse(signature_algo)]}
+if {![info exists signature_algo_number]} {
+    set signature_algo_number $cert_parse(signature_algo)
+}
+switch -- $signature_algo_number {
+    "1.2.643.2.2.3" - "1 2 643 2 2 3" { 
+#    "GOST R 34.10-2001 with GOST R 34.11-94"
+	set digest_algo "gostr3411"
+    }
+    "1.2.643.7.1.1.3.2" - "1 2 643 7 1 1 3 2" {
+#     "GOST R 34.10-2012-256 with GOSTR 34.11-2012-256"
+	set digest_algo "stribog256"
+    }
+    "1.2.643.7.1.1.3.3" - "1 2 643 7 1 1 3 3" { 
+#    "GOST R 34.10-2012-512 with GOSTR 34.11-2012-512"
+	set digest_algo "stribog512"
+    }
+    default {
+	puts "Неизвестная алгоритм подписи:$signature_algo_number"
+	exit
+    }
+}
+#Посчитать хэш от tbs-сертификата!!!!
+set digest_hex    [pki::pkcs11::digest $digest_algo $tbs_cert  $aa]
+#Получаем asn-структуру публичного ключа
+#Создаем список ключевых элементов
+binary scan $cert_CA H* cert_CA_hex
+array set infopk [pki::pkcs11::pubkeyinfo $cert_CA_hex  [list pkcs11_handle $handle pkcs11_slotid $token_slotid]] 
+set lpk [dict create pkcs11_handle $handle pkcs11_slotid $token_slotid]
+#Добавляем pybkeyinfo в список ключевых элементов
+lappend lpk "pubkeyinfo"
+lappend lpk $infopk(pubkeyinfo)
+array set lpkar $lpk
+puts "Enter PIN user for you token \"$token_slotlabel\":"
+gets stdin password
+if { [pki::pkcs11::login $handle $token_slotid $password] == 0 } {
+    puts "Bad PIN"
+    exit
+}
+if {[catch {set verify [pki::pkcs11::verify $digest_hex $cert_parse(signature) $lpk]} res] } {
+    puts "Ошибка проверки подписи=$res"
+    exit
+}
+if {$verify != 1} {
+    puts "BAD SIGNATURE=$verify"
+} else {
+    puts "SIGNATURE OK=$verify"
+}</code></pre><br/>
+</div>
+                    </div><br/>
+Но нас сейчас интересует операция импорта полученного сертификата на наш токен. Выбираем операцию «Импорт сертификата на токен» и нажимаем кнопку «Выполнить операцию». Утилита проверит электронную подпись сертификата. Для этого от вас потребуется ввести PIN-код к токену. И если все пройдет нормально, то сертификат будет импортирован на токен:<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/vn/o5/q0/vno5q0k5jrvwic9p_4uzqfpjyte.png"/><br/>
+<br/>
+Метку (nickname ) сертификата можно будет лицезреть в списке сертификатов:<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/ov/ja/kk/ovjakktrr_aco5_y75htmflyp68.png"/><br/>
+<br/>
+Это наш личный сертификат, сертификат для которого есть ключевая пара. И если еще раз просмотреть список объектов на токене, то мы найдем три объекта, имеющую метку «Всесильный Хабр from УЦ 12_512» и одинаковые CKA_ID. Этими <a href="https://habr.com/ru/post/316328/">тремя объектами</a> являются сам сертификат (CKO_CERTIFICATE), открытый (CKO_PUBLIC_KEY) и закрытый (CKO_PRIVATE_KEY) ключи. Метка для этой тройки объектов устанавливается следующим образом:<br/>
+&lt;CN владельца сертификат> from &lt;CN издателя сертификата>. <br/>
+<br/>
+Ниже мы покажем как изменить метку.<br/>
+<br/>
+Теперь, когда мы положили сертификат на токен, как получить доступ к нему? Для того, чтобы получить доступ к функциям работы с сертификатами, находящимися на токене, достаточно подвести курсор на метку «Сертификат» и нажать правую кнопку мыши: <br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/kd/he/cb/kdhecbhcpq7frlxxaa2lw77nhv4.png"/><br/>
+<br/>
+<h3><font color="1368c2">Подписываем электронной подписью первый документ</font></h3><br/>
+Дождемся следующей статьи. Ждать придется пару дней. Что там еще будет рассмотрено можно понять из скриншота:<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/q-/bq/sp/q-bqspoaaal056weiylzz4wchek.png"/><br/>
+<br/>
+<a href="https://habr.com/ru/post/457288/">Продолжение здесь</a>.</div></div> <!----> <!----></div> <div class="tm-article-presenter__meta"><div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Теги:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bpkcs%2311%5D" class="tm-tags-list__link">pkcs#11</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bpkcs%2310%5D" class="tm-tags-list__link">pkcs#10</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bpkcs%237%5D" class="tm-tags-list__link">pkcs#7</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bcms%5D" class="tm-tags-list__link">cms</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5B%D0%B3%D0%BE%D1%81%D1%82%20%D1%80%2034.10-2012%5D" class="tm-tags-list__link">гост р 34.10-2012</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Btcl%2Ftk%5D" class="tm-tags-list__link">tcl/tk</a></li></ul></div> <div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Хабы:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/hub/infosecurity/" class="tm-hubs-list__link">
+    Информационная безопасность
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/crypto/" class="tm-hubs-list__link">
+    Криптография
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/programming/" class="tm-hubs-list__link">
+    Программирование
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/desktop_environment/" class="tm-hubs-list__link">
+    Графические оболочки
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/itstandarts/" class="tm-hubs-list__link">
+    IT-стандарты
+  </a></li></ul></div></div></article></div> <!----></div> <div class="tm-article-sticky-panel"><div class="tm-data-icons tm-article-sticky-panel__icons"><div class="tm-article-rating tm-data-icons__item"><div class="tm-votes-meter tm-article-rating__votes-switcher"><svg height="16" width="16" class="tm-svg-img tm-votes-meter__icon tm-votes-meter__icon_medium"><title>Всего голосов 10: ↑7 и ↓3</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-rating"></use></svg> <span title="Всего голосов 10: ↑7 и ↓3" class="tm-votes-meter__value tm-votes-meter__value_positive tm-votes-meter__value_medium">+4</span></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----> <span title="Количество просмотров" class="tm-icon-counter tm-data-icons__item"><svg height="16" width="16" class="tm-svg-img tm-icon-counter__icon"><title>Просмотры</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-views"></use></svg> <span class="tm-icon-counter__value">4.7K</span></span> <button title="Добавить в закладки" type="button" class="bookmarks-button tm-data-icons__item"><span title="Добавить в закладки" class="tm-svg-icon__wrapper bookmarks-button__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Добавить в закладки</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-favorite"></use></svg></span> <span title="Количество пользователей, добавивших публикацию в закладки" class="bookmarks-button__counter">
+    39
+  </span></button> <!----> <div title="Поделиться" class="tm-sharing tm-data-icons__item"><button type="button" class="tm-sharing__button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="tm-sharing__icon"><path fill="currentColor" d="M10.33.275l9.047 7.572a.2.2 0 010 .306l-9.048 7.572a.2.2 0 01-.328-.153V11c-8 0-9.94 6-9.94 6S-1 5 10 5V.428a.2.2 0 01.328-.153z"></path></svg></button> <!----></div> <DIV class="v-portal" style="display:none;"></DIV></div> </div></div> <!----> <!----> <div class="tm-article-presenter__footer"><div class="tm-article-blocks"><!----> <section class="tm-block tm-block_spacing-bottom"><!----> <div class="tm-block__body tm-block__body_variant-balanced"><div class="tm-article-author"> <div class="tm-user-card tm-article-author__user-card tm-user-card_variant-article"><div class="tm-user-card__info-container"><div class="tm-user-card__header"><div class="tm-user-card__header-data"><a href="/ru/users/saipr/" class="tm-user-card__userpic tm-user-card__userpic_size-40"><div class="tm-entity-image"><img alt="" src="//habrastorage.org/getpro/habr/avatars/95d/530/840/95d530840393eb94849d001d3da22703.png" class="tm-entity-image__pic"></div></a> <div class="tm-user-card__meta"><div title=" 389 голосов " class="tm-karma tm-user-card__karma"><div class="tm-karma__votes tm-karma__votes_positive">
+    48.2
+  </div> <div class="tm-karma__text">
+    Карма
+  </div></div> <div title="Рейтинг пользователя" class="tm-rating tm-user-card__rating"><div class="tm-rating__header"> <div class="tm-rating__counter">48.2</div></div> <div class="tm-rating__text">
+    Рейтинг
+  </div></div></div></div></div> <div class="tm-user-card__info tm-user-card__info_variant-article"><div class="tm-user-card__title tm-user-card__title_variant-article"><span class="tm-user-card__name tm-user-card__name_variant-article">Орлов Владимир Николаевич</span> <a href="/ru/users/saipr/" class="tm-user-card__nickname tm-user-card__nickname_variant-article">
+          @saipr
+        </a> <!----></div> <p class="tm-user-card__short-info tm-user-card__short-info_variant-article">Программист</p></div></div> <div class="tm-user-card__buttons tm-user-card__buttons_variant-article"><!----> <!----> <!----> <!----> <!----></div></div> <div class="tm-article-author__user-contacts"><a href="http://museum.lissi-crypto.ru/" rel="noopener" target="_blank" class="tm-article-author__contact">
+      Сайт
+    </a></div></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----></section> <div class="tm-article-blocks__comments"><div class="tm-article-page-comments"><div class="tm-article-comments-counter-link tm-article-comments-counter-button"><a href="/ru/post/453164/comments/" class="tm-article-comments-counter-link__link tm-article-comments-counter-link__link_button-style"><svg height="16" width="16" class="tm-svg-img tm-article-comments-counter-link__icon tm-article-comments-counter-link__icon_contrasted"><title>Комментарии</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-comments"></use></svg> <span class="tm-article-comments-counter-link__value tm-article-comments-counter-link__value_contrasted">
+       Комментарии 2 
+    </span></a> <!----></div></div></div> <div class="tm-ad-banner__container tm-page-article__banner"><!----> <div id="articleBottomBanner" class="tm-ad-banner"></div></div> <!----> <!----> <!----> <!----> </div></div></div></div></div> <div class="tm-page__sidebar"><div class="tm-layout-sidebar"><div class="tm-layout-sidebar__ads tm-layout-sidebar__ads_initial"><div class="tm-ad-banner__container tm-layout-sidebar__banner"><!----> <div id="sidebarBanner" class="tm-ad-banner"></div></div></div> <div class="tm-sexy-sidebar tm-sexy-sidebar_initial" style="margin-top:0px;"><!----> <!----></div></div></div></div></div></div></main> <!----></div> <div class="tm-footer-menu"><div class="tm-page-width"><div class="tm-footer-menu__container"><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Ваш аккаунт
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr/?back=/ru/post/453164/&amp;hl=ru" rel="nofollow" target="_self">
+                Войти
+              </a></li><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr-register/?back=/ru/post/453164/&amp;hl=ru" rel="nofollow" target="_self">
+                Регистрация
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Разделы
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/" class="footer-menu__item-link router-link-active">
+                Публикации
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/news/" class="footer-menu__item-link">
+                Новости
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/hubs/" class="footer-menu__item-link">
+                Хабы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/companies/" class="footer-menu__item-link">
+                Компании
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/users/" class="footer-menu__item-link">
+                Авторы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/sandbox/" class="footer-menu__item-link">
+                Песочница
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Информация
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/docs/help/" class="footer-menu__item-link">
+                Устройство сайта
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/authors/codex/" class="footer-menu__item-link">
+                Для авторов
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/companies/corpblogs/" class="footer-menu__item-link">
+                Для компаний
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/docs/transparency/" class="footer-menu__item-link">
+                Документы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/agreement" target="_blank">
+                Соглашение
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/confidential/" target="_blank">
+                Конфиденциальность
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Услуги
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQLwRfQmXibiUlWaRg-BAc38s7oM3lJiaPju7qmdJsp8ysIvZ_G-Npem0njJLMozE2bPHMpDqiI5hhy/pub?start=false&amp;loop=false&amp;delayms=60000&amp;slide=id.g91a03369cd_4_297" target="_blank">
+                Реклама
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://habrastorage.org/storage/stuff/habr/service_price.pdf" target="_blank">
+                Тарифы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQJJds8-Di7BQSP_guHxICN7woVYoN5NP_22ra-BIo4bqnTT9FR6fB-Ku2P0AoRpX0Ds-LRkDeAoD8F/pub?start=false&amp;loop=false&amp;delayms=60000" target="_blank">
+                Контент
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://tmtm.timepad.ru/" target="_blank">
+                Семинары
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/megaprojects/" class="footer-menu__item-link">
+                Мегапроекты
+              </a></li></ul></div></div></div></div></div> <div class="tm-footer"><div class="tm-page-width"><div class="tm-footer__container"><!----> <div class="tm-footer__social"><a href="https://www.facebook.com/habrahabr.ru" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Facebook</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-facebook"></use></svg></a><a href="https://twitter.com/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Twitter</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-twitter"></use></svg></a><a href="https://vk.com/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>VK</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-vkontakte"></use></svg></a><a href="https://telegram.me/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Telegram</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-telegram"></use></svg></a><a href="https://www.youtube.com/channel/UCd_sTwKqVrweTt4oAKY5y4w" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Youtube</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-youtube"></use></svg></a><a href="https://zen.yandex.ru/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Яндекс Дзен</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-zen"></use></svg></a></div> <DIV class="v-portal" style="display:none;"></DIV> <button class="tm-footer__link"><!---->
+        Настройка языка
+      </button> <a href="/ru/about" class="tm-footer__link">
+        О сайте
+      </a> <a href="/ru/feedback/" class="tm-footer__link">
+        Техническая поддержка
+      </a> <!----> <a href="/berserk-mode-nope" class="tm-footer__link">
+        Вернуться на старую версию
+      </a> <div class="tm-footer-copyright"><span class="tm-copyright"><span class="tm-copyright__years">© 2006–2021 </span> <span class="tm-copyright__name">«<a href="https://company.habr.com/" rel="noopener" target="_blank" class="tm-copyright__link">Habr</a>»</span></span></div></div></div></div> <!----> <!----></div> <div class="vue-portal-target"></div></div>
+<script>window.__INITIAL_STATE__={"adblock":{"hasAcceptableAdsFilter":false,"hasAdblock":false},"articlesList":{"articlesList":{"453164":{"id":"453164","timePublished":"2019-05-23T14:32:35+00:00","isCorporative":false,"lang":"ru","titleHtml":"Криптографические токены PKCS#11. Графическая утилита «с функцией подписания и добавлением метки времени». Часть 1","leadData":{"textHtml":"\u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fxh\u002Ftq\u002Fph\u002Fxhtqphqpspdmceylr6o1duj5vpu.png\" align=\"left\"\u003EВ комментариях к статье «Использование механизмов криптографических токенов PKCS#11 в скриптовых языках» читатель \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fusers\u002Fkovserg\u002F\" class=\"user_link\"\u003Ekovserg\u003C\u002Fa\u003E \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fpost\u002F449462\u002F#comment_20077160\"\u003Eнаписал\u003C\u002Fa\u003E:\u003Cbr\u003E\r\n\u003Cblockquote\u003E«С нетерпением ждём статью с функцией подписания документа и добавлением метки времени». \u003C\u002Fblockquote\u003EЕще раньше другой участник хабра \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fusers\u002Fpas\u002F\" class=\"user_link\"\u003Epas\u003C\u002Fa\u003E \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fpost\u002F440754\u002F#comment_19771670\"\u003Eписал о том\u003C\u002Fa\u003E, что было бы здорово для токенов PKCS#11, «которые сами все умеют считать» (имеются ввиду прежде всего криптографические операции по генерации ключей, формирования и проверки электронной), избавиться от всевозможных прослоек и иметь одну утилиту, которая могла бы, используя механизмы самого токена, и формировать запрос на сертификат, и подписывать документы, проверять подпись документов, проверять подпись и валидность сертификатов. \u003Cbr\u003E","imageUrl":null,"buttonTextHtml":"Читать дальше &rarr;","image":null},"editorVersion":"1.0","postType":"article","postLabels":[],"author":{"scoreStats":{"score":48.2,"votesCount":389},"rating":48.2,"relatedData":null,"contacts":[{"title":"Сайт","url":"http:\u002F\u002Fmuseum.lissi-crypto.ru\u002F","value":"http:\u002F\u002Fmuseum.lissi-crypto.ru\u002F"}],"authorContacts":[{"title":"Сайт","url":"http:\u002F\u002Fmuseum.lissi-crypto.ru\u002F","value":"http:\u002F\u002Fmuseum.lissi-crypto.ru\u002F"}],"paymentDetails":{"paymentYandexMoney":null,"paymentPayPalMe":null,"paymentWebmoney":null},"id":"1306906","alias":"saipr","fullname":"Орлов Владимир Николаевич","avatarUrl":"\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Favatars\u002F95d\u002F530\u002F840\u002F95d530840393eb94849d001d3da22703.png","speciality":"Программист"},"statistics":{"commentsCount":2,"favoritesCount":39,"readingCount":4742,"score":4,"votesCount":10},"hubs":[{"relatedData":null,"id":"50","alias":"infosecurity","type":"collective","title":"Информационная безопасность","titleHtml":"Информационная безопасность","isProfiled":true},{"relatedData":null,"id":"118","alias":"crypto","type":"collective","title":"Криптография","titleHtml":"Криптография","isProfiled":true},{"relatedData":null,"id":"359","alias":"programming","type":"collective","title":"Программирование","titleHtml":"Программирование","isProfiled":true},{"relatedData":null,"id":"640","alias":"desktop_environment","type":"collective","title":"Графические оболочки","titleHtml":"Графические оболочки","isProfiled":true},{"relatedData":null,"id":"17189","alias":"itstandarts","type":"collective","title":"IT-стандарты","titleHtml":"IT-стандарты","isProfiled":true}],"flows":[{"id":"1","alias":"develop","title":"Разработка"}],"relatedData":null,"textHtml":"\u003Cdiv xmlns=\"http:\u002F\u002Fwww.w3.org\u002F1999\u002Fxhtml\"\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" align=\"left\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fxh\u002Ftq\u002Fph\u002Fxhtqphqpspdmceylr6o1duj5vpu.png\"\u002F\u003EВ комментариях к статье «Использование механизмов криптографических токенов PKCS#11 в скриптовых языках» читатель \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fusers\u002Fkovserg\u002F\" class=\"user_link\"\u003Ekovserg\u003C\u002Fa\u003E \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fpost\u002F449462\u002F#comment_20077160\"\u003Eнаписал\u003C\u002Fa\u003E:\u003Cbr\u002F\u003E\r\n\u003Cblockquote\u003E«С нетерпением ждём статью с функцией подписания документа и добавлением метки времени». \u003C\u002Fblockquote\u003EЕще раньше другой участник хабра \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fusers\u002Fpas\u002F\" class=\"user_link\"\u003Epas\u003C\u002Fa\u003E \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fpost\u002F440754\u002F#comment_19771670\"\u003Eписал о том\u003C\u002Fa\u003E, что было бы здорово для токенов PKCS#11, «которые сами все умеют считать» (имеются ввиду прежде всего криптографические операции по генерации ключей, формирования и проверки электронной), избавиться от всевозможных прослоек и иметь одну утилиту, которая могла бы, используя механизмы самого токена, и формировать запрос на сертификат, и подписывать документы, проверять подпись документов, проверять подпись и валидность сертификатов. \u003Cbr\u002F\u003E\r\n\u003Ca name=\"habracut\"\u003E\u003C\u002Fa\u003E\u003Cbr\u002F\u003E\r\n\u003Ch3\u003E\u003Cfont color=\"1368c2\"\u003EЗнакомство с утилитой\u003C\u002Ffont\u003E\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\nВ итоге мы представляем на суд пользователей утилиту \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cdiv class=\"spoiler\" role=\"button\" tabindex=\"0\"\u003E\n                        \u003Cb class=\"spoiler_title\"\u003Eguipkcs7_tclpkcs11\u002Fcryptoarmpkcs:\u003C\u002Fb\u003E\n                        \u003Cdiv class=\"spoiler_text\"\u003E\u003Cul\u003E\r\n\u003Cli\u003E\u003Ca href=\"https:\u002F\u002Fgithub.com\u002Fa513\u002FCryptoArmPKCS\u002Fraw\u002Fmaster\u002Fdistr\u002Fcryptoarmpkcs_linux32.tar.bz2\" rel=\"nofollow\"\u003ELinux32\u003C\u002Fa\u003E\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Ca href=\"https:\u002F\u002Fgithub.com\u002Fa513\u002FCryptoArmPKCS\u002Fraw\u002Fmaster\u002Fdistr\u002Fcryptoarmpkcs_linux64.tar.bz2\" rel=\"nofollow\"\u003ELinux64\u003C\u002Fa\u003E\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Ca href=\"https:\u002F\u002Fgithub.com\u002Fa513\u002FCryptoArmPKCS\u002Fraw\u002Fmaster\u002Fdistr\u002Fcryptoarmpkcs_mac.tar.bz2\" rel=\"nofollow\"\u003EOS X\u003C\u002Fa\u003E\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Ca href=\"https:\u002F\u002Fgithub.com\u002Fa513\u002FCryptoArmPKCS\u002Fraw\u002Fmaster\u002Fdistr\u002Fcryptoarmpkcs_setup_win32.exe\" rel=\"nofollow\"\u003EWIN32\u003C\u002Fa\u003E\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Ca href=\"https:\u002F\u002Fgithub.com\u002Fa513\u002FCryptoArmPKCS\u002Fraw\u002Fmaster\u002Fdistr\u002Fcryptoarmpkcs_setup_win64.exe\" rel=\"nofollow\"\u003EWIN64\u003C\u002Fa\u003E\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\n\u003C\u002Fdiv\u003E\n                    \u003C\u002Fdiv\u003E\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fet\u002Fmy\u002Fsq\u002Fetmysqfvbidordcaocyqfjqqeem.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nДвижущей силой этой утилиты является криптографический \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fpost\u002F342834\u002F\"\u003Eтокен PKCS#11\u003C\u002Fa\u003E c поддержкой российской криптографии как минимум ГОСТ Р 34.10-2012. Если вы собираетесь пользоваться \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fpost\u002F334162\u002F\"\u003Eгосуслугами\u003C\u002Fa\u003E и т.п., то необходимо приобрести все же токен, выдерживший сертифицированные испытания в системе сертификации ФСБ России. Если это ваш внутренний электронный документооборот, то это, естественно, на ваше усмотрение. Токены PKCS#11 могут быть разные: программные, аппаратные и даже \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fpost\u002F403563\u002F\"\u003Eоблачные\u003C\u002Fa\u003E. Утилита написана на скриптовом языке \u003Ca href=\"https:\u002F\u002Fwww.linux.org.ru\u002Fnews\u002Fdevelopment\u002F14742883\" rel=\"nofollow\"\u003ETcl\u002FTk\u003C\u002Fa\u003E. Когда вы приобретаете токен PKCS#11 не забудьте получить или поинтересоваться, где можно скачать библиотеки для приобретаемого токена для тех или иных платформ. Библиотеки, как правило, находятся в свободном доступе. Для доступа к криптографическим и другим возможностях токена в утилите используется пакет \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fpost\u002F449462\u002F\"\u003ETclPKCS11\u003C\u002Fa\u003E. Работа утилиты начинается с выбора библиотеки, которая поддерживает ваши токены. Отметим, что библотеки могут поддерживать одновременно работу с несколькими токенами (combobox «выберите токен\u002Fсмаркарту»):\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fhr\u002F1j\u002Fzc\u002Fhr1jzcxcrdug57at8an0in9ahik.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nМожет возникнуть вопрос, а что делать, если токен не проинициализирован или требуется поменять PIN-коды и т.д.? Ответ простой – воспользоваться утилитой конфигурирования токенов \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fpost\u002F342834\u002F\"\u003Ep11conf\u003C\u002Fa\u003E.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nДля обновления списка токенов (отключили токен, добавили новый) достаточно щелкнуть \u003Cbr\u002F\u003E\r\nпо иконке \u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fwj\u002Fdj\u002Fxy\u002Fwjdjxy2orhsi7op3stcjzpogisa.png\"\u002F\u003E, находящейся справа от combobox-а «Выберите токен\u002Fсмарткарту»\u003Cbr\u002F\u003E\r\nВ combox-е «Сертификат» представлены метки всех сертификатов, хранящихся на выбранном (текущем) токене:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fws\u002Few\u002Fbx\u002Fwsewbxr_8nksvtk9j-ckfs_ixwe.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЕсли нажать на иконку \u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fko\u002Fsk\u002Fsc\u002Fkoskscpianfsm5kgw_1peg91t6u.png\"\u002F\u003E, находящуюся справа от combobox-а «Сертификат», то появится окно с содержимым сертификата:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fhe\u002Ff3\u002Fky\u002Fhef3kynxtfbmgy6jetmjxp3zhg8.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЕсли нажать на кнопку «Save\u002FСохранить» в окне просмотра, то содержимое разобранного сертификата в текстовом формате будет сохранено в указанном вами файле.\u003Cbr\u002F\u003E\r\nДля просмотра информации о текущем токене можно нажать кнопку « 6. Информация на токене» или подвести курсор на метку токена:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fcb\u002Fhn\u002F5y\u002Fcbhn5yy0qyyremnetuakmcreoia.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nДля того, чтобы узнать, какие криптографические механизмы поддерживает текущий токен, достаточно нажать на кнопку « 5. Список механизмов»:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002F0z\u002Fd2\u002Fd_\u002F0zd2d_rk1jpetlsa883wthvye0e.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch3\u003E\u003Cfont color=\"1368c2\"\u003EСоздаем запрос на сертификат\u003C\u002Ffont\u003E\u003C\u002Fh3\u003EПереходим к основным функциям утилиты. И первой такой функцией является создание запроса на сертификат (кнопка « 3. Запрос на сертификат»):\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fz9\u002Fef\u002Flf\u002Fz9eflfzgcrus2an8mc86t9djsv8.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nСообщение «Токен не поддерживает ключи …» появляется в том случае, если выбранный токен не поддерживает генерацию данного типа ключа. В этом случае необходимо выбрать другой тип ключа или другой токен. В данном примере можно использвать токен RuToken ECP 2.0 (см. второй скриншот). Combobox «Владелец сертификата» позволяет указать кому будет принадлежать сертификат: физическому лицу, юридическому лицу или индивидуальному предпринимателю. В зависимости от этого будут формироваться на следующих страницах поля для заполнения.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЗначимым полем здесь является поле «Наименование СКЗИ». Оно является неотъемлемой частью квалифицированного сертификата и указывает на то, каким СКЗИ будет сгенерирована ключевая пара. Наименование СКЗИ вы можете узнать в формуляре на изделие или в момент приобретения токена. Совпадает ли поле тип в информации о токене с наименованием СКЗИ, я затрудняюсь сказать. Так что лучше посмотреть формуляр. Нажимаем кнопку Next и заполняем требуемые поля:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fgj\u002Fvi\u002Frx\u002Fgjvirxly5zr2gy1d22h-ifdzoei.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПри заполнении утилита старается контролировать правильность заполнения полей (email, ОГРН и т.п.), выдавая соответствующие предупреждения. После заполнения основных полей будет предложено определиться с форматом и местом хранения на вашем компьютере запроса на сертификата. От вас также потребуется ввести PIN-код вашего токена:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fkg\u002Fxm\u002Fbm\u002Fkgxmbm_2xtski-x5fhh4jzkyeys.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПосле нажатия кнопки «Next» вам будет предложено еще раз взглянуть на то, что вы ввели, и утвердить ваше решение нажатием клавиши «Finish»:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fkk\u002Fyv\u002Fgr\u002Fkkyvgr2ayqktgluvfms_ooxhn5w.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nИ, если вы нажмете кнопку «Finish», то на вашем токене будет сгенерирована ключевая пара, создан и подписан запрос:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fuo\u002Fhj\u002Fnr\u002Fuohjnrhhbt6ih9qbsbdxzu3wqg0.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nА можно убедиться, что ключи сгенерированы и сохранены на токене? Да. Нажимаем кнопку « 7. Объекты токена», вводим PIN-код для доступа к токену и ищем объекты СКО_PRIVATE_KEY и CKO_PUBLIV_KEY, у которых метки совпадают с полем «COMMON NANE» (CN), которое вы заполнили при создании запроса на сертификат. В нашем примере это было «Всесильный Хабр»:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fvv\u002Frp\u002Fjm\u002Fvvrpjmoqxpgjfolr_mzino1uwhc.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПосмотрели и сразу уходите на другую страницу. Лучшим доказательством, что ключевая пара успешно создана, является наличие самого подписанного запроса. Для того чтобы убедиться в этом нажимаем кнопку «Просмотр запроса\u002Fсертификата», выбираем сохраненный запрос, нажимаем кновку «Просмотр запроса на сертификат» и смотрим информацию о ключевой паре:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fhn\u002Fxq\u002Fo7\u002Fhnxqo7b6iqsoa0mcqwxwtjfg5da.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПосле того как убедились, что запрос успешно создан, надежно прячем токен с закрытым ключом или кладем поближе к сердцу (люди старшего поколения знают, как хранили партийный или комсомольский билеты), копируем запрос на флэшку, берем необходимые документы (паспорт и т.д) и идем в УЦ для получения сертификата. Да, если это не ведомственный УЦ, то еще придется заплатить деньги. Все как с \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fpost\u002F357668\u002F\"\u003Eпаспортом\u003C\u002Fa\u003E. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cdiv class=\"spoiler\" role=\"button\" tabindex=\"0\"\u003E\n                        \u003Cb class=\"spoiler_title\"\u003EОтправляемся за сертификатом в УЦ\u003C\u002Fb\u003E\n                        \u003Cdiv class=\"spoiler_text\"\u003EВ данном случае для выдачи сертификата достопочтенному Хабру, мы воспользуемся \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fpost\u002F415423\u002F\"\u003EУЦ\u003C\u002Fa\u003E со страниц все тоже Хабра. УЦ начинает рассмотрение нашей заявки:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fnj\u002Fza\u002Fwt\u002Fnjzawtbm3ze91qnj2widi-if4wg.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПосле того как заявка поступила в базу данных УЦ, уполномоченный администратор рассматривает ее и либо отклоняет либо утверждает:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fso\u002Fpr\u002Fzq\u002Fsoprzqefs9b5w0_5phvien6amog.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПосле утверждения заявки заявитель вместе с уполномоченным лицом от УЦ определяют цели использования сертификата:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Ftw\u002Fkx\u002Fex\u002Ftwkxex2i3htjet9bkxm1kdoiuya.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nИ после этого уже ничто не мешает выпуску сертификата:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fhb\u002Fox\u002F1c\u002Fhbox1clfovnx8ghzsvne5fvsmys.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003C\u002Fdiv\u003E\n                    \u003C\u002Fdiv\u003E\u003Cbr\u002F\u003E\r\nПосле выпуска сертификата сотрудник УЦ экспортирует выпущенный сертификат на флэшку Достопочтенного Хабра:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002F71\u002F3r\u002Fzi\u002F713rzi-nn3sd1v0ockcyfpwphie.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch3\u003E\u003Cfont color=\"1368c2\"\u003EКладем сертификат на токен\u003C\u002Ffont\u003E\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\nИ вот счастливый обладатель сертификата возвращается в родные пенаты и первым делом решает положить сертификат на токен рядом с ключевой парой. Для этого на главном окне утилиты нажимаем кнопку « 4. Просмотр запроса\u002Fсертификата», выбираем файл с сертификатом и операцию «Просмотр сертификата» и нажимаем кнопку выполнить операцию»:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fvp\u002Fuh\u002F1n\u002Fvpuh1n5xtmcgzri4vf1im1wfq64.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nМы можем также проверить валидность сертификата (но мы еще не успели его отозвать) или корректность его подписи, выбрав соответствующую операцию:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002F4x\u002Fen\u002Fyf\u002F4xenyfg6oq0uem5e24pskrf8qgk.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cdiv class=\"spoiler\" role=\"button\" tabindex=\"0\"\u003E\n                        \u003Cb class=\"spoiler_title\"\u003EКод утилиты проверки подписи сертификата\u003C\u002Fb\u003E\n                        \u003Cdiv class=\"spoiler_text\"\u003E\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E#!\u002Fusr\u002Fbin\u002Fenv tclsh\npackage require pki\nload .\u002Ftclpkcs11.so Tclpkcs11\n#Задайте путь к вашей библиотеке PKCS#11\n#set pkcs11_module \"\u002Fusr\u002Flocal\u002Flib64\u002Flibrtpkcs11ecp_2.0.so\"\nset pkcs11_module \"\u002Fusr\u002Flocal\u002Flib64\u002Flibls11sw2016.so\"\nputs \"Connect the Token and press Enter\"\ngets stdin yes\nset handle [pki::pkcs11::loadmodule $pkcs11_module]\nset slots [pki::pkcs11::listslots $handle]\nset i 0\nforeach slotinfo $slots {\n\tset slotid [lindex $slotinfo 0]\n\tset slotlabel [lindex $slotinfo 1]\n\tset slotflags [lindex $slotinfo 2]\n\tif {[lsearch -exact $slotflags TOKEN_PRESENT] != -1} {\n\t\tset token_slotlabel $slotlabel\n\t\tset token_slotid $slotid\n#Найден слот с токеном\n\t\tincr i\n\t\tbreak\n\t}\n}\nif {$i == 0} {\n    puts \"Нет ни одного токена. Вставьте.\"\n    exit\n}\n#Из PEM в DER\nproc ::cert_to_der {data} {\n    if {[string first \"-----BEGIN CERTIFICATE-----\" $data] != -1} {\n\tset data [string map {\"\\r\\n\" \"\\n\"} $data]\n    }\n    array set parsed_cert [::pki::_parse_pem $data \"-----BEGIN CERTIFICATE-----\" \"-----END CERTIFICATE-----\"]\n    if {[string range $parsed_cert(data) 0 0 ] == \"0\" } {\n#Очень похоже на DER-кодировка \"0\" == 0x30 \n\tset asnblock $parsed_cert(data)\n    } else {\n\tset asnblock \"\"\n    }\n    return $asnblock\n}\nproc usage {use error} {\n    puts \"Copyright(C) Orlov Vladimir (http:\u002F\u002Fmuseum.lissi-crypto.ru\u002F) 2019\"\n    if {$use == 1} {\n\tputs $error\n\tputs \"Usage:\\nverify_cert_with_pkcs11 &lt;file with certificate\u003E \\[&lt;file with CA certificate\u003E\\]\\n\"\n    }\n}\nset countcert [llength $argv]\nif { $countcert &lt; 1 ||  $countcert \u003E 2 } {\n    usage 1 \"Bad usage!\"\n    exit\n}\nset file [lindex $argv 0]\nif {![file exists $file]} {\n    usage 1 \"File $file not exist\"\n    exit\n}\n#Проверяемый сертификат cert_user\nputs \"Loading user certificate: $file\"\nset fd [open $file]\nchan configure $fd -translation binary\nset cert_user [read $fd]\nclose $fd\nif {$cert_user == \"\" } {\n    usage 1 \"Bad file with certificate user: $file\"\n    exit\n}\nset cert_user [cert_to_der $cert_user]\nif {$cert_user == \"\"} {\n    puts \"User certificate bad\"\n    exit\n}\ncatch {array set cert_parse [::pki::x509::parse_cert $cert_user]}\nif {![info exists cert_parse]} {\n    puts \"User certificate bad\"\n    exit\n}\n#parray cert_parse\nif {$countcert == 1} {\n    if {$cert_parse(issuer) != $cert_parse(subject)} {\n\tputs \"Bad usage: not self signed certificate\"\n    } else {\n\tset cert_CA $cert_user\n    }\n} else {\n    set fileca [lindex $argv 1]\n    if {![file exists $fileca]} {\n\tusage 1 \"File $fileca not exist\"\n\texit\n    }\n    #Сертификат издателя cert_CA\n    puts \"Loading CA certificate: $fileca\"\n    set fd [open $fileca]\n    chan configure $fd -translation binary\n    set cert_CA [read $fd]\n    close $fd\n    if {$cert_CA == \"\" } {\n\tusage 1 \"Bad file with certificate CA=$fileca\"\n\texit\n    }\n    set cert_CA [cert_to_der $cert_CA]\n    if {$cert_CA == \"\"} {\n\tputs \"CA certificate bad\"\n\texit\n    }\n}\nforeach slotinfo $slots {\n\tset slotid [lindex $slotinfo 0]\n\tset slotlabel [lindex $slotinfo 1]\n\tset slotflags [lindex $slotinfo 2]\n\tif {[lsearch -exact $slotflags TOKEN_PRESENT] != -1} {\n\t\tset token_slotlabel $slotlabel\n\t\tset token_slotid $slotid\n\t}\n}\n#Ключ от корневого сертификата\ncatch {array set cert_parse_CA [::pki::x509::parse_cert $cert_CA]}\nif {![info exists cert_parse_CA]} {\n    puts \"CA certificate bad\"\n    exit\n}\n#Проверяем издателя\nif {$cert_parse(issuer) != $cert_parse_CA(subject)} {\n    puts \"Bad issuer\"\n    exit\n}\nset aa [dict create pkcs11_handle $handle pkcs11_slotid $token_slotid]\nset tbs_cert [binary format H* $cert_parse(cert)]\ncatch {set signature_algo_number [::pki::_oid_name_to_number $cert_parse(signature_algo)]}\nif {![info exists signature_algo_number]} {\n    set signature_algo_number $cert_parse(signature_algo)\n}\nswitch -- $signature_algo_number {\n    \"1.2.643.2.2.3\" - \"1 2 643 2 2 3\" { \n#    \"GOST R 34.10-2001 with GOST R 34.11-94\"\n\tset digest_algo \"gostr3411\"\n    }\n    \"1.2.643.7.1.1.3.2\" - \"1 2 643 7 1 1 3 2\" {\n#     \"GOST R 34.10-2012-256 with GOSTR 34.11-2012-256\"\n\tset digest_algo \"stribog256\"\n    }\n    \"1.2.643.7.1.1.3.3\" - \"1 2 643 7 1 1 3 3\" { \n#    \"GOST R 34.10-2012-512 with GOSTR 34.11-2012-512\"\n\tset digest_algo \"stribog512\"\n    }\n    default {\n\tputs \"Неизвестная алгоритм подписи:$signature_algo_number\"\n\texit\n    }\n}\n#Посчитать хэш от tbs-сертификата!!!!\nset digest_hex    [pki::pkcs11::digest $digest_algo $tbs_cert  $aa]\n#Получаем asn-структуру публичного ключа\n#Создаем список ключевых элементов\nbinary scan $cert_CA H* cert_CA_hex\narray set infopk [pki::pkcs11::pubkeyinfo $cert_CA_hex  [list pkcs11_handle $handle pkcs11_slotid $token_slotid]] \nset lpk [dict create pkcs11_handle $handle pkcs11_slotid $token_slotid]\n#Добавляем pybkeyinfo в список ключевых элементов\nlappend lpk \"pubkeyinfo\"\nlappend lpk $infopk(pubkeyinfo)\narray set lpkar $lpk\nputs \"Enter PIN user for you token \\\"$token_slotlabel\\\":\"\ngets stdin password\nif { [pki::pkcs11::login $handle $token_slotid $password] == 0 } {\n    puts \"Bad PIN\"\n    exit\n}\nif {[catch {set verify [pki::pkcs11::verify $digest_hex $cert_parse(signature) $lpk]} res] } {\n    puts \"Ошибка проверки подписи=$res\"\n    exit\n}\nif {$verify != 1} {\n    puts \"BAD SIGNATURE=$verify\"\n} else {\n    puts \"SIGNATURE OK=$verify\"\n}\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003C\u002Fdiv\u003E\n                    \u003C\u002Fdiv\u003E\u003Cbr\u002F\u003E\r\nНо нас сейчас интересует операция импорта полученного сертификата на наш токен. Выбираем операцию «Импорт сертификата на токен» и нажимаем кнопку «Выполнить операцию». Утилита проверит электронную подпись сертификата. Для этого от вас потребуется ввести PIN-код к токену. И если все пройдет нормально, то сертификат будет импортирован на токен:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fvn\u002Fo5\u002Fq0\u002Fvno5q0k5jrvwic9p_4uzqfpjyte.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nМетку (nickname ) сертификата можно будет лицезреть в списке сертификатов:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fov\u002Fja\u002Fkk\u002Fovjakktrr_aco5_y75htmflyp68.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЭто наш личный сертификат, сертификат для которого есть ключевая пара. И если еще раз просмотреть список объектов на токене, то мы найдем три объекта, имеющую метку «Всесильный Хабр from УЦ 12_512» и одинаковые CKA_ID. Этими \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fpost\u002F316328\u002F\"\u003Eтремя объектами\u003C\u002Fa\u003E являются сам сертификат (CKO_CERTIFICATE), открытый (CKO_PUBLIC_KEY) и закрытый (CKO_PRIVATE_KEY) ключи. Метка для этой тройки объектов устанавливается следующим образом:\u003Cbr\u002F\u003E\r\n&lt;CN владельца сертификат\u003E from &lt;CN издателя сертификата\u003E. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nНиже мы покажем как изменить метку.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nТеперь, когда мы положили сертификат на токен, как получить доступ к нему? Для того, чтобы получить доступ к функциям работы с сертификатами, находящимися на токене, достаточно подвести курсор на метку «Сертификат» и нажать правую кнопку мыши: \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fkd\u002Fhe\u002Fcb\u002Fkdhecbhcpq7frlxxaa2lw77nhv4.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch3\u003E\u003Cfont color=\"1368c2\"\u003EПодписываем электронной подписью первый документ\u003C\u002Ffont\u003E\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\nДождемся следующей статьи. Ждать придется пару дней. Что там еще будет рассмотрено можно понять из скриншота:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fq-\u002Fbq\u002Fsp\u002Fq-bqspoaaal056weiylzz4wchek.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fpost\u002F457288\u002F\"\u003EПродолжение здесь\u003C\u002Fa\u003E.\u003C\u002Fdiv\u003E","tags":[{"titleHtml":"pkcs#11"},{"titleHtml":"pkcs#10"},{"titleHtml":"pkcs#7"},{"titleHtml":"cms"},{"titleHtml":"гост р 34.10-2012"},{"titleHtml":"tcl\u002Ftk"}],"metadata":{"stylesUrls":[],"scriptUrls":[],"shareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F453164\u002Fcedafe84f20c7a924a0807a5c9f8c1f2\u002F","shareImageWidth":1200,"shareImageHeight":630,"vkShareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F453164\u002Fcedafe84f20c7a924a0807a5c9f8c1f2\u002F?format=vk","schemaJsonLd":"{\"@context\":\"http:\\\u002F\\\u002Fschema.org\",\"@type\":\"Article\",\"mainEntityOfPage\":{\"@type\":\"WebPage\",\"@id\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fru\\\u002Fpost\\\u002F453164\\\u002F\"},\"headline\":\"Криптографические токены PKCS#11. Графическая утилита «с функцией подписания и добавлением метки времени». Часть 1\",\"datePublished\":\"2019-05-23T17:32:35+03:00\",\"dateModified\":\"2020-05-12T20:26:44+03:00\",\"author\":{\"@type\":\"Person\",\"name\":\"Орлов Владимир Николаевич\"},\"publisher\":{\"@type\":\"Organization\",\"name\":\"Habr\",\"logo\":{\"@type\":\"ImageObject\",\"url\":\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fa_\\\u002Flk\\\u002F9m\\\u002Fa_lk9mjkccjox-zccjrpfolmkmq.png\"}},\"description\":\"В комментариях к статье &laquo;Использование механизмов криптографических токенов PKCS#11 в скриптовых языках&raquo; читатель kovserg написал: &laquo;С нетерпением ждём статью с ф...\",\"url\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fru\\\u002Fpost\\\u002F453164\\\u002F#post-content-body\",\"about\":[\"h_infosecurity\",\"h_crypto\",\"h_programming\",\"h_desktop_environment\",\"h_itstandarts\",\"f_develop\"],\"image\":[\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fxh\\\u002Ftq\\\u002Fph\\\u002Fxhtqphqpspdmceylr6o1duj5vpu.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fet\\\u002Fmy\\\u002Fsq\\\u002Fetmysqfvbidordcaocyqfjqqeem.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fhr\\\u002F1j\\\u002Fzc\\\u002Fhr1jzcxcrdug57at8an0in9ahik.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fwj\\\u002Fdj\\\u002Fxy\\\u002Fwjdjxy2orhsi7op3stcjzpogisa.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fws\\\u002Few\\\u002Fbx\\\u002Fwsewbxr_8nksvtk9j-ckfs_ixwe.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fko\\\u002Fsk\\\u002Fsc\\\u002Fkoskscpianfsm5kgw_1peg91t6u.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fhe\\\u002Ff3\\\u002Fky\\\u002Fhef3kynxtfbmgy6jetmjxp3zhg8.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fcb\\\u002Fhn\\\u002F5y\\\u002Fcbhn5yy0qyyremnetuakmcreoia.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002F0z\\\u002Fd2\\\u002Fd_\\\u002F0zd2d_rk1jpetlsa883wthvye0e.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fz9\\\u002Fef\\\u002Flf\\\u002Fz9eflfzgcrus2an8mc86t9djsv8.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fgj\\\u002Fvi\\\u002Frx\\\u002Fgjvirxly5zr2gy1d22h-ifdzoei.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fkg\\\u002Fxm\\\u002Fbm\\\u002Fkgxmbm_2xtski-x5fhh4jzkyeys.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fkk\\\u002Fyv\\\u002Fgr\\\u002Fkkyvgr2ayqktgluvfms_ooxhn5w.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fuo\\\u002Fhj\\\u002Fnr\\\u002Fuohjnrhhbt6ih9qbsbdxzu3wqg0.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fvv\\\u002Frp\\\u002Fjm\\\u002Fvvrpjmoqxpgjfolr_mzino1uwhc.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fhn\\\u002Fxq\\\u002Fo7\\\u002Fhnxqo7b6iqsoa0mcqwxwtjfg5da.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fnj\\\u002Fza\\\u002Fwt\\\u002Fnjzawtbm3ze91qnj2widi-if4wg.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fso\\\u002Fpr\\\u002Fzq\\\u002Fsoprzqefs9b5w0_5phvien6amog.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Ftw\\\u002Fkx\\\u002Fex\\\u002Ftwkxex2i3htjet9bkxm1kdoiuya.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fhb\\\u002Fox\\\u002F1c\\\u002Fhbox1clfovnx8ghzsvne5fvsmys.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002F71\\\u002F3r\\\u002Fzi\\\u002F713rzi-nn3sd1v0ockcyfpwphie.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fvp\\\u002Fuh\\\u002F1n\\\u002Fvpuh1n5xtmcgzri4vf1im1wfq64.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002F4x\\\u002Fen\\\u002Fyf\\\u002F4xenyfg6oq0uem5e24pskrf8qgk.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fvn\\\u002Fo5\\\u002Fq0\\\u002Fvno5q0k5jrvwic9p_4uzqfpjyte.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fov\\\u002Fja\\\u002Fkk\\\u002Fovjakktrr_aco5_y75htmflyp68.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fkd\\\u002Fhe\\\u002Fcb\\\u002Fkdhecbhcpq7frlxxaa2lw77nhv4.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fq-\\\u002Fbq\\\u002Fsp\\\u002Fq-bqspoaaal056weiylzz4wchek.png\"]}","metaDescription":"В комментариях к статье «Использование механизмов криптографических токенов PKCS#11 в скриптовых языках» читатель kovserg написал:\r\n«С нетерпением ждём статью с функцией подписания документа и...","mainImageUrl":null,"amp":false},"polls":[],"commentsEnabled":true,"rulesRemindEnabled":false,"votesEnabled":true,"status":"published","plannedPublishTime":null,"checked":null,"isEditorial":false}},"articlesIds":{},"isLoading":false,"pagesCount":{},"route":{},"reasonsList":null,"view":"cards","lastVisitedRoute":{},"ssrCommentsArticleIds":[""],"karma":{}},"authorContribution":{"authors":{}},"betaTest":{"currentAnnouncement":null,"announcements":{},"announcementCards":null,"announcementComments":{},"announcementCommentThreads":{},"announcementCommentingStatuses":{},"archivedList":[]},"authorStatistics":{"articleRefs":{},"articleIds":{},"pagesCount":{},"route":{},"viewsCount":[],"maxStatsCount":{}},"career":{"seoLandings":[],"hubs":"infosecurity,crypto,programming,desktop_environment,itstandarts"},"comments":{"articleComments":{},"searchCommentsResults":null,"previewComment":null,"pagesCount":null,"commentAccess":{},"scrollParents":{},"pageArticleComments":{"lastViewedComment":0,"postId":null,"lastCommentTimestamp":"","moderated":[],"moderatedIds":[],"commentRoute":""}},"companies":{"companyRefs":{},"companyIds":{},"companyTopIds":{},"pagesCount":{},"companyProfiles":{},"companiesCategories":[],"companiesCategoriesTotalCount":0,"companiesWidgets":{},"companiesWorkers":{},"companiesFans":{},"route":{},"isLoading":false,"companyWorkersLoading":false,"companyFansLoading":false,"vacancies":{}},"companiesContribution":{"hubs":{},"flows":{},"companyRefs":{}},"companyHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"conversation":{"messages":[],"respondent":null,"isLoadMore":false},"conversations":{"conversations":[],"unreadCount":0,"pagesCount":0,"isLoadMore":false},"desktopState":{"desktopFl":null,"desktopHl":null,"isChecked":false,"isLoginDemanded":false},"dfp":{"slotsDict":{}},"docs":{"menu":{},"articles":{},"mainMenu":[],"loading":{"main":false,"dropdown":false,"article":false}},"feature":{"isProbablyVisible":"true"},"flows":{"flows":[{"alias":"develop","id":1,"route":{"name":"FLOW_PAGE","params":{"flowName":"develop"}}},{"alias":"admin","id":6,"route":{"name":"FLOW_PAGE","params":{"flowName":"admin"}}},{"alias":"design","id":2,"route":{"name":"FLOW_PAGE","params":{"flowName":"design"}}},{"alias":"management","id":3,"route":{"name":"FLOW_PAGE","params":{"flowName":"management"}}},{"alias":"marketing","id":4,"route":{"name":"FLOW_PAGE","params":{"flowName":"marketing"}}},{"alias":"popsci","id":7,"route":{"name":"FLOW_PAGE","params":{"flowName":"popsci"}}}]},"global":{"isPwa":false,"device":"desktop","isHabrCom":true},"hubs":{"hubRefs":{},"hubIds":{},"pagesCount":{},"isLoading":false,"route":{}},"hubsBlock":{"hubRefs":{},"hubIds":{}},"i18n":{"fl":"ru","hl":"ru"},"info":{"infoPage":{},"isLoading":true},"location":{"urlStruct":{"protocol":null,"slashes":null,"auth":null,"host":null,"port":null,"hostname":null,"hash":null,"search":null,"query":{},"pathname":null,"path":null,"href":""},"searchQuery":null},"me":{"user":null,"ppgDemanded":false,"karmaResetInfo":{"canReincarnate":null,"wasReincarnated":null,"currentScore":null},"notes":null},"mostReadingList":{"mostReadingListIds":[],"mostReadingListRefs":null,"promoPost":null},"pinnedPost":{"pinnedPost":null},"ppa":{"articles":{},"card":null,"transactions":null,"totalTransactions":null,"isAccessible":null},"projectsBlocks":{"activeBlocks":{}},"pullRefresh":{"shouldRefresh":false},"sandbox":{"articleIds":[],"articleRefs":{},"pagesCount":null,"route":{},"lastVisitedRoute":{},"isLoading":false},"settingsOther":{"inputs":{"uiLang":{"errors":[],"ref":null,"value":""},"articlesLangEnglish":{"errors":[],"ref":null,"value":false},"articlesLangRussian":{"errors":[],"ref":null,"value":false},"agreement":{"errors":[],"ref":null,"value":false},"email":{"errors":[],"ref":null,"value":true},"digest":{"errors":[],"ref":null,"value":true}}},"similarList":{"similarListIds":[],"similarListRefs":null},"ssr":{"error":null,"isDataLoaded":false,"isDataLoading":false,"isHydrationFailed":false,"isServer":false},"userHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"userInvites":{"availableInvites":0,"usedInvitesIds":[],"usedInvitesRefs":{},"usedInvitesPagesCount":0,"unusedInvitesIds":[],"unusedInvitesRefs":{},"unusedInvitesPagesCount":0},"users":{"authorRefs":{},"authorIds":{},"pagesCount":{},"authorProfiles":{},"userHubs":{},"userInvitations":{},"authorFollowers":{},"authorFollowed":{},"karmaStats":[],"statistics":null,"isLoading":false,"authorFollowersLoading":false,"authorFollowedLoading":false,"userHubsLoading":false,"userInvitationsLoading":false,"route":{}},"viewport":{"prevScrollY":{},"scrollY":0,"width":0},"tracker":{"items":{},"pagesCache":{},"markedViewedSilently":{},"markedRead":{},"unreadCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null},"unviewedCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null}}};(function(){var s;(s=document.currentScript||document.scripts[document.scripts.length-1]).parentNode.removeChild(s);}());</script>
+<script src="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" defer></script><script src="https://assets.habr.com/habr-web/js/app.c0af73e7.js" defer></script>
+
+
+
+    <script>
+      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+        (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+        m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+      })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+    </script>
+  
+  <script type="text/javascript" >
+    (function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+    m[i].l=1*new Date();k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})
+    (window, document, "script", "https://mc.yandex.ru/metrika/tag.js", "ym");
+
+    ym(24049213, "init", {
+      defer:true,
+      trackLinks:true,
+      accurateTrackBounce:true,
+      webvisor:false,
+    });
+  </script>
+  <noscript>
+    <div>
+      <img src="https://mc.yandex.ru/watch/24049213" style="position:absolute; left:-9999px;" alt="" />
+    </div>
+  </noscript>
+  
+    <script type="text/javascript">
+      window.addEventListener('load', function () {
+        setTimeout(() => {
+          const img = new Image();
+          img.src = 'https://vk.com/rtrg?p=VK-RTRG-421343-57vKE';
+        }, 0);
+      });
+    </script>
+  
+</body>
+</html>

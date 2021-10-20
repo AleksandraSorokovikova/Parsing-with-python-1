@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="ru" data-vue-meta="%7B%22lang%22:%7B%22ssr%22:%22ru%22%7D%7D">
+<head >
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
+  <title>Indexes in PostgreSQL — 10 (Bloom) / Хабр</title>
+  <style>
+    /* cyrillic-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSxf6TF0.woff2) format('woff2');
+      unicode-range: U+0460-052F, U+1C80-1C88, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+    }
+
+    /* cyrillic */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveQhf6TF0.woff2) format('woff2');
+      unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+    }
+
+    /* latin-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSBf6TF0.woff2) format('woff2');
+      unicode-range: U+0100-024F, U+0259, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20CF, U+2113, U+2C60-2C7F, U+A720-A7FF;
+    }
+
+    /* latin */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveRhf6.woff2) format('woff2');
+      unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+    }
+  </style>
+  <link rel="preload" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" as="script"><link rel="preload" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/app.c0af73e7.js" as="script">
+  <link rel="stylesheet" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css"><link rel="stylesheet" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css">
+  <script>window.i18nFetch = new Promise((res, rej) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open('GET', '/js/i18n/ru-compiled.85eb77f0b17c8235e7b64b9f81ea5ec2.json');
+          xhr.responseType = 'json';
+          xhr.onload = function(e) {
+            if (this.status === 200) {
+              res({ru: xhr.response});
+            } else {
+              rej(e);
+            }
+          };
+          xhr.send();
+        });</script>
+  
+  <script data-vue-meta="ssr" src="/js/ads.js" onload="window['zhY4i4nJ9K'] = true" data-vmid="checkad"></script><script data-vue-meta="ssr" type="application/ld+json" data-vmid="ldjson-schema">{"@context":"http:\/\/schema.org","@type":"Article","mainEntityOfPage":{"@type":"WebPage","@id":"https:\/\/habr.com\/en\/company\/postgrespro\/blog\/452968\/"},"headline":"Indexes in PostgreSQL — 10 (Bloom)","datePublished":"2019-06-10T23:03:26+03:00","dateModified":"2019-06-11T00:33:27+03:00","author":{"@type":"Person","name":"Егор Рогов"},"publisher":{"@type":"Organization","name":"Habr","logo":{"@type":"ImageObject","url":"https:\/\/habrastorage.org\/webt\/a_\/lk\/9m\/a_lk9mjkccjox-zccjrpfolmkmq.png"}},"description":"In the previous articles we discussed PostgreSQL indexing engine and the interface of access methods, as well as hash indexes, B-trees, GiST, SP-GiST, GIN, RUM,...","url":"https:\/\/habr.com\/en\/company\/postgrespro\/blog\/452968\/#post-content-body","about":["c_postgrespro","h_postgresql","h_sql","f_develop"],"image":["https:\/\/habrastorage.org\/getpro\/habr\/formulas\/e2e\/33f\/15a\/e2e33f15a96008ca33579599483c4531.svg","https:\/\/habrastorage.org\/getpro\/habr\/formulas\/16d\/a50\/7b2\/16da507b2fc389688ef0659939dcc647.svg","https:\/\/habrastorage.org\/getpro\/habr\/formulas\/1e8\/0c3\/b30\/1e80c3b3087c0a57b68ad11261a9ec2b.svg","https:\/\/habrastorage.org\/webt\/tl\/v3\/xp\/tlv3xpdlc4iw25iuma6yurx8wto.png","https:\/\/habrastorage.org\/getpro\/habr\/formulas\/839\/f25\/c27\/839f25c2746382debd4f08ea25ad5ecf.svg","https:\/\/habrastorage.org\/getpro\/habr\/formulas\/e6b\/7bb\/e5a\/e6b7bbe5a15e26a7639837621853680c.svg","https:\/\/habrastorage.org\/getpro\/habr\/formulas\/08d\/9fa\/efb\/08d9faefbe272bdf8fbb80773542e343.svg","https:\/\/habrastorage.org\/getpro\/habr\/formulas\/286\/00c\/c5c\/28600cc5ccfd94fce5cd82c98f2ffa99.svg","https:\/\/habrastorage.org\/getpro\/habr\/formulas\/ede\/b88\/0f9\/edeb880f9f7b63330852174a59d9f35f.svg","https:\/\/habrastorage.org\/getpro\/habr\/formulas\/3dd\/623\/269\/3dd6232691a91e15451071bb55ed8001.svg","https:\/\/habrastorage.org\/getpro\/habr\/formulas\/a98\/05b\/342\/a9805b3422e51c726fc4b1931f2d51aa.svg","https:\/\/habrastorage.org\/getpro\/habr\/formulas\/adf\/b7c\/b2f\/adfb7cb2fda49d6e7e7af24069329b98.svg","https:\/\/habrastorage.org\/getpro\/habr\/formulas\/ab9\/5e9\/bac\/ab95e9bac40f21b55c6f1580040426d3.svg","https:\/\/habrastorage.org\/getpro\/habr\/formulas\/1c6\/b64\/461\/1c6b644610ec8d7b67fd2272e8779b07.svg","https:\/\/habrastorage.org\/getpro\/habr\/formulas\/e54\/94f\/b78\/e5494fb7834c36d0265d160228fc1887.svg"]}</script>
+  <script src="//www.googletagservices.com/tag/js/gpt.js" async></script>
+  <style>.grecaptcha-badge{visibility: hidden;}</style>
+  <meta name="habr-version" content="2.49.0">
+  
+  <meta data-vue-meta="ssr" property="fb:app_id" content="444736788986613"><meta data-vue-meta="ssr" property="fb:pages" content="472597926099084"><meta data-vue-meta="ssr" name="twitter:card" content="summary_large_image"><meta data-vue-meta="ssr" name="twitter:site" content="@habr_eng"><meta data-vue-meta="ssr" property="og:title" content="Indexes in PostgreSQL — 10 (Bloom)" data-vmid="og:title"><meta data-vue-meta="ssr" name="twitter:title" content="Indexes in PostgreSQL — 10 (Bloom)" data-vmid="twitter:title"><meta data-vue-meta="ssr" name="aiturec:title" content="Indexes in PostgreSQL — 10 (Bloom)" data-vmid="aiturec:title"><meta data-vue-meta="ssr" name="description" content="In the previous articles we discussed PostgreSQL indexing engine and the interface of access methods, as well as hash indexes, B-trees, GiST, SP-GiST, GIN, RUM, and BRIN. But we still need to look at..." data-vmid="description"><meta data-vue-meta="ssr" itemprop="description" content="In the previous articles we discussed PostgreSQL indexing engine and the interface of access methods, as well as hash indexes, B-trees, GiST, SP-GiST, GIN, RUM, and BRIN. But we still need to look at..." data-vmid="description:itemprop"><meta data-vue-meta="ssr" property="og:description" content="In the previous articles we discussed PostgreSQL indexing engine and the interface of access methods, as well as hash indexes, B-trees, GiST, SP-GiST, GIN, RUM, and BRIN. But we still need to look at..." data-vmid="og:description"><meta data-vue-meta="ssr" name="twitter:description" content="In the previous articles we discussed PostgreSQL indexing engine and the interface of access methods, as well as hash indexes, B-trees, GiST, SP-GiST, GIN, RUM, and BRIN. But we still need to look at..." data-vmid="twitter:description"><meta data-vue-meta="ssr" property="aiturec:description" content="In the previous articles we discussed PostgreSQL indexing engine and the interface of access methods, as well as hash indexes, B-trees, GiST, SP-GiST, GIN, RUM, and BRIN. But we still need to look at..." data-vmid="aiturec:description"><meta data-vue-meta="ssr" itemprop="image" content="https://habr.com/share/publication/452968/c9429709d86072ce0c2eae7261ab2a45/" data-vmid="image:itemprop"><meta data-vue-meta="ssr" property="og:image" content="https://habr.com/share/publication/452968/c9429709d86072ce0c2eae7261ab2a45/" data-vmid="og:image"><meta data-vue-meta="ssr" property="aiturec:image" content="https://habr.com/share/publication/452968/c9429709d86072ce0c2eae7261ab2a45/" data-vmid="aiturec:image"><meta data-vue-meta="ssr" name="twitter:image" content="https://habr.com/share/publication/452968/c9429709d86072ce0c2eae7261ab2a45/" data-vmid="twitter:image"><meta data-vue-meta="ssr" property="vk:image" content="https://habr.com/share/publication/452968/c9429709d86072ce0c2eae7261ab2a45/" data-vmid="vk:image"><meta data-vue-meta="ssr" property="aiturec:item_id" content="452968" data-vmid="aiturec:item_id"><meta data-vue-meta="ssr" property="aiturec:datetime" content="2019-06-10T20:03:26.000Z" data-vmid="aiturec:datetime"><meta data-vue-meta="ssr" property="og:type" content="article" data-vmid="og:type"><meta data-vue-meta="ssr" property="og:locale" content="en_US" data-vmid="og:locale"><meta data-vue-meta="ssr" property="og:image:width" content="1200" data-vmid="og:image:width"><meta data-vue-meta="ssr" property="og:image:height" content="630" data-vmid="og:image:height">
+  <link data-vue-meta="ssr" href="https://habr.com/ru/rss/post/452968/?fl=ru" type="application/rss+xml" title="" rel="alternate" name="rss"><link data-vue-meta="ssr" href="https://habr.com/en/company/postgrespro/blog/452968/" rel="canonical" data-vmid="canonical"><link data-vue-meta="ssr" data-vmid="hreflang"><link data-vue-meta="ssr" image_src="image" href="https://habr.com/share/publication/452968/c9429709d86072ce0c2eae7261ab2a45/" data-vmid="image:href">
+  <meta name="apple-mobile-web-app-status-bar-style" content="#303b44">
+  <meta name="msapplication-TileColor" content="#629FBC">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="16x16"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-16.png"
+  >
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="32x32"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-32.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="76x76"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-76.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="120x120"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="152x152"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-152.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="180x180"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-180.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="256x256"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-256.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1136x640.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2436x1125.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1792x828.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_828x1792.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1334x750.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2208x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1125x2436.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2208.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2732x2048.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2688x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2224x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_750x1334.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x2732.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2388x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2224.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_640x1136.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2388.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x1536.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1536x2048.png"
+  >
+  <link
+    rel="mask-icon"
+    color="#77a2b6"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.svg"
+  >
+  <link
+    crossorigin="use-credentials"
+    href="/manifest.webmanifest"
+    rel="manifest"
+  >
+</head>
+<body>
+
+
+<div id="app" data-server-rendered="true" data-async-called="true"><div class="tm-layout__wrapper"><!----> <div></div> <!----> <header class="tm-header"><div class="tm-page-width"><div class="tm-header__container"><!----> <span class="tm-header__logo-wrap"><a href="/ru/" class="tm-header__logo tm-header__logo_ru"><svg height="16" width="16" class="tm-svg-img tm-header__icon"><title>Хабр</title> <use xlink:href="/img/habr-logo-ru.svg#logo"></use></svg></a> <span class="tm-header__beta-sign" style="display:none;">β</span></span> <div class="tm-dropdown tm-header__projects"><div class="tm-dropdown__head"><button class="tm-header__dropdown-toggle"><svg height="16" width="16" class="tm-svg-img tm-header__icon tm-header__icon_dropdown"><title>Открыть список</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#arrow-down"></use></svg></button></div> <!----></div> <a href="/ru/sandbox/start/" class="tm-header__become-author-btn">
+            Как стать автором
+          </a> <div class="tm-feature tm-header__feature tm-feature_variant-inline"><!----></div> <!----> <!----></div></div></header> <div class="tm-layout"><div class="tm-page-progress-bar"></div> <div data-menu-sticky="true" class="tm-base-layout__header tm-base-layout__header_is-sticky"><div class="tm-page-width"><div class="tm-base-layout__header-wrapper"><div class="tm-main-menu"><div class="tm-main-menu__section"><nav class="tm-main-menu__section-content"><!----> <a href="/ru/all/" class="tm-main-menu__item">
+        Все потоки
+      </a> <a href="/ru/flows/develop/" class="tm-main-menu__item">
+          Разработка
+        </a><a href="/ru/flows/admin/" class="tm-main-menu__item">
+          Администрирование
+        </a><a href="/ru/flows/design/" class="tm-main-menu__item">
+          Дизайн
+        </a><a href="/ru/flows/management/" class="tm-main-menu__item">
+          Менеджмент
+        </a><a href="/ru/flows/marketing/" class="tm-main-menu__item">
+          Маркетинг
+        </a><a href="/ru/flows/popsci/" class="tm-main-menu__item">
+          Научпоп
+        </a></nav></div></div> <div class="tm-header-user-menu tm-base-layout__user-menu"><a href="/ru/search/" class="tm-header-user-menu__item tm-header-user-menu__search"><svg height="24" width="24" class="tm-svg-img tm-header-user-menu__icon tm-header-user-menu__icon_search tm-header-user-menu__icon_dark"><title>Поиск</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#search"></use></svg></a> <!----> <!----> <!----> <div class="tm-header-user-menu__item tm-header-user-menu__user_desktop"><div class="tm-dropdown"><div class="tm-dropdown__head"><svg height="24" width="24" data-test-id="menu-toggle-guest" class="tm-svg-img tm-header-user-menu__icon"><title>Профиль</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#header-user"></use></svg> <!----></div> <!----></div> <!----></div> <!----></div></div></div></div> <!----> <div class="tm-page-width"></div> <main class="tm-layout__container"><div hl="ru" companyName="postgrespro" data-async-called="true" class="tm-page"><div class="tm-page-width"><div class="tm-page__header"><!----></div> <div class="tm-page__wrapper"><div class="tm-page__main tm-page__main_has-sidebar"><div class="pull-down"><div class="pull-down__header" style="height:0px;"><div class="pull-down__content" style="bottom:10px;"><svg height="24" width="24" class="tm-svg-img pull-down__arrow"><title>Обновить</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#pull-arrow"></use></svg></div></div> <div class="tm-article-presenter"><div class="tm-company-card tm-company-article__company-card"><div class="tm-company-card__info"><div class="tm-company-card__header"><a href="/ru/company/postgrespro/profile/" class="tm-company-card__avatar"><div class="tm-entity-image"><img alt="" height="48" src="//habrastorage.org/getpro/habr/company/4e0/339/621/4e0339621abc865fefb88f9e9f44748f.jpg" width="48" class="tm-entity-image__pic"></div></a> <!----> <div class="tm-rating tm-company-card__rating"><div class="tm-rating__header"> <div class="tm-rating__counter">218.69</div></div> <div class="tm-rating__text">
+    Рейтинг
+  </div></div></div> <div class="tm-company-card__info"><a href="/ru/company/postgrespro/profile/" class="tm-company-card__name">
+        Postgres Professional
+      </a> <div class="tm-company-card__description">Разработчик СУБД Postgres Pro</div></div></div> <div class="tm-company-card__buttons"><!----> <!----></div></div> <div class="tm-article-presenter__body"><div class="tm-misprint-area"><div class="tm-misprint-area__wrapper"><article class="tm-article-presenter__content tm-article-presenter__content_narrow"><div class="tm-article-presenter__header"> <div class="tm-article-snippet tm-article-presenter__snippet"><div class="tm-article-snippet__meta-container"><div class="tm-article-snippet__meta"><span class="tm-user-info tm-article-snippet__author"><a href="/ru/users/erogov/" title="erogov" class="tm-user-info__userpic"><div class="tm-entity-image"><img alt="" height="24" loading="lazy" src="//habrastorage.org/r/w32/getpro/habr/avatars/d16/573/7e4/d165737e421383f77f007015ebd01fb1.jpg" width="24" class="tm-entity-image__pic"></div></a> <span class="tm-user-info__user"><a href="/ru/users/erogov/" class="tm-user-info__username">
+      erogov
+    </a> </span></span> <span class="tm-article-snippet__datetime-published"><time datetime="2019-06-10T20:03:26.000Z" title="2019-06-10, 23:03">10  июня  2019 в 23:03</time></span></div> <!----></div> <h1 lang="en" class="tm-article-snippet__title tm-article-snippet__title_h1"><span>Indexes in PostgreSQL — 10 (Bloom)</span></h1> <div class="tm-article-snippet__hubs"><span class="tm-article-snippet__hubs-item"><a href="/ru/company/postgrespro/blog/" class="tm-article-snippet__hubs-item-link router-link-active"><span>Блог компании Postgres Professional</span> <!----></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/postgresql/" class="tm-article-snippet__hubs-item-link"><span>PostgreSQL</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/sql/" class="tm-article-snippet__hubs-item-link"><span>SQL</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span></div> <div class="tm-article-snippet__labels"><div class="tm-article-snippet__label"><span>
+        Перевод
+      </span></div></div> <!----> <!----></div></div> <div class="tm-article-presenter__origin"><a href="https://habr.com/ru/company/postgrespro/blog/349224/" target="_blank" class="tm-article-presenter__origin-link">
+                Автор оригинала:
+                <span>
+                  Egor Rogov
+                </span></a></div> <div data-gallery-root="" lang="en" class="tm-article-body"><div id="post-content-body" class="article-formatted-body article-formatted-body_version-1"><div xmlns="http://www.w3.org/1999/xhtml">In the previous articles we discussed PostgreSQL <a href="https://habr.com/ru/company/postgrespro/blog/441962/">indexing engine</a> and the interface of access methods, as well as <a href="https://habr.com/post/442776/">hash indexes</a>, <a href="https://habr.com/ru/company/postgrespro/blog/443284/">B-trees</a>, <a href="https://habr.com/ru/company/postgrespro/blog/444742/">GiST</a>, <a href="https://habr.com/ru/company/postgrespro/blog/446624/">SP-GiST</a>, <a href="https://habr.com/ru/company/postgrespro/blog/448746/">GIN</a>, <a href="https://habr.com/ru/company/postgrespro/blog/452116/">RUM</a>, and <a href="https://habr.com/ru/company/postgrespro/blog/452900/">BRIN</a>. But we still need to look at Bloom indexes.<br/>
+<br/>
+<h1>Bloom</h1><br/>
+<h2>General concept</h2><br/>
+A classical Bloom filter is a data structure that enables us to quickly check membership of an element in a set. The filter is highly compact, but allows false positives: it can mistakenly consider an element to be a member of a set (false positive), but it is not permitted to consider an element of a set not to be a member (false negative).<br/>
+<br/>
+The filter is an array of <img src="https://habrastorage.org/getpro/habr/formulas/e2e/33f/15a/e2e33f15a96008ca33579599483c4531.svg" alt="$m$" data-tex="inline"/> bits (also called a <em>signature</em>) that is initially filled with zeros. <img src="https://habrastorage.org/getpro/habr/formulas/16d/a50/7b2/16da507b2fc389688ef0659939dcc647.svg" alt="$k$" data-tex="inline"/> different hash functions are chosen that map any element of the set to <img src="https://habrastorage.org/getpro/habr/formulas/16d/a50/7b2/16da507b2fc389688ef0659939dcc647.svg" alt="$k$" data-tex="inline"/> bits of the signature. To add an element to the set, we need to set each of these bits in the signature to one. Consequently, if all the bits corresponding to an element are set to one, the element can be a member of the set, but if at least one bit equals zero, the element is not in the set for sure.<br/>
+<br/>
+In the case of a DBMS, we actually have <img src="https://habrastorage.org/getpro/habr/formulas/1e8/0c3/b30/1e80c3b3087c0a57b68ad11261a9ec2b.svg" alt="$N$" data-tex="inline"/> separate filters built for each index row. As a rule, several fields are included in the index, and it's values of these fields that compose the set of elements for each row.<br/>
+<br/>
+By choosing the length of the signature <img src="https://habrastorage.org/getpro/habr/formulas/e2e/33f/15a/e2e33f15a96008ca33579599483c4531.svg" alt="$m$" data-tex="inline"/>, we can find a trade-off between the index size and the probability of false positives. The application area for Bloom index is large, considerably «wide» tables to be queried using filters on each of the fields. This access method, like BRIN, can be regarded as an accelerator of sequential scan: all the matches found by the index must be rechecked with the table, but there is a chance to avoid considering most of the rows at all.<br/>
+<a name="habracut"></a><br/>
+<h2>Structure</h2><br/>
+We've already discussed signature trees in the context of <a href="https://habr.com/ru/company/postgrespro/blog/444742/">GiST</a> access method. Unlike these trees, Bloom index is a flat structure. It consists of a metapage followed by regular pages with index rows. Each index row contains a signature and reference to a table row (TID), as schematically shown in the figure.<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/tl/v3/xp/tlv3xpdlc4iw25iuma6yurx8wto.png"/><br/>
+<br/>
+<h3>Creation and choice of parameter values</h3><br/>
+When creating Bloom index, a total size of the signature («length») is specified, as well as the number of bits to be set <em>for each individual field</em> included in the index («col1»—«col32»):<br/>
+<br/>
+<pre><code class="pgsql">create index on ... using bloom(...) with (length=..., col1=..., col2=..., ...);
+</code></pre><br/>
+The way to specify the number of bits looks odd: these numbers must be parameters of an operator class rather than the index. The thing is that operator classes cannot be parametrized at present, although <a href="https://commitfest.postgresql.org/17/1559/">work on this</a> is in progress.<br/>
+<br/>
+<blockquote>Unfortunately, there is no further progress on this.<br/>
+</blockquote><br/>
+How can we choose suitable values? <a href="https://en.wikipedia.org/wiki/Bloom_filter">The theory</a> states that given the probability <img src="https://habrastorage.org/getpro/habr/formulas/839/f25/c27/839f25c2746382debd4f08ea25ad5ecf.svg" alt="$p$" data-tex="inline"/> of a filter to return a false positive, the optimal number of signature bits can be estimated as <img src="https://habrastorage.org/getpro/habr/formulas/e6b/7bb/e5a/e6b7bbe5a15e26a7639837621853680c.svg" alt="$m = −n\log_2 p / \ln 2$" data-tex="inline"/>, where <img src="https://habrastorage.org/getpro/habr/formulas/08d/9fa/efb/08d9faefbe272bdf8fbb80773542e343.svg" alt="$n$" data-tex="inline"/> is the number of fields in the index and the number of bits to be set is <img src="https://habrastorage.org/getpro/habr/formulas/286/00c/c5c/28600cc5ccfd94fce5cd82c98f2ffa99.svg" alt="$k = −\log_2 p$" data-tex="inline"/>.<br/>
+<br/>
+The signature is stored inside the index as an array of two-byte integer numbers, so the value of <img src="https://habrastorage.org/getpro/habr/formulas/e2e/33f/15a/e2e33f15a96008ca33579599483c4531.svg" alt="$m$" data-tex="inline"/> can be safely rounded up to <img src="https://habrastorage.org/getpro/habr/formulas/ede/b88/0f9/edeb880f9f7b63330852174a59d9f35f.svg" alt="$16$" data-tex="inline"/>.<br/>
+<br/>
+When choosing the probability <img src="https://habrastorage.org/getpro/habr/formulas/839/f25/c27/839f25c2746382debd4f08ea25ad5ecf.svg" alt="$p$" data-tex="inline"/>, we need to take into account the size of the index, which will approximately equal <img src="https://habrastorage.org/getpro/habr/formulas/3dd/623/269/3dd6232691a91e15451071bb55ed8001.svg" alt="$(m/8 + 6)N$" data-tex="inline"/>, where <img src="https://habrastorage.org/getpro/habr/formulas/1e8/0c3/b30/1e80c3b3087c0a57b68ad11261a9ec2b.svg" alt="$N$" data-tex="inline"/> is the number of rows in the table and <img src="https://habrastorage.org/getpro/habr/formulas/a98/05b/342/a9805b3422e51c726fc4b1931f2d51aa.svg" alt="$6$" data-tex="inline"/> is the size of the TID pointer in bytes.<br/>
+<br/>
+A few points to note:<br/>
+<br/>
+<ul>
+<li>The probability <img src="https://habrastorage.org/getpro/habr/formulas/839/f25/c27/839f25c2746382debd4f08ea25ad5ecf.svg" alt="$p$" data-tex="inline"/> of a false positive relates to one filter, therefore, we expect to get <img src="https://habrastorage.org/getpro/habr/formulas/adf/b7c/b2f/adfb7cb2fda49d6e7e7af24069329b98.svg" alt="$Np$" data-tex="inline"/> false positives during table scan (of course, for a query that returns few rows). For example, for a table with one million rows and the probability 0.01, in the query plan, on average, we can expect «Rows Removed by Index Recheck: 10000».</li>
+<li>Bloom filter is a probabilistic structure. It makes sense to talk of specific numbers only when averaging quite a lot of values, while in each particular case, we can get whatever we can think of.</li>
+<li>The above estimates are based on an idealized mathematical model and a few assumptions. In practice, the result is likely to be worse. So, do not overestimate formulas: they are only a means to choose initial values for future experiments.</li>
+<li>For each field individually, the access method enables us to choose the number of bits to be set. There is a reasonable assumption that actually the optimal number depends on the distribution of the values in the column. To deeper dive, you can read <a href="http://blog.coelho.net/database/2016/12/11/postgresql-bloom-index.html">this article</a> (references to other researches are welcome). But reread the previous item first.</li>
+</ul><br/>
+<h3>Updating</h3><br/>
+When a new row is inserted in a table, a signature is created: for values of all indexed fields, all their corresponding bits are set to one. In theory, we must have k different hash functions, while in practice, the pseudo-random number generator suffices, whose seed is chosen each time with the help of the only hash function.<br/>
+<br/>
+A regular Bloom filter does not support deletion of elements, but this is not required for Bloom index: when a table row is deleted, the entire signature is deleted, along with the index row.<br/>
+<br/>
+As usual, an update consists of deletion of the outdated row version and insertion of the new one (the signature being calculated from scratch).<br/>
+<br/>
+<h3>Scanning</h3><br/>
+Since the only thing that Bloom filter can do is check membership of an element in a set, the only operation supported by Bloom index is an equality check (like in hash index).<br/>
+<br/>
+As we already mentioned, Bloom index is flat, so in the course of index access, it is always read successively and entirely. In the course of reading, a bitmap is build, which is then used to access the table.<br/>
+<br/>
+In a regular index access, it is assumed that few index rows will have to be read and, in addition, they can be soon needed again, therefore, they are stored in a buffer cache. Reading of Bloom index, however, is actually a sequential scan. To prevent from evicting useful information out of the cache, reading is done through a small buffer ring, exactly the same way as for sequential scan of tables.<br/>
+<br/>
+We should take into account that the more the size of Bloom index, the less attractive it will seem to the planner. This dependency is linear, unlike for tree-like indexes.<br/>
+<br/>
+<h2>Example</h2><br/>
+<h3>Table</h3><br/>
+Let's look at Bloom index by example of a big «flights_bi» table from <a href="https://habr.com/ru/company/postgrespro/blog/452900/">the previous article</a>. To remind you, the size of this table is 4 GB with approximately 30 million rows. Definition of the table:<br/>
+<br/>
+<pre><code class="pgsql">demo=# \d flights_bi
+</code></pre><pre><code class="plaintext">                          Table "bookings.flights_bi"
+       Column       |           Type           | Collation | Nullable | Default 
+--------------------+--------------------------+-----------+----------+---------
+ airport_code       | character(3)             |           |          | 
+ airport_coord      | point                    |           |          | 
+ airport_utc_offset | interval                 |           |          | 
+ flight_no          | character(6)             |           |          | 
+ flight_type        | text                     |           |          | 
+ scheduled_time     | timestamp with time zone |           |          | 
+ actual_time        | timestamp with time zone |           |          | 
+ aircraft_code      | character(3)             |           |          | 
+ seat_no            | character varying(4)     |           |          | 
+ fare_conditions    | character varying(10)    |           |          | 
+ passenger_id       | character varying(20)    |           |          | 
+ passenger_name     | text                     |           |          | 
+</code></pre><br/>
+Let's first create the extension: although Bloom index is included in a standard delivery starting with version 9.6, it is unavailable by default.<br/>
+<br/>
+<pre><code class="pgsql">demo=# create extension bloom;
+</code></pre><br/>
+Last time we could index three fields using BRIN («scheduled_time», «actual_time», «airport_utc_offset»). Since Bloom indexes do not depend on the physical order of the data, let's try to include almost all fields of the table in the index. Let's however exclude the time fields («scheduled_time» and «actual_time»): the method only supports comparison for equality, but a query for exact time is hardly interesting to anybody (we could, however, build the index on an expression, rounding the time to a day, but we won't do this). We will also have to exclude the geographical coordinates of airports («airport_coord»): looking ahead, the «point» type is not supported.<br/>
+<br/>
+To choose the parameter values, let's set the probability of a false positive to 0.01 (having in mind that actually we will get more). The above formulas for <img src="https://habrastorage.org/getpro/habr/formulas/ab9/5e9/bac/ab95e9bac40f21b55c6f1580040426d3.svg" alt="$n = 9$" data-tex="inline"/> and <img src="https://habrastorage.org/getpro/habr/formulas/1c6/b64/461/1c6b644610ec8d7b67fd2272e8779b07.svg" alt="$N = 30\,000\,000$" data-tex="inline"/> give the signature size of 96 bit and suggest setting 7 bits per element. The estimated size of the index is 515 MB (approximately one eighth of the table).<br/>
+<br/>
+(With the minimal signature size of 16 bits, the formulas promise the index size that is two times smaller, but permit to rely only on the probability of 0.5, which is very poor.)<br/>
+<br/>
+<h3>Operator classes</h3><br/>
+So, let's try to create the index.<br/>
+<br/>
+<pre><code class="pgsql">demo=# create index flights_bi_bloom on flights_bi
+using bloom(airport_code, airport_utc_offset, flight_no, flight_type, aircraft_code, seat_no, fare_conditions, passenger_id, passenger_name)
+with (length=96, col1=7, col2=7, col3=7, col4=7, col5=7, col6=7, col7=7, col8=7, col9=7);
+</code></pre><pre><code class="plaintext">ERROR:  data type character has no default operator class for access method "bloom"
+HINT:  You must specify an operator class for the index or define a default operator class for the data type.
+</code></pre><br/>
+Unfortunately, the extension provides us with only two operator classes:<br/>
+<br/>
+<pre><code class="pgsql">demo=# select opcname, opcintype::regtype
+from pg_opclass
+where opcmethod = (select oid from pg_am where amname = 'bloom')
+order by opcintype::regtype::text;
+</code></pre><pre><code class="plaintext"> opcname  | opcintype
+----------+-----------
+ int4_ops | integer
+ text_ops | text
+(2 rows)
+</code></pre><br/>
+But fortunately, it is pretty easy to create similar classes for other data types as well. An operator class for Bloom access method must contain exactly one operator — equality — and exactly one auxiliary function — hashing. The simplest way to find the needed operators and functions for an arbitrary type is to look into the system catalog for operator classes of «hash» method:<br/>
+<br/>
+<pre><code class="pgsql">demo=# select distinct
+       opc.opcintype::regtype::text,
+       amop.amopopr::regoperator,
+       ampr.amproc
+  from pg_am am, pg_opclass opc, pg_amop amop, pg_amproc ampr
+ where am.amname = 'hash'
+   and opc.opcmethod = am.oid
+   and amop.amopfamily = opc.opcfamily
+   and amop.amoplefttype = opc.opcintype
+   and amop.amoprighttype = opc.opcintype
+   and ampr.amprocfamily = opc.opcfamily
+   and ampr.amproclefttype = opc.opcintype
+order by opc.opcintype::regtype::text;
+</code></pre><pre><code class="plaintext"> opcintype |       amopopr        |    amproc    
+-----------+----------------------+--------------
+ abstime   | =(abstime,abstime)   | hashint4
+ aclitem   | =(aclitem,aclitem)   | hash_aclitem
+ anyarray  | =(anyarray,anyarray) | hash_array
+ anyenum   | =(anyenum,anyenum)   | hashenum
+ anyrange  | =(anyrange,anyrange) | hash_range
+ ...
+</code></pre><br/>
+We will create two missing classes using this information:<br/>
+<br/>
+<pre><code class="pgsql">demo=# CREATE OPERATOR CLASS character_ops
+DEFAULT FOR TYPE character USING bloom AS
+  OPERATOR  1  =(character,character),
+  FUNCTION  1  hashbpchar;
+
+demo=# CREATE OPERATOR CLASS interval_ops
+DEFAULT FOR TYPE interval USING bloom AS
+  OPERATOR  1  =(interval,interval),
+  FUNCTION  1  interval_hash;
+</code></pre><br/>
+A hash function is not defined for points («point» type), and it is for this reason that we cannot build Bloom index on such a field (just like we cannot perform a hash join on fields of this type).<br/>
+<br/>
+Trying again:<br/>
+<br/>
+<pre><code class="pgsql">demo=# create index flights_bi_bloom on flights_bi
+using bloom(airport_code, airport_utc_offset, flight_no, flight_type, aircraft_code, seat_no, fare_conditions, passenger_id, passenger_name)
+with (length=96, col1=7, col2=7, col3=7, col4=7, col5=7, col6=7, col7=7, col8=7, col9=7);
+</code></pre><pre><code class="plaintext">CREATE INDEX
+</code></pre><br/>
+The size of the index is 526 MB, which is somewhat larger than expected. This is because the formula does not take page overhead into account.<br/>
+<br/>
+<pre><code class="pgsql">demo=# select pg_size_pretty(pg_total_relation_size('flights_bi_bloom'));
+</code></pre><pre><code class="plaintext"> pg_size_pretty
+----------------
+ 526 MB
+(1 row)
+</code></pre><br/>
+<h3>Queries</h3><br/>
+We can now perform search using various criteria, and the index will support it.<br/>
+<br/>
+As we already mentioned, Bloom filter is a probabilistic structure, therefore, the efficiency highly depends on each particular case. For example, let's look at the rows related to two passengers, Miroslav Sidorov:<br/>
+<br/>
+<pre><code class="pgsql">demo=# explain(costs off,analyze)
+select * from flights_bi where passenger_name='MIROSLAV SIDOROV';
+</code></pre><pre><code class="plaintext">                                            QUERY PLAN
+--------------------------------------------------------------------------------------------------
+ Bitmap Heap Scan on flights_bi (actual time=2639.010..3010.692 rows=2 loops=1)
+   Recheck Cond: (passenger_name = 'MIROSLAV SIDOROV'::text)
+   Rows Removed by Index Recheck: 38562
+   Heap Blocks: exact=21726
+   ->  Bitmap Index Scan on flights_bi_bloom (actual time=1065.191..1065.191 rows=38564 loops=1)
+         Index Cond: (passenger_name = 'MIROSLAV SIDOROV'::text)
+ Planning time: 0.109 ms
+ Execution time: 3010.736 ms
+</code></pre><br/>
+and Marfa Soloveva:<br/>
+<br/>
+<pre><code class="pgsql">demo=# explain(costs off,analyze)
+select * from flights_bi where passenger_name='MARFA SOLOVEVA';
+</code></pre><pre><code class="plaintext">                                            QUERY PLAN
+---------------------------------------------------------------------------------------------------
+ Bitmap Heap Scan on flights_bi (actual time=9980.884..10142.684 rows=2 loops=1)
+   Recheck Cond: (passenger_name = 'MARFA SOLOVEVA'::text)
+   Rows Removed by Index Recheck: 3950168
+   Heap Blocks: exact=45757 lossy=67332
+   ->  Bitmap Index Scan on flights_bi_bloom (actual time=1037.588..1037.588 rows=212972 loops=1)
+         Index Cond: (passenger_name = 'MARFA SOLOVEVA'::text)
+ Planning time: 0.157 ms
+ Execution time: 10142.730 ms
+</code></pre><br/>
+In one case, the filter allowed only 40 thousand false positives and as much as 4 million of them in the other one («Rows Removed by Index Recheck»). The execution times of the queries differ accordingly.<br/>
+<br/>
+And the following are the results of searching the same rows by the passenger ID rather than name. Miroslav:<br/>
+<br/>
+<pre><code class="pgsql">demo=# explain(costs off,analyze)
+demo-# select * from flights_bi where passenger_id='5864 006033';
+</code></pre><pre><code class="plaintext">                                           QUERY PLAN
+-------------------------------------------------------------------------------------------------
+ Bitmap Heap Scan on flights_bi (actual time=13747.305..16907.387 rows=2 loops=1)
+   Recheck Cond: ((passenger_id)::text = '5864 006033'::text)
+   Rows Removed by Index Recheck: 9620258
+   Heap Blocks: exact=50510 lossy=165722
+   ->  Bitmap Index Scan on flights_bi_bloom (actual time=937.202..937.202 rows=426474 loops=1)
+         Index Cond: ((passenger_id)::text = '5864 006033'::text)
+ Planning time: 0.110 ms
+ Execution time: 16907.423 ms
+</code></pre><br/>
+And Marfa:<br/>
+<br/>
+<pre><code class="pgsql">demo=# explain(costs off,analyze)
+select * from flights_bi where passenger_id='2461 559238';
+</code></pre><pre><code class="plaintext">                                            QUERY PLAN
+--------------------------------------------------------------------------------------------------
+ Bitmap Heap Scan on flights_bi (actual time=3881.615..3934.481 rows=2 loops=1)
+   Recheck Cond: ((passenger_id)::text = '2461 559238'::text)
+   Rows Removed by Index Recheck: 30669
+   Heap Blocks: exact=27513
+   ->  Bitmap Index Scan on flights_bi_bloom (actual time=1084.391..1084.391 rows=30671 loops=1)
+         Index Cond: ((passenger_id)::text = '2461 559238'::text)
+ Planning time: 0.120 ms
+ Execution time: 3934.517 ms
+</code></pre><br/>
+The efficiencies differ much again, and this time Marfa was more lucky.<br/>
+<br/>
+Note that search by two fields simultaneously will be done much more efficiently since the probability of a false positive <img src="https://habrastorage.org/getpro/habr/formulas/839/f25/c27/839f25c2746382debd4f08ea25ad5ecf.svg" alt="$p$" data-tex="inline"/> turns into <img src="https://habrastorage.org/getpro/habr/formulas/e54/94f/b78/e5494fb7834c36d0265d160228fc1887.svg" alt="$p^2$" data-tex="inline"/>:<br/>
+<br/>
+<pre><code class="pgsql">demo=# explain(costs off,analyze)
+select * from flights_bi
+where passenger_name='MIROSLAV SIDOROV'
+  and passenger_id='5864 006033';
+</code></pre><pre><code class="plaintext">                                                     QUERY PLAN
+--------------------------------------------------------------------------------------------------------------------
+ Bitmap Heap Scan on flights_bi (actual time=872.593..877.915 rows=2 loops=1)
+   Recheck Cond: (((passenger_id)::text = '5864 006033'::text)
+               AND (passenger_name = 'MIROSLAV SIDOROV'::text))
+   Rows Removed by Index Recheck: 357
+   Heap Blocks: exact=356
+   ->  Bitmap Index Scan on flights_bi_bloom (actual time=832.041..832.041 rows=359 loops=1)
+         Index Cond: (((passenger_id)::text = '5864 006033'::text)
+                   AND (passenger_name = 'MIROSLAV SIDOROV'::text))
+ Planning time: 0.524 ms
+ Execution time: 877.967 ms
+</code></pre><br/>
+However, search with Boolean «or» is not supported at all; this is a limitation of a planner rather than of the access method. Of course, an option remains to read the index twice, build two bitmaps, and join them, but this is most likely too costly for this plan to be chosen.<br/>
+<br/>
+<h2>Comparison with BRIN and Hash</h2><br/>
+Application areas of Bloom and BRIN indexes obviously intersect. These are large tables for which it is desirable to ensure search by different fields, the search accuracy being sacrificed to compactness.<br/>
+<br/>
+BRIN indexes are more compact (say, by up to dozens of megabytes in our example) and can support search by range, but have a strong limitation related to physical ordering of the data in a file. Bloom indexes are larger (hundreds of megabytes), but have no limitations except an availability of a suitable hash function.<br/>
+<br/>
+Like Bloom indexes, hash indexes support the only operation of equality check. Hash index ensures the search accuracy that is inaccessible for Bloom, but the index size is way larger (in our example, a gigabyte for only one field, and hash index cannot be created on several fields).<br/>
+<br/>
+<h2>Properties</h2><br/>
+As usual, let's look at the properties of Bloom (queries <a href="https://habr.com/ru/company/postgrespro/blog/442546/">have already been provided</a>).<br/>
+<br/>
+The following are the properties of the access method:<br/>
+<br/>
+<pre><code class="plaintext"> amname |     name      | pg_indexam_has_property
+--------+---------------+-------------------------
+ bloom  | can_order     | f
+ bloom  | can_unique    | f
+ bloom  | can_multi_col | t
+ bloom  | can_exclude   | f
+</code></pre><br/>
+Evidently, the access method enables us to build an index on several columns. It hardly makes sense to create Bloom index on one column.<br/>
+<br/>
+The following index-layer properties are available:<br/>
+<br/>
+<pre><code class="plaintext">     name      | pg_index_has_property
+---------------+-----------------------
+ clusterable   | f
+ index_scan    | f
+ bitmap_scan   | t
+ backward_scan | f
+</code></pre><br/>
+The only available scan technique is bitmap scan. Since the index is always scanned entirely, it does not make sense to implement a regular index access that returns rows TID by TID.<br/>
+<br/>
+<pre><code class="plaintext">        name        | pg_index_column_has_property 
+--------------------+------------------------------
+ asc                | f
+ desc               | f
+ nulls_first        | f
+ nulls_last         | f
+ orderable          | f
+ distance_orderable | f
+ returnable         | f
+ search_array       | f
+ search_nulls       | f
+</code></pre><br/>
+Only dashes are here; the method cannot even manipulate NULLs.<br/>
+<br/>
+<h2>And finally:</h2><br/>
+It's not impossible that this series of articles will be continued in future, when new index types of interest appear, but it's time to stop now.<br/>
+<br/>
+I'd like to express appreciation to my colleagues from Postgres Professional (some of them are the authors of many access methods discussed) for reading the drafts and providing their comments. And I'm, certainly, grateful to you for your patience and valuable comments. Your attention encouraged me to reach this point. Thank you!</div></div> <!----> <!----></div> <div class="tm-article-presenter__meta"><div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Теги:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bpostgresql%5D" class="tm-tags-list__link">postgresql</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bpostgres%5D" class="tm-tags-list__link">postgres</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bindex%5D" class="tm-tags-list__link">index</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bindexing%5D" class="tm-tags-list__link">indexing</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bsql%5D" class="tm-tags-list__link">sql</a></li></ul></div> <div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Хабы:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/company/postgrespro/blog/" class="tm-hubs-list__link router-link-active">
+    Блог компании Postgres Professional
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/postgresql/" class="tm-hubs-list__link">
+    PostgreSQL
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/sql/" class="tm-hubs-list__link">
+    SQL
+  </a></li></ul></div></div></article></div> <!----></div> <div class="tm-article-sticky-panel"><div class="tm-data-icons tm-article-sticky-panel__icons"><div class="tm-article-rating tm-data-icons__item"><div class="tm-votes-meter tm-article-rating__votes-switcher"><svg height="16" width="16" class="tm-svg-img tm-votes-meter__icon tm-votes-meter__icon_medium"><title>Всего голосов 17: ↑16 и ↓1</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-rating"></use></svg> <span title="Всего голосов 17: ↑16 и ↓1" class="tm-votes-meter__value tm-votes-meter__value_positive tm-votes-meter__value_medium">+15</span></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----> <span title="Количество просмотров" class="tm-icon-counter tm-data-icons__item"><svg height="16" width="16" class="tm-svg-img tm-icon-counter__icon"><title>Просмотры</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-views"></use></svg> <span class="tm-icon-counter__value">5K</span></span> <button title="Добавить в закладки" type="button" class="bookmarks-button tm-data-icons__item"><span title="Добавить в закладки" class="tm-svg-icon__wrapper bookmarks-button__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Добавить в закладки</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-favorite"></use></svg></span> <span title="Количество пользователей, добавивших публикацию в закладки" class="bookmarks-button__counter">
+    7
+  </span></button> <!----> <div title="Поделиться" class="tm-sharing tm-data-icons__item"><button type="button" class="tm-sharing__button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="tm-sharing__icon"><path fill="currentColor" d="M10.33.275l9.047 7.572a.2.2 0 010 .306l-9.048 7.572a.2.2 0 01-.328-.153V11c-8 0-9.94 6-9.94 6S-1 5 10 5V.428a.2.2 0 01.328-.153z"></path></svg></button> <!----></div> <DIV class="v-portal" style="display:none;"></DIV></div> </div></div> <!----> <!----> <div class="tm-article-presenter__footer"><div class="tm-article-blocks"><!----> <section class="tm-block tm-block_spacing-bottom"><!----> <div class="tm-block__body tm-block__body_variant-balanced"><div class="tm-article-author"><div class="tm-article-author__company"><div class="tm-article-author__company-card"><div class="tm-company-snippet"><a href="/ru/company/postgrespro/profile/" class="tm-company-snippet__logo-link"><div class="tm-entity-image"><img alt="" height="40" src="//habrastorage.org/getpro/habr/company/4e0/339/621/4e0339621abc865fefb88f9e9f44748f.jpg" width="40" class="tm-entity-image__pic"></div></a> <div class="tm-company-snippet__info"><a href="/ru/company/postgrespro/profile/" class="tm-company-snippet__title">Postgres Professional</a> <div class="tm-company-snippet__description">Разработчик СУБД Postgres Pro</div></div></div> <div class="tm-article-author__buttons"><!----> <!----></div></div> <div class="tm-article-author__company-contacts"><a href="https://facebook.com/PostgresProfessional" rel="noopener" target="_blank" class="tm-article-author__contact">
+      Facebook
+    </a><a href="https://twitter.com/PostgresPro" rel="noopener" target="_blank" class="tm-article-author__contact">
+      Twitter
+    </a><a href="https://vk.com/public101507899" rel="noopener" target="_blank" class="tm-article-author__contact">
+      ВКонтакте
+    </a><a href="https://plus.google.com/+PostgresproRuCompany" rel="noopener" target="_blank" class="tm-article-author__contact">
+      Google+
+    </a><a href="https://postgrespro.livejournal.com/" rel="noopener" target="_blank" class="tm-article-author__contact">
+      LiveJournal
+    </a></div> <div class="tm-article-author__separator"></div></div> <div class="tm-user-card tm-article-author__user-card tm-user-card_variant-article"><div class="tm-user-card__info-container"><div class="tm-user-card__header"><div class="tm-user-card__header-data"><a href="/ru/users/erogov/" class="tm-user-card__userpic tm-user-card__userpic_size-40"><div class="tm-entity-image"><img alt="" src="//habrastorage.org/getpro/habr/avatars/d16/573/7e4/d165737e421383f77f007015ebd01fb1.jpg" class="tm-entity-image__pic"></div></a> <div class="tm-user-card__meta"><div title=" 170 голосов " class="tm-karma tm-user-card__karma"><div class="tm-karma__votes tm-karma__votes_positive">
+    163.5
+  </div> <div class="tm-karma__text">
+    Карма
+  </div></div> <div title="Рейтинг пользователя" class="tm-rating tm-user-card__rating"><div class="tm-rating__header"> <div class="tm-rating__counter">55</div></div> <div class="tm-rating__text">
+    Рейтинг
+  </div></div></div></div></div> <div class="tm-user-card__info tm-user-card__info_variant-article"><div class="tm-user-card__title tm-user-card__title_variant-article"><span class="tm-user-card__name tm-user-card__name_variant-article">Егор Рогов</span> <a href="/ru/users/erogov/" class="tm-user-card__nickname tm-user-card__nickname_variant-article">
+          @erogov
+        </a> <!----></div> <p class="tm-user-card__short-info tm-user-card__short-info_variant-article">Пользователь</p></div></div> <div class="tm-user-card__buttons tm-user-card__buttons_variant-article"><!----> <!----> <!----> <!----> <!----></div></div> <div class="tm-article-author__user-contacts"><a href="http://egorius.dreamwidth.org/" rel="noopener" target="_blank" class="tm-article-author__contact">
+      Сайт
+    </a></div></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----></section> <div class="tm-article-blocks__comments"><div class="tm-article-page-comments"><div class="tm-article-comments-counter-link tm-article-comments-counter-button"><a href="/ru/company/postgrespro/blog/452968/comments/" class="tm-article-comments-counter-link__link tm-article-comments-counter-link__link_button-style"><svg height="16" width="16" class="tm-svg-img tm-article-comments-counter-link__icon tm-article-comments-counter-link__icon_contrasted"><title>Комментарии</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-comments"></use></svg> <span class="tm-article-comments-counter-link__value tm-article-comments-counter-link__value_contrasted">
+       Комментарии 2 
+    </span></a> <!----></div></div></div>  <!---->  <!----> <!----></div></div></div></div></div> <div class="tm-page__sidebar"><div class="tm-layout-sidebar"><div class="tm-layout-sidebar__placeholder_initial"></div> <div class="tm-sexy-sidebar tm-sexy-sidebar_initial" style="margin-top:0px;"><!----> <section class="tm-block tm-block_spacing-bottom"><header class="tm-block__header"><h2 class="tm-block__title">Информация</h2> <!----></header> <div class="tm-block__body"><div class="tm-company-basic-info"><dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Дата основания</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><time datetime="2015-01-26T21:00:00.000Z" title="2015-01-27, 00:00">27  января  2015</time></dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Местоположение</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap">
+    Россия
+  </dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Сайт</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><a href="http://www.postgrespro.ru/" target="_blank" class="tm-company-basic-info__link">
+      www.postgrespro.ru
+    </a></dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Численность</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap">
+    51–100 человек
+  </dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Дата регистрации</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><time datetime="2015-09-30T07:41:09.000Z" title="2015-09-30, 10:41">30  сентября  2015</time></dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Представитель</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><a href="/ru/users/x-wao/" class="tm-company-basic-info__link">
+      Иван Панченко
+    </a></dd></dl></div></div> <!----></section> <div class="tm-company-widgets"></div> <!----></div></div></div></div></div></div></main> <!----></div> <div class="tm-footer-menu"><div class="tm-page-width"><div class="tm-footer-menu__container"><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Ваш аккаунт
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr/?back=/ru/company/postgrespro/blog/452968/&amp;hl=ru" rel="nofollow" target="_self">
+                Войти
+              </a></li><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr-register/?back=/ru/company/postgrespro/blog/452968/&amp;hl=ru" rel="nofollow" target="_self">
+                Регистрация
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Разделы
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/" class="footer-menu__item-link router-link-active">
+                Публикации
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/news/" class="footer-menu__item-link">
+                Новости
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/hubs/" class="footer-menu__item-link">
+                Хабы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/companies/" class="footer-menu__item-link">
+                Компании
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/users/" class="footer-menu__item-link">
+                Авторы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/sandbox/" class="footer-menu__item-link">
+                Песочница
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Информация
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/docs/help/" class="footer-menu__item-link">
+                Устройство сайта
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/authors/codex/" class="footer-menu__item-link">
+                Для авторов
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/companies/corpblogs/" class="footer-menu__item-link">
+                Для компаний
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/docs/transparency/" class="footer-menu__item-link">
+                Документы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/agreement" target="_blank">
+                Соглашение
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/confidential/" target="_blank">
+                Конфиденциальность
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Услуги
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQLwRfQmXibiUlWaRg-BAc38s7oM3lJiaPju7qmdJsp8ysIvZ_G-Npem0njJLMozE2bPHMpDqiI5hhy/pub?start=false&amp;loop=false&amp;delayms=60000&amp;slide=id.g91a03369cd_4_297" target="_blank">
+                Реклама
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://habrastorage.org/storage/stuff/habr/service_price.pdf" target="_blank">
+                Тарифы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQJJds8-Di7BQSP_guHxICN7woVYoN5NP_22ra-BIo4bqnTT9FR6fB-Ku2P0AoRpX0Ds-LRkDeAoD8F/pub?start=false&amp;loop=false&amp;delayms=60000" target="_blank">
+                Контент
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://tmtm.timepad.ru/" target="_blank">
+                Семинары
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/megaprojects/" class="footer-menu__item-link">
+                Мегапроекты
+              </a></li></ul></div></div></div></div></div> <div class="tm-footer"><div class="tm-page-width"><div class="tm-footer__container"><!----> <div class="tm-footer__social"><a href="https://www.facebook.com/habrahabr.ru" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Facebook</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-facebook"></use></svg></a><a href="https://twitter.com/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Twitter</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-twitter"></use></svg></a><a href="https://vk.com/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>VK</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-vkontakte"></use></svg></a><a href="https://telegram.me/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Telegram</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-telegram"></use></svg></a><a href="https://www.youtube.com/channel/UCd_sTwKqVrweTt4oAKY5y4w" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Youtube</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-youtube"></use></svg></a><a href="https://zen.yandex.ru/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Яндекс Дзен</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-zen"></use></svg></a></div> <DIV class="v-portal" style="display:none;"></DIV> <button class="tm-footer__link"><!---->
+        Настройка языка
+      </button> <a href="/ru/about" class="tm-footer__link">
+        О сайте
+      </a> <a href="/ru/feedback/" class="tm-footer__link">
+        Техническая поддержка
+      </a> <!----> <a href="/berserk-mode-nope" class="tm-footer__link">
+        Вернуться на старую версию
+      </a> <div class="tm-footer-copyright"><span class="tm-copyright"><span class="tm-copyright__years">© 2006–2021 </span> <span class="tm-copyright__name">«<a href="https://company.habr.com/" rel="noopener" target="_blank" class="tm-copyright__link">Habr</a>»</span></span></div></div></div></div> <!----> <!----></div> <div class="vue-portal-target"></div></div>
+<script>window.__INITIAL_STATE__={"adblock":{"hasAcceptableAdsFilter":false,"hasAdblock":false},"articlesList":{"articlesList":{"452968":{"id":"452968","timePublished":"2019-06-10T20:03:26+00:00","isCorporative":true,"lang":"en","titleHtml":"Indexes in PostgreSQL — 10 (Bloom)","leadData":{"textHtml":"In the previous articles we discussed PostgreSQL \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fpostgrespro\u002Fblog\u002F441962\u002F\"\u003Eindexing engine\u003C\u002Fa\u003E and the interface of access methods, as well as \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fpost\u002F442776\u002F\"\u003Ehash indexes\u003C\u002Fa\u003E, \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fpostgrespro\u002Fblog\u002F443284\u002F\"\u003EB-trees\u003C\u002Fa\u003E, \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fpostgrespro\u002Fblog\u002F444742\u002F\"\u003EGiST\u003C\u002Fa\u003E, \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fpostgrespro\u002Fblog\u002F446624\u002F\"\u003ESP-GiST\u003C\u002Fa\u003E, \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fpostgrespro\u002Fblog\u002F448746\u002F\"\u003EGIN\u003C\u002Fa\u003E, \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fpostgrespro\u002Fblog\u002F452116\u002F\"\u003ERUM\u003C\u002Fa\u003E, and \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fpostgrespro\u002Fblog\u002F452900\u002F\"\u003EBRIN\u003C\u002Fa\u003E. But we still need to look at Bloom indexes.\u003Cbr\u003E\r\n\u003Cbr\u003E\r\n\u003Ch1\u003EBloom\u003C\u002Fh1\u003E\u003Cbr\u003E\r\n\u003Ch2\u003EGeneral concept\u003C\u002Fh2\u003E\u003Cbr\u003E\r\nA classical Bloom filter is a data structure that enables us to quickly check membership of an element in a set. The filter is highly compact, but allows false positives: it can mistakenly consider an element to be a member of a set (false positive), but it is not permitted to consider an element of a set not to be a member (false negative).\u003Cbr\u003E\r\n\u003Cbr\u003E\r\nThe filter is an array of \u003Cmath\u003E\u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fformulas\u002Fe2e\u002F33f\u002F15a\u002Fe2e33f15a96008ca33579599483c4531.svg\" alt=\"$m$\" data-tex=\"inline\"\u003E\u003C\u002Fmath\u003E bits (also called a \u003Cem\u003Esignature\u003C\u002Fem\u003E) that is initially filled with zeros. \u003Cmath\u003E\u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fformulas\u002F16d\u002Fa50\u002F7b2\u002F16da507b2fc389688ef0659939dcc647.svg\" alt=\"$k$\" data-tex=\"inline\"\u003E\u003C\u002Fmath\u003E different hash functions are chosen that map any element of the set to \u003Cmath\u003E\u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fformulas\u002F16d\u002Fa50\u002F7b2\u002F16da507b2fc389688ef0659939dcc647.svg\" alt=\"$k$\" data-tex=\"inline\"\u003E\u003C\u002Fmath\u003E bits of the signature. To add an element to the set, we need to set each of these bits in the signature to one. Consequently, if all the bits corresponding to an element are set to one, the element can be a member of the set, but if at least one bit equals zero, the element is not in the set for sure.\u003Cbr\u003E\r\n\u003Cbr\u003E\r\nIn the case of a DBMS, we actually have \u003Cmath\u003E\u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fformulas\u002F1e8\u002F0c3\u002Fb30\u002F1e80c3b3087c0a57b68ad11261a9ec2b.svg\" alt=\"$N$\" data-tex=\"inline\"\u003E\u003C\u002Fmath\u003E separate filters built for each index row. As a rule, several fields are included in the index, and it's values of these fields that compose the set of elements for each row.\u003Cbr\u003E\r\n\u003Cbr\u003E\r\nBy choosing the length of the signature \u003Cmath\u003E\u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fformulas\u002Fe2e\u002F33f\u002F15a\u002Fe2e33f15a96008ca33579599483c4531.svg\" alt=\"$m$\" data-tex=\"inline\"\u003E\u003C\u002Fmath\u003E, we can find a trade-off between the index size and the probability of false positives. The application area for Bloom index is large, considerably «wide» tables to be queried using filters on each of the fields. This access method, like BRIN, can be regarded as an accelerator of sequential scan: all the matches found by the index must be rechecked with the table, but there is a chance to avoid considering most of the rows at all.\u003Cbr\u003E","imageUrl":null,"buttonTextHtml":"Read more →","image":null},"editorVersion":"1.0","postType":"article","postLabels":[{"type":"translation","data":{"originalAuthorName":"Egor Rogov","originalUrl":"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fpostgrespro\u002Fblog\u002F349224\u002F"}}],"author":{"scoreStats":{"score":163.5,"votesCount":170},"rating":55,"relatedData":null,"contacts":[{"title":"Сайт","url":"http:\u002F\u002Fegorius.dreamwidth.org\u002F","value":"http:\u002F\u002Fegorius.dreamwidth.org\u002F"}],"authorContacts":[{"title":"Сайт","url":"http:\u002F\u002Fegorius.dreamwidth.org\u002F","value":"http:\u002F\u002Fegorius.dreamwidth.org\u002F"}],"paymentDetails":{"paymentYandexMoney":null,"paymentPayPalMe":null,"paymentWebmoney":null},"id":"594155","alias":"erogov","fullname":"Егор Рогов","avatarUrl":"\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Favatars\u002Fd16\u002F573\u002F7e4\u002Fd165737e421383f77f007015ebd01fb1.jpg","speciality":"Пользователь"},"statistics":{"commentsCount":2,"favoritesCount":7,"readingCount":5011,"score":15,"votesCount":17},"hubs":[{"relatedData":null,"id":"19663","alias":"postgrespro","type":"corporative","title":"Блог компании Postgres Professional","titleHtml":"Блог компании Postgres Professional","isProfiled":false},{"relatedData":null,"id":"358","alias":"postgresql","type":"collective","title":"PostgreSQL","titleHtml":"PostgreSQL","isProfiled":true},{"relatedData":null,"id":"594","alias":"sql","type":"collective","title":"SQL","titleHtml":"SQL","isProfiled":true}],"flows":[{"id":"1","alias":"develop","title":"Разработка"}],"relatedData":null,"textHtml":"\u003Cdiv xmlns=\"http:\u002F\u002Fwww.w3.org\u002F1999\u002Fxhtml\"\u003EIn the previous articles we discussed PostgreSQL \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fpostgrespro\u002Fblog\u002F441962\u002F\"\u003Eindexing engine\u003C\u002Fa\u003E and the interface of access methods, as well as \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fpost\u002F442776\u002F\"\u003Ehash indexes\u003C\u002Fa\u003E, \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fpostgrespro\u002Fblog\u002F443284\u002F\"\u003EB-trees\u003C\u002Fa\u003E, \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fpostgrespro\u002Fblog\u002F444742\u002F\"\u003EGiST\u003C\u002Fa\u003E, \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fpostgrespro\u002Fblog\u002F446624\u002F\"\u003ESP-GiST\u003C\u002Fa\u003E, \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fpostgrespro\u002Fblog\u002F448746\u002F\"\u003EGIN\u003C\u002Fa\u003E, \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fpostgrespro\u002Fblog\u002F452116\u002F\"\u003ERUM\u003C\u002Fa\u003E, and \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fpostgrespro\u002Fblog\u002F452900\u002F\"\u003EBRIN\u003C\u002Fa\u003E. But we still need to look at Bloom indexes.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch1\u003EBloom\u003C\u002Fh1\u003E\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EGeneral concept\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nA classical Bloom filter is a data structure that enables us to quickly check membership of an element in a set. The filter is highly compact, but allows false positives: it can mistakenly consider an element to be a member of a set (false positive), but it is not permitted to consider an element of a set not to be a member (false negative).\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nThe filter is an array of \u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fformulas\u002Fe2e\u002F33f\u002F15a\u002Fe2e33f15a96008ca33579599483c4531.svg\" alt=\"$m$\" data-tex=\"inline\"\u002F\u003E bits (also called a \u003Cem\u003Esignature\u003C\u002Fem\u003E) that is initially filled with zeros. \u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fformulas\u002F16d\u002Fa50\u002F7b2\u002F16da507b2fc389688ef0659939dcc647.svg\" alt=\"$k$\" data-tex=\"inline\"\u002F\u003E different hash functions are chosen that map any element of the set to \u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fformulas\u002F16d\u002Fa50\u002F7b2\u002F16da507b2fc389688ef0659939dcc647.svg\" alt=\"$k$\" data-tex=\"inline\"\u002F\u003E bits of the signature. To add an element to the set, we need to set each of these bits in the signature to one. Consequently, if all the bits corresponding to an element are set to one, the element can be a member of the set, but if at least one bit equals zero, the element is not in the set for sure.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nIn the case of a DBMS, we actually have \u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fformulas\u002F1e8\u002F0c3\u002Fb30\u002F1e80c3b3087c0a57b68ad11261a9ec2b.svg\" alt=\"$N$\" data-tex=\"inline\"\u002F\u003E separate filters built for each index row. As a rule, several fields are included in the index, and it's values of these fields that compose the set of elements for each row.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nBy choosing the length of the signature \u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fformulas\u002Fe2e\u002F33f\u002F15a\u002Fe2e33f15a96008ca33579599483c4531.svg\" alt=\"$m$\" data-tex=\"inline\"\u002F\u003E, we can find a trade-off between the index size and the probability of false positives. The application area for Bloom index is large, considerably «wide» tables to be queried using filters on each of the fields. This access method, like BRIN, can be regarded as an accelerator of sequential scan: all the matches found by the index must be rechecked with the table, but there is a chance to avoid considering most of the rows at all.\u003Cbr\u002F\u003E\r\n\u003Ca name=\"habracut\"\u003E\u003C\u002Fa\u003E\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EStructure\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nWe've already discussed signature trees in the context of \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fpostgrespro\u002Fblog\u002F444742\u002F\"\u003EGiST\u003C\u002Fa\u003E access method. Unlike these trees, Bloom index is a flat structure. It consists of a metapage followed by regular pages with index rows. Each index row contains a signature and reference to a table row (TID), as schematically shown in the figure.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Ftl\u002Fv3\u002Fxp\u002Ftlv3xpdlc4iw25iuma6yurx8wto.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch3\u003ECreation and choice of parameter values\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\nWhen creating Bloom index, a total size of the signature («length») is specified, as well as the number of bits to be set \u003Cem\u003Efor each individual field\u003C\u002Fem\u003E included in the index («col1»—«col32»):\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003Ecreate index on ... using bloom(...) with (length=..., col1=..., col2=..., ...);\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nThe way to specify the number of bits looks odd: these numbers must be parameters of an operator class rather than the index. The thing is that operator classes cannot be parametrized at present, although \u003Ca href=\"https:\u002F\u002Fcommitfest.postgresql.org\u002F17\u002F1559\u002F\"\u003Ework on this\u003C\u002Fa\u003E is in progress.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cblockquote\u003EUnfortunately, there is no further progress on this.\u003Cbr\u002F\u003E\r\n\u003C\u002Fblockquote\u003E\u003Cbr\u002F\u003E\r\nHow can we choose suitable values? \u003Ca href=\"https:\u002F\u002Fen.wikipedia.org\u002Fwiki\u002FBloom_filter\"\u003EThe theory\u003C\u002Fa\u003E states that given the probability \u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fformulas\u002F839\u002Ff25\u002Fc27\u002F839f25c2746382debd4f08ea25ad5ecf.svg\" alt=\"$p$\" data-tex=\"inline\"\u002F\u003E of a filter to return a false positive, the optimal number of signature bits can be estimated as \u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fformulas\u002Fe6b\u002F7bb\u002Fe5a\u002Fe6b7bbe5a15e26a7639837621853680c.svg\" alt=\"$m = −n\\log_2 p \u002F \\ln 2$\" data-tex=\"inline\"\u002F\u003E, where \u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fformulas\u002F08d\u002F9fa\u002Fefb\u002F08d9faefbe272bdf8fbb80773542e343.svg\" alt=\"$n$\" data-tex=\"inline\"\u002F\u003E is the number of fields in the index and the number of bits to be set is \u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fformulas\u002F286\u002F00c\u002Fc5c\u002F28600cc5ccfd94fce5cd82c98f2ffa99.svg\" alt=\"$k = −\\log_2 p$\" data-tex=\"inline\"\u002F\u003E.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nThe signature is stored inside the index as an array of two-byte integer numbers, so the value of \u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fformulas\u002Fe2e\u002F33f\u002F15a\u002Fe2e33f15a96008ca33579599483c4531.svg\" alt=\"$m$\" data-tex=\"inline\"\u002F\u003E can be safely rounded up to \u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fformulas\u002Fede\u002Fb88\u002F0f9\u002Fedeb880f9f7b63330852174a59d9f35f.svg\" alt=\"$16$\" data-tex=\"inline\"\u002F\u003E.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nWhen choosing the probability \u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fformulas\u002F839\u002Ff25\u002Fc27\u002F839f25c2746382debd4f08ea25ad5ecf.svg\" alt=\"$p$\" data-tex=\"inline\"\u002F\u003E, we need to take into account the size of the index, which will approximately equal \u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fformulas\u002F3dd\u002F623\u002F269\u002F3dd6232691a91e15451071bb55ed8001.svg\" alt=\"$(m\u002F8 + 6)N$\" data-tex=\"inline\"\u002F\u003E, where \u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fformulas\u002F1e8\u002F0c3\u002Fb30\u002F1e80c3b3087c0a57b68ad11261a9ec2b.svg\" alt=\"$N$\" data-tex=\"inline\"\u002F\u003E is the number of rows in the table and \u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fformulas\u002Fa98\u002F05b\u002F342\u002Fa9805b3422e51c726fc4b1931f2d51aa.svg\" alt=\"$6$\" data-tex=\"inline\"\u002F\u003E is the size of the TID pointer in bytes.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nA few points to note:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003EThe probability \u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fformulas\u002F839\u002Ff25\u002Fc27\u002F839f25c2746382debd4f08ea25ad5ecf.svg\" alt=\"$p$\" data-tex=\"inline\"\u002F\u003E of a false positive relates to one filter, therefore, we expect to get \u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fformulas\u002Fadf\u002Fb7c\u002Fb2f\u002Fadfb7cb2fda49d6e7e7af24069329b98.svg\" alt=\"$Np$\" data-tex=\"inline\"\u002F\u003E false positives during table scan (of course, for a query that returns few rows). For example, for a table with one million rows and the probability 0.01, in the query plan, on average, we can expect «Rows Removed by Index Recheck: 10000».\u003C\u002Fli\u003E\r\n\u003Cli\u003EBloom filter is a probabilistic structure. It makes sense to talk of specific numbers only when averaging quite a lot of values, while in each particular case, we can get whatever we can think of.\u003C\u002Fli\u003E\r\n\u003Cli\u003EThe above estimates are based on an idealized mathematical model and a few assumptions. In practice, the result is likely to be worse. So, do not overestimate formulas: they are only a means to choose initial values for future experiments.\u003C\u002Fli\u003E\r\n\u003Cli\u003EFor each field individually, the access method enables us to choose the number of bits to be set. There is a reasonable assumption that actually the optimal number depends on the distribution of the values in the column. To deeper dive, you can read \u003Ca href=\"http:\u002F\u002Fblog.coelho.net\u002Fdatabase\u002F2016\u002F12\u002F11\u002Fpostgresql-bloom-index.html\"\u003Ethis article\u003C\u002Fa\u003E (references to other researches are welcome). But reread the previous item first.\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\n\u003Ch3\u003EUpdating\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\nWhen a new row is inserted in a table, a signature is created: for values of all indexed fields, all their corresponding bits are set to one. In theory, we must have k different hash functions, while in practice, the pseudo-random number generator suffices, whose seed is chosen each time with the help of the only hash function.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nA regular Bloom filter does not support deletion of elements, but this is not required for Bloom index: when a table row is deleted, the entire signature is deleted, along with the index row.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nAs usual, an update consists of deletion of the outdated row version and insertion of the new one (the signature being calculated from scratch).\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch3\u003EScanning\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\nSince the only thing that Bloom filter can do is check membership of an element in a set, the only operation supported by Bloom index is an equality check (like in hash index).\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nAs we already mentioned, Bloom index is flat, so in the course of index access, it is always read successively and entirely. In the course of reading, a bitmap is build, which is then used to access the table.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nIn a regular index access, it is assumed that few index rows will have to be read and, in addition, they can be soon needed again, therefore, they are stored in a buffer cache. Reading of Bloom index, however, is actually a sequential scan. To prevent from evicting useful information out of the cache, reading is done through a small buffer ring, exactly the same way as for sequential scan of tables.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nWe should take into account that the more the size of Bloom index, the less attractive it will seem to the planner. This dependency is linear, unlike for tree-like indexes.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EExample\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\n\u003Ch3\u003ETable\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\nLet's look at Bloom index by example of a big «flights_bi» table from \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fpostgrespro\u002Fblog\u002F452900\u002F\"\u003Ethe previous article\u003C\u002Fa\u003E. To remind you, the size of this table is 4 GB with approximately 30 million rows. Definition of the table:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003Edemo=# \\d flights_bi\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E                          Table \"bookings.flights_bi\"\n       Column       |           Type           | Collation | Nullable | Default \n--------------------+--------------------------+-----------+----------+---------\n airport_code       | character(3)             |           |          | \n airport_coord      | point                    |           |          | \n airport_utc_offset | interval                 |           |          | \n flight_no          | character(6)             |           |          | \n flight_type        | text                     |           |          | \n scheduled_time     | timestamp with time zone |           |          | \n actual_time        | timestamp with time zone |           |          | \n aircraft_code      | character(3)             |           |          | \n seat_no            | character varying(4)     |           |          | \n fare_conditions    | character varying(10)    |           |          | \n passenger_id       | character varying(20)    |           |          | \n passenger_name     | text                     |           |          | \n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nLet's first create the extension: although Bloom index is included in a standard delivery starting with version 9.6, it is unavailable by default.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003Edemo=# create extension bloom;\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nLast time we could index three fields using BRIN («scheduled_time», «actual_time», «airport_utc_offset»). Since Bloom indexes do not depend on the physical order of the data, let's try to include almost all fields of the table in the index. Let's however exclude the time fields («scheduled_time» and «actual_time»): the method only supports comparison for equality, but a query for exact time is hardly interesting to anybody (we could, however, build the index on an expression, rounding the time to a day, but we won't do this). We will also have to exclude the geographical coordinates of airports («airport_coord»): looking ahead, the «point» type is not supported.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nTo choose the parameter values, let's set the probability of a false positive to 0.01 (having in mind that actually we will get more). The above formulas for \u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fformulas\u002Fab9\u002F5e9\u002Fbac\u002Fab95e9bac40f21b55c6f1580040426d3.svg\" alt=\"$n = 9$\" data-tex=\"inline\"\u002F\u003E and \u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fformulas\u002F1c6\u002Fb64\u002F461\u002F1c6b644610ec8d7b67fd2272e8779b07.svg\" alt=\"$N = 30\\,000\\,000$\" data-tex=\"inline\"\u002F\u003E give the signature size of 96 bit and suggest setting 7 bits per element. The estimated size of the index is 515 MB (approximately one eighth of the table).\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n(With the minimal signature size of 16 bits, the formulas promise the index size that is two times smaller, but permit to rely only on the probability of 0.5, which is very poor.)\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch3\u003EOperator classes\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\nSo, let's try to create the index.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003Edemo=# create index flights_bi_bloom on flights_bi\nusing bloom(airport_code, airport_utc_offset, flight_no, flight_type, aircraft_code, seat_no, fare_conditions, passenger_id, passenger_name)\nwith (length=96, col1=7, col2=7, col3=7, col4=7, col5=7, col6=7, col7=7, col8=7, col9=7);\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003EERROR:  data type character has no default operator class for access method \"bloom\"\nHINT:  You must specify an operator class for the index or define a default operator class for the data type.\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nUnfortunately, the extension provides us with only two operator classes:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003Edemo=# select opcname, opcintype::regtype\nfrom pg_opclass\nwhere opcmethod = (select oid from pg_am where amname = 'bloom')\norder by opcintype::regtype::text;\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E opcname  | opcintype\n----------+-----------\n int4_ops | integer\n text_ops | text\n(2 rows)\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nBut fortunately, it is pretty easy to create similar classes for other data types as well. An operator class for Bloom access method must contain exactly one operator — equality — and exactly one auxiliary function — hashing. The simplest way to find the needed operators and functions for an arbitrary type is to look into the system catalog for operator classes of «hash» method:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003Edemo=# select distinct\n       opc.opcintype::regtype::text,\n       amop.amopopr::regoperator,\n       ampr.amproc\n  from pg_am am, pg_opclass opc, pg_amop amop, pg_amproc ampr\n where am.amname = 'hash'\n   and opc.opcmethod = am.oid\n   and amop.amopfamily = opc.opcfamily\n   and amop.amoplefttype = opc.opcintype\n   and amop.amoprighttype = opc.opcintype\n   and ampr.amprocfamily = opc.opcfamily\n   and ampr.amproclefttype = opc.opcintype\norder by opc.opcintype::regtype::text;\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E opcintype |       amopopr        |    amproc    \n-----------+----------------------+--------------\n abstime   | =(abstime,abstime)   | hashint4\n aclitem   | =(aclitem,aclitem)   | hash_aclitem\n anyarray  | =(anyarray,anyarray) | hash_array\n anyenum   | =(anyenum,anyenum)   | hashenum\n anyrange  | =(anyrange,anyrange) | hash_range\n ...\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nWe will create two missing classes using this information:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003Edemo=# CREATE OPERATOR CLASS character_ops\nDEFAULT FOR TYPE character USING bloom AS\n  OPERATOR  1  =(character,character),\n  FUNCTION  1  hashbpchar;\n\ndemo=# CREATE OPERATOR CLASS interval_ops\nDEFAULT FOR TYPE interval USING bloom AS\n  OPERATOR  1  =(interval,interval),\n  FUNCTION  1  interval_hash;\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nA hash function is not defined for points («point» type), and it is for this reason that we cannot build Bloom index on such a field (just like we cannot perform a hash join on fields of this type).\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nTrying again:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003Edemo=# create index flights_bi_bloom on flights_bi\nusing bloom(airport_code, airport_utc_offset, flight_no, flight_type, aircraft_code, seat_no, fare_conditions, passenger_id, passenger_name)\nwith (length=96, col1=7, col2=7, col3=7, col4=7, col5=7, col6=7, col7=7, col8=7, col9=7);\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003ECREATE INDEX\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nThe size of the index is 526 MB, which is somewhat larger than expected. This is because the formula does not take page overhead into account.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003Edemo=# select pg_size_pretty(pg_total_relation_size('flights_bi_bloom'));\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E pg_size_pretty\n----------------\n 526 MB\n(1 row)\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Ch3\u003EQueries\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\nWe can now perform search using various criteria, and the index will support it.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nAs we already mentioned, Bloom filter is a probabilistic structure, therefore, the efficiency highly depends on each particular case. For example, let's look at the rows related to two passengers, Miroslav Sidorov:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003Edemo=# explain(costs off,analyze)\nselect * from flights_bi where passenger_name='MIROSLAV SIDOROV';\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E                                            QUERY PLAN\n--------------------------------------------------------------------------------------------------\n Bitmap Heap Scan on flights_bi (actual time=2639.010..3010.692 rows=2 loops=1)\n   Recheck Cond: (passenger_name = 'MIROSLAV SIDOROV'::text)\n   Rows Removed by Index Recheck: 38562\n   Heap Blocks: exact=21726\n   -\u003E  Bitmap Index Scan on flights_bi_bloom (actual time=1065.191..1065.191 rows=38564 loops=1)\n         Index Cond: (passenger_name = 'MIROSLAV SIDOROV'::text)\n Planning time: 0.109 ms\n Execution time: 3010.736 ms\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nand Marfa Soloveva:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003Edemo=# explain(costs off,analyze)\nselect * from flights_bi where passenger_name='MARFA SOLOVEVA';\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E                                            QUERY PLAN\n---------------------------------------------------------------------------------------------------\n Bitmap Heap Scan on flights_bi (actual time=9980.884..10142.684 rows=2 loops=1)\n   Recheck Cond: (passenger_name = 'MARFA SOLOVEVA'::text)\n   Rows Removed by Index Recheck: 3950168\n   Heap Blocks: exact=45757 lossy=67332\n   -\u003E  Bitmap Index Scan on flights_bi_bloom (actual time=1037.588..1037.588 rows=212972 loops=1)\n         Index Cond: (passenger_name = 'MARFA SOLOVEVA'::text)\n Planning time: 0.157 ms\n Execution time: 10142.730 ms\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nIn one case, the filter allowed only 40 thousand false positives and as much as 4 million of them in the other one («Rows Removed by Index Recheck»). The execution times of the queries differ accordingly.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nAnd the following are the results of searching the same rows by the passenger ID rather than name. Miroslav:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003Edemo=# explain(costs off,analyze)\ndemo-# select * from flights_bi where passenger_id='5864 006033';\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E                                           QUERY PLAN\n-------------------------------------------------------------------------------------------------\n Bitmap Heap Scan on flights_bi (actual time=13747.305..16907.387 rows=2 loops=1)\n   Recheck Cond: ((passenger_id)::text = '5864 006033'::text)\n   Rows Removed by Index Recheck: 9620258\n   Heap Blocks: exact=50510 lossy=165722\n   -\u003E  Bitmap Index Scan on flights_bi_bloom (actual time=937.202..937.202 rows=426474 loops=1)\n         Index Cond: ((passenger_id)::text = '5864 006033'::text)\n Planning time: 0.110 ms\n Execution time: 16907.423 ms\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nAnd Marfa:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003Edemo=# explain(costs off,analyze)\nselect * from flights_bi where passenger_id='2461 559238';\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E                                            QUERY PLAN\n--------------------------------------------------------------------------------------------------\n Bitmap Heap Scan on flights_bi (actual time=3881.615..3934.481 rows=2 loops=1)\n   Recheck Cond: ((passenger_id)::text = '2461 559238'::text)\n   Rows Removed by Index Recheck: 30669\n   Heap Blocks: exact=27513\n   -\u003E  Bitmap Index Scan on flights_bi_bloom (actual time=1084.391..1084.391 rows=30671 loops=1)\n         Index Cond: ((passenger_id)::text = '2461 559238'::text)\n Planning time: 0.120 ms\n Execution time: 3934.517 ms\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nThe efficiencies differ much again, and this time Marfa was more lucky.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nNote that search by two fields simultaneously will be done much more efficiently since the probability of a false positive \u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fformulas\u002F839\u002Ff25\u002Fc27\u002F839f25c2746382debd4f08ea25ad5ecf.svg\" alt=\"$p$\" data-tex=\"inline\"\u002F\u003E turns into \u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fformulas\u002Fe54\u002F94f\u002Fb78\u002Fe5494fb7834c36d0265d160228fc1887.svg\" alt=\"$p^2$\" data-tex=\"inline\"\u002F\u003E:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003Edemo=# explain(costs off,analyze)\nselect * from flights_bi\nwhere passenger_name='MIROSLAV SIDOROV'\n  and passenger_id='5864 006033';\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E                                                     QUERY PLAN\n--------------------------------------------------------------------------------------------------------------------\n Bitmap Heap Scan on flights_bi (actual time=872.593..877.915 rows=2 loops=1)\n   Recheck Cond: (((passenger_id)::text = '5864 006033'::text)\n               AND (passenger_name = 'MIROSLAV SIDOROV'::text))\n   Rows Removed by Index Recheck: 357\n   Heap Blocks: exact=356\n   -\u003E  Bitmap Index Scan on flights_bi_bloom (actual time=832.041..832.041 rows=359 loops=1)\n         Index Cond: (((passenger_id)::text = '5864 006033'::text)\n                   AND (passenger_name = 'MIROSLAV SIDOROV'::text))\n Planning time: 0.524 ms\n Execution time: 877.967 ms\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nHowever, search with Boolean «or» is not supported at all; this is a limitation of a planner rather than of the access method. Of course, an option remains to read the index twice, build two bitmaps, and join them, but this is most likely too costly for this plan to be chosen.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EComparison with BRIN and Hash\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nApplication areas of Bloom and BRIN indexes obviously intersect. These are large tables for which it is desirable to ensure search by different fields, the search accuracy being sacrificed to compactness.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nBRIN indexes are more compact (say, by up to dozens of megabytes in our example) and can support search by range, but have a strong limitation related to physical ordering of the data in a file. Bloom indexes are larger (hundreds of megabytes), but have no limitations except an availability of a suitable hash function.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nLike Bloom indexes, hash indexes support the only operation of equality check. Hash index ensures the search accuracy that is inaccessible for Bloom, but the index size is way larger (in our example, a gigabyte for only one field, and hash index cannot be created on several fields).\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EProperties\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nAs usual, let's look at the properties of Bloom (queries \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fpostgrespro\u002Fblog\u002F442546\u002F\"\u003Ehave already been provided\u003C\u002Fa\u003E).\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nThe following are the properties of the access method:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E amname |     name      | pg_indexam_has_property\n--------+---------------+-------------------------\n bloom  | can_order     | f\n bloom  | can_unique    | f\n bloom  | can_multi_col | t\n bloom  | can_exclude   | f\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nEvidently, the access method enables us to build an index on several columns. It hardly makes sense to create Bloom index on one column.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nThe following index-layer properties are available:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E     name      | pg_index_has_property\n---------------+-----------------------\n clusterable   | f\n index_scan    | f\n bitmap_scan   | t\n backward_scan | f\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nThe only available scan technique is bitmap scan. Since the index is always scanned entirely, it does not make sense to implement a regular index access that returns rows TID by TID.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E        name        | pg_index_column_has_property \n--------------------+------------------------------\n asc                | f\n desc               | f\n nulls_first        | f\n nulls_last         | f\n orderable          | f\n distance_orderable | f\n returnable         | f\n search_array       | f\n search_nulls       | f\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nOnly dashes are here; the method cannot even manipulate NULLs.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EAnd finally:\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nIt's not impossible that this series of articles will be continued in future, when new index types of interest appear, but it's time to stop now.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nI'd like to express appreciation to my colleagues from Postgres Professional (some of them are the authors of many access methods discussed) for reading the drafts and providing their comments. And I'm, certainly, grateful to you for your patience and valuable comments. Your attention encouraged me to reach this point. Thank you!\u003C\u002Fdiv\u003E","tags":[{"titleHtml":"postgresql"},{"titleHtml":"postgres"},{"titleHtml":"index"},{"titleHtml":"indexing"},{"titleHtml":"sql"}],"metadata":{"stylesUrls":[],"scriptUrls":[],"shareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F452968\u002Fc9429709d86072ce0c2eae7261ab2a45\u002F","shareImageWidth":1200,"shareImageHeight":630,"vkShareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F452968\u002Fc9429709d86072ce0c2eae7261ab2a45\u002F?format=vk","schemaJsonLd":"{\"@context\":\"http:\\\u002F\\\u002Fschema.org\",\"@type\":\"Article\",\"mainEntityOfPage\":{\"@type\":\"WebPage\",\"@id\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fen\\\u002Fcompany\\\u002Fpostgrespro\\\u002Fblog\\\u002F452968\\\u002F\"},\"headline\":\"Indexes in PostgreSQL — 10 (Bloom)\",\"datePublished\":\"2019-06-10T23:03:26+03:00\",\"dateModified\":\"2019-06-11T00:33:27+03:00\",\"author\":{\"@type\":\"Person\",\"name\":\"Егор Рогов\"},\"publisher\":{\"@type\":\"Organization\",\"name\":\"Habr\",\"logo\":{\"@type\":\"ImageObject\",\"url\":\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fa_\\\u002Flk\\\u002F9m\\\u002Fa_lk9mjkccjox-zccjrpfolmkmq.png\"}},\"description\":\"In the previous articles we discussed PostgreSQL indexing engine and the interface of access methods, as well as hash indexes, B-trees, GiST, SP-GiST, GIN, RUM,...\",\"url\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fen\\\u002Fcompany\\\u002Fpostgrespro\\\u002Fblog\\\u002F452968\\\u002F#post-content-body\",\"about\":[\"c_postgrespro\",\"h_postgresql\",\"h_sql\",\"f_develop\"],\"image\":[\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fgetpro\\\u002Fhabr\\\u002Fformulas\\\u002Fe2e\\\u002F33f\\\u002F15a\\\u002Fe2e33f15a96008ca33579599483c4531.svg\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fgetpro\\\u002Fhabr\\\u002Fformulas\\\u002F16d\\\u002Fa50\\\u002F7b2\\\u002F16da507b2fc389688ef0659939dcc647.svg\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fgetpro\\\u002Fhabr\\\u002Fformulas\\\u002F1e8\\\u002F0c3\\\u002Fb30\\\u002F1e80c3b3087c0a57b68ad11261a9ec2b.svg\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Ftl\\\u002Fv3\\\u002Fxp\\\u002Ftlv3xpdlc4iw25iuma6yurx8wto.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fgetpro\\\u002Fhabr\\\u002Fformulas\\\u002F839\\\u002Ff25\\\u002Fc27\\\u002F839f25c2746382debd4f08ea25ad5ecf.svg\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fgetpro\\\u002Fhabr\\\u002Fformulas\\\u002Fe6b\\\u002F7bb\\\u002Fe5a\\\u002Fe6b7bbe5a15e26a7639837621853680c.svg\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fgetpro\\\u002Fhabr\\\u002Fformulas\\\u002F08d\\\u002F9fa\\\u002Fefb\\\u002F08d9faefbe272bdf8fbb80773542e343.svg\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fgetpro\\\u002Fhabr\\\u002Fformulas\\\u002F286\\\u002F00c\\\u002Fc5c\\\u002F28600cc5ccfd94fce5cd82c98f2ffa99.svg\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fgetpro\\\u002Fhabr\\\u002Fformulas\\\u002Fede\\\u002Fb88\\\u002F0f9\\\u002Fedeb880f9f7b63330852174a59d9f35f.svg\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fgetpro\\\u002Fhabr\\\u002Fformulas\\\u002F3dd\\\u002F623\\\u002F269\\\u002F3dd6232691a91e15451071bb55ed8001.svg\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fgetpro\\\u002Fhabr\\\u002Fformulas\\\u002Fa98\\\u002F05b\\\u002F342\\\u002Fa9805b3422e51c726fc4b1931f2d51aa.svg\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fgetpro\\\u002Fhabr\\\u002Fformulas\\\u002Fadf\\\u002Fb7c\\\u002Fb2f\\\u002Fadfb7cb2fda49d6e7e7af24069329b98.svg\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fgetpro\\\u002Fhabr\\\u002Fformulas\\\u002Fab9\\\u002F5e9\\\u002Fbac\\\u002Fab95e9bac40f21b55c6f1580040426d3.svg\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fgetpro\\\u002Fhabr\\\u002Fformulas\\\u002F1c6\\\u002Fb64\\\u002F461\\\u002F1c6b644610ec8d7b67fd2272e8779b07.svg\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fgetpro\\\u002Fhabr\\\u002Fformulas\\\u002Fe54\\\u002F94f\\\u002Fb78\\\u002Fe5494fb7834c36d0265d160228fc1887.svg\"]}","metaDescription":"In the previous articles we discussed PostgreSQL indexing engine and the interface of access methods, as well as hash indexes, B-trees, GiST, SP-GiST, GIN, RUM, and BRIN. But we still need to look at...","mainImageUrl":null,"amp":false},"polls":[],"commentsEnabled":true,"rulesRemindEnabled":false,"votesEnabled":true,"status":"published","plannedPublishTime":null,"checked":null,"isEditorial":false}},"articlesIds":{},"isLoading":false,"pagesCount":{},"route":{},"reasonsList":null,"view":"cards","lastVisitedRoute":{},"ssrCommentsArticleIds":[""],"karma":{}},"authorContribution":{"authors":{}},"betaTest":{"currentAnnouncement":null,"announcements":{},"announcementCards":null,"announcementComments":{},"announcementCommentThreads":{},"announcementCommentingStatuses":{},"archivedList":[]},"authorStatistics":{"articleRefs":{},"articleIds":{},"pagesCount":{},"route":{},"viewsCount":[],"maxStatsCount":{}},"career":{"seoLandings":[],"hubs":""},"comments":{"articleComments":{},"searchCommentsResults":null,"previewComment":null,"pagesCount":null,"commentAccess":{},"scrollParents":{},"pageArticleComments":{"lastViewedComment":0,"postId":null,"lastCommentTimestamp":"","moderated":[],"moderatedIds":[],"commentRoute":""}},"companies":{"companyRefs":{"postgrespro":{"alias":"postgrespro","imageUrl":"\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fcompany\u002F4e0\u002F339\u002F621\u002F4e0339621abc865fefb88f9e9f44748f.jpg","titleHtml":"Postgres Professional","descriptionHtml":"Разработчик СУБД Postgres Pro","relatedData":null,"statistics":{"postsCount":151,"newsCount":0,"vacanciesCount":0,"employeesCount":22,"careerRating":null,"subscribersCount":41642,"rating":218.69,"invest":null},"foundationDate":{"year":"2015","month":"01","day":"27"},"location":{"city":{"id":"447159","title":"Москва"},"region":{"id":"1885","title":"Москва и Московская обл."},"country":{"id":"168","title":"Россия"}},"siteUrl":"http:\u002F\u002Fwww.postgrespro.ru\u002F","staffNumber":"51–100 человек","registrationDate":"2015-09-30T07:41:09+00:00","representativeUser":{"alias":"x-wao","fullname":"Иван Панченко"},"contacts":[{"title":"Facebook","url":"https:\u002F\u002Ffacebook.com\u002FPostgresProfessional"},{"title":"Twitter","url":"https:\u002F\u002Ftwitter.com\u002FPostgresPro"},{"title":"ВКонтакте","url":"https:\u002F\u002Fvk.com\u002Fpublic101507899"},{"title":"Google+","url":"https:\u002F\u002Fplus.google.com\u002F+PostgresproRuCompany"},{"title":"LiveJournal","url":"https:\u002F\u002Fpostgrespro.livejournal.com\u002F"}],"settings":{"analyticsSettings":[{"type":"ga","trackingId":"UA-55152600-4"}],"branding":null,"status":"active"},"metadata":{"titleHtml":"Postgres Professional, Москва - Разработчик СУБД Postgres Pro с 27 января 2015 г.","title":"Postgres Professional, Москва - Разработчик СУБД Postgres Pro с 27 января 2015 г.","keywords":["PostgreSQL","SQL","Занимательные задачки","Конференции","Администрирование баз данных"],"descriptionHtml":"151 статья от авторов компании Postgres Professional","description":"151 статья от авторов компании Postgres Professional"},"aDeskSettings":null,"careerAlias":"postgrespro","maxCustomTrackerLinks":0}},"companyIds":{},"companyTopIds":{},"pagesCount":{},"companyProfiles":{},"companiesCategories":[],"companiesCategoriesTotalCount":0,"companiesWidgets":{},"companiesWorkers":{},"companiesFans":{},"route":{},"isLoading":false,"companyWorkersLoading":false,"companyFansLoading":false,"vacancies":{}},"companiesContribution":{"hubs":{},"flows":{},"companyRefs":{}},"companyHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"conversation":{"messages":[],"respondent":null,"isLoadMore":false},"conversations":{"conversations":[],"unreadCount":0,"pagesCount":0,"isLoadMore":false},"desktopState":{"desktopFl":null,"desktopHl":null,"isChecked":false,"isLoginDemanded":false},"dfp":{"slotsDict":{}},"docs":{"menu":{},"articles":{},"mainMenu":[],"loading":{"main":false,"dropdown":false,"article":false}},"feature":{"isProbablyVisible":"true"},"flows":{"flows":[{"alias":"develop","id":1,"route":{"name":"FLOW_PAGE","params":{"flowName":"develop"}}},{"alias":"admin","id":6,"route":{"name":"FLOW_PAGE","params":{"flowName":"admin"}}},{"alias":"design","id":2,"route":{"name":"FLOW_PAGE","params":{"flowName":"design"}}},{"alias":"management","id":3,"route":{"name":"FLOW_PAGE","params":{"flowName":"management"}}},{"alias":"marketing","id":4,"route":{"name":"FLOW_PAGE","params":{"flowName":"marketing"}}},{"alias":"popsci","id":7,"route":{"name":"FLOW_PAGE","params":{"flowName":"popsci"}}}]},"global":{"isPwa":false,"device":"desktop","isHabrCom":true},"hubs":{"hubRefs":{},"hubIds":{},"pagesCount":{},"isLoading":false,"route":{}},"hubsBlock":{"hubRefs":{},"hubIds":{}},"i18n":{"fl":"ru","hl":"ru"},"info":{"infoPage":{},"isLoading":true},"location":{"urlStruct":{"protocol":null,"slashes":null,"auth":null,"host":null,"port":null,"hostname":null,"hash":null,"search":null,"query":{},"pathname":null,"path":null,"href":""},"searchQuery":null},"me":{"user":null,"ppgDemanded":false,"karmaResetInfo":{"canReincarnate":null,"wasReincarnated":null,"currentScore":null},"notes":null},"mostReadingList":{"mostReadingListIds":[],"mostReadingListRefs":null,"promoPost":null},"pinnedPost":{"pinnedPost":null},"ppa":{"articles":{},"card":null,"transactions":null,"totalTransactions":null,"isAccessible":null},"projectsBlocks":{"activeBlocks":{}},"pullRefresh":{"shouldRefresh":false},"sandbox":{"articleIds":[],"articleRefs":{},"pagesCount":null,"route":{},"lastVisitedRoute":{},"isLoading":false},"settingsOther":{"inputs":{"uiLang":{"errors":[],"ref":null,"value":""},"articlesLangEnglish":{"errors":[],"ref":null,"value":false},"articlesLangRussian":{"errors":[],"ref":null,"value":false},"agreement":{"errors":[],"ref":null,"value":false},"email":{"errors":[],"ref":null,"value":true},"digest":{"errors":[],"ref":null,"value":true}}},"similarList":{"similarListIds":[],"similarListRefs":null},"ssr":{"error":null,"isDataLoaded":false,"isDataLoading":false,"isHydrationFailed":false,"isServer":false},"userHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"userInvites":{"availableInvites":0,"usedInvitesIds":[],"usedInvitesRefs":{},"usedInvitesPagesCount":0,"unusedInvitesIds":[],"unusedInvitesRefs":{},"unusedInvitesPagesCount":0},"users":{"authorRefs":{},"authorIds":{},"pagesCount":{},"authorProfiles":{},"userHubs":{},"userInvitations":{},"authorFollowers":{},"authorFollowed":{},"karmaStats":[],"statistics":null,"isLoading":false,"authorFollowersLoading":false,"authorFollowedLoading":false,"userHubsLoading":false,"userInvitationsLoading":false,"route":{}},"viewport":{"prevScrollY":{},"scrollY":0,"width":0},"tracker":{"items":{},"pagesCache":{},"markedViewedSilently":{},"markedRead":{},"unreadCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null},"unviewedCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null}}};(function(){var s;(s=document.currentScript||document.scripts[document.scripts.length-1]).parentNode.removeChild(s);}());</script>
+<script src="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" defer></script><script src="https://assets.habr.com/habr-web/js/app.c0af73e7.js" defer></script>
+
+
+
+    <script>
+      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+        (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+        m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+      })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+    </script>
+  
+  <script type="text/javascript" >
+    (function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+    m[i].l=1*new Date();k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})
+    (window, document, "script", "https://mc.yandex.ru/metrika/tag.js", "ym");
+
+    ym(24049213, "init", {
+      defer:true,
+      trackLinks:true,
+      accurateTrackBounce:true,
+      webvisor:false,
+    });
+  </script>
+  <noscript>
+    <div>
+      <img src="https://mc.yandex.ru/watch/24049213" style="position:absolute; left:-9999px;" alt="" />
+    </div>
+  </noscript>
+  
+    <script type="text/javascript">
+      window.addEventListener('load', function () {
+        setTimeout(() => {
+          const img = new Image();
+          img.src = 'https://vk.com/rtrg?p=VK-RTRG-421343-57vKE';
+        }, 0);
+      });
+    </script>
+  
+</body>
+</html>

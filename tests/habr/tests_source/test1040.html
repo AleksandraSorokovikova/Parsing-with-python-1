@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="ru" data-vue-meta="%7B%22lang%22:%7B%22ssr%22:%22ru%22%7D%7D">
+<head >
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
+  <title>Software Defined Radio — как это работает? Часть 3 / Хабр</title>
+  <style>
+    /* cyrillic-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSxf6TF0.woff2) format('woff2');
+      unicode-range: U+0460-052F, U+1C80-1C88, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+    }
+
+    /* cyrillic */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveQhf6TF0.woff2) format('woff2');
+      unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+    }
+
+    /* latin-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSBf6TF0.woff2) format('woff2');
+      unicode-range: U+0100-024F, U+0259, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20CF, U+2113, U+2C60-2C7F, U+A720-A7FF;
+    }
+
+    /* latin */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveRhf6.woff2) format('woff2');
+      unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+    }
+  </style>
+  <link rel="preload" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" as="script"><link rel="preload" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/app.c0af73e7.js" as="script">
+  <link rel="stylesheet" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css"><link rel="stylesheet" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css">
+  <script>window.i18nFetch = new Promise((res, rej) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open('GET', '/js/i18n/ru-compiled.85eb77f0b17c8235e7b64b9f81ea5ec2.json');
+          xhr.responseType = 'json';
+          xhr.onload = function(e) {
+            if (this.status === 200) {
+              res({ru: xhr.response});
+            } else {
+              rej(e);
+            }
+          };
+          xhr.send();
+        });</script>
+  
+  <script data-vue-meta="ssr" src="/js/ads.js" onload="window['zhY4i4nJ9K'] = true" data-vmid="checkad"></script><script data-vue-meta="ssr" type="application/ld+json" data-vmid="ldjson-schema">{"@context":"http:\/\/schema.org","@type":"Article","mainEntityOfPage":{"@type":"WebPage","@id":"https:\/\/habr.com\/ru\/post\/452390\/"},"headline":"Software Defined Radio — как это работает? Часть 3","datePublished":"2019-05-19T00:01:51+03:00","dateModified":"2019-05-19T11:01:37+03:00","author":{"@type":"Person","name":"DmitrySpb79"},"publisher":{"@type":"Organization","name":"Habr","logo":{"@type":"ImageObject","url":"https:\/\/habrastorage.org\/webt\/a_\/lk\/9m\/a_lk9mjkccjox-zccjrpfolmkmq.png"}},"description":"Привет, Хабр.  Во второй части были рассмотрены практические аспекты использования SDR. В этой части мы разберемся, как принять данные метеоспутника NOAA с помощ...","url":"https:\/\/habr.com\/ru\/post\/452390\/#post-content-body","about":["h_programming","h_netdev","h_gadgets","h_popular_science","h_easyelectronics","f_develop","f_popsci"],"image":["https:\/\/habrastorage.org\/webt\/ux\/vk\/he\/uxvkhed8_-k9uumw0pgbekyi_m8.png","https:\/\/habrastorage.org\/webt\/li\/uj\/8v\/liuj8v8t1jy0tythfo8rpprstm4.png","https:\/\/habrastorage.org\/webt\/nl\/p5\/yk\/nlp5ykxuvldaqjvfitcdp4oinkk.png","https:\/\/habrastorage.org\/webt\/e_\/jn\/bb\/e_jnbbyfneb3jc3lp7h4kcbsepo.png","https:\/\/habrastorage.org\/webt\/uk\/wl\/jt\/ukwljtyarociv4vcld3ngqey-ny.png","https:\/\/habrastorage.org\/webt\/dp\/dy\/yb\/dpdyybwvq6gx0pzdnk6un5usdvo.png","https:\/\/habrastorage.org\/webt\/u5\/u3\/xn\/u5u3xnyvsgq6xpmirbqtafeoaak.png"]}</script>
+  <script src="//www.googletagservices.com/tag/js/gpt.js" async></script>
+  <style>.grecaptcha-badge{visibility: hidden;}</style>
+  <meta name="habr-version" content="2.49.0">
+  
+  <meta data-vue-meta="ssr" property="fb:app_id" content="444736788986613"><meta data-vue-meta="ssr" property="fb:pages" content="472597926099084"><meta data-vue-meta="ssr" name="twitter:card" content="summary_large_image"><meta data-vue-meta="ssr" name="twitter:site" content="@habr_eng"><meta data-vue-meta="ssr" property="og:title" content="Software Defined Radio — как это работает? Часть 3" data-vmid="og:title"><meta data-vue-meta="ssr" name="twitter:title" content="Software Defined Radio — как это работает? Часть 3" data-vmid="twitter:title"><meta data-vue-meta="ssr" name="aiturec:title" content="Software Defined Radio — как это работает? Часть 3" data-vmid="aiturec:title"><meta data-vue-meta="ssr" name="description" content="Привет, Хабр.
+
+Во второй части были рассмотрены практические аспекты использования SDR. В этой части мы разберемся, как принять данные метеоспутника NOAA с помощью Python и недорогого (30$)..." data-vmid="description"><meta data-vue-meta="ssr" itemprop="description" content="Привет, Хабр.
+
+Во второй части были рассмотрены практические аспекты использования SDR. В этой части мы разберемся, как принять данные метеоспутника NOAA с помощью Python и недорогого (30$)..." data-vmid="description:itemprop"><meta data-vue-meta="ssr" property="og:description" content="Привет, Хабр.
+
+Во второй части были рассмотрены практические аспекты использования SDR. В этой части мы разберемся, как принять данные метеоспутника NOAA с помощью Python и недорогого (30$)..." data-vmid="og:description"><meta data-vue-meta="ssr" name="twitter:description" content="Привет, Хабр.
+
+Во второй части были рассмотрены практические аспекты использования SDR. В этой части мы разберемся, как принять данные метеоспутника NOAA с помощью Python и недорогого (30$)..." data-vmid="twitter:description"><meta data-vue-meta="ssr" property="aiturec:description" content="Привет, Хабр.
+
+Во второй части были рассмотрены практические аспекты использования SDR. В этой части мы разберемся, как принять данные метеоспутника NOAA с помощью Python и недорогого (30$)..." data-vmid="aiturec:description"><meta data-vue-meta="ssr" itemprop="image" content="https://habr.com/share/publication/452390/3f48aba6e4464b338f467b672b5ae911/" data-vmid="image:itemprop"><meta data-vue-meta="ssr" property="og:image" content="https://habr.com/share/publication/452390/3f48aba6e4464b338f467b672b5ae911/" data-vmid="og:image"><meta data-vue-meta="ssr" property="aiturec:image" content="https://habr.com/share/publication/452390/3f48aba6e4464b338f467b672b5ae911/" data-vmid="aiturec:image"><meta data-vue-meta="ssr" name="twitter:image" content="https://habr.com/share/publication/452390/3f48aba6e4464b338f467b672b5ae911/" data-vmid="twitter:image"><meta data-vue-meta="ssr" property="vk:image" content="https://habr.com/share/publication/452390/3f48aba6e4464b338f467b672b5ae911/" data-vmid="vk:image"><meta data-vue-meta="ssr" property="aiturec:item_id" content="452390" data-vmid="aiturec:item_id"><meta data-vue-meta="ssr" property="aiturec:datetime" content="2019-05-18T21:01:51.000Z" data-vmid="aiturec:datetime"><meta data-vue-meta="ssr" property="og:type" content="article" data-vmid="og:type"><meta data-vue-meta="ssr" property="og:locale" content="ru_RU" data-vmid="og:locale"><meta data-vue-meta="ssr" property="og:image:width" content="1200" data-vmid="og:image:width"><meta data-vue-meta="ssr" property="og:image:height" content="630" data-vmid="og:image:height">
+  <link data-vue-meta="ssr" href="https://habr.com/ru/rss/post/452390/?fl=ru" type="application/rss+xml" title="" rel="alternate" name="rss"><link data-vue-meta="ssr" href="https://habr.com/ru/post/452390/" rel="canonical" data-vmid="canonical"><link data-vue-meta="ssr" data-vmid="hreflang"><link data-vue-meta="ssr" image_src="image" href="https://habr.com/share/publication/452390/3f48aba6e4464b338f467b672b5ae911/" data-vmid="image:href">
+  <meta name="apple-mobile-web-app-status-bar-style" content="#303b44">
+  <meta name="msapplication-TileColor" content="#629FBC">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="16x16"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-16.png"
+  >
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="32x32"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-32.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="76x76"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-76.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="120x120"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="152x152"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-152.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="180x180"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-180.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="256x256"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-256.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1136x640.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2436x1125.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1792x828.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_828x1792.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1334x750.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2208x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1125x2436.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2208.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2732x2048.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2688x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2224x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_750x1334.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x2732.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2388x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2224.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_640x1136.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2388.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x1536.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1536x2048.png"
+  >
+  <link
+    rel="mask-icon"
+    color="#77a2b6"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.svg"
+  >
+  <link
+    crossorigin="use-credentials"
+    href="/manifest.webmanifest"
+    rel="manifest"
+  >
+</head>
+<body>
+
+
+<div id="app" data-server-rendered="true" data-async-called="true"><div class="tm-layout__wrapper"><!----> <div></div> <!----> <header class="tm-header"><div class="tm-page-width"><div class="tm-header__container"><!----> <span class="tm-header__logo-wrap"><a href="/ru/" class="tm-header__logo tm-header__logo_ru"><svg height="16" width="16" class="tm-svg-img tm-header__icon"><title>Хабр</title> <use xlink:href="/img/habr-logo-ru.svg#logo"></use></svg></a> <span class="tm-header__beta-sign" style="display:none;">β</span></span> <div class="tm-dropdown tm-header__projects"><div class="tm-dropdown__head"><button class="tm-header__dropdown-toggle"><svg height="16" width="16" class="tm-svg-img tm-header__icon tm-header__icon_dropdown"><title>Открыть список</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#arrow-down"></use></svg></button></div> <!----></div> <a href="/ru/sandbox/start/" class="tm-header__become-author-btn">
+            Как стать автором
+          </a> <div class="tm-feature tm-header__feature tm-feature_variant-inline"><!----></div> <!----> <!----></div></div></header> <div class="tm-layout"><div class="tm-page-progress-bar"></div> <div data-menu-sticky="true" class="tm-base-layout__header tm-base-layout__header_is-sticky"><div class="tm-page-width"><div class="tm-base-layout__header-wrapper"><div class="tm-main-menu"><div class="tm-main-menu__section"><nav class="tm-main-menu__section-content"><!----> <a href="/ru/all/" class="tm-main-menu__item">
+        Все потоки
+      </a> <a href="/ru/flows/develop/" class="tm-main-menu__item">
+          Разработка
+        </a><a href="/ru/flows/admin/" class="tm-main-menu__item">
+          Администрирование
+        </a><a href="/ru/flows/design/" class="tm-main-menu__item">
+          Дизайн
+        </a><a href="/ru/flows/management/" class="tm-main-menu__item">
+          Менеджмент
+        </a><a href="/ru/flows/marketing/" class="tm-main-menu__item">
+          Маркетинг
+        </a><a href="/ru/flows/popsci/" class="tm-main-menu__item">
+          Научпоп
+        </a></nav></div></div> <div class="tm-header-user-menu tm-base-layout__user-menu"><a href="/ru/search/" class="tm-header-user-menu__item tm-header-user-menu__search"><svg height="24" width="24" class="tm-svg-img tm-header-user-menu__icon tm-header-user-menu__icon_search tm-header-user-menu__icon_dark"><title>Поиск</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#search"></use></svg></a> <!----> <!----> <!----> <div class="tm-header-user-menu__item tm-header-user-menu__user_desktop"><div class="tm-dropdown"><div class="tm-dropdown__head"><svg height="24" width="24" data-test-id="menu-toggle-guest" class="tm-svg-img tm-header-user-menu__icon"><title>Профиль</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#header-user"></use></svg> <!----></div> <!----></div> <!----></div> <!----></div></div></div></div> <!----> <div class="tm-page-width"></div> <main class="tm-layout__container"><div hl="ru" data-async-called="true" class="tm-page"><div class="tm-page-width"><!----> <div class="tm-page__wrapper"><div class="tm-page__main tm-page__main_has-sidebar"><div class="pull-down"><div class="pull-down__header" style="height:0px;"><div class="pull-down__content" style="bottom:10px;"><svg height="24" width="24" class="tm-svg-img pull-down__arrow"><title>Обновить</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#pull-arrow"></use></svg></div></div> <div class="tm-article-presenter"> <div class="tm-article-presenter__body"><div class="tm-misprint-area"><div class="tm-misprint-area__wrapper"><article class="tm-article-presenter__content tm-article-presenter__content_narrow"><div class="tm-article-presenter__header"> <div class="tm-article-snippet tm-article-presenter__snippet"><div class="tm-article-snippet__meta-container"><div class="tm-article-snippet__meta"><span class="tm-user-info tm-article-snippet__author"><a href="/ru/users/DmitrySpb79/" title="DmitrySpb79" class="tm-user-info__userpic"><div class="tm-entity-image"><svg height="24" width="24" class="tm-svg-img tm-image-placeholder tm-image-placeholder_lilac"><!----> <use xlink:href="/img/megazord-v24.ce74655c.svg#placeholder-user"></use></svg></div></a> <span class="tm-user-info__user"><a href="/ru/users/DmitrySpb79/" class="tm-user-info__username">
+      DmitrySpb79
+    </a> </span></span> <span class="tm-article-snippet__datetime-published"><time datetime="2019-05-18T21:01:51.000Z" title="2019-05-19, 00:01">19  мая  2019 в 00:01</time></span></div> <!----></div> <h1 lang="ru" class="tm-article-snippet__title tm-article-snippet__title_h1"><span>Software Defined Radio — как это работает? Часть 3</span></h1> <div class="tm-article-snippet__hubs"><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/programming/" class="tm-article-snippet__hubs-item-link"><span>Программирование</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/netdev/" class="tm-article-snippet__hubs-item-link"><span>Разработка систем связи</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/gadgets/" class="tm-article-snippet__hubs-item-link"><span>Гаджеты</span> <!----></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/popular_science/" class="tm-article-snippet__hubs-item-link"><span>Научно-популярное</span> <!----></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/easyelectronics/" class="tm-article-snippet__hubs-item-link"><span>Электроника для начинающих</span> <!----></a></span></div> <!----> <!----> <!----></div></div> <!----> <div data-gallery-root="" lang="ru" class="tm-article-body"><div id="post-content-body" class="article-formatted-body article-formatted-body_version-1"><div xmlns="http://www.w3.org/1999/xhtml">Привет, Хабр.<br/>
+<br/>
+Во <a href="https://habr.com/ru/post/452036/">второй части</a> были рассмотрены практические аспекты использования SDR. В этой части мы разберемся, как принять данные метеоспутника NOAA с помощью Python и недорогого (30$) приемника RTL-SDR. Рассмотренный код будет работать везде — на Windows, OSX, Linux и даже на Raspberry Pi.<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/ux/vk/he/uxvkhed8_-k9uumw0pgbekyi_m8.png"/><br/>
+<br/>
+Кому интересно, продолжение под катом.<br/>
+<a name="habracut"></a><br/>
+<h2>SoapySDR</h2><br/>
+Производителей различных SDR-устройств довольно много, и поддерживать каждое по отдельности было бы весьма неудобно, да и дорого в плане покупки «железа» для тестирования. В принципе, для унифицированного доступа существует две библиотеки, которые по сути стали стандартом. Первая — это уже довольно старый интерфейс <a href="http://www.hdsdr.de/download/LC_ExtIO_Types.h">ExtIO DLL</a>, которому наверно не менее 10 лет, вторая — более современная библиотека <a href="https://github.com/pothosware/SoapySDR/wiki">SoapySDR</a>, которую мы и рассмотрим. <br/>
+<br/>
+SoapySDR — это набор кроссплатформенных библиотек, написанных на C++, предоставляющих унифицированный доступ к SDR-устройствам, как к приемникам, так и трансиверам. Если производитель делает такой интерфейс, то его устройство «автоматом» будет работать с достаточно большим числом популярных программ (GQRX, GNU Radio, CubicSDR и пр). Практически все адекватные производители, кроме некоторых, <s>(пользуясь случаем, передаю привет компании ЕЕ)</s> имеют поддержку SoapySDR, список поддерживаемых устройств можно посмотреть <a href="https://github.com/pothosware/SoapySDR/wiki">на странице проекта</a>. Как можно видеть, он довольно большой, и включает HackRF, USRP, SDRPlay, LimeSDR, RTL-SDR, Red Pitaya и многие другие.<br/>
+<br/>
+Библиотека SoapySDR является кроссплатформенной, т.е. написанный под неё код будет работать под Windows, OSX, Linux, и даже на Raspberry Pi. Для Windows нужные библиотеки входят в состав пакета <a href="https://downloads.myriadrf.org/builds/PothosSDR/">PothosSDR</a>, для остальных платформ скомпилировать SoapySDR придется самостоятельно. Нужно скомпилировать две части — собственно <a href="https://github.com/pothosware/SoapySDR/wiki/BuildGuide">библиотеку</a>, и «плагин» для нужного приемника, в нашем случае это будет <a href="https://github.com/pothosware/SoapyRTLSDR/wiki">SoapyRTLSDR</a> (под Windows библиотеку тоже можно собрать из исходников, для этого понадобится Visual Studio, Cmake, и SWIG). Теперь все готово, и можно писать код.<br/>
+<br/>
+Импортируем библиотеку и получаем список приемников: <br/>
+<br/>
+<pre><code class="python">from __future__ import print_function
+import SoapySDR
+
+# Enumerate devices
+print("SDR devices:")
+for d in SoapySDR.Device.enumerate(''):
+    print(d)
+print()</code></pre><br/>
+Подключаем приемник, запускаем код и видим список устройств, среди которых есть наш rtlsdr. <br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/li/uj/8v/liuj8v8t1jy0tythfo8rpprstm4.png"/><br/>
+<br/>
+Остальные устройства это звуковые карты, как мы помним, исторически первые SDR работали именно через линейный вход ПК, и библиотека их тоже поддерживает. Получаем информацию об устройстве — число доступных каналов, частотный диапазон и пр:<br/>
+<br/>
+<pre><code class="python">soapy_device = "rtlsdr"
+device = SoapySDR.Device(dict(driver = soapy_device))
+
+channels = list(range(device.getNumChannels(SoapySDR.SOAPY_SDR_RX)))
+print("Channels:", channels)
+
+ch = channels[0]
+
+sample_rates = device.listSampleRates(SoapySDR.SOAPY_SDR_RX, ch)
+print("Sample rates:\n", sample_rates)
+
+bandwidths = list(map(lambda r: int(r.maximum()), device.getBandwidthRange(SoapySDR.SOAPY_SDR_RX, ch)))
+print("Bandwidths:\n", bandwidths)
+
+print("Gain controls:")
+for gain in device.listGains(SoapySDR.SOAPY_SDR_RX, ch):
+    print("  %s: %s" % (gain, device.getGainRange(SoapySDR.SOAPY_SDR_RX, ch, gain)))
+
+frequencies = device.listFrequencies(SoapySDR.SOAPY_SDR_RX, ch)
+print("Frequencies names:", frequencies)
+
+frequency_name = frequencies[0]
+print("Frequency channel name:", frequency_name)
+
+print("Frequency range:", device.getFrequencyRange(SoapySDR.SOAPY_SDR_RX, ch, frequency_name)[0])
+</code></pre><br/>
+Запускаем программу и видим информацию о приемнике:<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/nl/p5/yk/nlp5ykxuvldaqjvfitcdp4oinkk.png"/><br/>
+<br/>
+Мы видим что приемник имеет один входной канал с названием «RF», возможные частоты дискретизации [250000.0, 1024000.0, 1536000.0, 1792000.0, 1920000.0, 2048000.0, 2160000.0, 2560000.0, 2880000.0, 3200000.0] и частотный диапазон 24МГц-1.7ГГц.<br/>
+<br/>
+Лайфхак — те же данные можно получить и из командной строки, набрав команду <i>SoapySDRUtil --probe=«driver=rtlsdr»</i>.<br/>
+<br/>
+Зная это, мы можем записать поток данных в WAV. Как говорилось в предыдущей части, данные с SDR представлены потоком сигналов, называемых I и Q, представляющих собой отсчеты с АЦП, грубо их можно представить как RAW-данные с фотокамеры. Кому интересно подробнее, могут почитать например <a href="https://radioprog.ru/post/415">здесь</a>. Для нас достаточно знать, что мы эти данные можем записать, а другие SDR-программы потом могут с ними работать.<br/>
+<br/>
+Сама по себе запись довольно проста — функция readStream заполняет буфер если есть данные, если данных еще нет, то вернется -1. Ниже показан код записи 10 отсчетов (несущественные части кода опущены).<br/>
+<br/>
+<pre><code class="python">device.setFrequency(SoapySDR.SOAPY_SDR_RX, channel, "RF", frequency)
+device.setGain(SoapySDR.SOAPY_SDR_RX, channel, "TUNER", gain)
+device.setGainMode(SoapySDR.SOAPY_SDR_RX, channel, False)
+device.setSampleRate(SoapySDR.SOAPY_SDR_RX, channel, sample_rate)
+
+# Number of blocks to save
+block, max_blocks = 0, 10
+
+block_size = device.getStreamMTU(stream)
+print("Block size:", block_size)
+
+buffer_format = np.int8
+buffer_size = 2*block_size  # I+Q
+buffer = np.empty(buffer_size, buffer_format)
+
+while True:
+    d_info = device.readStream(stream, [buffer], buffer_size)
+    if d_info.ret > 0:
+        wav.write(buffer[0:2*d_info.ret])
+        print("Bytes saved:", 2*d_info.ret)
+        block += 1
+        if block > max_blocks:
+            break
+</code></pre><br/>
+Результат на скриншоте:<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/e_/jn/bb/e_jnbbyfneb3jc3lp7h4kcbsepo.png"/><br/>
+<br/>
+Как можно видеть, мы получаем от устройства блоки данных, размер одного блока составляет 131072 байта, что при частоте дискретизации 250000 дает нам длительность примерно полсекунды. В общем, кто работал ранее со звуковыми картами в Windows, найдет много общего.<br/>
+<br/>
+Для теста записываем файл и проверяем, что все нормально — его можно воспроизвести в SDR#. Тут есть еще одна хитрость — чтобы SDR# корректно показал частоты станций, имя файла нужно записать в формате, совместимом с HDSDR, вида «HDSDR_20190518_115500Z_101000kHz_RF.wav» (как нетрудно догадаться, в начале идет дата и время в GMT, затем частота в килогерцах). Это нетрудно записать на Python:<br/>
+<br/>
+<pre><code class="python">frequency = 101000000
+file_name = "HDSDR_%s_%dkHz_RF.wav" % (datetime.datetime.utcnow().strftime("%Y%m%d_%H%M%SZ"), frequency/1000)
+</code></pre><br/>
+Для начала проверяем на FM-диапазоне. Все нормально, станции видно, музыка играется, RDS работает. <br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/uk/wl/jt/ukwljtyarociv4vcld3ngqey-ny.png"/><br/>
+<br/>
+Можно приступать к записи NOAA.<br/>
+<br/>
+<h2>Прием NOAA</h2><br/>
+Итак, у нас есть приемник и есть программа записи. Нам будут интересны метеоспутники NOAA 15, NOAA 18 и NOAA 19, передающие изображения поверхности Земли на частотах 137.620, 137.9125 и 137.100МГц. Основная сложность здесь в том, что нужно «поймать» момент, когда спутник пролетает над нами. Узнать время пролета можно онлайн по ссылкам <a href="https://www.n2yo.com/passes/?s=25338">https://www.n2yo.com/passes/?s=25338</a>, <a href="https://www.n2yo.com/passes/?s=28654">https://www.n2yo.com/passes/?s=28654</a> и <a href="https://www.n2yo.com/passes/?s=33591">https://www.n2yo.com/passes/?s=33591</a> соответственно. <br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/dp/dy/yb/dpdyybwvq6gx0pzdnk6un5usdvo.png"/><br/>
+<br/>
+Чтобы не сидеть у компьютера, добавим в программу ожидание нужного времени. Это позволит также запускать программу на Raspberry Pi, без дисплея и клавиатуры.<br/>
+<br/>
+<pre><code class="python">import datetime
+
+def wait_for_start(dt):
+    # Wait for the start
+    while True:
+        now = datetime.datetime.now()
+        diff = int((dt - now).total_seconds())
+        print("{:02d}:{:02d}:{:02d}: Recording will be started after {}m {:02d}s...".format(now.hour, now.minute, now.second, int(diff / 60), diff % 60))
+        time.sleep(5)
+        if diff &lt;= 1:
+            break
+
+wait_for_start(datetime.datetime(2019, 5, 18, 21, 49, 0))</code></pre><br/>
+<br/>
+Кстати, чтобы запустить скрипт на Raspberry Pi и оставить его работать после закрытия консоли, нужно ввести команду «nohup python recorder.py &amp;». <br/>
+<br/>
+Все готово, запускаем скрипт и можем заниматься другими делами, запись длится примерно 20 минут. Параллельно может возникнуть вопрос — можно ли увидеть пролет спутника невооруженным глазом? Согласно таблице, его максимальная яркость составляет порядка 5.5м <a href="https://ru.wikipedia.org/wiki/%D0%97%D0%B2%D1%91%D0%B7%D0%B4%D0%BD%D0%B0%D1%8F_%D0%B2%D0%B5%D0%BB%D0%B8%D1%87%D0%B8%D0%BD%D0%B0">звездной величины</a>, предел человеческого глаза в идеальных условиях 6м. Т.е. при реально темном небе, далеко за городом, пролет спутника NOAA теоретически заметить можно, в городе конечно, шансов нет (как <a href="https://habr.com/ru/post/395211/">писали на Хабре</a>, уже выросло поколение людей, никогда в жизни не видевших <a href="https://hi-news.ru/wp-content/uploads/2015/09/artleo.com-336681.jpg">Млечный Путь</a>).<br/>
+<br/>
+Результатом работы скрипта является записанный wav-файл, его спектр показан на скриншоте. <br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/u5/u3/xn/u5u3xnyvsgq6xpmirbqtafeoaak.png"/><br/>
+<br/>
+Мы видим вполне различимый сигнал, хотя конечно со <a href="http://www.radioamatoripeligni.it/i6ibe/qfh/picofqfh.gif">специальной антенной</a> для приема NOAA качество было бы гораздо лучше. Формат сигнала называется APT (<a href="https://en.wikipedia.org/wiki/Automatic_picture_transmission">Automatic Picture Transmission</a>), из него можно получить изображение земной поверхности, если кому интересно, можно отдельно рассмотреть его декодирование. Но есть разумеется, и готовые программы, декодировать такие сигналы можно с помощью WxToImg или MultiPSK.<br/>
+<br/>
+Интересно видеть допплеровский сдвиг на спектре, который происходит оттого, что спутник пролетает мимо нас. Наверное, несложно посчитать и его скорость, зная время и сдвиг частоты в герцах.<br/>
+<br/>
+Разумеется, программу можно использовать не только для записи NOAA, любую ширину полосы и частоту можно указать в настройках. Для тех кто захочет поэкспериментировать с SoapySDR самостоятельно, код программы целиком размещен под спойлером.<br/>
+<br/>
+<div class="spoiler"><b class="spoiler_title">Исходный код</b><div class="spoiler_text"><pre><code class="python">from __future__ import print_function
+import SoapySDR
+import numpy as np
+import struct
+import sys
+import time
+import datetime
+
+
+def wait_for_start(dt):
+    # Wait for the start
+    while True:
+        now = datetime.datetime.now()
+        diff = int((dt - now).total_seconds())
+        print("{:02d}:{:02d}:{:02d}: Recording will be started after {}m {:02d}s...".format(now.hour, now.minute, now.second, int(diff / 60), diff % 60))
+        time.sleep(5)
+        if diff &lt;= 1:
+            break
+
+
+def sdr_enumerate():
+    # Enumerate SDR devices
+    print("SDR devices:")
+    for d in SoapySDR.Device.enumerate(''):
+        print(d)
+    print()
+
+
+def sdr_init():
+    soapy_device = "rtlsdr"
+    device = SoapySDR.Device({"driver": soapy_device})
+
+    channels = list(range(device.getNumChannels(SoapySDR.SOAPY_SDR_RX)))
+    print("Channels:", channels)
+
+    ch = channels[0]
+
+    sample_rates = device.listSampleRates(SoapySDR.SOAPY_SDR_RX, ch)
+    print("Sample rates:\n", sample_rates)
+
+    print("Gain controls:")
+    for gain in device.listGains(SoapySDR.SOAPY_SDR_RX, ch):
+        print("  %s: %s" % (gain, device.getGainRange(SoapySDR.SOAPY_SDR_RX, ch, gain)))
+
+    frequencies = device.listFrequencies(SoapySDR.SOAPY_SDR_RX, ch)
+    print("Frequencies names:", frequencies)
+
+    frequency_name = frequencies[0]
+    print("Frequency channel name:", frequency_name)
+
+    print("Frequency range:", device.getFrequencyRange(SoapySDR.SOAPY_SDR_RX, ch, frequency_name)[0])
+
+    print()
+    return device
+
+
+def sdr_record(device, frequency, sample_rate, gain, blocks_count):
+    print("Frequency:", frequency)
+    print("Sample rate:", sample_rate)
+    print("Gain:", gain)
+
+    channel = 0  # Always for RTL-SDR
+    device.setFrequency(SoapySDR.SOAPY_SDR_RX, channel, "RF", frequency)
+    device.setGain(SoapySDR.SOAPY_SDR_RX, channel, "TUNER", gain)
+    device.setGainMode(SoapySDR.SOAPY_SDR_RX, channel, False)
+    device.setSampleRate(SoapySDR.SOAPY_SDR_RX, channel, sample_rate)
+
+    data_format = SoapySDR.SOAPY_SDR_CS8 # if 'rtlsdr' in soapy_device or 'hackrf' in soapy_device else SoapySDR.SOAPY_SDR_CS16
+    stream = device.setupStream(SoapySDR.SOAPY_SDR_RX, data_format, [channel], {})
+    device.activateStream(stream)
+
+    block_size = device.getStreamMTU(stream)
+    print("Block size:", block_size)
+    print("Data format:", data_format)
+    print()
+
+    # IQ: 2 digits ver variable
+    buffer_format = np.int8
+    buffer_size = 2 * block_size # I + Q samples
+    buffer = np.empty(buffer_size, buffer_format)
+
+    # Number of blocks to save
+    block, max_blocks = 0, blocks_count
+
+    # Save to file
+    file_name = "HDSDR_%s_%dkHz_RF.wav" % (datetime.datetime.utcnow().strftime("%Y%m%d_%H%M%SZ"), frequency/1000)
+    print("Saving file:", file_name)
+    with open(file_name, "wb") as wav:
+        # Wav data info
+        bits_per_sample = 16
+        channels_num, samples_num = 2, int(max_blocks * block_size)
+        subchunk_size = 16  # always 16 for PCM
+        subchunk2_size = int(samples_num * channels_num * bits_per_sample / 8)
+        block_alignment = int(channels_num * bits_per_sample / 8)
+
+        # Write RIFF header
+        wav.write('RIFF'.encode('utf-8'))
+        wav.write(struct.pack('&lt;i', 4 + (8 + subchunk_size) + (8 + subchunk2_size)))  # Size of the overall file
+        wav.write('WAVE'.encode('utf-8'))
+        # Write fmt subchunk
+        wav.write('fmt '.encode('utf-8'))  # chunk type
+        wav.write(struct.pack('&lt;i', subchunk_size))  # subchunk data size (16 for PCM)
+        wav.write(struct.pack('&lt;h', 1))  # compression type 1 - PCM
+        wav.write(struct.pack('&lt;h', channels_num))  # channels
+        wav.write(struct.pack('&lt;i', int(sample_rate)))  # sample rate
+        wav.write(struct.pack('&lt;i', int(sample_rate * bits_per_sample * channels_num/ 8)))  # byte rate
+        wav.write(struct.pack('&lt;h', block_alignment))  # block alignment
+        wav.write(struct.pack('&lt;h', bits_per_sample))  # sample depth
+        # Write data subchunk
+        wav.write('data'.encode('utf-8'))
+        wav.write(struct.pack('&lt;i', subchunk2_size))
+        while True:
+            d_info = device.readStream(stream, [buffer], buffer_size)
+            if d_info.ret > 0:
+                data = buffer[0:2*d_info.ret]
+                fileData = data
+                if data_format == SoapySDR.SOAPY_SDR_CS8:
+                   fileData = data.astype('int16')
+                wav.write(fileData)
+                print("Block %d saved: %d bytes" % (block, 2*d_info.ret))
+                block += 1
+                if block > max_blocks:
+                    break
+
+    device.deactivateStream(stream)
+    device.closeStream(stream)
+
+if __name__ == "__main__":
+    print("App started")
+
+    # Forecast for active NOAA satellites
+    # NOAA 15: 137.620, https://www.n2yo.com/passes/?s=25338
+    # NOAA 18: 137.9125, https://www.n2yo.com/passes/?s=28654
+    # NOAA 19: 137.100, https://www.n2yo.com/passes/?s=33591
+    # Wait for the start: 18-May 21:49 21:49:
+    wait_for_start(datetime.datetime(2019, 5, 18, 21, 49, 0))
+
+    device = sdr_init()
+
+    t_start = time.time()
+
+    sdr_record(device, frequency=137912500, sample_rate=250000, gain=35, blocks_count=2100)
+
+    print("Recording complete, time = %ds" % int(time.time() - t_start))
+    print()
+</code></pre><br/>
+</div></div><br/>
+Плюс SoapySDR в том, что эта же программа с минимальными изменениями будет работать и с другими приемниками, например с SDRPlay или HackRF. Ну и про кроссплатформенность тоже уже упоминалось.<br/>
+<br/>
+Если у читателей еще остался интерес к теме радиоприема, можно рассмотреть пример использования SDR с GNU Radio на примере создания нескольких виртуальных приемников на базе одного «железного».</div></div> <!----> <!----></div> <div class="tm-article-presenter__meta"><div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Теги:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bsdr%5D" class="tm-tags-list__link">sdr</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bradio%5D" class="tm-tags-list__link">radio</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bpython%5D" class="tm-tags-list__link">python</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bnoaa%5D" class="tm-tags-list__link">noaa</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bwxtoimg%5D" class="tm-tags-list__link">wxtoimg</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bdsp%5D" class="tm-tags-list__link">dsp</a></li></ul></div> <div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Хабы:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/hub/programming/" class="tm-hubs-list__link">
+    Программирование
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/netdev/" class="tm-hubs-list__link">
+    Разработка систем связи
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/gadgets/" class="tm-hubs-list__link">
+    Гаджеты
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/popular_science/" class="tm-hubs-list__link">
+    Научно-популярное
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/easyelectronics/" class="tm-hubs-list__link">
+    Электроника для начинающих
+  </a></li></ul></div></div></article></div> <!----></div> <div class="tm-article-sticky-panel"><div class="tm-data-icons tm-article-sticky-panel__icons"><div class="tm-article-rating tm-data-icons__item"><div class="tm-votes-meter tm-article-rating__votes-switcher"><svg height="16" width="16" class="tm-svg-img tm-votes-meter__icon tm-votes-meter__icon_medium"><title>Всего голосов 37: ↑36 и ↓1</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-rating"></use></svg> <span title="Всего голосов 37: ↑36 и ↓1" class="tm-votes-meter__value tm-votes-meter__value_positive tm-votes-meter__value_medium">+35</span></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----> <span title="Количество просмотров" class="tm-icon-counter tm-data-icons__item"><svg height="16" width="16" class="tm-svg-img tm-icon-counter__icon"><title>Просмотры</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-views"></use></svg> <span class="tm-icon-counter__value">21K</span></span> <button title="Добавить в закладки" type="button" class="bookmarks-button tm-data-icons__item"><span title="Добавить в закладки" class="tm-svg-icon__wrapper bookmarks-button__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Добавить в закладки</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-favorite"></use></svg></span> <span title="Количество пользователей, добавивших публикацию в закладки" class="bookmarks-button__counter">
+    108
+  </span></button> <!----> <div title="Поделиться" class="tm-sharing tm-data-icons__item"><button type="button" class="tm-sharing__button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="tm-sharing__icon"><path fill="currentColor" d="M10.33.275l9.047 7.572a.2.2 0 010 .306l-9.048 7.572a.2.2 0 01-.328-.153V11c-8 0-9.94 6-9.94 6S-1 5 10 5V.428a.2.2 0 01.328-.153z"></path></svg></button> <!----></div> <DIV class="v-portal" style="display:none;"></DIV></div> </div></div> <!----> <!----> <div class="tm-article-presenter__footer"><div class="tm-article-blocks"><!----> <section class="tm-block tm-block_spacing-bottom"><!----> <div class="tm-block__body tm-block__body_variant-balanced"><div class="tm-article-author"> <div class="tm-user-card tm-article-author__user-card tm-user-card_variant-article"><div class="tm-user-card__info-container"><div class="tm-user-card__header"><div class="tm-user-card__header-data"><a href="/ru/users/DmitrySpb79/" class="tm-user-card__userpic tm-user-card__userpic_size-40"><div class="tm-entity-image"><svg class="tm-svg-img tm-image-placeholder tm-image-placeholder_lilac"><!----> <use xlink:href="/img/megazord-v24.ce74655c.svg#placeholder-user"></use></svg></div></a> <div class="tm-user-card__meta"><div title=" 494 голоса " class="tm-karma tm-user-card__karma"><div class="tm-karma__votes tm-karma__votes_positive">
+    340.2
+  </div> <div class="tm-karma__text">
+    Карма
+  </div></div> <div title="Рейтинг пользователя" class="tm-rating tm-user-card__rating"><div class="tm-rating__header"> <div class="tm-rating__counter">0.3</div></div> <div class="tm-rating__text">
+    Рейтинг
+  </div></div></div></div></div> <div class="tm-user-card__info tm-user-card__info_variant-article"><div class="tm-user-card__title tm-user-card__title_variant-article"><!----> <a href="/ru/users/DmitrySpb79/" class="tm-user-card__nickname tm-user-card__nickname_variant-article">
+          @DmitrySpb79
+        </a> <!----></div> <p class="tm-user-card__short-info tm-user-card__short-info_variant-article">Закончил активность на Хабре</p></div></div> <div class="tm-user-card__buttons tm-user-card__buttons_variant-article"><!----> <!----> <!----> <!----> <!----></div></div> <!----></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----></section> <div class="tm-article-blocks__comments"><div class="tm-article-page-comments"><div class="tm-article-comments-counter-link tm-article-comments-counter-button"><a href="/ru/post/452390/comments/" class="tm-article-comments-counter-link__link tm-article-comments-counter-link__link_button-style"><svg height="16" width="16" class="tm-svg-img tm-article-comments-counter-link__icon tm-article-comments-counter-link__icon_contrasted"><title>Комментарии</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-comments"></use></svg> <span class="tm-article-comments-counter-link__value tm-article-comments-counter-link__value_contrasted">
+       Комментарии 22 
+    </span></a> <!----></div></div></div> <div class="tm-ad-banner__container tm-page-article__banner"><!----> <div id="articleBottomBanner" class="tm-ad-banner"></div></div> <!----> <!----> <!----> <!----> </div></div></div></div></div> <div class="tm-page__sidebar"><div class="tm-layout-sidebar"><div class="tm-layout-sidebar__ads tm-layout-sidebar__ads_initial"><div class="tm-ad-banner__container tm-layout-sidebar__banner"><!----> <div id="sidebarBanner" class="tm-ad-banner"></div></div></div> <div class="tm-sexy-sidebar tm-sexy-sidebar_initial" style="margin-top:0px;"><!----> <!----></div></div></div></div></div></div></main> <!----></div> <div class="tm-footer-menu"><div class="tm-page-width"><div class="tm-footer-menu__container"><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Ваш аккаунт
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr/?back=/ru/post/452390/&amp;hl=ru" rel="nofollow" target="_self">
+                Войти
+              </a></li><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr-register/?back=/ru/post/452390/&amp;hl=ru" rel="nofollow" target="_self">
+                Регистрация
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Разделы
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/" class="footer-menu__item-link router-link-active">
+                Публикации
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/news/" class="footer-menu__item-link">
+                Новости
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/hubs/" class="footer-menu__item-link">
+                Хабы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/companies/" class="footer-menu__item-link">
+                Компании
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/users/" class="footer-menu__item-link">
+                Авторы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/sandbox/" class="footer-menu__item-link">
+                Песочница
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Информация
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/docs/help/" class="footer-menu__item-link">
+                Устройство сайта
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/authors/codex/" class="footer-menu__item-link">
+                Для авторов
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/companies/corpblogs/" class="footer-menu__item-link">
+                Для компаний
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/docs/transparency/" class="footer-menu__item-link">
+                Документы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/agreement" target="_blank">
+                Соглашение
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/confidential/" target="_blank">
+                Конфиденциальность
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Услуги
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQLwRfQmXibiUlWaRg-BAc38s7oM3lJiaPju7qmdJsp8ysIvZ_G-Npem0njJLMozE2bPHMpDqiI5hhy/pub?start=false&amp;loop=false&amp;delayms=60000&amp;slide=id.g91a03369cd_4_297" target="_blank">
+                Реклама
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://habrastorage.org/storage/stuff/habr/service_price.pdf" target="_blank">
+                Тарифы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQJJds8-Di7BQSP_guHxICN7woVYoN5NP_22ra-BIo4bqnTT9FR6fB-Ku2P0AoRpX0Ds-LRkDeAoD8F/pub?start=false&amp;loop=false&amp;delayms=60000" target="_blank">
+                Контент
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://tmtm.timepad.ru/" target="_blank">
+                Семинары
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/megaprojects/" class="footer-menu__item-link">
+                Мегапроекты
+              </a></li></ul></div></div></div></div></div> <div class="tm-footer"><div class="tm-page-width"><div class="tm-footer__container"><!----> <div class="tm-footer__social"><a href="https://www.facebook.com/habrahabr.ru" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Facebook</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-facebook"></use></svg></a><a href="https://twitter.com/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Twitter</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-twitter"></use></svg></a><a href="https://vk.com/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>VK</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-vkontakte"></use></svg></a><a href="https://telegram.me/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Telegram</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-telegram"></use></svg></a><a href="https://www.youtube.com/channel/UCd_sTwKqVrweTt4oAKY5y4w" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Youtube</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-youtube"></use></svg></a><a href="https://zen.yandex.ru/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Яндекс Дзен</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-zen"></use></svg></a></div> <DIV class="v-portal" style="display:none;"></DIV> <button class="tm-footer__link"><!---->
+        Настройка языка
+      </button> <a href="/ru/about" class="tm-footer__link">
+        О сайте
+      </a> <a href="/ru/feedback/" class="tm-footer__link">
+        Техническая поддержка
+      </a> <!----> <a href="/berserk-mode-nope" class="tm-footer__link">
+        Вернуться на старую версию
+      </a> <div class="tm-footer-copyright"><span class="tm-copyright"><span class="tm-copyright__years">© 2006–2021 </span> <span class="tm-copyright__name">«<a href="https://company.habr.com/" rel="noopener" target="_blank" class="tm-copyright__link">Habr</a>»</span></span></div></div></div></div> <!----> <!----></div> <div class="vue-portal-target"></div></div>
+<script>window.__INITIAL_STATE__={"adblock":{"hasAcceptableAdsFilter":false,"hasAdblock":false},"articlesList":{"articlesList":{"452390":{"id":"452390","timePublished":"2019-05-18T21:01:51+00:00","isCorporative":false,"lang":"ru","titleHtml":"Software Defined Radio — как это работает? Часть 3","leadData":{"textHtml":"Привет, Хабр.\u003Cbr\u003E\r\n\u003Cbr\u003E\r\nВо \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fpost\u002F452036\u002F\"\u003Eвторой части\u003C\u002Fa\u003E были рассмотрены практические аспекты использования SDR. В этой части мы разберемся, как принять данные метеоспутника NOAA с помощью Python и недорогого (30$) приемника RTL-SDR. Рассмотренный код будет работать везде — на Windows, OSX, Linux и даже на Raspberry Pi.\u003Cbr\u003E\r\n\u003Cbr\u003E\r\n\u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fux\u002Fvk\u002Fhe\u002Fuxvkhed8_-k9uumw0pgbekyi_m8.png\"\u003E\u003Cbr\u003E\r\n\u003Cbr\u003E\r\nКому интересно, продолжение под катом.\u003Cbr\u003E","imageUrl":null,"buttonTextHtml":"Читать дальше →","image":null},"editorVersion":"1.0","postType":"article","postLabels":[],"author":{"scoreStats":{"score":340.2,"votesCount":494},"rating":0.3,"relatedData":null,"contacts":[],"authorContacts":[],"paymentDetails":{"paymentYandexMoney":null,"paymentPayPalMe":null,"paymentWebmoney":null},"id":"1071558","alias":"DmitrySpb79","fullname":null,"avatarUrl":null,"speciality":"Закончил активность на Хабре"},"statistics":{"commentsCount":22,"favoritesCount":108,"readingCount":20619,"score":35,"votesCount":37},"hubs":[{"relatedData":null,"id":"359","alias":"programming","type":"collective","title":"Программирование","titleHtml":"Программирование","isProfiled":true},{"relatedData":null,"id":"19395","alias":"netdev","type":"collective","title":"Разработка систем связи","titleHtml":"Разработка систем связи","isProfiled":true},{"relatedData":null,"id":"21894","alias":"gadgets","type":"collective","title":"Гаджеты","titleHtml":"Гаджеты","isProfiled":false},{"relatedData":null,"id":"21910","alias":"popular_science","type":"collective","title":"Научно-популярное","titleHtml":"Научно-популярное","isProfiled":false},{"relatedData":null,"id":"22016","alias":"easyelectronics","type":"collective","title":"Электроника для начинающих","titleHtml":"Электроника для начинающих","isProfiled":false}],"flows":[{"id":"1","alias":"develop","title":"Разработка"},{"id":"7","alias":"popsci","title":"Научпоп"}],"relatedData":null,"textHtml":"\u003Cdiv xmlns=\"http:\u002F\u002Fwww.w3.org\u002F1999\u002Fxhtml\"\u003EПривет, Хабр.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВо \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fpost\u002F452036\u002F\"\u003Eвторой части\u003C\u002Fa\u003E были рассмотрены практические аспекты использования SDR. В этой части мы разберемся, как принять данные метеоспутника NOAA с помощью Python и недорогого (30$) приемника RTL-SDR. Рассмотренный код будет работать везде — на Windows, OSX, Linux и даже на Raspberry Pi.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fux\u002Fvk\u002Fhe\u002Fuxvkhed8_-k9uumw0pgbekyi_m8.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nКому интересно, продолжение под катом.\u003Cbr\u002F\u003E\r\n\u003Ca name=\"habracut\"\u003E\u003C\u002Fa\u003E\u003Cbr\u002F\u003E\r\n\u003Ch2\u003ESoapySDR\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nПроизводителей различных SDR-устройств довольно много, и поддерживать каждое по отдельности было бы весьма неудобно, да и дорого в плане покупки «железа» для тестирования. В принципе, для унифицированного доступа существует две библиотеки, которые по сути стали стандартом. Первая — это уже довольно старый интерфейс \u003Ca href=\"http:\u002F\u002Fwww.hdsdr.de\u002Fdownload\u002FLC_ExtIO_Types.h\"\u003EExtIO DLL\u003C\u002Fa\u003E, которому наверно не менее 10 лет, вторая — более современная библиотека \u003Ca href=\"https:\u002F\u002Fgithub.com\u002Fpothosware\u002FSoapySDR\u002Fwiki\"\u003ESoapySDR\u003C\u002Fa\u003E, которую мы и рассмотрим. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nSoapySDR — это набор кроссплатформенных библиотек, написанных на C++, предоставляющих унифицированный доступ к SDR-устройствам, как к приемникам, так и трансиверам. Если производитель делает такой интерфейс, то его устройство «автоматом» будет работать с достаточно большим числом популярных программ (GQRX, GNU Radio, CubicSDR и пр). Практически все адекватные производители, кроме некоторых, \u003Cs\u003E(пользуясь случаем, передаю привет компании ЕЕ)\u003C\u002Fs\u003E имеют поддержку SoapySDR, список поддерживаемых устройств можно посмотреть \u003Ca href=\"https:\u002F\u002Fgithub.com\u002Fpothosware\u002FSoapySDR\u002Fwiki\"\u003Eна странице проекта\u003C\u002Fa\u003E. Как можно видеть, он довольно большой, и включает HackRF, USRP, SDRPlay, LimeSDR, RTL-SDR, Red Pitaya и многие другие.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nБиблиотека SoapySDR является кроссплатформенной, т.е. написанный под неё код будет работать под Windows, OSX, Linux, и даже на Raspberry Pi. Для Windows нужные библиотеки входят в состав пакета \u003Ca href=\"https:\u002F\u002Fdownloads.myriadrf.org\u002Fbuilds\u002FPothosSDR\u002F\"\u003EPothosSDR\u003C\u002Fa\u003E, для остальных платформ скомпилировать SoapySDR придется самостоятельно. Нужно скомпилировать две части — собственно \u003Ca href=\"https:\u002F\u002Fgithub.com\u002Fpothosware\u002FSoapySDR\u002Fwiki\u002FBuildGuide\"\u003Eбиблиотеку\u003C\u002Fa\u003E, и «плагин» для нужного приемника, в нашем случае это будет \u003Ca href=\"https:\u002F\u002Fgithub.com\u002Fpothosware\u002FSoapyRTLSDR\u002Fwiki\"\u003ESoapyRTLSDR\u003C\u002Fa\u003E (под Windows библиотеку тоже можно собрать из исходников, для этого понадобится Visual Studio, Cmake, и SWIG). Теперь все готово, и можно писать код.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nИмпортируем библиотеку и получаем список приемников: \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"python\"\u003Efrom __future__ import print_function\nimport SoapySDR\n\n# Enumerate devices\nprint(\"SDR devices:\")\nfor d in SoapySDR.Device.enumerate(''):\n    print(d)\nprint()\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nПодключаем приемник, запускаем код и видим список устройств, среди которых есть наш rtlsdr. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fli\u002Fuj\u002F8v\u002Fliuj8v8t1jy0tythfo8rpprstm4.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nОстальные устройства это звуковые карты, как мы помним, исторически первые SDR работали именно через линейный вход ПК, и библиотека их тоже поддерживает. Получаем информацию об устройстве — число доступных каналов, частотный диапазон и пр:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"python\"\u003Esoapy_device = \"rtlsdr\"\ndevice = SoapySDR.Device(dict(driver = soapy_device))\n\nchannels = list(range(device.getNumChannels(SoapySDR.SOAPY_SDR_RX)))\nprint(\"Channels:\", channels)\n\nch = channels[0]\n\nsample_rates = device.listSampleRates(SoapySDR.SOAPY_SDR_RX, ch)\nprint(\"Sample rates:\\n\", sample_rates)\n\nbandwidths = list(map(lambda r: int(r.maximum()), device.getBandwidthRange(SoapySDR.SOAPY_SDR_RX, ch)))\nprint(\"Bandwidths:\\n\", bandwidths)\n\nprint(\"Gain controls:\")\nfor gain in device.listGains(SoapySDR.SOAPY_SDR_RX, ch):\n    print(\"  %s: %s\" % (gain, device.getGainRange(SoapySDR.SOAPY_SDR_RX, ch, gain)))\n\nfrequencies = device.listFrequencies(SoapySDR.SOAPY_SDR_RX, ch)\nprint(\"Frequencies names:\", frequencies)\n\nfrequency_name = frequencies[0]\nprint(\"Frequency channel name:\", frequency_name)\n\nprint(\"Frequency range:\", device.getFrequencyRange(SoapySDR.SOAPY_SDR_RX, ch, frequency_name)[0])\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nЗапускаем программу и видим информацию о приемнике:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fnl\u002Fp5\u002Fyk\u002Fnlp5ykxuvldaqjvfitcdp4oinkk.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nМы видим что приемник имеет один входной канал с названием «RF», возможные частоты дискретизации [250000.0, 1024000.0, 1536000.0, 1792000.0, 1920000.0, 2048000.0, 2160000.0, 2560000.0, 2880000.0, 3200000.0] и частотный диапазон 24МГц-1.7ГГц.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЛайфхак — те же данные можно получить и из командной строки, набрав команду \u003Ci\u003ESoapySDRUtil --probe=«driver=rtlsdr»\u003C\u002Fi\u003E.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЗная это, мы можем записать поток данных в WAV. Как говорилось в предыдущей части, данные с SDR представлены потоком сигналов, называемых I и Q, представляющих собой отсчеты с АЦП, грубо их можно представить как RAW-данные с фотокамеры. Кому интересно подробнее, могут почитать например \u003Ca href=\"https:\u002F\u002Fradioprog.ru\u002Fpost\u002F415\"\u003Eздесь\u003C\u002Fa\u003E. Для нас достаточно знать, что мы эти данные можем записать, а другие SDR-программы потом могут с ними работать.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nСама по себе запись довольно проста — функция readStream заполняет буфер если есть данные, если данных еще нет, то вернется -1. Ниже показан код записи 10 отсчетов (несущественные части кода опущены).\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"python\"\u003Edevice.setFrequency(SoapySDR.SOAPY_SDR_RX, channel, \"RF\", frequency)\ndevice.setGain(SoapySDR.SOAPY_SDR_RX, channel, \"TUNER\", gain)\ndevice.setGainMode(SoapySDR.SOAPY_SDR_RX, channel, False)\ndevice.setSampleRate(SoapySDR.SOAPY_SDR_RX, channel, sample_rate)\n\n# Number of blocks to save\nblock, max_blocks = 0, 10\n\nblock_size = device.getStreamMTU(stream)\nprint(\"Block size:\", block_size)\n\nbuffer_format = np.int8\nbuffer_size = 2*block_size  # I+Q\nbuffer = np.empty(buffer_size, buffer_format)\n\nwhile True:\n    d_info = device.readStream(stream, [buffer], buffer_size)\n    if d_info.ret \u003E 0:\n        wav.write(buffer[0:2*d_info.ret])\n        print(\"Bytes saved:\", 2*d_info.ret)\n        block += 1\n        if block \u003E max_blocks:\n            break\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nРезультат на скриншоте:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fe_\u002Fjn\u002Fbb\u002Fe_jnbbyfneb3jc3lp7h4kcbsepo.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nКак можно видеть, мы получаем от устройства блоки данных, размер одного блока составляет 131072 байта, что при частоте дискретизации 250000 дает нам длительность примерно полсекунды. В общем, кто работал ранее со звуковыми картами в Windows, найдет много общего.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nДля теста записываем файл и проверяем, что все нормально — его можно воспроизвести в SDR#. Тут есть еще одна хитрость — чтобы SDR# корректно показал частоты станций, имя файла нужно записать в формате, совместимом с HDSDR, вида «HDSDR_20190518_115500Z_101000kHz_RF.wav» (как нетрудно догадаться, в начале идет дата и время в GMT, затем частота в килогерцах). Это нетрудно записать на Python:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"python\"\u003Efrequency = 101000000\nfile_name = \"HDSDR_%s_%dkHz_RF.wav\" % (datetime.datetime.utcnow().strftime(\"%Y%m%d_%H%M%SZ\"), frequency\u002F1000)\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nДля начала проверяем на FM-диапазоне. Все нормально, станции видно, музыка играется, RDS работает. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fuk\u002Fwl\u002Fjt\u002Fukwljtyarociv4vcld3ngqey-ny.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nМожно приступать к записи NOAA.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EПрием NOAA\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nИтак, у нас есть приемник и есть программа записи. Нам будут интересны метеоспутники NOAA 15, NOAA 18 и NOAA 19, передающие изображения поверхности Земли на частотах 137.620, 137.9125 и 137.100МГц. Основная сложность здесь в том, что нужно «поймать» момент, когда спутник пролетает над нами. Узнать время пролета можно онлайн по ссылкам \u003Ca href=\"https:\u002F\u002Fwww.n2yo.com\u002Fpasses\u002F?s=25338\"\u003Ehttps:\u002F\u002Fwww.n2yo.com\u002Fpasses\u002F?s=25338\u003C\u002Fa\u003E, \u003Ca href=\"https:\u002F\u002Fwww.n2yo.com\u002Fpasses\u002F?s=28654\"\u003Ehttps:\u002F\u002Fwww.n2yo.com\u002Fpasses\u002F?s=28654\u003C\u002Fa\u003E и \u003Ca href=\"https:\u002F\u002Fwww.n2yo.com\u002Fpasses\u002F?s=33591\"\u003Ehttps:\u002F\u002Fwww.n2yo.com\u002Fpasses\u002F?s=33591\u003C\u002Fa\u003E соответственно. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fdp\u002Fdy\u002Fyb\u002Fdpdyybwvq6gx0pzdnk6un5usdvo.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЧтобы не сидеть у компьютера, добавим в программу ожидание нужного времени. Это позволит также запускать программу на Raspberry Pi, без дисплея и клавиатуры.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"python\"\u003Eimport datetime\n\ndef wait_for_start(dt):\n    # Wait for the start\n    while True:\n        now = datetime.datetime.now()\n        diff = int((dt - now).total_seconds())\n        print(\"{:02d}:{:02d}:{:02d}: Recording will be started after {}m {:02d}s...\".format(now.hour, now.minute, now.second, int(diff \u002F 60), diff % 60))\n        time.sleep(5)\n        if diff &lt;= 1:\n            break\n\nwait_for_start(datetime.datetime(2019, 5, 18, 21, 49, 0))\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nКстати, чтобы запустить скрипт на Raspberry Pi и оставить его работать после закрытия консоли, нужно ввести команду «nohup python recorder.py &amp;». \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВсе готово, запускаем скрипт и можем заниматься другими делами, запись длится примерно 20 минут. Параллельно может возникнуть вопрос — можно ли увидеть пролет спутника невооруженным глазом? Согласно таблице, его максимальная яркость составляет порядка 5.5м \u003Ca href=\"https:\u002F\u002Fru.wikipedia.org\u002Fwiki\u002F%D0%97%D0%B2%D1%91%D0%B7%D0%B4%D0%BD%D0%B0%D1%8F_%D0%B2%D0%B5%D0%BB%D0%B8%D1%87%D0%B8%D0%BD%D0%B0\"\u003Eзвездной величины\u003C\u002Fa\u003E, предел человеческого глаза в идеальных условиях 6м. Т.е. при реально темном небе, далеко за городом, пролет спутника NOAA теоретически заметить можно, в городе конечно, шансов нет (как \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fpost\u002F395211\u002F\"\u003Eписали на Хабре\u003C\u002Fa\u003E, уже выросло поколение людей, никогда в жизни не видевших \u003Ca href=\"https:\u002F\u002Fhi-news.ru\u002Fwp-content\u002Fuploads\u002F2015\u002F09\u002Fartleo.com-336681.jpg\"\u003EМлечный Путь\u003C\u002Fa\u003E).\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nРезультатом работы скрипта является записанный wav-файл, его спектр показан на скриншоте. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fu5\u002Fu3\u002Fxn\u002Fu5u3xnyvsgq6xpmirbqtafeoaak.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nМы видим вполне различимый сигнал, хотя конечно со \u003Ca href=\"http:\u002F\u002Fwww.radioamatoripeligni.it\u002Fi6ibe\u002Fqfh\u002Fpicofqfh.gif\"\u003Eспециальной антенной\u003C\u002Fa\u003E для приема NOAA качество было бы гораздо лучше. Формат сигнала называется APT (\u003Ca href=\"https:\u002F\u002Fen.wikipedia.org\u002Fwiki\u002FAutomatic_picture_transmission\"\u003EAutomatic Picture Transmission\u003C\u002Fa\u003E), из него можно получить изображение земной поверхности, если кому интересно, можно отдельно рассмотреть его декодирование. Но есть разумеется, и готовые программы, декодировать такие сигналы можно с помощью WxToImg или MultiPSK.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nИнтересно видеть допплеровский сдвиг на спектре, который происходит оттого, что спутник пролетает мимо нас. Наверное, несложно посчитать и его скорость, зная время и сдвиг частоты в герцах.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nРазумеется, программу можно использовать не только для записи NOAA, любую ширину полосы и частоту можно указать в настройках. Для тех кто захочет поэкспериментировать с SoapySDR самостоятельно, код программы целиком размещен под спойлером.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cdiv class=\"spoiler\"\u003E\u003Cb class=\"spoiler_title\"\u003EИсходный код\u003C\u002Fb\u003E\u003Cdiv class=\"spoiler_text\"\u003E\u003Cpre\u003E\u003Ccode class=\"python\"\u003Efrom __future__ import print_function\nimport SoapySDR\nimport numpy as np\nimport struct\nimport sys\nimport time\nimport datetime\n\n\ndef wait_for_start(dt):\n    # Wait for the start\n    while True:\n        now = datetime.datetime.now()\n        diff = int((dt - now).total_seconds())\n        print(\"{:02d}:{:02d}:{:02d}: Recording will be started after {}m {:02d}s...\".format(now.hour, now.minute, now.second, int(diff \u002F 60), diff % 60))\n        time.sleep(5)\n        if diff &lt;= 1:\n            break\n\n\ndef sdr_enumerate():\n    # Enumerate SDR devices\n    print(\"SDR devices:\")\n    for d in SoapySDR.Device.enumerate(''):\n        print(d)\n    print()\n\n\ndef sdr_init():\n    soapy_device = \"rtlsdr\"\n    device = SoapySDR.Device({\"driver\": soapy_device})\n\n    channels = list(range(device.getNumChannels(SoapySDR.SOAPY_SDR_RX)))\n    print(\"Channels:\", channels)\n\n    ch = channels[0]\n\n    sample_rates = device.listSampleRates(SoapySDR.SOAPY_SDR_RX, ch)\n    print(\"Sample rates:\\n\", sample_rates)\n\n    print(\"Gain controls:\")\n    for gain in device.listGains(SoapySDR.SOAPY_SDR_RX, ch):\n        print(\"  %s: %s\" % (gain, device.getGainRange(SoapySDR.SOAPY_SDR_RX, ch, gain)))\n\n    frequencies = device.listFrequencies(SoapySDR.SOAPY_SDR_RX, ch)\n    print(\"Frequencies names:\", frequencies)\n\n    frequency_name = frequencies[0]\n    print(\"Frequency channel name:\", frequency_name)\n\n    print(\"Frequency range:\", device.getFrequencyRange(SoapySDR.SOAPY_SDR_RX, ch, frequency_name)[0])\n\n    print()\n    return device\n\n\ndef sdr_record(device, frequency, sample_rate, gain, blocks_count):\n    print(\"Frequency:\", frequency)\n    print(\"Sample rate:\", sample_rate)\n    print(\"Gain:\", gain)\n\n    channel = 0  # Always for RTL-SDR\n    device.setFrequency(SoapySDR.SOAPY_SDR_RX, channel, \"RF\", frequency)\n    device.setGain(SoapySDR.SOAPY_SDR_RX, channel, \"TUNER\", gain)\n    device.setGainMode(SoapySDR.SOAPY_SDR_RX, channel, False)\n    device.setSampleRate(SoapySDR.SOAPY_SDR_RX, channel, sample_rate)\n\n    data_format = SoapySDR.SOAPY_SDR_CS8 # if 'rtlsdr' in soapy_device or 'hackrf' in soapy_device else SoapySDR.SOAPY_SDR_CS16\n    stream = device.setupStream(SoapySDR.SOAPY_SDR_RX, data_format, [channel], {})\n    device.activateStream(stream)\n\n    block_size = device.getStreamMTU(stream)\n    print(\"Block size:\", block_size)\n    print(\"Data format:\", data_format)\n    print()\n\n    # IQ: 2 digits ver variable\n    buffer_format = np.int8\n    buffer_size = 2 * block_size # I + Q samples\n    buffer = np.empty(buffer_size, buffer_format)\n\n    # Number of blocks to save\n    block, max_blocks = 0, blocks_count\n\n    # Save to file\n    file_name = \"HDSDR_%s_%dkHz_RF.wav\" % (datetime.datetime.utcnow().strftime(\"%Y%m%d_%H%M%SZ\"), frequency\u002F1000)\n    print(\"Saving file:\", file_name)\n    with open(file_name, \"wb\") as wav:\n        # Wav data info\n        bits_per_sample = 16\n        channels_num, samples_num = 2, int(max_blocks * block_size)\n        subchunk_size = 16  # always 16 for PCM\n        subchunk2_size = int(samples_num * channels_num * bits_per_sample \u002F 8)\n        block_alignment = int(channels_num * bits_per_sample \u002F 8)\n\n        # Write RIFF header\n        wav.write('RIFF'.encode('utf-8'))\n        wav.write(struct.pack('&lt;i', 4 + (8 + subchunk_size) + (8 + subchunk2_size)))  # Size of the overall file\n        wav.write('WAVE'.encode('utf-8'))\n        # Write fmt subchunk\n        wav.write('fmt '.encode('utf-8'))  # chunk type\n        wav.write(struct.pack('&lt;i', subchunk_size))  # subchunk data size (16 for PCM)\n        wav.write(struct.pack('&lt;h', 1))  # compression type 1 - PCM\n        wav.write(struct.pack('&lt;h', channels_num))  # channels\n        wav.write(struct.pack('&lt;i', int(sample_rate)))  # sample rate\n        wav.write(struct.pack('&lt;i', int(sample_rate * bits_per_sample * channels_num\u002F 8)))  # byte rate\n        wav.write(struct.pack('&lt;h', block_alignment))  # block alignment\n        wav.write(struct.pack('&lt;h', bits_per_sample))  # sample depth\n        # Write data subchunk\n        wav.write('data'.encode('utf-8'))\n        wav.write(struct.pack('&lt;i', subchunk2_size))\n        while True:\n            d_info = device.readStream(stream, [buffer], buffer_size)\n            if d_info.ret \u003E 0:\n                data = buffer[0:2*d_info.ret]\n                fileData = data\n                if data_format == SoapySDR.SOAPY_SDR_CS8:\n                   fileData = data.astype('int16')\n                wav.write(fileData)\n                print(\"Block %d saved: %d bytes\" % (block, 2*d_info.ret))\n                block += 1\n                if block \u003E max_blocks:\n                    break\n\n    device.deactivateStream(stream)\n    device.closeStream(stream)\n\nif __name__ == \"__main__\":\n    print(\"App started\")\n\n    # Forecast for active NOAA satellites\n    # NOAA 15: 137.620, https:\u002F\u002Fwww.n2yo.com\u002Fpasses\u002F?s=25338\n    # NOAA 18: 137.9125, https:\u002F\u002Fwww.n2yo.com\u002Fpasses\u002F?s=28654\n    # NOAA 19: 137.100, https:\u002F\u002Fwww.n2yo.com\u002Fpasses\u002F?s=33591\n    # Wait for the start: 18-May 21:49 21:49:\n    wait_for_start(datetime.datetime(2019, 5, 18, 21, 49, 0))\n\n    device = sdr_init()\n\n    t_start = time.time()\n\n    sdr_record(device, frequency=137912500, sample_rate=250000, gain=35, blocks_count=2100)\n\n    print(\"Recording complete, time = %ds\" % int(time.time() - t_start))\n    print()\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003C\u002Fdiv\u003E\u003C\u002Fdiv\u003E\u003Cbr\u002F\u003E\r\nПлюс SoapySDR в том, что эта же программа с минимальными изменениями будет работать и с другими приемниками, например с SDRPlay или HackRF. Ну и про кроссплатформенность тоже уже упоминалось.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЕсли у читателей еще остался интерес к теме радиоприема, можно рассмотреть пример использования SDR с GNU Radio на примере создания нескольких виртуальных приемников на базе одного «железного».\u003C\u002Fdiv\u003E","tags":[{"titleHtml":"sdr"},{"titleHtml":"radio"},{"titleHtml":"python"},{"titleHtml":"noaa"},{"titleHtml":"wxtoimg"},{"titleHtml":"dsp"}],"metadata":{"stylesUrls":[],"scriptUrls":[],"shareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F452390\u002F3f48aba6e4464b338f467b672b5ae911\u002F","shareImageWidth":1200,"shareImageHeight":630,"vkShareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F452390\u002F3f48aba6e4464b338f467b672b5ae911\u002F?format=vk","schemaJsonLd":"{\"@context\":\"http:\\\u002F\\\u002Fschema.org\",\"@type\":\"Article\",\"mainEntityOfPage\":{\"@type\":\"WebPage\",\"@id\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fru\\\u002Fpost\\\u002F452390\\\u002F\"},\"headline\":\"Software Defined Radio — как это работает? Часть 3\",\"datePublished\":\"2019-05-19T00:01:51+03:00\",\"dateModified\":\"2019-05-19T11:01:37+03:00\",\"author\":{\"@type\":\"Person\",\"name\":\"DmitrySpb79\"},\"publisher\":{\"@type\":\"Organization\",\"name\":\"Habr\",\"logo\":{\"@type\":\"ImageObject\",\"url\":\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fa_\\\u002Flk\\\u002F9m\\\u002Fa_lk9mjkccjox-zccjrpfolmkmq.png\"}},\"description\":\"Привет, Хабр.  Во второй части были рассмотрены практические аспекты использования SDR. В этой части мы разберемся, как принять данные метеоспутника NOAA с помощ...\",\"url\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fru\\\u002Fpost\\\u002F452390\\\u002F#post-content-body\",\"about\":[\"h_programming\",\"h_netdev\",\"h_gadgets\",\"h_popular_science\",\"h_easyelectronics\",\"f_develop\",\"f_popsci\"],\"image\":[\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fux\\\u002Fvk\\\u002Fhe\\\u002Fuxvkhed8_-k9uumw0pgbekyi_m8.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fli\\\u002Fuj\\\u002F8v\\\u002Fliuj8v8t1jy0tythfo8rpprstm4.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fnl\\\u002Fp5\\\u002Fyk\\\u002Fnlp5ykxuvldaqjvfitcdp4oinkk.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fe_\\\u002Fjn\\\u002Fbb\\\u002Fe_jnbbyfneb3jc3lp7h4kcbsepo.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fuk\\\u002Fwl\\\u002Fjt\\\u002Fukwljtyarociv4vcld3ngqey-ny.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fdp\\\u002Fdy\\\u002Fyb\\\u002Fdpdyybwvq6gx0pzdnk6un5usdvo.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fu5\\\u002Fu3\\\u002Fxn\\\u002Fu5u3xnyvsgq6xpmirbqtafeoaak.png\"]}","metaDescription":"Привет, Хабр.\r\n\r\nВо второй части были рассмотрены практические аспекты использования SDR. В этой части мы разберемся, как принять данные метеоспутника NOAA с помощью Python и недорогого (30$)...","mainImageUrl":null,"amp":false},"polls":[],"commentsEnabled":true,"rulesRemindEnabled":false,"votesEnabled":true,"status":"published","plannedPublishTime":null,"checked":null,"isEditorial":false}},"articlesIds":{},"isLoading":false,"pagesCount":{},"route":{},"reasonsList":null,"view":"cards","lastVisitedRoute":{},"ssrCommentsArticleIds":[""],"karma":{}},"authorContribution":{"authors":{}},"betaTest":{"currentAnnouncement":null,"announcements":{},"announcementCards":null,"announcementComments":{},"announcementCommentThreads":{},"announcementCommentingStatuses":{},"archivedList":[]},"authorStatistics":{"articleRefs":{},"articleIds":{},"pagesCount":{},"route":{},"viewsCount":[],"maxStatsCount":{}},"career":{"seoLandings":[],"hubs":"programming,netdev,gadgets,popular_science,easyelectronics"},"comments":{"articleComments":{},"searchCommentsResults":null,"previewComment":null,"pagesCount":null,"commentAccess":{},"scrollParents":{},"pageArticleComments":{"lastViewedComment":0,"postId":null,"lastCommentTimestamp":"","moderated":[],"moderatedIds":[],"commentRoute":""}},"companies":{"companyRefs":{},"companyIds":{},"companyTopIds":{},"pagesCount":{},"companyProfiles":{},"companiesCategories":[],"companiesCategoriesTotalCount":0,"companiesWidgets":{},"companiesWorkers":{},"companiesFans":{},"route":{},"isLoading":false,"companyWorkersLoading":false,"companyFansLoading":false,"vacancies":{}},"companiesContribution":{"hubs":{},"flows":{},"companyRefs":{}},"companyHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"conversation":{"messages":[],"respondent":null,"isLoadMore":false},"conversations":{"conversations":[],"unreadCount":0,"pagesCount":0,"isLoadMore":false},"desktopState":{"desktopFl":null,"desktopHl":null,"isChecked":false,"isLoginDemanded":false},"dfp":{"slotsDict":{}},"docs":{"menu":{},"articles":{},"mainMenu":[],"loading":{"main":false,"dropdown":false,"article":false}},"feature":{"isProbablyVisible":"true"},"flows":{"flows":[{"alias":"develop","id":1,"route":{"name":"FLOW_PAGE","params":{"flowName":"develop"}}},{"alias":"admin","id":6,"route":{"name":"FLOW_PAGE","params":{"flowName":"admin"}}},{"alias":"design","id":2,"route":{"name":"FLOW_PAGE","params":{"flowName":"design"}}},{"alias":"management","id":3,"route":{"name":"FLOW_PAGE","params":{"flowName":"management"}}},{"alias":"marketing","id":4,"route":{"name":"FLOW_PAGE","params":{"flowName":"marketing"}}},{"alias":"popsci","id":7,"route":{"name":"FLOW_PAGE","params":{"flowName":"popsci"}}}]},"global":{"isPwa":false,"device":"desktop","isHabrCom":true},"hubs":{"hubRefs":{},"hubIds":{},"pagesCount":{},"isLoading":false,"route":{}},"hubsBlock":{"hubRefs":{},"hubIds":{}},"i18n":{"fl":"ru","hl":"ru"},"info":{"infoPage":{},"isLoading":true},"location":{"urlStruct":{"protocol":null,"slashes":null,"auth":null,"host":null,"port":null,"hostname":null,"hash":null,"search":null,"query":{},"pathname":null,"path":null,"href":""},"searchQuery":null},"me":{"user":null,"ppgDemanded":false,"karmaResetInfo":{"canReincarnate":null,"wasReincarnated":null,"currentScore":null},"notes":null},"mostReadingList":{"mostReadingListIds":[],"mostReadingListRefs":null,"promoPost":null},"pinnedPost":{"pinnedPost":null},"ppa":{"articles":{},"card":null,"transactions":null,"totalTransactions":null,"isAccessible":null},"projectsBlocks":{"activeBlocks":{}},"pullRefresh":{"shouldRefresh":false},"sandbox":{"articleIds":[],"articleRefs":{},"pagesCount":null,"route":{},"lastVisitedRoute":{},"isLoading":false},"settingsOther":{"inputs":{"uiLang":{"errors":[],"ref":null,"value":""},"articlesLangEnglish":{"errors":[],"ref":null,"value":false},"articlesLangRussian":{"errors":[],"ref":null,"value":false},"agreement":{"errors":[],"ref":null,"value":false},"email":{"errors":[],"ref":null,"value":true},"digest":{"errors":[],"ref":null,"value":true}}},"similarList":{"similarListIds":[],"similarListRefs":null},"ssr":{"error":null,"isDataLoaded":false,"isDataLoading":false,"isHydrationFailed":false,"isServer":false},"userHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"userInvites":{"availableInvites":0,"usedInvitesIds":[],"usedInvitesRefs":{},"usedInvitesPagesCount":0,"unusedInvitesIds":[],"unusedInvitesRefs":{},"unusedInvitesPagesCount":0},"users":{"authorRefs":{},"authorIds":{},"pagesCount":{},"authorProfiles":{},"userHubs":{},"userInvitations":{},"authorFollowers":{},"authorFollowed":{},"karmaStats":[],"statistics":null,"isLoading":false,"authorFollowersLoading":false,"authorFollowedLoading":false,"userHubsLoading":false,"userInvitationsLoading":false,"route":{}},"viewport":{"prevScrollY":{},"scrollY":0,"width":0},"tracker":{"items":{},"pagesCache":{},"markedViewedSilently":{},"markedRead":{},"unreadCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null},"unviewedCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null}}};(function(){var s;(s=document.currentScript||document.scripts[document.scripts.length-1]).parentNode.removeChild(s);}());</script>
+<script src="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" defer></script><script src="https://assets.habr.com/habr-web/js/app.c0af73e7.js" defer></script>
+
+
+
+    <script>
+      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+        (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+        m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+      })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+    </script>
+  
+  <script type="text/javascript" >
+    (function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+    m[i].l=1*new Date();k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})
+    (window, document, "script", "https://mc.yandex.ru/metrika/tag.js", "ym");
+
+    ym(24049213, "init", {
+      defer:true,
+      trackLinks:true,
+      accurateTrackBounce:true,
+      webvisor:false,
+    });
+  </script>
+  <noscript>
+    <div>
+      <img src="https://mc.yandex.ru/watch/24049213" style="position:absolute; left:-9999px;" alt="" />
+    </div>
+  </noscript>
+  
+    <script type="text/javascript">
+      window.addEventListener('load', function () {
+        setTimeout(() => {
+          const img = new Image();
+          img.src = 'https://vk.com/rtrg?p=VK-RTRG-421343-57vKE';
+        }, 0);
+      });
+    </script>
+  
+</body>
+</html>

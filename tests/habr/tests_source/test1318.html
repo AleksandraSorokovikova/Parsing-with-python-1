@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="ru" data-vue-meta="%7B%22lang%22:%7B%22ssr%22:%22ru%22%7D%7D">
+<head >
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
+  <title>Software Defined Radio — как это работает? Часть 4 / Хабр</title>
+  <style>
+    /* cyrillic-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSxf6TF0.woff2) format('woff2');
+      unicode-range: U+0460-052F, U+1C80-1C88, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+    }
+
+    /* cyrillic */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveQhf6TF0.woff2) format('woff2');
+      unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+    }
+
+    /* latin-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSBf6TF0.woff2) format('woff2');
+      unicode-range: U+0100-024F, U+0259, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20CF, U+2113, U+2C60-2C7F, U+A720-A7FF;
+    }
+
+    /* latin */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveRhf6.woff2) format('woff2');
+      unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+    }
+  </style>
+  <link rel="preload" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" as="script"><link rel="preload" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/app.c0af73e7.js" as="script">
+  <link rel="stylesheet" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css"><link rel="stylesheet" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css">
+  <script>window.i18nFetch = new Promise((res, rej) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open('GET', '/js/i18n/ru-compiled.85eb77f0b17c8235e7b64b9f81ea5ec2.json');
+          xhr.responseType = 'json';
+          xhr.onload = function(e) {
+            if (this.status === 200) {
+              res({ru: xhr.response});
+            } else {
+              rej(e);
+            }
+          };
+          xhr.send();
+        });</script>
+  
+  <script data-vue-meta="ssr" src="/js/ads.js" onload="window['zhY4i4nJ9K'] = true" data-vmid="checkad"></script><script data-vue-meta="ssr" type="application/ld+json" data-vmid="ldjson-schema">{"@context":"http:\/\/schema.org","@type":"Article","mainEntityOfPage":{"@type":"WebPage","@id":"https:\/\/habr.com\/ru\/post\/453038\/"},"headline":"Software Defined Radio — как это работает? Часть 4","datePublished":"2019-05-24T23:21:11+03:00","dateModified":"2019-05-25T12:46:34+03:00","author":{"@type":"Person","name":"DmitrySpb79"},"publisher":{"@type":"Organization","name":"Habr","logo":{"@type":"ImageObject","url":"https:\/\/habrastorage.org\/webt\/a_\/lk\/9m\/a_lk9mjkccjox-zccjrpfolmkmq.png"}},"description":"Привет, Хабр.  В третьей части было рассказано, как получить доступ к SDR-приемнику посредством языка Python. Сейчас мы познакомимся с программой GNU Radio &mdash; сис...","url":"https:\/\/habr.com\/ru\/post\/453038\/#post-content-body","about":["h_programming","h_netdev","h_gadgets","h_popular_science","h_easyelectronics","f_develop","f_popsci"],"image":["https:\/\/habrastorage.org\/webt\/lz\/0o\/-a\/lz0o-askafi53h9qmtsy0ktkdog.png","https:\/\/habrastorage.org\/webt\/ap\/zm\/d5\/apzmd5drzq9g-0fkn2yzeosagz0.png","https:\/\/habrastorage.org\/webt\/cg\/ii\/mu\/cgiimukqq7tujdtv-mprdvtl8wc.png","https:\/\/habrastorage.org\/webt\/mz\/kc\/lq\/mzkclq8dusvoy7kxqqcrbajlxzc.png","https:\/\/habrastorage.org\/webt\/b0\/yl\/7z\/b0yl7z1omt-7kidj7i863nc2exq.png","https:\/\/habrastorage.org\/webt\/8n\/wq\/ht\/8nwqhtrflggwkkdia9xhbuok2io.png","https:\/\/habrastorage.org\/webt\/wb\/8-\/do\/wb8-dowoop7frpjeigt1pmb0_jo.png","https:\/\/habrastorage.org\/webt\/dv\/-z\/ah\/dv-zahcv6ushuetsll7by3jyvki.png","https:\/\/habrastorage.org\/webt\/zo\/oz\/lx\/zoozlx5plq7aw_jftgdc-ddyrl0.png","https:\/\/habrastorage.org\/webt\/p9\/z9\/tu\/p9z9tuscd-0w3fa_tkdqq0qii68.png","https:\/\/habrastorage.org\/webt\/yp\/gn\/qy\/ypgnqytpqchjfwsk_fung67k5ck.png"]}</script>
+  <script src="//www.googletagservices.com/tag/js/gpt.js" async></script>
+  <style>.grecaptcha-badge{visibility: hidden;}</style>
+  <meta name="habr-version" content="2.49.0">
+  
+  <meta data-vue-meta="ssr" property="fb:app_id" content="444736788986613"><meta data-vue-meta="ssr" property="fb:pages" content="472597926099084"><meta data-vue-meta="ssr" name="twitter:card" content="summary_large_image"><meta data-vue-meta="ssr" name="twitter:site" content="@habr_eng"><meta data-vue-meta="ssr" property="og:title" content="Software Defined Radio — как это работает? Часть 4" data-vmid="og:title"><meta data-vue-meta="ssr" name="twitter:title" content="Software Defined Radio — как это работает? Часть 4" data-vmid="twitter:title"><meta data-vue-meta="ssr" name="aiturec:title" content="Software Defined Radio — как это работает? Часть 4" data-vmid="aiturec:title"><meta data-vue-meta="ssr" name="description" content="Привет, Хабр.
+
+В третьей части было рассказано, как получить доступ к SDR-приемнику посредством языка Python. Сейчас мы познакомимся с программой GNU Radio — системой, позволяющей создать достаточно..." data-vmid="description"><meta data-vue-meta="ssr" itemprop="description" content="Привет, Хабр.
+
+В третьей части было рассказано, как получить доступ к SDR-приемнику посредством языка Python. Сейчас мы познакомимся с программой GNU Radio — системой, позволяющей создать достаточно..." data-vmid="description:itemprop"><meta data-vue-meta="ssr" property="og:description" content="Привет, Хабр.
+
+В третьей части было рассказано, как получить доступ к SDR-приемнику посредством языка Python. Сейчас мы познакомимся с программой GNU Radio — системой, позволяющей создать достаточно..." data-vmid="og:description"><meta data-vue-meta="ssr" name="twitter:description" content="Привет, Хабр.
+
+В третьей части было рассказано, как получить доступ к SDR-приемнику посредством языка Python. Сейчас мы познакомимся с программой GNU Radio — системой, позволяющей создать достаточно..." data-vmid="twitter:description"><meta data-vue-meta="ssr" property="aiturec:description" content="Привет, Хабр.
+
+В третьей части было рассказано, как получить доступ к SDR-приемнику посредством языка Python. Сейчас мы познакомимся с программой GNU Radio — системой, позволяющей создать достаточно..." data-vmid="aiturec:description"><meta data-vue-meta="ssr" itemprop="image" content="https://habr.com/share/publication/453038/460a214d93f5db4e11cebf240b920f6c/" data-vmid="image:itemprop"><meta data-vue-meta="ssr" property="og:image" content="https://habr.com/share/publication/453038/460a214d93f5db4e11cebf240b920f6c/" data-vmid="og:image"><meta data-vue-meta="ssr" property="aiturec:image" content="https://habr.com/share/publication/453038/460a214d93f5db4e11cebf240b920f6c/" data-vmid="aiturec:image"><meta data-vue-meta="ssr" name="twitter:image" content="https://habr.com/share/publication/453038/460a214d93f5db4e11cebf240b920f6c/" data-vmid="twitter:image"><meta data-vue-meta="ssr" property="vk:image" content="https://habr.com/share/publication/453038/460a214d93f5db4e11cebf240b920f6c/" data-vmid="vk:image"><meta data-vue-meta="ssr" property="aiturec:item_id" content="453038" data-vmid="aiturec:item_id"><meta data-vue-meta="ssr" property="aiturec:datetime" content="2019-05-24T20:21:11.000Z" data-vmid="aiturec:datetime"><meta data-vue-meta="ssr" property="og:type" content="article" data-vmid="og:type"><meta data-vue-meta="ssr" property="og:locale" content="ru_RU" data-vmid="og:locale"><meta data-vue-meta="ssr" property="og:image:width" content="1200" data-vmid="og:image:width"><meta data-vue-meta="ssr" property="og:image:height" content="630" data-vmid="og:image:height">
+  <link data-vue-meta="ssr" href="https://habr.com/ru/rss/post/453038/?fl=ru" type="application/rss+xml" title="" rel="alternate" name="rss"><link data-vue-meta="ssr" href="https://habr.com/ru/post/453038/" rel="canonical" data-vmid="canonical"><link data-vue-meta="ssr" data-vmid="hreflang"><link data-vue-meta="ssr" image_src="image" href="https://habr.com/share/publication/453038/460a214d93f5db4e11cebf240b920f6c/" data-vmid="image:href">
+  <meta name="apple-mobile-web-app-status-bar-style" content="#303b44">
+  <meta name="msapplication-TileColor" content="#629FBC">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="16x16"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-16.png"
+  >
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="32x32"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-32.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="76x76"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-76.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="120x120"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="152x152"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-152.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="180x180"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-180.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="256x256"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-256.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1136x640.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2436x1125.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1792x828.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_828x1792.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1334x750.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2208x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1125x2436.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2208.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2732x2048.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2688x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2224x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_750x1334.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x2732.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2388x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2224.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_640x1136.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2388.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x1536.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1536x2048.png"
+  >
+  <link
+    rel="mask-icon"
+    color="#77a2b6"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.svg"
+  >
+  <link
+    crossorigin="use-credentials"
+    href="/manifest.webmanifest"
+    rel="manifest"
+  >
+</head>
+<body>
+
+
+<div id="app" data-server-rendered="true" data-async-called="true"><div class="tm-layout__wrapper"><!----> <div></div> <!----> <header class="tm-header"><div class="tm-page-width"><div class="tm-header__container"><!----> <span class="tm-header__logo-wrap"><a href="/ru/" class="tm-header__logo tm-header__logo_ru"><svg height="16" width="16" class="tm-svg-img tm-header__icon"><title>Хабр</title> <use xlink:href="/img/habr-logo-ru.svg#logo"></use></svg></a> <span class="tm-header__beta-sign" style="display:none;">β</span></span> <div class="tm-dropdown tm-header__projects"><div class="tm-dropdown__head"><button class="tm-header__dropdown-toggle"><svg height="16" width="16" class="tm-svg-img tm-header__icon tm-header__icon_dropdown"><title>Открыть список</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#arrow-down"></use></svg></button></div> <!----></div> <a href="/ru/sandbox/start/" class="tm-header__become-author-btn">
+            Как стать автором
+          </a> <div class="tm-feature tm-header__feature tm-feature_variant-inline"><!----></div> <!----> <!----></div></div></header> <div class="tm-layout"><div class="tm-page-progress-bar"></div> <div data-menu-sticky="true" class="tm-base-layout__header tm-base-layout__header_is-sticky"><div class="tm-page-width"><div class="tm-base-layout__header-wrapper"><div class="tm-main-menu"><div class="tm-main-menu__section"><nav class="tm-main-menu__section-content"><!----> <a href="/ru/all/" class="tm-main-menu__item">
+        Все потоки
+      </a> <a href="/ru/flows/develop/" class="tm-main-menu__item">
+          Разработка
+        </a><a href="/ru/flows/admin/" class="tm-main-menu__item">
+          Администрирование
+        </a><a href="/ru/flows/design/" class="tm-main-menu__item">
+          Дизайн
+        </a><a href="/ru/flows/management/" class="tm-main-menu__item">
+          Менеджмент
+        </a><a href="/ru/flows/marketing/" class="tm-main-menu__item">
+          Маркетинг
+        </a><a href="/ru/flows/popsci/" class="tm-main-menu__item">
+          Научпоп
+        </a></nav></div></div> <div class="tm-header-user-menu tm-base-layout__user-menu"><a href="/ru/search/" class="tm-header-user-menu__item tm-header-user-menu__search"><svg height="24" width="24" class="tm-svg-img tm-header-user-menu__icon tm-header-user-menu__icon_search tm-header-user-menu__icon_dark"><title>Поиск</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#search"></use></svg></a> <!----> <!----> <!----> <div class="tm-header-user-menu__item tm-header-user-menu__user_desktop"><div class="tm-dropdown"><div class="tm-dropdown__head"><svg height="24" width="24" data-test-id="menu-toggle-guest" class="tm-svg-img tm-header-user-menu__icon"><title>Профиль</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#header-user"></use></svg> <!----></div> <!----></div> <!----></div> <!----></div></div></div></div> <!----> <div class="tm-page-width"></div> <main class="tm-layout__container"><div hl="ru" data-async-called="true" class="tm-page"><div class="tm-page-width"><!----> <div class="tm-page__wrapper"><div class="tm-page__main tm-page__main_has-sidebar"><div class="pull-down"><div class="pull-down__header" style="height:0px;"><div class="pull-down__content" style="bottom:10px;"><svg height="24" width="24" class="tm-svg-img pull-down__arrow"><title>Обновить</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#pull-arrow"></use></svg></div></div> <div class="tm-article-presenter"> <div class="tm-article-presenter__body"><div class="tm-misprint-area"><div class="tm-misprint-area__wrapper"><article class="tm-article-presenter__content tm-article-presenter__content_narrow"><div class="tm-article-presenter__header"> <div class="tm-article-snippet tm-article-presenter__snippet"><div class="tm-article-snippet__meta-container"><div class="tm-article-snippet__meta"><span class="tm-user-info tm-article-snippet__author"><a href="/ru/users/DmitrySpb79/" title="DmitrySpb79" class="tm-user-info__userpic"><div class="tm-entity-image"><svg height="24" width="24" class="tm-svg-img tm-image-placeholder tm-image-placeholder_lilac"><!----> <use xlink:href="/img/megazord-v24.ce74655c.svg#placeholder-user"></use></svg></div></a> <span class="tm-user-info__user"><a href="/ru/users/DmitrySpb79/" class="tm-user-info__username">
+      DmitrySpb79
+    </a> </span></span> <span class="tm-article-snippet__datetime-published"><time datetime="2019-05-24T20:21:11.000Z" title="2019-05-24, 23:21">24  мая  2019 в 23:21</time></span></div> <!----></div> <h1 lang="ru" class="tm-article-snippet__title tm-article-snippet__title_h1"><span>Software Defined Radio — как это работает? Часть 4</span></h1> <div class="tm-article-snippet__hubs"><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/programming/" class="tm-article-snippet__hubs-item-link"><span>Программирование</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/netdev/" class="tm-article-snippet__hubs-item-link"><span>Разработка систем связи</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/gadgets/" class="tm-article-snippet__hubs-item-link"><span>Гаджеты</span> <!----></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/popular_science/" class="tm-article-snippet__hubs-item-link"><span>Научно-популярное</span> <!----></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/easyelectronics/" class="tm-article-snippet__hubs-item-link"><span>Электроника для начинающих</span> <!----></a></span></div> <div class="tm-article-snippet__labels"><div class="tm-article-snippet__label"><span>
+        Tutorial
+      </span></div></div> <!----> <!----></div></div> <!----> <div data-gallery-root="" lang="ru" class="tm-article-body"><div id="post-content-body" class="article-formatted-body article-formatted-body_version-1"><div xmlns="http://www.w3.org/1999/xhtml">Привет, Хабр.<br/>
+<br/>
+В <a href="https://habr.com/ru/post/452390/">третьей части</a> было рассказано, как получить доступ к SDR-приемнику посредством языка Python. Сейчас мы познакомимся с программой <a href="https://www.gnuradio.org/">GNU Radio</a> — системой, позволяющей создать достаточно сложную конфигурацию радиоустройства, не написав ни единой строчки кода.<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/lz/0o/-a/lz0o-askafi53h9qmtsy0ktkdog.png"/><br/>
+<br/>
+Для примера рассмотрим задачу параллельного приема нескольких FM-станций на один приемник. В качестве приемника будем использовать все тот же RTL SDR V3.<br/>
+<br/>
+Продолжение под катом.<a name="habracut"></a><br/>
+<br/>
+<h2>Установка</h2><br/>
+Для начала работы GNU Radio необходимо установить, дистрибутив для Windows можно скачать <a href="https://downloads.myriadrf.org/builds/PothosSDR/">здесь</a>. Система эта кроссплатформенная, версии есть также под Linux и под OSX (вроде бы GNU Radio успешно запускали и на Raspberry Pi, но 100% гарантии дать не могу).<br/>
+<br/>
+По сути, GNU Radio это целый фреймворк для цифровой обработки сигналов, в котором программа «собирается» из отдельных модулей. Есть большое количество уже готовых блоков, при желании также можно создавать свои собственные. Сами модули написаны на С++, а для взаимодействия блоков друг с другом используется Python. Желающие могут посмотреть на API <a href="https://www.gnuradio.org/doc/doxygen/index.html">более подробно</a>, но на практике это, скорее всего, не пригодится — все действия можно делать визуально в программе GNU Radio Companion.<br/>
+<br/>
+Система ориентирована на обработку потоков данных, так что каждый блок обычно имеет вход и выход. Далее, соединяя блоки в редакторе, мы получаем готовую систему. Сам интерфейс GNU Radio довольно простой, сложность состоит в понимании того, что делает тот или иной блок. Как говорилось ранее, низкоуровневая работа с SDR имеет высокий порог входа и требует некоторого знания в DSP и математике. Но мы рассмотрим простую задачу, для которой никаких специальных знаний не потребуется. Итак, приступим.<br/>
+<br/>
+<h2>Начало работы</h2><br/>
+Запускаем GNU Radio Companion, создаем новый проект, тип проекта выбираем WX GUI, добавляем на экран и соединяем два блока, как показано на скриншоте. <br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/ap/zm/d5/apzmd5drzq9g-0fkn2yzeosagz0.png"/><br/>
+<br/>
+Мы видим два типа блоков — Source (источник) и Sink (выход, «слив»). RTL-SDR — это наш приемник, FFT GUI — это виртуальный спектроанализатор.<br/>
+<br/>
+Переменную Sample Rate устанавливаем в 2048000, это частота дискретизации нашего приемника. Частоту RTL-SDR оставляем по умолчанию равной 100МГц.<br/>
+<br/>
+Запускаем проект — все работает, мы видим спектр FM-станций. Первая программа для GNU Radio готова!<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/cg/ii/mu/cgiimukqq7tujdtv-mprdvtl8wc.png"/><br/>
+<br/>
+Если мы посмотрим лог, то увидим такие строки.<br/>
+<br/>
+<i>Generating: 'D:\\MyProjects\\GNURadio\\top_block.py'<br/>
+Executing: C:\Python27\python.exe -u D:\MyProjects\GNURadio\top_block.py</i><br/>
+<br/>
+Да, мы можем посмотреть файл top_block.py, который сгенерил нам GNU Radio Companion. Истинные джедаи могут писать непосредственно в Python, но требуемый код, как мы видим, довольно большой. Мы же создали его за 1 минуту.<br/>
+<br/>
+<div class="spoiler"><b class="spoiler_title">top_blocks.py</b><div class="spoiler_text"><pre><code class="python">#!/usr/bin/env python2
+# -*- coding: utf-8 -*-
+##################################################
+# GNU Radio Python Flow Graph
+# Title: Top Block
+# Generated: Wed May 22 22:05:14 2019
+##################################################
+
+if __name__ == '__main__':
+    import ctypes
+    import sys
+    if sys.platform.startswith('linux'):
+        try:
+            x11 = ctypes.cdll.LoadLibrary('libX11.so')
+            x11.XInitThreads()
+        except:
+            print "Warning: failed to XInitThreads()"
+
+from gnuradio import eng_notation
+from gnuradio import gr
+from gnuradio import wxgui
+from gnuradio.eng_option import eng_option
+from gnuradio.fft import window
+from gnuradio.filter import firdes
+from gnuradio.wxgui import fftsink2
+from grc_gnuradio import wxgui as grc_wxgui
+from optparse import OptionParser
+import osmosdr
+import time
+import wx
+
+
+class top_block(grc_wxgui.top_block_gui):
+
+    def __init__(self):
+        grc_wxgui.top_block_gui.__init__(self, title="Top Block")
+
+        ##################################################
+        # Variables
+        ##################################################
+        self.samp_rate = samp_rate = 2048000
+
+        ##################################################
+        # Blocks
+        ##################################################
+        self.wxgui_fftsink2_0 = fftsink2.fft_sink_c(
+        	self.GetWin(),
+        	baseband_freq=0,
+        	y_per_div=10,
+        	y_divs=10,
+        	ref_level=0,
+        	ref_scale=2.0,
+        	sample_rate=samp_rate,
+        	fft_size=1024,
+        	fft_rate=15,
+        	average=False,
+        	avg_alpha=None,
+        	title='FFT Plot',
+        	peak_hold=False,
+        )
+        self.Add(self.wxgui_fftsink2_0.win)
+        self.rtlsdr_source_0 = osmosdr.source( args="numchan=" + str(1) + " " + '' )
+        self.rtlsdr_source_0.set_sample_rate(samp_rate)
+        self.rtlsdr_source_0.set_center_freq(100e6, 0)
+        self.rtlsdr_source_0.set_freq_corr(0, 0)
+        self.rtlsdr_source_0.set_dc_offset_mode(0, 0)
+        self.rtlsdr_source_0.set_iq_balance_mode(0, 0)
+        self.rtlsdr_source_0.set_gain_mode(False, 0)
+        self.rtlsdr_source_0.set_gain(10, 0)
+        self.rtlsdr_source_0.set_if_gain(20, 0)
+        self.rtlsdr_source_0.set_bb_gain(20, 0)
+        self.rtlsdr_source_0.set_antenna('', 0)
+        self.rtlsdr_source_0.set_bandwidth(0, 0)
+
+
+        ##################################################
+        # Connections
+        ##################################################
+        self.connect((self.rtlsdr_source_0, 0), (self.wxgui_fftsink2_0, 0))
+
+    def get_samp_rate(self):
+        return self.samp_rate
+
+    def set_samp_rate(self, samp_rate):
+        self.samp_rate = samp_rate
+        self.wxgui_fftsink2_0.set_sample_rate(self.samp_rate)
+        self.rtlsdr_source_0.set_sample_rate(self.samp_rate)
+
+
+def main(top_block_cls=top_block, options=None):
+
+    tb = top_block_cls()
+    tb.Start(True)
+    tb.Wait()
+
+
+if __name__ == '__main__':
+    main()
+</code></pre><br/>
+</div></div><br/>
+Впрочем, если убрать громоздкую инициализацию, то мы увидим, что ключевых строк кода не так уж много.<br/>
+<pre><code class="python">from gnuradio import gr
+from gnuradio.wxgui import fftsink2
+import osmosdr
+
+class top_block(grc_wxgui.top_block_gui):
+
+    def __init__(self):
+        grc_wxgui.top_block_gui.__init__(self, title="Top Block")
+        self.samp_rate = samp_rate = 2048000
+        self.wxgui_fftsink2_0 = fftsink2.fft_sink_c(...)
+        self.Add(self.wxgui_fftsink2_0.win)
+        self.rtlsdr_source_0 = osmosdr.source(args="numchan=" + str(1) + " " + '' )
+        self.connect((self.rtlsdr_source_0, 0), (self.wxgui_fftsink2_0, 0))
+
+def main(top_block_cls=top_block, options=None):
+    tb = top_block_cls()
+    tb.Start(True)
+    tb.Wait()
+</code></pre><br/>
+Так что в принципе, это можно написать вручную. Но мышью оно все-таки быстрее. Хотя возможность поменять код иногда может пригодиться, если захочется добавить какую-то нестандартную логику.<br/>
+<br/>
+<h2>Принимаем FM-радио</h2><br/>
+Теперь попробуем принять одну из станций. Как было видно из скриншотов, центральная частота приемника 100МГц и ширина полосы пропускания около 2МГц. На спектре мы видим две станции, на 100.1МГц и 100.7МГц соответственно.<br/>
+<br/>
+Первым шагом необходимо перенести спектр станции в центр, сейчас он отстоит вправо на 100КГц. Для этого вспоминаем школьную формулу умножения косинусов — в результате будет две частоты, сумма и разность — нужная станция сдвинется в центр, что нам и нужно (а лишнее мы потом отфильтруем). <br/>
+<br/>
+Создаем две переменные для хранения частоты freq_center=100000000 и freq_1=100100000, также добавляем генератор сигналов с частотой freq_center — freq_1.<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/mz/kc/lq/mzkclq8dusvoy7kxqqcrbajlxzc.png"/><br/>
+<br/>
+Т.к. система построена на базе Python, то в полях ввода параметров мы можем использовать выражения, что достаточно удобно.<br/>
+<br/>
+Схема в итоге должна выглядеть так:<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/b0/yl/7z/b0yl7z1omt-7kidj7i863nc2exq.png"/><br/>
+<br/>
+Теперь необходимо добавить сразу несколько блоков — уменьшить тактовую частоту входного сигнала (она равна 2048КГц), отфильтровать сигнал, подать его на FM-декодер, затем еще раз уменьшить тактовую частоту до 48КГц.<br/>
+<br/>
+Результат показан на картинке:<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/8n/wq/ht/8nwqhtrflggwkkdia9xhbuok2io.png"/><br/>
+<br/>
+Считаем внимательно. Мы делим тактовую частоту 2048КГц в 4 раза блоком Rational Resampler (получаем 512КГц), затем после Low Pass фильтра стоит WBFM-декодер с децимацией 10 (получаем 51.2КГц). В принципе, этот сигнал уже можно подать на звуковую карту, но высота тона будет чуть отличаться. Еще раз меняем тактовую частоту в 48/51, в результате будет тактовая частота 48.2КГц, разницей уже можно пренебречь.<br/>
+<br/>
+Второй важный момент — тип входов. С приемника поступает <i>комплексный</i> IQ-сигнал (входы-выходы синего цвета), с FM-декодера выходит <i>вещественный</i> сигнал — входы и выходы желтого цвета. Если перепутать, ничего не заработает. Подробнее <a href="https://habr.com/ru/post/419735/">уже было на Хабре</a>, нам достаточно понять общий принцип.<br/>
+<br/>
+В общем, запускаем, убеждаемся что все работает. Можно запустить программу и слушать радио. Мы пойдем дальше — у нас же все-таки <i>Software Defined</i> радио — добавим одновременный прием второй станции.<br/>
+<br/>
+<h2>Многоканальный прием</h2><br/>
+Второй приемник добавляется любимым программистским методом — Ctrl+C/Ctrl+V. Добавляем переменную freq_2, копируем блоки и соединяем их точно также.<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/wb/8-/do/wb8-dowoop7frpjeigt1pmb0_jo.png"/><br/>
+<br/>
+Результат вполне сюрреалистичный — две FM-станции можно слушать одновременно. Тем же самым методом (Ctrl+V) можно добавить и третью станцию.<br/>
+<br/>
+<h2>Запись</h2><br/>
+Слушать две станции оригинально, но на практике мало полезно. Сделаем что-то более нужное, например добавим запись звука в отдельные файлы. Это может быть достаточно удобно — с одного физического приемника можно параллельно записывать несколько каналов. <br/>
+<br/>
+Добавим к каждому выходу компонент File Sink, как показано на скриншоте.<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/dv/-z/ah/dv-zahcv6ushuetsll7by3jyvki.png"/><br/>
+<br/>
+Windows-версия почему-то требует абсолютные пути файлов, иначе запись не работает. Запускаем, убеждаемся что все нормально. Размер сохраняемых файлов довольно большой, т.к. по умолчанию записывается формат float. Запись в формате int оставлю читателям в качестве домашнего задания.<br/>
+<br/>
+Получившиеся файлы можно открыть в Cool Edit и убедиться, что звук записался нормально.<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/zo/oz/lx/zoozlx5plq7aw_jftgdc-ddyrl0.png"/><br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/p9/z9/tu/p9z9tuscd-0w3fa_tkdqq0qii68.png"/><br/>
+<br/>
+Разумеется, число записываемых каналов можно увеличить, оно ограничено только полосой пропускания приемника и мощностью компьютера. Кроме File Sink можно использовать и UDP Sink, так что программу можно использовать для трансляции по сети. <br/>
+<br/>
+<h2>Запуск из командной строки</h2><br/>
+И последнее. Если использовать программу автономно, например для многоканальной записи, то UI в принципе и не нужен. В верхнем левом блоке Options меняем параметр Run Options на No UI. Запускаем программу еще раз, убеждаемся что все работает. Теперь сохраняем сгенерированный файл top_block.py — мы можем просто запускать его из командной строки, например из bat-файла или из консоли.<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/yp/gn/qy/ypgnqytpqchjfwsk_fung67k5ck.png"/><br/>
+<br/>
+Если кому интересно, сгенерированный файл сохранен под спойлером.<br/>
+<div class="spoiler"><b class="spoiler_title">recorder.py</b><div class="spoiler_text"><pre><code class="python">#!/usr/bin/env python2
+# -*- coding: utf-8 -*-
+##################################################
+# GNU Radio Python Flow Graph
+# Title: Top Block
+# Generated: Fri May 24 21:47:03 2019
+##################################################
+
+from gnuradio import analog
+from gnuradio import audio
+from gnuradio import blocks
+from gnuradio import eng_notation
+from gnuradio import filter
+from gnuradio import gr
+from gnuradio.eng_option import eng_option
+from gnuradio.filter import firdes
+from optparse import OptionParser
+import osmosdr
+import time
+
+
+class top_block(gr.top_block):
+
+    def __init__(self):
+        gr.top_block.__init__(self, "Top Block")
+
+        ##################################################
+        # Variables
+        ##################################################
+        self.samp_rate = samp_rate = 2048000
+        self.freq_center = freq_center = 100000000
+        self.freq_2 = freq_2 = 100700000
+        self.freq_1 = freq_1 = 100100000
+
+        ##################################################
+        # Blocks
+        ##################################################
+        self.rtlsdr_source_0 = osmosdr.source( args="numchan=" + str(1) + " " + '' )
+        self.rtlsdr_source_0.set_sample_rate(samp_rate)
+        self.rtlsdr_source_0.set_center_freq(freq_center, 0)
+        self.rtlsdr_source_0.set_freq_corr(0, 0)
+        self.rtlsdr_source_0.set_dc_offset_mode(0, 0)
+        self.rtlsdr_source_0.set_iq_balance_mode(0, 0)
+        self.rtlsdr_source_0.set_gain_mode(False, 0)
+        self.rtlsdr_source_0.set_gain(10, 0)
+        self.rtlsdr_source_0.set_if_gain(20, 0)
+        self.rtlsdr_source_0.set_bb_gain(20, 0)
+        self.rtlsdr_source_0.set_antenna('', 0)
+        self.rtlsdr_source_0.set_bandwidth(0, 0)
+
+        self.rational_resampler_xxx_1_0 = filter.rational_resampler_fff(
+                interpolation=48,
+                decimation=51,
+                taps=None,
+                fractional_bw=None,
+        )
+        self.rational_resampler_xxx_1 = filter.rational_resampler_fff(
+                interpolation=48,
+                decimation=51,
+                taps=None,
+                fractional_bw=None,
+        )
+        self.rational_resampler_xxx_0_0 = filter.rational_resampler_ccc(
+                interpolation=1,
+                decimation=4,
+                taps=None,
+                fractional_bw=None,
+        )
+        self.rational_resampler_xxx_0 = filter.rational_resampler_ccc(
+                interpolation=1,
+                decimation=4,
+                taps=None,
+                fractional_bw=None,
+        )
+        self.low_pass_filter_0_0 = filter.fir_filter_ccf(1, firdes.low_pass(
+        	1, samp_rate/4, 100000, 500000, firdes.WIN_HAMMING, 6.76))
+        self.low_pass_filter_0 = filter.fir_filter_ccf(1, firdes.low_pass(
+        	1, samp_rate/4, 100000, 500000, firdes.WIN_HAMMING, 6.76))
+        self.blocks_multiply_xx_0_0 = blocks.multiply_vcc(1)
+        self.blocks_multiply_xx_0 = blocks.multiply_vcc(1)
+        self.blocks_file_sink_0_0 = blocks.file_sink(gr.sizeof_float*1, 'D:\\Temp\\1\\audio2.snd', False)
+        self.blocks_file_sink_0_0.set_unbuffered(False)
+        self.blocks_file_sink_0 = blocks.file_sink(gr.sizeof_float*1, 'D:\\Temp\\1\\audio1.snd', False)
+        self.blocks_file_sink_0.set_unbuffered(False)
+        self.audio_sink_0 = audio.sink(48000, '', True)
+        self.analog_wfm_rcv_0_0 = analog.wfm_rcv(
+        	quad_rate=samp_rate/4,
+        	audio_decimation=10,
+        )
+        self.analog_wfm_rcv_0 = analog.wfm_rcv(
+        	quad_rate=samp_rate/4,
+        	audio_decimation=10,
+        )
+        self.analog_sig_source_x_0_0 = analog.sig_source_c(samp_rate, analog.GR_COS_WAVE, freq_center - freq_2, 1, 0)
+        self.analog_sig_source_x_0 = analog.sig_source_c(samp_rate, analog.GR_COS_WAVE, freq_center - freq_1, 1, 0)
+
+        ##################################################
+        # Connections
+        ##################################################
+        self.connect((self.analog_sig_source_x_0, 0), (self.blocks_multiply_xx_0, 1))
+        self.connect((self.analog_sig_source_x_0_0, 0), (self.blocks_multiply_xx_0_0, 1))
+        self.connect((self.analog_wfm_rcv_0, 0), (self.rational_resampler_xxx_1, 0))
+        self.connect((self.analog_wfm_rcv_0_0, 0), (self.rational_resampler_xxx_1_0, 0))
+        self.connect((self.blocks_multiply_xx_0, 0), (self.rational_resampler_xxx_0, 0))
+        self.connect((self.blocks_multiply_xx_0_0, 0), (self.rational_resampler_xxx_0_0, 0))
+        self.connect((self.low_pass_filter_0, 0), (self.analog_wfm_rcv_0, 0))
+        self.connect((self.low_pass_filter_0_0, 0), (self.analog_wfm_rcv_0_0, 0))
+        self.connect((self.rational_resampler_xxx_0, 0), (self.low_pass_filter_0, 0))
+        self.connect((self.rational_resampler_xxx_0_0, 0), (self.low_pass_filter_0_0, 0))
+        self.connect((self.rational_resampler_xxx_1, 0), (self.audio_sink_0, 0))
+        self.connect((self.rational_resampler_xxx_1, 0), (self.blocks_file_sink_0, 0))
+        self.connect((self.rational_resampler_xxx_1_0, 0), (self.audio_sink_0, 1))
+        self.connect((self.rational_resampler_xxx_1_0, 0), (self.blocks_file_sink_0_0, 0))
+        self.connect((self.rtlsdr_source_0, 0), (self.blocks_multiply_xx_0, 0))
+        self.connect((self.rtlsdr_source_0, 0), (self.blocks_multiply_xx_0_0, 0))
+
+    def get_samp_rate(self):
+        return self.samp_rate
+
+    def set_samp_rate(self, samp_rate):
+        self.samp_rate = samp_rate
+        self.rtlsdr_source_0.set_sample_rate(self.samp_rate)
+        self.low_pass_filter_0_0.set_taps(firdes.low_pass(1, self.samp_rate/4, 100000, 500000, firdes.WIN_HAMMING, 6.76))
+        self.low_pass_filter_0.set_taps(firdes.low_pass(1, self.samp_rate/4, 100000, 500000, firdes.WIN_HAMMING, 6.76))
+        self.analog_sig_source_x_0_0.set_sampling_freq(self.samp_rate)
+        self.analog_sig_source_x_0.set_sampling_freq(self.samp_rate)
+
+    def get_freq_center(self):
+        return self.freq_center
+
+    def set_freq_center(self, freq_center):
+        self.freq_center = freq_center
+        self.rtlsdr_source_0.set_center_freq(self.freq_center, 0)
+        self.analog_sig_source_x_0_0.set_frequency(self.freq_center - self.freq_2)
+        self.analog_sig_source_x_0.set_frequency(self.freq_center - self.freq_1)
+
+    def get_freq_2(self):
+        return self.freq_2
+
+    def set_freq_2(self, freq_2):
+        self.freq_2 = freq_2
+        self.analog_sig_source_x_0_0.set_frequency(self.freq_center - self.freq_2)
+
+    def get_freq_1(self):
+        return self.freq_1
+
+    def set_freq_1(self, freq_1):
+        self.freq_1 = freq_1
+        self.analog_sig_source_x_0.set_frequency(self.freq_center - self.freq_1)
+
+
+def main(top_block_cls=top_block, options=None):
+
+    tb = top_block_cls()
+    tb.start()
+    try:
+        raw_input('Press Enter to quit: ')
+    except EOFError:
+        pass
+    tb.stop()
+    tb.wait()
+
+
+if __name__ == '__main__':
+    main()
+</code></pre><br/>
+</div></div><br/>
+Удобно и то, что система является кросс-платформенной, и получившаяся программа может работать на Linux, Windows и OSX.<br/>
+<br/>
+<h2>Заключение</h2><br/>
+Можно сказать, что GNU Radio достаточно сложная система, не в плане рисования блоков конечно, а в плане понимания того, как все это работает. Но какие-то несложные вещи сделать вполне посильно и интересно. GNU Radio также удобно использовать как «виртуальную лабораторию» для обучения — к любой части схемы можно подключить виртуальный осциллограф или спектроанализатор и посмотреть, как выглядит сигнал.<br/>
+<br/>
+Если не будет каких-то отдельных пожеланий, тему SDR-приема наверно можно закрыть — все основные моменты уже рассмотрены, да и количество просмотров от первой к третьей части падает <a href="https://habrastorage.org/webt/ph/qh/oe/phqhoeh5j8osiqqttd2s2lbntow.png">почти по экспоненте</a> (хотя еще можно написать про передачу, но оно требует более дорогого «железа» для тестов чем RTL SDR). Надеюсь все же, что некоторое понимание того как это работает, у читателей осталось. Ну и всем удачных экспериментов.</div></div> <!----> <!----></div> <div class="tm-article-presenter__meta"><div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Теги:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bradio%5D" class="tm-tags-list__link">radio</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bsdr%5D" class="tm-tags-list__link">sdr</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bgnu%20radio%5D" class="tm-tags-list__link">gnu radio</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bdsp%5D" class="tm-tags-list__link">dsp</a></li></ul></div> <div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Хабы:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/hub/programming/" class="tm-hubs-list__link">
+    Программирование
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/netdev/" class="tm-hubs-list__link">
+    Разработка систем связи
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/gadgets/" class="tm-hubs-list__link">
+    Гаджеты
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/popular_science/" class="tm-hubs-list__link">
+    Научно-популярное
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/easyelectronics/" class="tm-hubs-list__link">
+    Электроника для начинающих
+  </a></li></ul></div></div></article></div> <!----></div> <div class="tm-article-sticky-panel"><div class="tm-data-icons tm-article-sticky-panel__icons"><div class="tm-article-rating tm-data-icons__item"><div class="tm-votes-meter tm-article-rating__votes-switcher"><svg height="16" width="16" class="tm-svg-img tm-votes-meter__icon tm-votes-meter__icon_medium"><title>Всего голосов 47: ↑47 и ↓0</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-rating"></use></svg> <span title="Всего голосов 47: ↑47 и ↓0" class="tm-votes-meter__value tm-votes-meter__value_positive tm-votes-meter__value_medium">+47</span></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----> <span title="Количество просмотров" class="tm-icon-counter tm-data-icons__item"><svg height="16" width="16" class="tm-svg-img tm-icon-counter__icon"><title>Просмотры</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-views"></use></svg> <span class="tm-icon-counter__value">26K</span></span> <button title="Добавить в закладки" type="button" class="bookmarks-button tm-data-icons__item"><span title="Добавить в закладки" class="tm-svg-icon__wrapper bookmarks-button__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Добавить в закладки</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-favorite"></use></svg></span> <span title="Количество пользователей, добавивших публикацию в закладки" class="bookmarks-button__counter">
+    112
+  </span></button> <!----> <div title="Поделиться" class="tm-sharing tm-data-icons__item"><button type="button" class="tm-sharing__button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="tm-sharing__icon"><path fill="currentColor" d="M10.33.275l9.047 7.572a.2.2 0 010 .306l-9.048 7.572a.2.2 0 01-.328-.153V11c-8 0-9.94 6-9.94 6S-1 5 10 5V.428a.2.2 0 01.328-.153z"></path></svg></button> <!----></div> <DIV class="v-portal" style="display:none;"></DIV></div> </div></div> <!----> <!----> <div class="tm-article-presenter__footer"><div class="tm-article-blocks"><!----> <section class="tm-block tm-block_spacing-bottom"><!----> <div class="tm-block__body tm-block__body_variant-balanced"><div class="tm-article-author"> <div class="tm-user-card tm-article-author__user-card tm-user-card_variant-article"><div class="tm-user-card__info-container"><div class="tm-user-card__header"><div class="tm-user-card__header-data"><a href="/ru/users/DmitrySpb79/" class="tm-user-card__userpic tm-user-card__userpic_size-40"><div class="tm-entity-image"><svg class="tm-svg-img tm-image-placeholder tm-image-placeholder_lilac"><!----> <use xlink:href="/img/megazord-v24.ce74655c.svg#placeholder-user"></use></svg></div></a> <div class="tm-user-card__meta"><div title=" 494 голоса " class="tm-karma tm-user-card__karma"><div class="tm-karma__votes tm-karma__votes_positive">
+    340.2
+  </div> <div class="tm-karma__text">
+    Карма
+  </div></div> <div title="Рейтинг пользователя" class="tm-rating tm-user-card__rating"><div class="tm-rating__header"> <div class="tm-rating__counter">0.3</div></div> <div class="tm-rating__text">
+    Рейтинг
+  </div></div></div></div></div> <div class="tm-user-card__info tm-user-card__info_variant-article"><div class="tm-user-card__title tm-user-card__title_variant-article"><!----> <a href="/ru/users/DmitrySpb79/" class="tm-user-card__nickname tm-user-card__nickname_variant-article">
+          @DmitrySpb79
+        </a> <!----></div> <p class="tm-user-card__short-info tm-user-card__short-info_variant-article">Закончил активность на Хабре</p></div></div> <div class="tm-user-card__buttons tm-user-card__buttons_variant-article"><!----> <!----> <!----> <!----> <!----></div></div> <!----></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----></section> <div class="tm-article-blocks__comments"><div class="tm-article-page-comments"><div class="tm-article-comments-counter-link tm-article-comments-counter-button"><a href="/ru/post/453038/comments/" class="tm-article-comments-counter-link__link tm-article-comments-counter-link__link_button-style"><svg height="16" width="16" class="tm-svg-img tm-article-comments-counter-link__icon tm-article-comments-counter-link__icon_contrasted"><title>Комментарии</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-comments"></use></svg> <span class="tm-article-comments-counter-link__value tm-article-comments-counter-link__value_contrasted">
+       Комментарии 26 
+    </span></a> <!----></div></div></div> <div class="tm-ad-banner__container tm-page-article__banner"><!----> <div id="articleBottomBanner" class="tm-ad-banner"></div></div> <!----> <!----> <!----> <!----> </div></div></div></div></div> <div class="tm-page__sidebar"><div class="tm-layout-sidebar"><div class="tm-layout-sidebar__ads tm-layout-sidebar__ads_initial"><div class="tm-ad-banner__container tm-layout-sidebar__banner"><!----> <div id="sidebarBanner" class="tm-ad-banner"></div></div></div> <div class="tm-sexy-sidebar tm-sexy-sidebar_initial" style="margin-top:0px;"><!----> <!----></div></div></div></div></div></div></main> <!----></div> <div class="tm-footer-menu"><div class="tm-page-width"><div class="tm-footer-menu__container"><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Ваш аккаунт
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr/?back=/ru/post/453038/&amp;hl=ru" rel="nofollow" target="_self">
+                Войти
+              </a></li><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr-register/?back=/ru/post/453038/&amp;hl=ru" rel="nofollow" target="_self">
+                Регистрация
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Разделы
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/" class="footer-menu__item-link router-link-active">
+                Публикации
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/news/" class="footer-menu__item-link">
+                Новости
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/hubs/" class="footer-menu__item-link">
+                Хабы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/companies/" class="footer-menu__item-link">
+                Компании
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/users/" class="footer-menu__item-link">
+                Авторы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/sandbox/" class="footer-menu__item-link">
+                Песочница
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Информация
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/docs/help/" class="footer-menu__item-link">
+                Устройство сайта
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/authors/codex/" class="footer-menu__item-link">
+                Для авторов
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/companies/corpblogs/" class="footer-menu__item-link">
+                Для компаний
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/docs/transparency/" class="footer-menu__item-link">
+                Документы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/agreement" target="_blank">
+                Соглашение
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/confidential/" target="_blank">
+                Конфиденциальность
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Услуги
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQLwRfQmXibiUlWaRg-BAc38s7oM3lJiaPju7qmdJsp8ysIvZ_G-Npem0njJLMozE2bPHMpDqiI5hhy/pub?start=false&amp;loop=false&amp;delayms=60000&amp;slide=id.g91a03369cd_4_297" target="_blank">
+                Реклама
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://habrastorage.org/storage/stuff/habr/service_price.pdf" target="_blank">
+                Тарифы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQJJds8-Di7BQSP_guHxICN7woVYoN5NP_22ra-BIo4bqnTT9FR6fB-Ku2P0AoRpX0Ds-LRkDeAoD8F/pub?start=false&amp;loop=false&amp;delayms=60000" target="_blank">
+                Контент
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://tmtm.timepad.ru/" target="_blank">
+                Семинары
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/megaprojects/" class="footer-menu__item-link">
+                Мегапроекты
+              </a></li></ul></div></div></div></div></div> <div class="tm-footer"><div class="tm-page-width"><div class="tm-footer__container"><!----> <div class="tm-footer__social"><a href="https://www.facebook.com/habrahabr.ru" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Facebook</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-facebook"></use></svg></a><a href="https://twitter.com/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Twitter</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-twitter"></use></svg></a><a href="https://vk.com/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>VK</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-vkontakte"></use></svg></a><a href="https://telegram.me/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Telegram</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-telegram"></use></svg></a><a href="https://www.youtube.com/channel/UCd_sTwKqVrweTt4oAKY5y4w" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Youtube</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-youtube"></use></svg></a><a href="https://zen.yandex.ru/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Яндекс Дзен</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-zen"></use></svg></a></div> <DIV class="v-portal" style="display:none;"></DIV> <button class="tm-footer__link"><!---->
+        Настройка языка
+      </button> <a href="/ru/about" class="tm-footer__link">
+        О сайте
+      </a> <a href="/ru/feedback/" class="tm-footer__link">
+        Техническая поддержка
+      </a> <!----> <a href="/berserk-mode-nope" class="tm-footer__link">
+        Вернуться на старую версию
+      </a> <div class="tm-footer-copyright"><span class="tm-copyright"><span class="tm-copyright__years">© 2006–2021 </span> <span class="tm-copyright__name">«<a href="https://company.habr.com/" rel="noopener" target="_blank" class="tm-copyright__link">Habr</a>»</span></span></div></div></div></div> <!----> <!----></div> <div class="vue-portal-target"></div></div>
+<script>window.__INITIAL_STATE__={"adblock":{"hasAcceptableAdsFilter":false,"hasAdblock":false},"articlesList":{"articlesList":{"453038":{"id":"453038","timePublished":"2019-05-24T20:21:11+00:00","isCorporative":false,"lang":"ru","titleHtml":"Software Defined Radio — как это работает? Часть 4","leadData":{"textHtml":"Привет, Хабр.\u003Cbr\u003E\r\n\u003Cbr\u003E\r\nВ \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fpost\u002F452390\u002F\"\u003Eтретьей части\u003C\u002Fa\u003E было рассказано, как получить доступ к SDR-приемнику посредством языка Python. Сейчас мы познакомимся с программой \u003Ca href=\"https:\u002F\u002Fwww.gnuradio.org\u002F\"\u003EGNU Radio\u003C\u002Fa\u003E — системой, позволяющей создать достаточно сложную конфигурацию радиоустройства, не написав ни единой строчки кода.\u003Cbr\u003E\r\n\u003Cbr\u003E\r\n\u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Flz\u002F0o\u002F-a\u002Flz0o-askafi53h9qmtsy0ktkdog.png\"\u003E\u003Cbr\u003E\r\n\u003Cbr\u003E\r\nДля примера рассмотрим задачу параллельного приема нескольких FM-станций на один приемник. В качестве приемника будем использовать все тот же RTL SDR V3.\u003Cbr\u003E\r\n\u003Cbr\u003E\r\nПродолжение под катом.","imageUrl":null,"buttonTextHtml":"Читать дальше →","image":null},"editorVersion":"1.0","postType":"article","postLabels":[{"type":"tutorial","data":null}],"author":{"scoreStats":{"score":340.2,"votesCount":494},"rating":0.3,"relatedData":null,"contacts":[],"authorContacts":[],"paymentDetails":{"paymentYandexMoney":null,"paymentPayPalMe":null,"paymentWebmoney":null},"id":"1071558","alias":"DmitrySpb79","fullname":null,"avatarUrl":null,"speciality":"Закончил активность на Хабре"},"statistics":{"commentsCount":26,"favoritesCount":112,"readingCount":25643,"score":47,"votesCount":47},"hubs":[{"relatedData":null,"id":"359","alias":"programming","type":"collective","title":"Программирование","titleHtml":"Программирование","isProfiled":true},{"relatedData":null,"id":"19395","alias":"netdev","type":"collective","title":"Разработка систем связи","titleHtml":"Разработка систем связи","isProfiled":true},{"relatedData":null,"id":"21894","alias":"gadgets","type":"collective","title":"Гаджеты","titleHtml":"Гаджеты","isProfiled":false},{"relatedData":null,"id":"21910","alias":"popular_science","type":"collective","title":"Научно-популярное","titleHtml":"Научно-популярное","isProfiled":false},{"relatedData":null,"id":"22016","alias":"easyelectronics","type":"collective","title":"Электроника для начинающих","titleHtml":"Электроника для начинающих","isProfiled":false}],"flows":[{"id":"1","alias":"develop","title":"Разработка"},{"id":"7","alias":"popsci","title":"Научпоп"}],"relatedData":null,"textHtml":"\u003Cdiv xmlns=\"http:\u002F\u002Fwww.w3.org\u002F1999\u002Fxhtml\"\u003EПривет, Хабр.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВ \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fpost\u002F452390\u002F\"\u003Eтретьей части\u003C\u002Fa\u003E было рассказано, как получить доступ к SDR-приемнику посредством языка Python. Сейчас мы познакомимся с программой \u003Ca href=\"https:\u002F\u002Fwww.gnuradio.org\u002F\"\u003EGNU Radio\u003C\u002Fa\u003E — системой, позволяющей создать достаточно сложную конфигурацию радиоустройства, не написав ни единой строчки кода.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Flz\u002F0o\u002F-a\u002Flz0o-askafi53h9qmtsy0ktkdog.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nДля примера рассмотрим задачу параллельного приема нескольких FM-станций на один приемник. В качестве приемника будем использовать все тот же RTL SDR V3.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПродолжение под катом.\u003Ca name=\"habracut\"\u003E\u003C\u002Fa\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EУстановка\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nДля начала работы GNU Radio необходимо установить, дистрибутив для Windows можно скачать \u003Ca href=\"https:\u002F\u002Fdownloads.myriadrf.org\u002Fbuilds\u002FPothosSDR\u002F\"\u003Eздесь\u003C\u002Fa\u003E. Система эта кроссплатформенная, версии есть также под Linux и под OSX (вроде бы GNU Radio успешно запускали и на Raspberry Pi, но 100% гарантии дать не могу).\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПо сути, GNU Radio это целый фреймворк для цифровой обработки сигналов, в котором программа «собирается» из отдельных модулей. Есть большое количество уже готовых блоков, при желании также можно создавать свои собственные. Сами модули написаны на С++, а для взаимодействия блоков друг с другом используется Python. Желающие могут посмотреть на API \u003Ca href=\"https:\u002F\u002Fwww.gnuradio.org\u002Fdoc\u002Fdoxygen\u002Findex.html\"\u003Eболее подробно\u003C\u002Fa\u003E, но на практике это, скорее всего, не пригодится — все действия можно делать визуально в программе GNU Radio Companion.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nСистема ориентирована на обработку потоков данных, так что каждый блок обычно имеет вход и выход. Далее, соединяя блоки в редакторе, мы получаем готовую систему. Сам интерфейс GNU Radio довольно простой, сложность состоит в понимании того, что делает тот или иной блок. Как говорилось ранее, низкоуровневая работа с SDR имеет высокий порог входа и требует некоторого знания в DSP и математике. Но мы рассмотрим простую задачу, для которой никаких специальных знаний не потребуется. Итак, приступим.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EНачало работы\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nЗапускаем GNU Radio Companion, создаем новый проект, тип проекта выбираем WX GUI, добавляем на экран и соединяем два блока, как показано на скриншоте. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fap\u002Fzm\u002Fd5\u002Fapzmd5drzq9g-0fkn2yzeosagz0.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nМы видим два типа блоков — Source (источник) и Sink (выход, «слив»). RTL-SDR — это наш приемник, FFT GUI — это виртуальный спектроанализатор.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПеременную Sample Rate устанавливаем в 2048000, это частота дискретизации нашего приемника. Частоту RTL-SDR оставляем по умолчанию равной 100МГц.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЗапускаем проект — все работает, мы видим спектр FM-станций. Первая программа для GNU Radio готова!\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fcg\u002Fii\u002Fmu\u002Fcgiimukqq7tujdtv-mprdvtl8wc.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЕсли мы посмотрим лог, то увидим такие строки.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ci\u003EGenerating: 'D:\\\\MyProjects\\\\GNURadio\\\\top_block.py'\u003Cbr\u002F\u003E\r\nExecuting: C:\\Python27\\python.exe -u D:\\MyProjects\\GNURadio\\top_block.py\u003C\u002Fi\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nДа, мы можем посмотреть файл top_block.py, который сгенерил нам GNU Radio Companion. Истинные джедаи могут писать непосредственно в Python, но требуемый код, как мы видим, довольно большой. Мы же создали его за 1 минуту.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cdiv class=\"spoiler\"\u003E\u003Cb class=\"spoiler_title\"\u003Etop_blocks.py\u003C\u002Fb\u003E\u003Cdiv class=\"spoiler_text\"\u003E\u003Cpre\u003E\u003Ccode class=\"python\"\u003E#!\u002Fusr\u002Fbin\u002Fenv python2\n# -*- coding: utf-8 -*-\n##################################################\n# GNU Radio Python Flow Graph\n# Title: Top Block\n# Generated: Wed May 22 22:05:14 2019\n##################################################\n\nif __name__ == '__main__':\n    import ctypes\n    import sys\n    if sys.platform.startswith('linux'):\n        try:\n            x11 = ctypes.cdll.LoadLibrary('libX11.so')\n            x11.XInitThreads()\n        except:\n            print \"Warning: failed to XInitThreads()\"\n\nfrom gnuradio import eng_notation\nfrom gnuradio import gr\nfrom gnuradio import wxgui\nfrom gnuradio.eng_option import eng_option\nfrom gnuradio.fft import window\nfrom gnuradio.filter import firdes\nfrom gnuradio.wxgui import fftsink2\nfrom grc_gnuradio import wxgui as grc_wxgui\nfrom optparse import OptionParser\nimport osmosdr\nimport time\nimport wx\n\n\nclass top_block(grc_wxgui.top_block_gui):\n\n    def __init__(self):\n        grc_wxgui.top_block_gui.__init__(self, title=\"Top Block\")\n\n        ##################################################\n        # Variables\n        ##################################################\n        self.samp_rate = samp_rate = 2048000\n\n        ##################################################\n        # Blocks\n        ##################################################\n        self.wxgui_fftsink2_0 = fftsink2.fft_sink_c(\n        \tself.GetWin(),\n        \tbaseband_freq=0,\n        \ty_per_div=10,\n        \ty_divs=10,\n        \tref_level=0,\n        \tref_scale=2.0,\n        \tsample_rate=samp_rate,\n        \tfft_size=1024,\n        \tfft_rate=15,\n        \taverage=False,\n        \tavg_alpha=None,\n        \ttitle='FFT Plot',\n        \tpeak_hold=False,\n        )\n        self.Add(self.wxgui_fftsink2_0.win)\n        self.rtlsdr_source_0 = osmosdr.source( args=\"numchan=\" + str(1) + \" \" + '' )\n        self.rtlsdr_source_0.set_sample_rate(samp_rate)\n        self.rtlsdr_source_0.set_center_freq(100e6, 0)\n        self.rtlsdr_source_0.set_freq_corr(0, 0)\n        self.rtlsdr_source_0.set_dc_offset_mode(0, 0)\n        self.rtlsdr_source_0.set_iq_balance_mode(0, 0)\n        self.rtlsdr_source_0.set_gain_mode(False, 0)\n        self.rtlsdr_source_0.set_gain(10, 0)\n        self.rtlsdr_source_0.set_if_gain(20, 0)\n        self.rtlsdr_source_0.set_bb_gain(20, 0)\n        self.rtlsdr_source_0.set_antenna('', 0)\n        self.rtlsdr_source_0.set_bandwidth(0, 0)\n\n\n        ##################################################\n        # Connections\n        ##################################################\n        self.connect((self.rtlsdr_source_0, 0), (self.wxgui_fftsink2_0, 0))\n\n    def get_samp_rate(self):\n        return self.samp_rate\n\n    def set_samp_rate(self, samp_rate):\n        self.samp_rate = samp_rate\n        self.wxgui_fftsink2_0.set_sample_rate(self.samp_rate)\n        self.rtlsdr_source_0.set_sample_rate(self.samp_rate)\n\n\ndef main(top_block_cls=top_block, options=None):\n\n    tb = top_block_cls()\n    tb.Start(True)\n    tb.Wait()\n\n\nif __name__ == '__main__':\n    main()\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003C\u002Fdiv\u003E\u003C\u002Fdiv\u003E\u003Cbr\u002F\u003E\r\nВпрочем, если убрать громоздкую инициализацию, то мы увидим, что ключевых строк кода не так уж много.\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"python\"\u003Efrom gnuradio import gr\nfrom gnuradio.wxgui import fftsink2\nimport osmosdr\n\nclass top_block(grc_wxgui.top_block_gui):\n\n    def __init__(self):\n        grc_wxgui.top_block_gui.__init__(self, title=\"Top Block\")\n        self.samp_rate = samp_rate = 2048000\n        self.wxgui_fftsink2_0 = fftsink2.fft_sink_c(...)\n        self.Add(self.wxgui_fftsink2_0.win)\n        self.rtlsdr_source_0 = osmosdr.source(args=\"numchan=\" + str(1) + \" \" + '' )\n        self.connect((self.rtlsdr_source_0, 0), (self.wxgui_fftsink2_0, 0))\n\ndef main(top_block_cls=top_block, options=None):\n    tb = top_block_cls()\n    tb.Start(True)\n    tb.Wait()\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nТак что в принципе, это можно написать вручную. Но мышью оно все-таки быстрее. Хотя возможность поменять код иногда может пригодиться, если захочется добавить какую-то нестандартную логику.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EПринимаем FM-радио\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nТеперь попробуем принять одну из станций. Как было видно из скриншотов, центральная частота приемника 100МГц и ширина полосы пропускания около 2МГц. На спектре мы видим две станции, на 100.1МГц и 100.7МГц соответственно.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПервым шагом необходимо перенести спектр станции в центр, сейчас он отстоит вправо на 100КГц. Для этого вспоминаем школьную формулу умножения косинусов — в результате будет две частоты, сумма и разность — нужная станция сдвинется в центр, что нам и нужно (а лишнее мы потом отфильтруем). \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nСоздаем две переменные для хранения частоты freq_center=100000000 и freq_1=100100000, также добавляем генератор сигналов с частотой freq_center — freq_1.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fmz\u002Fkc\u002Flq\u002Fmzkclq8dusvoy7kxqqcrbajlxzc.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nТ.к. система построена на базе Python, то в полях ввода параметров мы можем использовать выражения, что достаточно удобно.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nСхема в итоге должна выглядеть так:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fb0\u002Fyl\u002F7z\u002Fb0yl7z1omt-7kidj7i863nc2exq.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nТеперь необходимо добавить сразу несколько блоков — уменьшить тактовую частоту входного сигнала (она равна 2048КГц), отфильтровать сигнал, подать его на FM-декодер, затем еще раз уменьшить тактовую частоту до 48КГц.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nРезультат показан на картинке:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002F8n\u002Fwq\u002Fht\u002F8nwqhtrflggwkkdia9xhbuok2io.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nСчитаем внимательно. Мы делим тактовую частоту 2048КГц в 4 раза блоком Rational Resampler (получаем 512КГц), затем после Low Pass фильтра стоит WBFM-декодер с децимацией 10 (получаем 51.2КГц). В принципе, этот сигнал уже можно подать на звуковую карту, но высота тона будет чуть отличаться. Еще раз меняем тактовую частоту в 48\u002F51, в результате будет тактовая частота 48.2КГц, разницей уже можно пренебречь.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВторой важный момент — тип входов. С приемника поступает \u003Ci\u003Eкомплексный\u003C\u002Fi\u003E IQ-сигнал (входы-выходы синего цвета), с FM-декодера выходит \u003Ci\u003Eвещественный\u003C\u002Fi\u003E сигнал — входы и выходы желтого цвета. Если перепутать, ничего не заработает. Подробнее \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fpost\u002F419735\u002F\"\u003Eуже было на Хабре\u003C\u002Fa\u003E, нам достаточно понять общий принцип.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВ общем, запускаем, убеждаемся что все работает. Можно запустить программу и слушать радио. Мы пойдем дальше — у нас же все-таки \u003Ci\u003ESoftware Defined\u003C\u002Fi\u003E радио — добавим одновременный прием второй станции.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EМногоканальный прием\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nВторой приемник добавляется любимым программистским методом — Ctrl+C\u002FCtrl+V. Добавляем переменную freq_2, копируем блоки и соединяем их точно также.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fwb\u002F8-\u002Fdo\u002Fwb8-dowoop7frpjeigt1pmb0_jo.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nРезультат вполне сюрреалистичный — две FM-станции можно слушать одновременно. Тем же самым методом (Ctrl+V) можно добавить и третью станцию.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EЗапись\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nСлушать две станции оригинально, но на практике мало полезно. Сделаем что-то более нужное, например добавим запись звука в отдельные файлы. Это может быть достаточно удобно — с одного физического приемника можно параллельно записывать несколько каналов. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nДобавим к каждому выходу компонент File Sink, как показано на скриншоте.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fdv\u002F-z\u002Fah\u002Fdv-zahcv6ushuetsll7by3jyvki.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nWindows-версия почему-то требует абсолютные пути файлов, иначе запись не работает. Запускаем, убеждаемся что все нормально. Размер сохраняемых файлов довольно большой, т.к. по умолчанию записывается формат float. Запись в формате int оставлю читателям в качестве домашнего задания.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПолучившиеся файлы можно открыть в Cool Edit и убедиться, что звук записался нормально.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fzo\u002Foz\u002Flx\u002Fzoozlx5plq7aw_jftgdc-ddyrl0.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fp9\u002Fz9\u002Ftu\u002Fp9z9tuscd-0w3fa_tkdqq0qii68.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nРазумеется, число записываемых каналов можно увеличить, оно ограничено только полосой пропускания приемника и мощностью компьютера. Кроме File Sink можно использовать и UDP Sink, так что программу можно использовать для трансляции по сети. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EЗапуск из командной строки\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nИ последнее. Если использовать программу автономно, например для многоканальной записи, то UI в принципе и не нужен. В верхнем левом блоке Options меняем параметр Run Options на No UI. Запускаем программу еще раз, убеждаемся что все работает. Теперь сохраняем сгенерированный файл top_block.py — мы можем просто запускать его из командной строки, например из bat-файла или из консоли.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fyp\u002Fgn\u002Fqy\u002Fypgnqytpqchjfwsk_fung67k5ck.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЕсли кому интересно, сгенерированный файл сохранен под спойлером.\u003Cbr\u002F\u003E\r\n\u003Cdiv class=\"spoiler\"\u003E\u003Cb class=\"spoiler_title\"\u003Erecorder.py\u003C\u002Fb\u003E\u003Cdiv class=\"spoiler_text\"\u003E\u003Cpre\u003E\u003Ccode class=\"python\"\u003E#!\u002Fusr\u002Fbin\u002Fenv python2\n# -*- coding: utf-8 -*-\n##################################################\n# GNU Radio Python Flow Graph\n# Title: Top Block\n# Generated: Fri May 24 21:47:03 2019\n##################################################\n\nfrom gnuradio import analog\nfrom gnuradio import audio\nfrom gnuradio import blocks\nfrom gnuradio import eng_notation\nfrom gnuradio import filter\nfrom gnuradio import gr\nfrom gnuradio.eng_option import eng_option\nfrom gnuradio.filter import firdes\nfrom optparse import OptionParser\nimport osmosdr\nimport time\n\n\nclass top_block(gr.top_block):\n\n    def __init__(self):\n        gr.top_block.__init__(self, \"Top Block\")\n\n        ##################################################\n        # Variables\n        ##################################################\n        self.samp_rate = samp_rate = 2048000\n        self.freq_center = freq_center = 100000000\n        self.freq_2 = freq_2 = 100700000\n        self.freq_1 = freq_1 = 100100000\n\n        ##################################################\n        # Blocks\n        ##################################################\n        self.rtlsdr_source_0 = osmosdr.source( args=\"numchan=\" + str(1) + \" \" + '' )\n        self.rtlsdr_source_0.set_sample_rate(samp_rate)\n        self.rtlsdr_source_0.set_center_freq(freq_center, 0)\n        self.rtlsdr_source_0.set_freq_corr(0, 0)\n        self.rtlsdr_source_0.set_dc_offset_mode(0, 0)\n        self.rtlsdr_source_0.set_iq_balance_mode(0, 0)\n        self.rtlsdr_source_0.set_gain_mode(False, 0)\n        self.rtlsdr_source_0.set_gain(10, 0)\n        self.rtlsdr_source_0.set_if_gain(20, 0)\n        self.rtlsdr_source_0.set_bb_gain(20, 0)\n        self.rtlsdr_source_0.set_antenna('', 0)\n        self.rtlsdr_source_0.set_bandwidth(0, 0)\n\n        self.rational_resampler_xxx_1_0 = filter.rational_resampler_fff(\n                interpolation=48,\n                decimation=51,\n                taps=None,\n                fractional_bw=None,\n        )\n        self.rational_resampler_xxx_1 = filter.rational_resampler_fff(\n                interpolation=48,\n                decimation=51,\n                taps=None,\n                fractional_bw=None,\n        )\n        self.rational_resampler_xxx_0_0 = filter.rational_resampler_ccc(\n                interpolation=1,\n                decimation=4,\n                taps=None,\n                fractional_bw=None,\n        )\n        self.rational_resampler_xxx_0 = filter.rational_resampler_ccc(\n                interpolation=1,\n                decimation=4,\n                taps=None,\n                fractional_bw=None,\n        )\n        self.low_pass_filter_0_0 = filter.fir_filter_ccf(1, firdes.low_pass(\n        \t1, samp_rate\u002F4, 100000, 500000, firdes.WIN_HAMMING, 6.76))\n        self.low_pass_filter_0 = filter.fir_filter_ccf(1, firdes.low_pass(\n        \t1, samp_rate\u002F4, 100000, 500000, firdes.WIN_HAMMING, 6.76))\n        self.blocks_multiply_xx_0_0 = blocks.multiply_vcc(1)\n        self.blocks_multiply_xx_0 = blocks.multiply_vcc(1)\n        self.blocks_file_sink_0_0 = blocks.file_sink(gr.sizeof_float*1, 'D:\\\\Temp\\\\1\\\\audio2.snd', False)\n        self.blocks_file_sink_0_0.set_unbuffered(False)\n        self.blocks_file_sink_0 = blocks.file_sink(gr.sizeof_float*1, 'D:\\\\Temp\\\\1\\\\audio1.snd', False)\n        self.blocks_file_sink_0.set_unbuffered(False)\n        self.audio_sink_0 = audio.sink(48000, '', True)\n        self.analog_wfm_rcv_0_0 = analog.wfm_rcv(\n        \tquad_rate=samp_rate\u002F4,\n        \taudio_decimation=10,\n        )\n        self.analog_wfm_rcv_0 = analog.wfm_rcv(\n        \tquad_rate=samp_rate\u002F4,\n        \taudio_decimation=10,\n        )\n        self.analog_sig_source_x_0_0 = analog.sig_source_c(samp_rate, analog.GR_COS_WAVE, freq_center - freq_2, 1, 0)\n        self.analog_sig_source_x_0 = analog.sig_source_c(samp_rate, analog.GR_COS_WAVE, freq_center - freq_1, 1, 0)\n\n        ##################################################\n        # Connections\n        ##################################################\n        self.connect((self.analog_sig_source_x_0, 0), (self.blocks_multiply_xx_0, 1))\n        self.connect((self.analog_sig_source_x_0_0, 0), (self.blocks_multiply_xx_0_0, 1))\n        self.connect((self.analog_wfm_rcv_0, 0), (self.rational_resampler_xxx_1, 0))\n        self.connect((self.analog_wfm_rcv_0_0, 0), (self.rational_resampler_xxx_1_0, 0))\n        self.connect((self.blocks_multiply_xx_0, 0), (self.rational_resampler_xxx_0, 0))\n        self.connect((self.blocks_multiply_xx_0_0, 0), (self.rational_resampler_xxx_0_0, 0))\n        self.connect((self.low_pass_filter_0, 0), (self.analog_wfm_rcv_0, 0))\n        self.connect((self.low_pass_filter_0_0, 0), (self.analog_wfm_rcv_0_0, 0))\n        self.connect((self.rational_resampler_xxx_0, 0), (self.low_pass_filter_0, 0))\n        self.connect((self.rational_resampler_xxx_0_0, 0), (self.low_pass_filter_0_0, 0))\n        self.connect((self.rational_resampler_xxx_1, 0), (self.audio_sink_0, 0))\n        self.connect((self.rational_resampler_xxx_1, 0), (self.blocks_file_sink_0, 0))\n        self.connect((self.rational_resampler_xxx_1_0, 0), (self.audio_sink_0, 1))\n        self.connect((self.rational_resampler_xxx_1_0, 0), (self.blocks_file_sink_0_0, 0))\n        self.connect((self.rtlsdr_source_0, 0), (self.blocks_multiply_xx_0, 0))\n        self.connect((self.rtlsdr_source_0, 0), (self.blocks_multiply_xx_0_0, 0))\n\n    def get_samp_rate(self):\n        return self.samp_rate\n\n    def set_samp_rate(self, samp_rate):\n        self.samp_rate = samp_rate\n        self.rtlsdr_source_0.set_sample_rate(self.samp_rate)\n        self.low_pass_filter_0_0.set_taps(firdes.low_pass(1, self.samp_rate\u002F4, 100000, 500000, firdes.WIN_HAMMING, 6.76))\n        self.low_pass_filter_0.set_taps(firdes.low_pass(1, self.samp_rate\u002F4, 100000, 500000, firdes.WIN_HAMMING, 6.76))\n        self.analog_sig_source_x_0_0.set_sampling_freq(self.samp_rate)\n        self.analog_sig_source_x_0.set_sampling_freq(self.samp_rate)\n\n    def get_freq_center(self):\n        return self.freq_center\n\n    def set_freq_center(self, freq_center):\n        self.freq_center = freq_center\n        self.rtlsdr_source_0.set_center_freq(self.freq_center, 0)\n        self.analog_sig_source_x_0_0.set_frequency(self.freq_center - self.freq_2)\n        self.analog_sig_source_x_0.set_frequency(self.freq_center - self.freq_1)\n\n    def get_freq_2(self):\n        return self.freq_2\n\n    def set_freq_2(self, freq_2):\n        self.freq_2 = freq_2\n        self.analog_sig_source_x_0_0.set_frequency(self.freq_center - self.freq_2)\n\n    def get_freq_1(self):\n        return self.freq_1\n\n    def set_freq_1(self, freq_1):\n        self.freq_1 = freq_1\n        self.analog_sig_source_x_0.set_frequency(self.freq_center - self.freq_1)\n\n\ndef main(top_block_cls=top_block, options=None):\n\n    tb = top_block_cls()\n    tb.start()\n    try:\n        raw_input('Press Enter to quit: ')\n    except EOFError:\n        pass\n    tb.stop()\n    tb.wait()\n\n\nif __name__ == '__main__':\n    main()\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003C\u002Fdiv\u003E\u003C\u002Fdiv\u003E\u003Cbr\u002F\u003E\r\nУдобно и то, что система является кросс-платформенной, и получившаяся программа может работать на Linux, Windows и OSX.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EЗаключение\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nМожно сказать, что GNU Radio достаточно сложная система, не в плане рисования блоков конечно, а в плане понимания того, как все это работает. Но какие-то несложные вещи сделать вполне посильно и интересно. GNU Radio также удобно использовать как «виртуальную лабораторию» для обучения — к любой части схемы можно подключить виртуальный осциллограф или спектроанализатор и посмотреть, как выглядит сигнал.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЕсли не будет каких-то отдельных пожеланий, тему SDR-приема наверно можно закрыть — все основные моменты уже рассмотрены, да и количество просмотров от первой к третьей части падает \u003Ca href=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fph\u002Fqh\u002Foe\u002Fphqhoeh5j8osiqqttd2s2lbntow.png\"\u003Eпочти по экспоненте\u003C\u002Fa\u003E (хотя еще можно написать про передачу, но оно требует более дорогого «железа» для тестов чем RTL SDR). Надеюсь все же, что некоторое понимание того как это работает, у читателей осталось. Ну и всем удачных экспериментов.\u003C\u002Fdiv\u003E","tags":[{"titleHtml":"radio"},{"titleHtml":"sdr"},{"titleHtml":"gnu radio"},{"titleHtml":"dsp"}],"metadata":{"stylesUrls":[],"scriptUrls":[],"shareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F453038\u002F460a214d93f5db4e11cebf240b920f6c\u002F","shareImageWidth":1200,"shareImageHeight":630,"vkShareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F453038\u002F460a214d93f5db4e11cebf240b920f6c\u002F?format=vk","schemaJsonLd":"{\"@context\":\"http:\\\u002F\\\u002Fschema.org\",\"@type\":\"Article\",\"mainEntityOfPage\":{\"@type\":\"WebPage\",\"@id\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fru\\\u002Fpost\\\u002F453038\\\u002F\"},\"headline\":\"Software Defined Radio — как это работает? Часть 4\",\"datePublished\":\"2019-05-24T23:21:11+03:00\",\"dateModified\":\"2019-05-25T12:46:34+03:00\",\"author\":{\"@type\":\"Person\",\"name\":\"DmitrySpb79\"},\"publisher\":{\"@type\":\"Organization\",\"name\":\"Habr\",\"logo\":{\"@type\":\"ImageObject\",\"url\":\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fa_\\\u002Flk\\\u002F9m\\\u002Fa_lk9mjkccjox-zccjrpfolmkmq.png\"}},\"description\":\"Привет, Хабр.  В третьей части было рассказано, как получить доступ к SDR-приемнику посредством языка Python. Сейчас мы познакомимся с программой GNU Radio &mdash; сис...\",\"url\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fru\\\u002Fpost\\\u002F453038\\\u002F#post-content-body\",\"about\":[\"h_programming\",\"h_netdev\",\"h_gadgets\",\"h_popular_science\",\"h_easyelectronics\",\"f_develop\",\"f_popsci\"],\"image\":[\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Flz\\\u002F0o\\\u002F-a\\\u002Flz0o-askafi53h9qmtsy0ktkdog.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fap\\\u002Fzm\\\u002Fd5\\\u002Fapzmd5drzq9g-0fkn2yzeosagz0.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fcg\\\u002Fii\\\u002Fmu\\\u002Fcgiimukqq7tujdtv-mprdvtl8wc.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fmz\\\u002Fkc\\\u002Flq\\\u002Fmzkclq8dusvoy7kxqqcrbajlxzc.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fb0\\\u002Fyl\\\u002F7z\\\u002Fb0yl7z1omt-7kidj7i863nc2exq.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002F8n\\\u002Fwq\\\u002Fht\\\u002F8nwqhtrflggwkkdia9xhbuok2io.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fwb\\\u002F8-\\\u002Fdo\\\u002Fwb8-dowoop7frpjeigt1pmb0_jo.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fdv\\\u002F-z\\\u002Fah\\\u002Fdv-zahcv6ushuetsll7by3jyvki.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fzo\\\u002Foz\\\u002Flx\\\u002Fzoozlx5plq7aw_jftgdc-ddyrl0.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fp9\\\u002Fz9\\\u002Ftu\\\u002Fp9z9tuscd-0w3fa_tkdqq0qii68.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fyp\\\u002Fgn\\\u002Fqy\\\u002Fypgnqytpqchjfwsk_fung67k5ck.png\"]}","metaDescription":"Привет, Хабр.\r\n\r\nВ третьей части было рассказано, как получить доступ к SDR-приемнику посредством языка Python. Сейчас мы познакомимся с программой GNU Radio — системой, позволяющей создать достаточно...","mainImageUrl":null,"amp":false},"polls":[],"commentsEnabled":true,"rulesRemindEnabled":false,"votesEnabled":true,"status":"published","plannedPublishTime":null,"checked":null,"isEditorial":false}},"articlesIds":{},"isLoading":false,"pagesCount":{},"route":{},"reasonsList":null,"view":"cards","lastVisitedRoute":{},"ssrCommentsArticleIds":[""],"karma":{}},"authorContribution":{"authors":{}},"betaTest":{"currentAnnouncement":null,"announcements":{},"announcementCards":null,"announcementComments":{},"announcementCommentThreads":{},"announcementCommentingStatuses":{},"archivedList":[]},"authorStatistics":{"articleRefs":{},"articleIds":{},"pagesCount":{},"route":{},"viewsCount":[],"maxStatsCount":{}},"career":{"seoLandings":[],"hubs":"programming,netdev,gadgets,popular_science,easyelectronics"},"comments":{"articleComments":{},"searchCommentsResults":null,"previewComment":null,"pagesCount":null,"commentAccess":{},"scrollParents":{},"pageArticleComments":{"lastViewedComment":0,"postId":null,"lastCommentTimestamp":"","moderated":[],"moderatedIds":[],"commentRoute":""}},"companies":{"companyRefs":{},"companyIds":{},"companyTopIds":{},"pagesCount":{},"companyProfiles":{},"companiesCategories":[],"companiesCategoriesTotalCount":0,"companiesWidgets":{},"companiesWorkers":{},"companiesFans":{},"route":{},"isLoading":false,"companyWorkersLoading":false,"companyFansLoading":false,"vacancies":{}},"companiesContribution":{"hubs":{},"flows":{},"companyRefs":{}},"companyHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"conversation":{"messages":[],"respondent":null,"isLoadMore":false},"conversations":{"conversations":[],"unreadCount":0,"pagesCount":0,"isLoadMore":false},"desktopState":{"desktopFl":null,"desktopHl":null,"isChecked":false,"isLoginDemanded":false},"dfp":{"slotsDict":{}},"docs":{"menu":{},"articles":{},"mainMenu":[],"loading":{"main":false,"dropdown":false,"article":false}},"feature":{"isProbablyVisible":"true"},"flows":{"flows":[{"alias":"develop","id":1,"route":{"name":"FLOW_PAGE","params":{"flowName":"develop"}}},{"alias":"admin","id":6,"route":{"name":"FLOW_PAGE","params":{"flowName":"admin"}}},{"alias":"design","id":2,"route":{"name":"FLOW_PAGE","params":{"flowName":"design"}}},{"alias":"management","id":3,"route":{"name":"FLOW_PAGE","params":{"flowName":"management"}}},{"alias":"marketing","id":4,"route":{"name":"FLOW_PAGE","params":{"flowName":"marketing"}}},{"alias":"popsci","id":7,"route":{"name":"FLOW_PAGE","params":{"flowName":"popsci"}}}]},"global":{"isPwa":false,"device":"desktop","isHabrCom":true},"hubs":{"hubRefs":{},"hubIds":{},"pagesCount":{},"isLoading":false,"route":{}},"hubsBlock":{"hubRefs":{},"hubIds":{}},"i18n":{"fl":"ru","hl":"ru"},"info":{"infoPage":{},"isLoading":true},"location":{"urlStruct":{"protocol":null,"slashes":null,"auth":null,"host":null,"port":null,"hostname":null,"hash":null,"search":null,"query":{},"pathname":null,"path":null,"href":""},"searchQuery":null},"me":{"user":null,"ppgDemanded":false,"karmaResetInfo":{"canReincarnate":null,"wasReincarnated":null,"currentScore":null},"notes":null},"mostReadingList":{"mostReadingListIds":[],"mostReadingListRefs":null,"promoPost":null},"pinnedPost":{"pinnedPost":null},"ppa":{"articles":{},"card":null,"transactions":null,"totalTransactions":null,"isAccessible":null},"projectsBlocks":{"activeBlocks":{}},"pullRefresh":{"shouldRefresh":false},"sandbox":{"articleIds":[],"articleRefs":{},"pagesCount":null,"route":{},"lastVisitedRoute":{},"isLoading":false},"settingsOther":{"inputs":{"uiLang":{"errors":[],"ref":null,"value":""},"articlesLangEnglish":{"errors":[],"ref":null,"value":false},"articlesLangRussian":{"errors":[],"ref":null,"value":false},"agreement":{"errors":[],"ref":null,"value":false},"email":{"errors":[],"ref":null,"value":true},"digest":{"errors":[],"ref":null,"value":true}}},"similarList":{"similarListIds":[],"similarListRefs":null},"ssr":{"error":null,"isDataLoaded":false,"isDataLoading":false,"isHydrationFailed":false,"isServer":false},"userHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"userInvites":{"availableInvites":0,"usedInvitesIds":[],"usedInvitesRefs":{},"usedInvitesPagesCount":0,"unusedInvitesIds":[],"unusedInvitesRefs":{},"unusedInvitesPagesCount":0},"users":{"authorRefs":{},"authorIds":{},"pagesCount":{},"authorProfiles":{},"userHubs":{},"userInvitations":{},"authorFollowers":{},"authorFollowed":{},"karmaStats":[],"statistics":null,"isLoading":false,"authorFollowersLoading":false,"authorFollowedLoading":false,"userHubsLoading":false,"userInvitationsLoading":false,"route":{}},"viewport":{"prevScrollY":{},"scrollY":0,"width":0},"tracker":{"items":{},"pagesCache":{},"markedViewedSilently":{},"markedRead":{},"unreadCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null},"unviewedCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null}}};(function(){var s;(s=document.currentScript||document.scripts[document.scripts.length-1]).parentNode.removeChild(s);}());</script>
+<script src="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" defer></script><script src="https://assets.habr.com/habr-web/js/app.c0af73e7.js" defer></script>
+
+
+
+    <script>
+      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+        (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+        m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+      })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+    </script>
+  
+  <script type="text/javascript" >
+    (function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+    m[i].l=1*new Date();k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})
+    (window, document, "script", "https://mc.yandex.ru/metrika/tag.js", "ym");
+
+    ym(24049213, "init", {
+      defer:true,
+      trackLinks:true,
+      accurateTrackBounce:true,
+      webvisor:false,
+    });
+  </script>
+  <noscript>
+    <div>
+      <img src="https://mc.yandex.ru/watch/24049213" style="position:absolute; left:-9999px;" alt="" />
+    </div>
+  </noscript>
+  
+    <script type="text/javascript">
+      window.addEventListener('load', function () {
+        setTimeout(() => {
+          const img = new Image();
+          img.src = 'https://vk.com/rtrg?p=VK-RTRG-421343-57vKE';
+        }, 0);
+      });
+    </script>
+  
+</body>
+</html>

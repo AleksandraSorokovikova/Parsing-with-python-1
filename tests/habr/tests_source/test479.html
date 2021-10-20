@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="ru" data-vue-meta="%7B%22lang%22:%7B%22ssr%22:%22ru%22%7D%7D">
+<head >
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
+  <title>Red Hat Universal Base Image (UBI) строить и жить помогает / Хабр</title>
+  <style>
+    /* cyrillic-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSxf6TF0.woff2) format('woff2');
+      unicode-range: U+0460-052F, U+1C80-1C88, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+    }
+
+    /* cyrillic */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveQhf6TF0.woff2) format('woff2');
+      unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+    }
+
+    /* latin-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSBf6TF0.woff2) format('woff2');
+      unicode-range: U+0100-024F, U+0259, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20CF, U+2113, U+2C60-2C7F, U+A720-A7FF;
+    }
+
+    /* latin */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveRhf6.woff2) format('woff2');
+      unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+    }
+  </style>
+  <link rel="preload" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" as="script"><link rel="preload" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/app.c0af73e7.js" as="script">
+  <link rel="stylesheet" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css"><link rel="stylesheet" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css">
+  <script>window.i18nFetch = new Promise((res, rej) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open('GET', '/js/i18n/ru-compiled.85eb77f0b17c8235e7b64b9f81ea5ec2.json');
+          xhr.responseType = 'json';
+          xhr.onload = function(e) {
+            if (this.status === 200) {
+              res({ru: xhr.response});
+            } else {
+              rej(e);
+            }
+          };
+          xhr.send();
+        });</script>
+  
+  <script data-vue-meta="ssr" src="/js/ads.js" onload="window['zhY4i4nJ9K'] = true" data-vmid="checkad"></script><script data-vue-meta="ssr" type="application/ld+json" data-vmid="ldjson-schema">{"@context":"http:\/\/schema.org","@type":"Article","mainEntityOfPage":{"@type":"WebPage","@id":"https:\/\/habr.com\/ru\/company\/redhatrussia\/blog\/451090\/"},"headline":"Red Hat Universal Base Image (UBI) строить и жить помогает","datePublished":"2019-05-09T11:45:00+03:00","dateModified":"2019-12-20T15:58:01+03:00","author":{"@type":"Person","name":"Red Hat"},"publisher":{"@type":"Organization","name":"Habr","logo":{"@type":"ImageObject","url":"https:\/\/habrastorage.org\/webt\/a_\/lk\/9m\/a_lk9mjkccjox-zccjrpfolmkmq.png"}},"description":"Контейнеры представляют собой облегченную версию пользовательского пространства операционной системы Linux &ndash; фактически, это &laquo;голый&raquo; минимум. Тем не менее, это в...","url":"https:\/\/habr.com\/ru\/company\/redhatrussia\/blog\/451090\/#post-content-body","about":["c_redhatrussia","h_open_source","h_it_testing","h_server_side_optimization","h_linux_dev","f_develop","f_admin"],"image":["https:\/\/habrastorage.org\/webt\/hx\/u3\/od\/hxu3odkdfiubgm8ssdzvpfjlq8q.png","https:\/\/habrastorage.org\/webt\/cq\/aa\/ty\/cqaaty6ssasbdzyp_ggi1hi3j_8.png","https:\/\/habrastorage.org\/webt\/zk\/oh\/k6\/zkohk6zgosdwup5rmq3rc6fwdae.png","https:\/\/habrastorage.org\/webt\/si\/tn\/09\/sitn09h7vft0ymxm2nrvvuotoz4.png","https:\/\/habrastorage.org\/webt\/eb\/0s\/dl\/eb0sdls2ifq_af6re1mwfbr9088.png","https:\/\/habrastorage.org\/webt\/xo\/ac\/3n\/xoac3nymugxqeb4_dd3tioz1lwu.png","https:\/\/habrastorage.org\/webt\/r9\/nd\/bv\/r9ndbv7mqyzc5h687xalsiq-dga.png","https:\/\/habrastorage.org\/webt\/dj\/fa\/hq\/djfahqitjennkzjnhnhqh4nno_e.png","https:\/\/habrastorage.org\/webt\/tc\/da\/z4\/tcdaz4qepvrbgv2vij1chplyj44.png","https:\/\/habrastorage.org\/webt\/iw\/ij\/tk\/iwijtkdviykoi78-6rnwhpt2fbk.png","https:\/\/habrastorage.org\/webt\/zx\/r9\/qb\/zxr9qbjzr9asgnzmbwp3fox-bs8.png"]}</script>
+  <script src="//www.googletagservices.com/tag/js/gpt.js" async></script>
+  <style>.grecaptcha-badge{visibility: hidden;}</style>
+  <meta name="habr-version" content="2.49.0">
+  
+  <meta data-vue-meta="ssr" property="fb:app_id" content="444736788986613"><meta data-vue-meta="ssr" property="fb:pages" content="472597926099084"><meta data-vue-meta="ssr" name="twitter:card" content="summary_large_image"><meta data-vue-meta="ssr" name="twitter:site" content="@habr_eng"><meta data-vue-meta="ssr" property="og:title" content="Red Hat Universal Base Image (UBI) строить и жить помогает" data-vmid="og:title"><meta data-vue-meta="ssr" name="twitter:title" content="Red Hat Universal Base Image (UBI) строить и жить помогает" data-vmid="twitter:title"><meta data-vue-meta="ssr" name="aiturec:title" content="Red Hat Universal Base Image (UBI) строить и жить помогает" data-vmid="aiturec:title"><meta data-vue-meta="ssr" name="description" content="Контейнеры представляют собой облегченную версию пользовательского пространства операционной системы Linux – фактически, это «голый» минимум. Тем не менее, это все равно полноценная операционная..." data-vmid="description"><meta data-vue-meta="ssr" itemprop="description" content="Контейнеры представляют собой облегченную версию пользовательского пространства операционной системы Linux – фактически, это «голый» минимум. Тем не менее, это все равно полноценная операционная..." data-vmid="description:itemprop"><meta data-vue-meta="ssr" property="og:description" content="Контейнеры представляют собой облегченную версию пользовательского пространства операционной системы Linux – фактически, это «голый» минимум. Тем не менее, это все равно полноценная операционная..." data-vmid="og:description"><meta data-vue-meta="ssr" name="twitter:description" content="Контейнеры представляют собой облегченную версию пользовательского пространства операционной системы Linux – фактически, это «голый» минимум. Тем не менее, это все равно полноценная операционная..." data-vmid="twitter:description"><meta data-vue-meta="ssr" property="aiturec:description" content="Контейнеры представляют собой облегченную версию пользовательского пространства операционной системы Linux – фактически, это «голый» минимум. Тем не менее, это все равно полноценная операционная..." data-vmid="aiturec:description"><meta data-vue-meta="ssr" itemprop="image" content="https://habr.com/share/publication/451090/46105cbea0dcfbac71504e03fbe9c597/" data-vmid="image:itemprop"><meta data-vue-meta="ssr" property="og:image" content="https://habr.com/share/publication/451090/46105cbea0dcfbac71504e03fbe9c597/" data-vmid="og:image"><meta data-vue-meta="ssr" property="aiturec:image" content="https://habr.com/share/publication/451090/46105cbea0dcfbac71504e03fbe9c597/" data-vmid="aiturec:image"><meta data-vue-meta="ssr" name="twitter:image" content="https://habr.com/share/publication/451090/46105cbea0dcfbac71504e03fbe9c597/" data-vmid="twitter:image"><meta data-vue-meta="ssr" property="vk:image" content="https://habr.com/share/publication/451090/46105cbea0dcfbac71504e03fbe9c597/" data-vmid="vk:image"><meta data-vue-meta="ssr" property="aiturec:item_id" content="451090" data-vmid="aiturec:item_id"><meta data-vue-meta="ssr" property="aiturec:datetime" content="2019-05-09T08:45:00.000Z" data-vmid="aiturec:datetime"><meta data-vue-meta="ssr" property="og:type" content="article" data-vmid="og:type"><meta data-vue-meta="ssr" property="og:locale" content="ru_RU" data-vmid="og:locale"><meta data-vue-meta="ssr" property="og:image:width" content="1200" data-vmid="og:image:width"><meta data-vue-meta="ssr" property="og:image:height" content="630" data-vmid="og:image:height">
+  <link data-vue-meta="ssr" href="https://habr.com/ru/rss/post/451090/?fl=ru" type="application/rss+xml" title="" rel="alternate" name="rss"><link data-vue-meta="ssr" href="https://habr.com/ru/company/redhatrussia/blog/451090/" rel="canonical" data-vmid="canonical"><link data-vue-meta="ssr" data-vmid="hreflang"><link data-vue-meta="ssr" image_src="image" href="https://habr.com/share/publication/451090/46105cbea0dcfbac71504e03fbe9c597/" data-vmid="image:href">
+  <meta name="apple-mobile-web-app-status-bar-style" content="#303b44">
+  <meta name="msapplication-TileColor" content="#629FBC">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="16x16"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-16.png"
+  >
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="32x32"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-32.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="76x76"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-76.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="120x120"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="152x152"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-152.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="180x180"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-180.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="256x256"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-256.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1136x640.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2436x1125.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1792x828.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_828x1792.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1334x750.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2208x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1125x2436.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2208.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2732x2048.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2688x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2224x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_750x1334.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x2732.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2388x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2224.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_640x1136.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2388.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x1536.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1536x2048.png"
+  >
+  <link
+    rel="mask-icon"
+    color="#77a2b6"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.svg"
+  >
+  <link
+    crossorigin="use-credentials"
+    href="/manifest.webmanifest"
+    rel="manifest"
+  >
+</head>
+<body>
+
+
+<div id="app" data-server-rendered="true" data-async-called="true"><div class="tm-layout__wrapper"><!----> <div></div> <!----> <header class="tm-header"><div class="tm-page-width"><div class="tm-header__container"><!----> <span class="tm-header__logo-wrap"><a href="/ru/" class="tm-header__logo tm-header__logo_ru"><svg height="16" width="16" class="tm-svg-img tm-header__icon"><title>Хабр</title> <use xlink:href="/img/habr-logo-ru.svg#logo"></use></svg></a> <span class="tm-header__beta-sign" style="display:none;">β</span></span> <div class="tm-dropdown tm-header__projects"><div class="tm-dropdown__head"><button class="tm-header__dropdown-toggle"><svg height="16" width="16" class="tm-svg-img tm-header__icon tm-header__icon_dropdown"><title>Открыть список</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#arrow-down"></use></svg></button></div> <!----></div> <a href="/ru/sandbox/start/" class="tm-header__become-author-btn">
+            Как стать автором
+          </a> <div class="tm-feature tm-header__feature tm-feature_variant-inline"><!----></div> <!----> <!----></div></div></header> <div class="tm-layout"><div class="tm-page-progress-bar"></div> <div data-menu-sticky="true" class="tm-base-layout__header tm-base-layout__header_is-sticky"><div class="tm-page-width"><div class="tm-base-layout__header-wrapper"><div class="tm-main-menu"><div class="tm-main-menu__section"><nav class="tm-main-menu__section-content"><!----> <a href="/ru/all/" class="tm-main-menu__item">
+        Все потоки
+      </a> <a href="/ru/flows/develop/" class="tm-main-menu__item">
+          Разработка
+        </a><a href="/ru/flows/admin/" class="tm-main-menu__item">
+          Администрирование
+        </a><a href="/ru/flows/design/" class="tm-main-menu__item">
+          Дизайн
+        </a><a href="/ru/flows/management/" class="tm-main-menu__item">
+          Менеджмент
+        </a><a href="/ru/flows/marketing/" class="tm-main-menu__item">
+          Маркетинг
+        </a><a href="/ru/flows/popsci/" class="tm-main-menu__item">
+          Научпоп
+        </a></nav></div></div> <div class="tm-header-user-menu tm-base-layout__user-menu"><a href="/ru/search/" class="tm-header-user-menu__item tm-header-user-menu__search"><svg height="24" width="24" class="tm-svg-img tm-header-user-menu__icon tm-header-user-menu__icon_search tm-header-user-menu__icon_dark"><title>Поиск</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#search"></use></svg></a> <!----> <!----> <!----> <div class="tm-header-user-menu__item tm-header-user-menu__user_desktop"><div class="tm-dropdown"><div class="tm-dropdown__head"><svg height="24" width="24" data-test-id="menu-toggle-guest" class="tm-svg-img tm-header-user-menu__icon"><title>Профиль</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#header-user"></use></svg> <!----></div> <!----></div> <!----></div> <!----></div></div></div></div> <!----> <div class="tm-page-width"></div> <main class="tm-layout__container"><div hl="ru" companyName="redhatrussia" data-async-called="true" class="tm-page"><div class="tm-page-width"><div class="tm-page__header"><!----></div> <div class="tm-page__wrapper"><div class="tm-page__main tm-page__main_has-sidebar"><div class="pull-down"><div class="pull-down__header" style="height:0px;"><div class="pull-down__content" style="bottom:10px;"><svg height="24" width="24" class="tm-svg-img pull-down__arrow"><title>Обновить</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#pull-arrow"></use></svg></div></div> <div class="tm-article-presenter"><div class="tm-company-card tm-company-article__company-card"><div class="tm-company-card__info"><div class="tm-company-card__header"><a href="/ru/company/redhatrussia/profile/" class="tm-company-card__avatar"><div class="tm-entity-image"><img alt="" height="48" src="//habrastorage.org/getpro/habr/company/720/ff2/9bc/720ff29bc39d072d3a31453c84da73c8.png" width="48" class="tm-entity-image__pic"></div></a> <!----> <div class="tm-rating tm-company-card__rating"><div class="tm-rating__header"> <div class="tm-rating__counter">42.22</div></div> <div class="tm-rating__text">
+    Рейтинг
+  </div></div></div> <div class="tm-company-card__info"><a href="/ru/company/redhatrussia/profile/" class="tm-company-card__name">
+        Red Hat
+      </a> <div class="tm-company-card__description">Программные решения с открытым исходным кодом</div></div></div> <div class="tm-company-card__buttons"><!----> <!----></div></div> <div class="tm-article-presenter__body"><div class="tm-misprint-area"><div class="tm-misprint-area__wrapper"><article class="tm-article-presenter__content tm-article-presenter__content_narrow"><div class="tm-article-presenter__header"> <div class="tm-article-snippet tm-article-presenter__snippet"><div class="tm-article-snippet__meta-container"><div class="tm-article-snippet__meta"><span class="tm-user-info tm-article-snippet__author"><a href="/ru/users/redhatrussia/" title="redhatrussia" class="tm-user-info__userpic"><div class="tm-entity-image"><img alt="" height="24" loading="lazy" src="//habrastorage.org/r/w32/getpro/habr/avatars/592/816/4a9/5928164a9c2b4d0e7693ebb16e0f792a.png" width="24" class="tm-entity-image__pic"></div></a> <span class="tm-user-info__user"><a href="/ru/users/redhatrussia/" class="tm-user-info__username">
+      redhatrussia
+    </a> </span></span> <span class="tm-article-snippet__datetime-published"><time datetime="2019-05-09T08:45:00.000Z" title="2019-05-09, 11:45">9  мая  2019 в 11:45</time></span></div> <!----></div> <h1 lang="ru" class="tm-article-snippet__title tm-article-snippet__title_h1"><span>Red Hat Universal Base Image (UBI) строить и жить помогает</span></h1> <div class="tm-article-snippet__hubs"><span class="tm-article-snippet__hubs-item"><a href="/ru/company/redhatrussia/blog/" class="tm-article-snippet__hubs-item-link router-link-active"><span>Блог компании Red Hat</span> <!----></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/open_source/" class="tm-article-snippet__hubs-item-link"><span>Open source</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/it_testing/" class="tm-article-snippet__hubs-item-link"><span>Тестирование IT-систем</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/server_side_optimization/" class="tm-article-snippet__hubs-item-link"><span>Серверная оптимизация</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/linux_dev/" class="tm-article-snippet__hubs-item-link"><span>Разработка под Linux</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span></div> <!----> <!----> <!----></div></div> <!----> <div data-gallery-root="" lang="ru" class="tm-article-body"><div id="post-content-body" class="article-formatted-body article-formatted-body_version-1"><div xmlns="http://www.w3.org/1999/xhtml">Контейнеры представляют собой облегченную версию пользовательского пространства операционной системы Linux – фактически, это «голый» минимум. Тем не менее, это все равно полноценная операционная система, и поэтому качество этого самого контейнера так же важно, как полновесной операционной системы. Именно поэтому долгое время мы предлагали <a href="https://access.redhat.com/containers/">образы Red Hat Enterprise Linux (RHEL)</a>, чтобы пользователи могли иметь сертифицированные, современные и актуальные контейнеры корпоративного уровня. Запуск <a href="https://developers.redhat.com/blog/2018/02/22/container-terminology-practical-introduction/#h.dqlu6589ootw">образов контейнеров</a> (container images) RHEL на хостах контейнеров (container hosts) RHEL обеспечивает совместимость и переносимость между средами, не говоря уже о том, что это – уже знакомые инструменты. Была, правда, одна проблема. Вы не могли просто передать такой образ кому-то еще, даже если речь шла о заказчике или партнере, использующем Red Hat Enterprise Linux. <br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/hx/u3/od/hxu3odkdfiubgm8ssdzvpfjlq8q.png" data-width="100%"/><br/>
+<br/>
+Но теперь все изменилось <br/>
+<a name="habracut"></a><br/>
+С выпуском универсального образа Red Hat Universal Base Image (UBI) теперь можно получать привычную надежность, безопасность и высокую производительность официальных образов контейнеров Red Hat независимо от того, есть ли подписка или нет. Это означает, что можно строить контейнизированное приложение на UBI, помещать его в реестр контейнеров по вашему выбору и делиться им со всем миром. Red Hat Universal Base Image позволяет строить, делиться и вести совместную работу над контейнизированным приложением в любом окружении – там, где хотите. <br/>
+<br/>
+<div style="text-align:center;"><img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/cq/aa/ty/cqaaty6ssasbdzyp_ggi1hi3j_8.png"/></div><br/>
+<br/>
+Благодаря UBI существует возможность публиковать и запускать свои приложения практически в любой инфраструктуре. Но если запускать их на платформах Red Hat, таких как Red Hat OpenShift и Red Hat Enterprise Linux, то можно получить дополнительные преимущества (больше золота!). И пока мы не перешли к более подробному описанию UBI, позвольте предоставить короткий FAQ, зачем нужна RHEL Subscription. Итак, что будет при запуске образа UBI на платформе RHEL/OpenShift? <br/>
+<br/>
+<div style="text-align:center;"><img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/zk/oh/k6/zkohk6zgosdwup5rmq3rc6fwdae.png"/></div><br/>
+<br/>
+А теперь, когда на маркетинг доволен, поговорим подробней про UBI<br/>
+<br/>
+<h3>Причины применять UBI</h3><br/>
+Что вы должны чувствовать, чтобы понять, что UBI будет вам полезен: <br/>
+<br/>
+<ul>
+<li>Мои <b>разработчики</b> хотят использовать образы контейнеров, которые можно распространять и запускать в любом окружении </li>
+<li>Моя команда <b>operations</b> хочет поддерживаемый базовый образ с жизненным циклом корпоративного уровня </li>
+<li>Мои <b>архитекторы</b> хотят предлагать <a href="https://operatorhub.io/">Kubernetes Operator</a> моим заказчикам/конечным пользователям</li>
+<li>Мои <b>заказчики</b> хотят <s>в ус не дуть</s> поддержку корпоративного уровня для всего своего окружении Red Hat </li>
+<li>Мое <b>сообщество</b> хочет делиться, запускать, публиковать контейнизированные приложения буквально везде </li>
+</ul><br/>
+Если хотя бы на один из сценариев вам подходит, то определенно следует обратить внимание на UBI. <br/>
+<br/>
+<h3>Больше, чем просто некий базовый образ </h3><br/>
+UBI – меньше, чем полноценная ОС, но у UBI есть три важных вещи: <br/>
+<br/>
+<ol>
+<li>Набор из трех базовых образов (ubi, ubi-minimal, ubi-init) </li>
+<li>Образы с уже готовыми средами выполнения различных языков программирования (nodejs, ruby, python, php, perl, и т.д.) </li>
+<li>Набор связанных пакетов в репозитории YUM с наиболее распространенными зависимостями </li>
+</ol><br/>
+<br/>
+<div style="text-align:center;"><img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/si/tn/09/sitn09h7vft0ymxm2nrvvuotoz4.png"/></div><br/>
+<br/>
+UBI создавался в качестве основы для cloud – native и веб-приложений, разрабатываемых и поставляемых в контейнераx. Весь контент в UBI является подмножеством RHEL. Все пакеты в UBI поступают через каналы RHEL и поддерживаются подобно RHEL при запуске на поддерживаемых Red Hat платформах, таких как OpenShift и RHEL. <br/>
+<br/>
+<div style="text-align:center;"><img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/eb/0s/dl/eb0sdls2ifq_af6re1mwfbr9088.png"/></div><br/>
+<br/>
+Для обеспечения качественной поддержки контейнеров требуется немало усилий инженеров, специалистов по безопасности и другие дополнительные ресурсы. Требуется не только тестирование базовых образов, но также анализ их поведения на любом поддерживаемом хосте. <br/>
+<br/>
+Чтобы облегчить задачи, связанные с обновлением, Red Hat активно развивает разработку и поддержку, благодаря чему UBI 7 можно запускать, например, на хостах RHEL 8, а UBI 8 – на хостах RHEL 7. Это обеспечивает пользователям необходимую гибкость, уверенность и спокойствие в процессе, например, обновлений платформ в образах контейнеров или используемых хостов. Теперь все это можно разделить на два самостоятельных проекта. <br/>
+<br/>
+<h3>Три базовых образа</h3><br/>
+<div style="text-align:center;"><img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/xo/ac/3n/xoac3nymugxqeb4_dd3tioz1lwu.png"/></div> <br/>
+<br/>
+Минимальный – предназначен для приложений со всеми зависимостями (Python, Node.js, .NET, etc.) <br/>
+<br/>
+<ul>
+<li>Минимальный набор предустановленного контента </li>
+<li>Без исполняемых файлов suid </li>
+<li>Минимальный инструментарий менеджера пакетов (установка, обновление и удаление) </li>
+</ul><br/>
+Платформа – для любых приложений, запускаемых на RHEL <br/>
+<br/>
+<ul>
+<li>Унифицированный криптографический стек OpenSSL</li>
+<li>Полный стек YUM </li>
+<li>Включены полезные основные утилиты ОС (tar, gzip, vi, и т.д.) </li>
+</ul><br/>
+Multi-Service – упрощает запуск нескольких сервисов в одном контейнере <br/>
+<br/>
+<ul>
+<li>Сконфигурирован для запуска systemd при старте </li>
+<li>Возможность включения сервисов на этапе сборки </li>
+</ul><br/>
+<h3>Образы контейнеров с уже готовыми средами выполнения языков программирования </h3><br/>
+В дополнение к базовым образам, которые позволяют устанавливать поддержку языков программирования, UBI включают в себя предварительно собранные образы с уже готовыми средами выполнения ряда языков программирования. Многие разработчики могут просто взять образ и приступить к работе над приложением, которое они разрабатывают. <br/>
+<br/>
+С запуском UBI Red Hat предлагает два набора образов – на базе RHEL 7 и на базе RHEL 8. За их основу были взяты, соответственно, Red Hat Software Collections (RHEL 7) и Application Streams (RHEL 8). Эти среды выполнения поддерживаются в актуальном состоянии и стандартно получают до четырех обновлений в год, таким образом, всегда есть возможность для работы с самыми свежими и стабильными версиями. <br/>
+<br/>
+<b>Вот перечень образов контейнеров UBI 7:</b> <br/>
+<br/>
+<div style="text-align:center;"><img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/r9/nd/bv/r9ndbv7mqyzc5h687xalsiq-dga.png"/></div><br/>
+<br/>
+<b>Вот перечень образов контейнеров для UBI 8:</b><br/>
+<br/>
+<div style="text-align:center;"><img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/dj/fa/hq/djfahqitjennkzjnhnhqh4nno_e.png"/></div><br/>
+<br/>
+<h3>Ассоциированные пакеты </h3><br/>
+Использование готовых образов действительно очень удобно. Red Hat поддерживает их актуальность и обновляет их вместе с выпуском новой версии RHEL, а также при появлении критических обновлений CVE в соответствии с политикой обновлений <a href="https://access.redhat.com/articles/2208321">RHEL image policy</a> для того, чтобы можно было взять один из этих образов и сразу же приступить к работе над приложением. <br/>
+<br/>
+<div style="text-align:center;"><img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/tc/da/z4/tcdaz4qepvrbgv2vij1chplyj44.png"/></div><br/>
+<br/>
+Но иногда при создании приложения вам может внезапно потребоваться какой-то дополнительный пакет. Или, иногда, чтобы заставить приложение работать, нужно обновить тот или иной пакет. Именно поэтому образы UBI поставляются с набором RPM, которые доступны посредством yum, и которые распространяются с помощью быстрой и высокодоступной сети доставки контента (вам пакет!). Когда вы запускаете yum-обновление на своем CI / CD в тот критический момент релиза, вы можете быть уверены – оно будет работать.<br/>
+<br/>
+<h3>RHEL – это основа</h3><br/>
+Мы не устаем повторять, что RHEL – это основа всего. Знаете, какие команды в Red Hat работают над созданием базовых образов? Например вот эти:<br/>
+<br/>
+<ul>
+<li>Инженерно-техническая группа, отвечающая за обеспечение того, чтобы базовые библиотеки, такие как glibc и OpenSSL, а также языковые среды выполнения, такие как Python и Ruby, обеспечивали стабильную производительность и надежно работали с рабочими нагрузками, при использовании в контейнерах. </li>
+<li>Группа обеспечения безопасности продуктов занимается своевременным исправлением ошибок и проблем безопасности в библиотеках и языковых средах, эффективность их работы оценивается с помощью специального индекса <a href="https://access.redhat.com/articles/2803031">Container Health Index grade</a>. </li>
+<li>Команда менеджеров по продукту и инженеров занимается добавлением новых функций и обеспечивают длительный жизненный цикл продукта, что дает уверенность во вложенных инвестициях, которые можно будет использовать в качестве основы. </li>
+</ul><br/>
+Red Hat Enterprise Linux выступает в роли отличного хоста и образа для контейнеров, но для многих разработчиков важна возможность работы с системой в самых различных форматах, некоторые из которых могут выходить за рамки поддерживаемых сценариев использования Linux системы. И здесь на помощь приходят универсальные образы UBI. <br/>
+<br/>
+Предположим, конкретно сейчас, на данном этапе, вы просто ищете базовый образ, чтобы начать работу над простым контейнизированным приложением. Или вы уже ближе к будущему и двигаетесь от автономных контейнеров, работающих на container engine, к cloud-native истории с использованием операторов (building and certifying Operators), работающих на OpenShift. В любом случае UBI обеспечит для этого отличную основу. <br/>
+<br/>
+<div style="text-align:center;"><img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/iw/ij/tk/iwijtkdviykoi78-6rnwhpt2fbk.png"/></div><br/>
+<br/>
+Контейнеры включают в себя облегченную версию пользовательского пространства операционной системы в новом формате пакетирования. Выпуск образов UBI устанавливает новый отраслевой стандарт для контейнизированной разработки, при этом контейнеры корпоративного класса становятся доступными для любых пользователей, независимых разработчиков ПО, open source сообществ. В частности, разработчики ПО могут стандартизировать свои продукты, используя единую, проверенную основу для всех своих контейнизированных приложений, в том числе <a href="https://operatorhub.io/">Kubernetes Operators</a>. Компаниям-разработчикам, использующим UBI, также доступны сертификация Red Hat Container Certification и Red Hat OpenShift Operator Certification, а это в свою очередь позволяет непрерывно верифицировать программное обеспечение, запускаемое на платформах Red Hat, таких как OpenShift. <br/>
+<br/>
+<div style="text-align:center;"><img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/zx/r9/qb/zxr9qbjzr9asgnzmbwp3fox-bs8.png"/></div><br/>
+<br/>
+<h3>Как начать работать с образом </h3><br/>
+Если коротко – очень просто. Podman доступен не только в RHEL, но также в Fedora, CentOS и в ряде других дистрибутивов Linux. Все, что нужно сделать – выгрузить образ из одного из следующих репозиториев, и вперед. <br/>
+<br/>
+Для UBI 8: <br/>
+<br/>
+<pre><code class="plaintext">podman pull registry.access.redhat.com/ubi8/ubi
+podman pull registry.access.redhat.com/ubi8/ubi-minimal
+podman pull registry.access.redhat.com/ubi8/ubi-init
+</code></pre><br/>
+Для UBI 7: <br/>
+<br/>
+<pre><code class="plaintext">podman pull registry.access.redhat.com/ubi7/ubi
+podman pull registry.access.redhat.com/ubi7/ubi-minimal
+podman pull registry.access.redhat.com/ubi7/ubi-init
+</code></pre><br/>
+Ну и посмотрите полный Universal Base Image Guide <br/>
+<br/>
+<ul>
+<li><a href="https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/8/html-single/building_running_and_managing_containers/index?lb_target=stage#using_red_hat_universal_base_images_standard_minimal_and_runtimes">RHEL 8 How To</a></li>
+<li><a href="https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux_atomic_host/7/html-single/getting_started_with_containers/index#using_red_hat_universal_base_images_standard_minimal_and_runtimes">RHEL 7 How To</a></li>
+</ul></div></div> <!----> <!----></div> <div class="tm-article-presenter__meta"><div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Теги:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5BRed%20Hat%5D" class="tm-tags-list__link">Red Hat</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bopen%20source%5D" class="tm-tags-list__link">open source</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bcontainer%5D" class="tm-tags-list__link">container</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Blinux%5D" class="tm-tags-list__link">linux</a></li></ul></div> <div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Хабы:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/company/redhatrussia/blog/" class="tm-hubs-list__link router-link-active">
+    Блог компании Red Hat
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/open_source/" class="tm-hubs-list__link">
+    Open source
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/it_testing/" class="tm-hubs-list__link">
+    Тестирование IT-систем
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/server_side_optimization/" class="tm-hubs-list__link">
+    Серверная оптимизация
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/linux_dev/" class="tm-hubs-list__link">
+    Разработка под Linux
+  </a></li></ul></div></div></article></div> <!----></div> <div class="tm-article-sticky-panel"><div class="tm-data-icons tm-article-sticky-panel__icons"><div class="tm-article-rating tm-data-icons__item"><div class="tm-votes-meter tm-article-rating__votes-switcher"><svg height="16" width="16" class="tm-svg-img tm-votes-meter__icon tm-votes-meter__icon_medium"><title>Всего голосов 3: ↑3 и ↓0</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-rating"></use></svg> <span title="Всего голосов 3: ↑3 и ↓0" class="tm-votes-meter__value tm-votes-meter__value_positive tm-votes-meter__value_medium">+3</span></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----> <span title="Количество просмотров" class="tm-icon-counter tm-data-icons__item"><svg height="16" width="16" class="tm-svg-img tm-icon-counter__icon"><title>Просмотры</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-views"></use></svg> <span class="tm-icon-counter__value">3.9K</span></span> <button title="Добавить в закладки" type="button" class="bookmarks-button tm-data-icons__item"><span title="Добавить в закладки" class="tm-svg-icon__wrapper bookmarks-button__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Добавить в закладки</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-favorite"></use></svg></span> <span title="Количество пользователей, добавивших публикацию в закладки" class="bookmarks-button__counter">
+    14
+  </span></button> <!----> <div title="Поделиться" class="tm-sharing tm-data-icons__item"><button type="button" class="tm-sharing__button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="tm-sharing__icon"><path fill="currentColor" d="M10.33.275l9.047 7.572a.2.2 0 010 .306l-9.048 7.572a.2.2 0 01-.328-.153V11c-8 0-9.94 6-9.94 6S-1 5 10 5V.428a.2.2 0 01.328-.153z"></path></svg></button> <!----></div> <DIV class="v-portal" style="display:none;"></DIV></div> </div></div> <!----> <!----> <div class="tm-article-presenter__footer"><div class="tm-article-blocks"><!----> <section class="tm-block tm-block_spacing-bottom"><!----> <div class="tm-block__body tm-block__body_variant-balanced"><div class="tm-article-author"><div class="tm-article-author__company"><div class="tm-article-author__company-card"><div class="tm-company-snippet"><a href="/ru/company/redhatrussia/profile/" class="tm-company-snippet__logo-link"><div class="tm-entity-image"><img alt="" height="40" src="//habrastorage.org/getpro/habr/company/720/ff2/9bc/720ff29bc39d072d3a31453c84da73c8.png" width="40" class="tm-entity-image__pic"></div></a> <div class="tm-company-snippet__info"><a href="/ru/company/redhatrussia/profile/" class="tm-company-snippet__title">Red Hat</a> <div class="tm-company-snippet__description">Программные решения с открытым исходным кодом</div></div></div> <div class="tm-article-author__buttons"><!----> <!----></div></div> <div class="tm-article-author__company-contacts"><a href="https://www.redhat.com/en/global/russia" rel="noopener" target="_blank" class="tm-article-author__contact">
+      Сайт
+    </a></div> <div class="tm-article-author__separator"></div></div> <div class="tm-user-card tm-article-author__user-card tm-user-card_variant-article"><div class="tm-user-card__info-container"><div class="tm-user-card__header"><div class="tm-user-card__header-data"><a href="/ru/users/redhatrussia/" class="tm-user-card__userpic tm-user-card__userpic_size-40"><div class="tm-entity-image"><img alt="" src="//habrastorage.org/getpro/habr/avatars/592/816/4a9/5928164a9c2b4d0e7693ebb16e0f792a.png" class="tm-entity-image__pic"></div></a> <div class="tm-user-card__meta"><div title=" 95 голосов " class="tm-karma tm-user-card__karma"><div class="tm-karma__votes tm-karma__votes_positive">
+    53
+  </div> <div class="tm-karma__text">
+    Карма
+  </div></div> <div title="Рейтинг пользователя" class="tm-rating tm-user-card__rating"><div class="tm-rating__header"> <div class="tm-rating__counter">-9</div></div> <div class="tm-rating__text">
+    Рейтинг
+  </div></div></div></div></div> <div class="tm-user-card__info tm-user-card__info_variant-article"><div class="tm-user-card__title tm-user-card__title_variant-article"><span class="tm-user-card__name tm-user-card__name_variant-article">Red Hat</span> <a href="/ru/users/redhatrussia/" class="tm-user-card__nickname tm-user-card__nickname_variant-article">
+          @redhatrussia
+        </a> <!----></div> <p class="tm-user-card__short-info tm-user-card__short-info_variant-article">Программные решения с открытым исходным кодом</p></div></div> <div class="tm-user-card__buttons tm-user-card__buttons_variant-article"><!----> <!----> <!----> <!----> <!----></div></div> <!----></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----></section> <div class="tm-article-blocks__comments"><div class="tm-article-page-comments"><div class="tm-article-comments-counter-link tm-article-comments-counter-button"><a href="/ru/company/redhatrussia/blog/451090/comments/" class="tm-article-comments-counter-link__link tm-article-comments-counter-link__link_button-style"><svg height="16" width="16" class="tm-svg-img tm-article-comments-counter-link__icon tm-article-comments-counter-link__icon_contrasted"><title>Комментарии</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-comments"></use></svg> <span class="tm-article-comments-counter-link__value tm-article-comments-counter-link__value_contrasted">
+       Комментарии 2 
+    </span></a> <!----></div></div></div>  <!---->  <!----> <!----></div></div></div></div></div> <div class="tm-page__sidebar"><div class="tm-layout-sidebar"><div class="tm-layout-sidebar__placeholder_initial"></div> <div class="tm-sexy-sidebar tm-sexy-sidebar_initial" style="margin-top:0px;"><!----> <section class="tm-block tm-block_spacing-bottom"><header class="tm-block__header"><h2 class="tm-block__title">Информация</h2> <!----></header> <div class="tm-block__body"><div class="tm-company-basic-info"><dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Дата основания</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><time datetime="1993-10-30T21:00:00.000Z" title="1993-10-31, 00:00">31  октября  1993</time></dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Местоположение</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap">
+    США
+  </dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Сайт</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><a href="https://www.redhat.com/en/global/russia" target="_blank" class="tm-company-basic-info__link">
+      www.redhat.com
+    </a></dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Численность</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap">
+    5 001–10 000 человек
+  </dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Дата регистрации</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><time datetime="2018-02-26T08:00:04.000Z" title="2018-02-26, 11:00">26  февраля  2018</time></dd></dl> <!----></div></div> <!----></section> <div class="tm-company-widgets"></div> <!----></div></div></div></div></div></div></main> <!----></div> <div class="tm-footer-menu"><div class="tm-page-width"><div class="tm-footer-menu__container"><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Ваш аккаунт
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr/?back=/ru/company/redhatrussia/blog/451090/&amp;hl=ru" rel="nofollow" target="_self">
+                Войти
+              </a></li><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr-register/?back=/ru/company/redhatrussia/blog/451090/&amp;hl=ru" rel="nofollow" target="_self">
+                Регистрация
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Разделы
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/" class="footer-menu__item-link router-link-active">
+                Публикации
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/news/" class="footer-menu__item-link">
+                Новости
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/hubs/" class="footer-menu__item-link">
+                Хабы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/companies/" class="footer-menu__item-link">
+                Компании
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/users/" class="footer-menu__item-link">
+                Авторы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/sandbox/" class="footer-menu__item-link">
+                Песочница
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Информация
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/docs/help/" class="footer-menu__item-link">
+                Устройство сайта
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/authors/codex/" class="footer-menu__item-link">
+                Для авторов
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/companies/corpblogs/" class="footer-menu__item-link">
+                Для компаний
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/docs/transparency/" class="footer-menu__item-link">
+                Документы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/agreement" target="_blank">
+                Соглашение
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/confidential/" target="_blank">
+                Конфиденциальность
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Услуги
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQLwRfQmXibiUlWaRg-BAc38s7oM3lJiaPju7qmdJsp8ysIvZ_G-Npem0njJLMozE2bPHMpDqiI5hhy/pub?start=false&amp;loop=false&amp;delayms=60000&amp;slide=id.g91a03369cd_4_297" target="_blank">
+                Реклама
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://habrastorage.org/storage/stuff/habr/service_price.pdf" target="_blank">
+                Тарифы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQJJds8-Di7BQSP_guHxICN7woVYoN5NP_22ra-BIo4bqnTT9FR6fB-Ku2P0AoRpX0Ds-LRkDeAoD8F/pub?start=false&amp;loop=false&amp;delayms=60000" target="_blank">
+                Контент
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://tmtm.timepad.ru/" target="_blank">
+                Семинары
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/megaprojects/" class="footer-menu__item-link">
+                Мегапроекты
+              </a></li></ul></div></div></div></div></div> <div class="tm-footer"><div class="tm-page-width"><div class="tm-footer__container"><!----> <div class="tm-footer__social"><a href="https://www.facebook.com/habrahabr.ru" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Facebook</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-facebook"></use></svg></a><a href="https://twitter.com/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Twitter</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-twitter"></use></svg></a><a href="https://vk.com/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>VK</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-vkontakte"></use></svg></a><a href="https://telegram.me/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Telegram</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-telegram"></use></svg></a><a href="https://www.youtube.com/channel/UCd_sTwKqVrweTt4oAKY5y4w" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Youtube</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-youtube"></use></svg></a><a href="https://zen.yandex.ru/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Яндекс Дзен</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-zen"></use></svg></a></div> <DIV class="v-portal" style="display:none;"></DIV> <button class="tm-footer__link"><!---->
+        Настройка языка
+      </button> <a href="/ru/about" class="tm-footer__link">
+        О сайте
+      </a> <a href="/ru/feedback/" class="tm-footer__link">
+        Техническая поддержка
+      </a> <!----> <a href="/berserk-mode-nope" class="tm-footer__link">
+        Вернуться на старую версию
+      </a> <div class="tm-footer-copyright"><span class="tm-copyright"><span class="tm-copyright__years">© 2006–2021 </span> <span class="tm-copyright__name">«<a href="https://company.habr.com/" rel="noopener" target="_blank" class="tm-copyright__link">Habr</a>»</span></span></div></div></div></div> <!----> <!----></div> <div class="vue-portal-target"></div></div>
+<script>window.__INITIAL_STATE__={"adblock":{"hasAcceptableAdsFilter":false,"hasAdblock":false},"articlesList":{"articlesList":{"451090":{"id":"451090","timePublished":"2019-05-09T08:45:00+00:00","isCorporative":true,"lang":"ru","titleHtml":"Red Hat Universal Base Image (UBI) строить и жить помогает","leadData":{"textHtml":"Контейнеры представляют собой облегченную версию пользовательского пространства операционной системы Linux – фактически, это «голый» минимум. Тем не менее, это все равно полноценная операционная система, и поэтому качество этого самого контейнера так же важно, как полновесной операционной системы. Именно поэтому долгое время мы предлагали \u003Ca href=\"https:\u002F\u002Faccess.redhat.com\u002Fcontainers\u002F\"\u003Eобразы Red Hat Enterprise Linux (RHEL)\u003C\u002Fa\u003E, чтобы пользователи могли иметь сертифицированные, современные и актуальные контейнеры корпоративного уровня. Запуск \u003Ca href=\"https:\u002F\u002Fdevelopers.redhat.com\u002Fblog\u002F2018\u002F02\u002F22\u002Fcontainer-terminology-practical-introduction\u002F#h.dqlu6589ootw\"\u003Eобразов контейнеров\u003C\u002Fa\u003E (container images) RHEL на хостах контейнеров (container hosts) RHEL обеспечивает совместимость и переносимость между средами, не говоря уже о том, что это – уже знакомые инструменты. Была, правда, одна проблема. Вы не могли просто передать такой образ кому-то еще, даже если речь шла о заказчике или партнере, использующем Red Hat Enterprise Linux. \u003Cbr\u003E\r\n\u003Cbr\u003E\r\n\u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fhx\u002Fu3\u002Fod\u002Fhxu3odkdfiubgm8ssdzvpfjlq8q.png\" width=\"100%\"\u003E\u003Cbr\u003E\r\n\u003Cbr\u003E\r\nНо теперь все изменилось \u003Cbr\u003E","imageUrl":null,"buttonTextHtml":"Читать дальше: Build, Share, Collaborate","image":null},"editorVersion":"1.0","postType":"article","postLabels":[],"author":{"scoreStats":{"score":53,"votesCount":95},"rating":-9,"relatedData":null,"contacts":[],"authorContacts":[],"paymentDetails":{"paymentYandexMoney":null,"paymentPayPalMe":null,"paymentWebmoney":null},"id":"1653535","alias":"redhatrussia","fullname":"Red Hat","avatarUrl":"\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Favatars\u002F592\u002F816\u002F4a9\u002F5928164a9c2b4d0e7693ebb16e0f792a.png","speciality":"Программные решения с открытым исходным кодом"},"statistics":{"commentsCount":2,"favoritesCount":14,"readingCount":3864,"score":3,"votesCount":3},"hubs":[{"relatedData":null,"id":"21386","alias":"redhatrussia","type":"corporative","title":"Блог компании Red Hat","titleHtml":"Блог компании Red Hat","isProfiled":false},{"relatedData":null,"id":"144","alias":"open_source","type":"collective","title":"Open source","titleHtml":"Open source","isProfiled":true},{"relatedData":null,"id":"210","alias":"it_testing","type":"collective","title":"Тестирование IT-систем","titleHtml":"Тестирование IT-систем","isProfiled":true},{"relatedData":null,"id":"8880","alias":"server_side_optimization","type":"collective","title":"Серверная оптимизация","titleHtml":"Серверная оптимизация","isProfiled":true},{"relatedData":null,"id":"19727","alias":"linux_dev","type":"collective","title":"Разработка под Linux","titleHtml":"Разработка под Linux","isProfiled":true}],"flows":[{"id":"1","alias":"develop","title":"Разработка"},{"id":"6","alias":"admin","title":"Администрирование"}],"relatedData":null,"textHtml":"\u003Cdiv xmlns=\"http:\u002F\u002Fwww.w3.org\u002F1999\u002Fxhtml\"\u003EКонтейнеры представляют собой облегченную версию пользовательского пространства операционной системы Linux – фактически, это «голый» минимум. Тем не менее, это все равно полноценная операционная система, и поэтому качество этого самого контейнера так же важно, как полновесной операционной системы. Именно поэтому долгое время мы предлагали \u003Ca href=\"https:\u002F\u002Faccess.redhat.com\u002Fcontainers\u002F\"\u003Eобразы Red Hat Enterprise Linux (RHEL)\u003C\u002Fa\u003E, чтобы пользователи могли иметь сертифицированные, современные и актуальные контейнеры корпоративного уровня. Запуск \u003Ca href=\"https:\u002F\u002Fdevelopers.redhat.com\u002Fblog\u002F2018\u002F02\u002F22\u002Fcontainer-terminology-practical-introduction\u002F#h.dqlu6589ootw\"\u003Eобразов контейнеров\u003C\u002Fa\u003E (container images) RHEL на хостах контейнеров (container hosts) RHEL обеспечивает совместимость и переносимость между средами, не говоря уже о том, что это – уже знакомые инструменты. Была, правда, одна проблема. Вы не могли просто передать такой образ кому-то еще, даже если речь шла о заказчике или партнере, использующем Red Hat Enterprise Linux. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fhx\u002Fu3\u002Fod\u002Fhxu3odkdfiubgm8ssdzvpfjlq8q.png\" data-width=\"100%\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nНо теперь все изменилось \u003Cbr\u002F\u003E\r\n\u003Ca name=\"habracut\"\u003E\u003C\u002Fa\u003E\u003Cbr\u002F\u003E\r\nС выпуском универсального образа Red Hat Universal Base Image (UBI) теперь можно получать привычную надежность, безопасность и высокую производительность официальных образов контейнеров Red Hat независимо от того, есть ли подписка или нет. Это означает, что можно строить контейнизированное приложение на UBI, помещать его в реестр контейнеров по вашему выбору и делиться им со всем миром. Red Hat Universal Base Image позволяет строить, делиться и вести совместную работу над контейнизированным приложением в любом окружении – там, где хотите. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cdiv style=\"text-align:center;\"\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fcq\u002Faa\u002Fty\u002Fcqaaty6ssasbdzyp_ggi1hi3j_8.png\"\u002F\u003E\u003C\u002Fdiv\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nБлагодаря UBI существует возможность публиковать и запускать свои приложения практически в любой инфраструктуре. Но если запускать их на платформах Red Hat, таких как Red Hat OpenShift и Red Hat Enterprise Linux, то можно получить дополнительные преимущества (больше золота!). И пока мы не перешли к более подробному описанию UBI, позвольте предоставить короткий FAQ, зачем нужна RHEL Subscription. Итак, что будет при запуске образа UBI на платформе RHEL\u002FOpenShift? \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cdiv style=\"text-align:center;\"\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fzk\u002Foh\u002Fk6\u002Fzkohk6zgosdwup5rmq3rc6fwdae.png\"\u002F\u003E\u003C\u002Fdiv\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nА теперь, когда на маркетинг доволен, поговорим подробней про UBI\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch3\u003EПричины применять UBI\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\nЧто вы должны чувствовать, чтобы понять, что UBI будет вам полезен: \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003EМои \u003Cb\u003Eразработчики\u003C\u002Fb\u003E хотят использовать образы контейнеров, которые можно распространять и запускать в любом окружении \u003C\u002Fli\u003E\r\n\u003Cli\u003EМоя команда \u003Cb\u003Eoperations\u003C\u002Fb\u003E хочет поддерживаемый базовый образ с жизненным циклом корпоративного уровня \u003C\u002Fli\u003E\r\n\u003Cli\u003EМои \u003Cb\u003Eархитекторы\u003C\u002Fb\u003E хотят предлагать \u003Ca href=\"https:\u002F\u002Foperatorhub.io\u002F\"\u003EKubernetes Operator\u003C\u002Fa\u003E моим заказчикам\u002Fконечным пользователям\u003C\u002Fli\u003E\r\n\u003Cli\u003EМои \u003Cb\u003Eзаказчики\u003C\u002Fb\u003E хотят \u003Cs\u003Eв ус не дуть\u003C\u002Fs\u003E поддержку корпоративного уровня для всего своего окружении Red Hat \u003C\u002Fli\u003E\r\n\u003Cli\u003EМое \u003Cb\u003Eсообщество\u003C\u002Fb\u003E хочет делиться, запускать, публиковать контейнизированные приложения буквально везде \u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\nЕсли хотя бы на один из сценариев вам подходит, то определенно следует обратить внимание на UBI. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch3\u003EБольше, чем просто некий базовый образ \u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\nUBI – меньше, чем полноценная ОС, но у UBI есть три важных вещи: \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Col\u003E\r\n\u003Cli\u003EНабор из трех базовых образов (ubi, ubi-minimal, ubi-init) \u003C\u002Fli\u003E\r\n\u003Cli\u003EОбразы с уже готовыми средами выполнения различных языков программирования (nodejs, ruby, python, php, perl, и т.д.) \u003C\u002Fli\u003E\r\n\u003Cli\u003EНабор связанных пакетов в репозитории YUM с наиболее распространенными зависимостями \u003C\u002Fli\u003E\r\n\u003C\u002Fol\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cdiv style=\"text-align:center;\"\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fsi\u002Ftn\u002F09\u002Fsitn09h7vft0ymxm2nrvvuotoz4.png\"\u002F\u003E\u003C\u002Fdiv\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nUBI создавался в качестве основы для cloud – native и веб-приложений, разрабатываемых и поставляемых в контейнераx. Весь контент в UBI является подмножеством RHEL. Все пакеты в UBI поступают через каналы RHEL и поддерживаются подобно RHEL при запуске на поддерживаемых Red Hat платформах, таких как OpenShift и RHEL. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cdiv style=\"text-align:center;\"\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Feb\u002F0s\u002Fdl\u002Feb0sdls2ifq_af6re1mwfbr9088.png\"\u002F\u003E\u003C\u002Fdiv\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nДля обеспечения качественной поддержки контейнеров требуется немало усилий инженеров, специалистов по безопасности и другие дополнительные ресурсы. Требуется не только тестирование базовых образов, но также анализ их поведения на любом поддерживаемом хосте. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЧтобы облегчить задачи, связанные с обновлением, Red Hat активно развивает разработку и поддержку, благодаря чему UBI 7 можно запускать, например, на хостах RHEL 8, а UBI 8 – на хостах RHEL 7. Это обеспечивает пользователям необходимую гибкость, уверенность и спокойствие в процессе, например, обновлений платформ в образах контейнеров или используемых хостов. Теперь все это можно разделить на два самостоятельных проекта. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch3\u003EТри базовых образа\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\n\u003Cdiv style=\"text-align:center;\"\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fxo\u002Fac\u002F3n\u002Fxoac3nymugxqeb4_dd3tioz1lwu.png\"\u002F\u003E\u003C\u002Fdiv\u003E \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nМинимальный – предназначен для приложений со всеми зависимостями (Python, Node.js, .NET, etc.) \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003EМинимальный набор предустановленного контента \u003C\u002Fli\u003E\r\n\u003Cli\u003EБез исполняемых файлов suid \u003C\u002Fli\u003E\r\n\u003Cli\u003EМинимальный инструментарий менеджера пакетов (установка, обновление и удаление) \u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\nПлатформа – для любых приложений, запускаемых на RHEL \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003EУнифицированный криптографический стек OpenSSL\u003C\u002Fli\u003E\r\n\u003Cli\u003EПолный стек YUM \u003C\u002Fli\u003E\r\n\u003Cli\u003EВключены полезные основные утилиты ОС (tar, gzip, vi, и т.д.) \u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\nMulti-Service – упрощает запуск нескольких сервисов в одном контейнере \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003EСконфигурирован для запуска systemd при старте \u003C\u002Fli\u003E\r\n\u003Cli\u003EВозможность включения сервисов на этапе сборки \u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\n\u003Ch3\u003EОбразы контейнеров с уже готовыми средами выполнения языков программирования \u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\nВ дополнение к базовым образам, которые позволяют устанавливать поддержку языков программирования, UBI включают в себя предварительно собранные образы с уже готовыми средами выполнения ряда языков программирования. Многие разработчики могут просто взять образ и приступить к работе над приложением, которое они разрабатывают. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nС запуском UBI Red Hat предлагает два набора образов – на базе RHEL 7 и на базе RHEL 8. За их основу были взяты, соответственно, Red Hat Software Collections (RHEL 7) и Application Streams (RHEL 8). Эти среды выполнения поддерживаются в актуальном состоянии и стандартно получают до четырех обновлений в год, таким образом, всегда есть возможность для работы с самыми свежими и стабильными версиями. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cb\u003EВот перечень образов контейнеров UBI 7:\u003C\u002Fb\u003E \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cdiv style=\"text-align:center;\"\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fr9\u002Fnd\u002Fbv\u002Fr9ndbv7mqyzc5h687xalsiq-dga.png\"\u002F\u003E\u003C\u002Fdiv\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cb\u003EВот перечень образов контейнеров для UBI 8:\u003C\u002Fb\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cdiv style=\"text-align:center;\"\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fdj\u002Ffa\u002Fhq\u002Fdjfahqitjennkzjnhnhqh4nno_e.png\"\u002F\u003E\u003C\u002Fdiv\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch3\u003EАссоциированные пакеты \u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\nИспользование готовых образов действительно очень удобно. Red Hat поддерживает их актуальность и обновляет их вместе с выпуском новой версии RHEL, а также при появлении критических обновлений CVE в соответствии с политикой обновлений \u003Ca href=\"https:\u002F\u002Faccess.redhat.com\u002Farticles\u002F2208321\"\u003ERHEL image policy\u003C\u002Fa\u003E для того, чтобы можно было взять один из этих образов и сразу же приступить к работе над приложением. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cdiv style=\"text-align:center;\"\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Ftc\u002Fda\u002Fz4\u002Ftcdaz4qepvrbgv2vij1chplyj44.png\"\u002F\u003E\u003C\u002Fdiv\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nНо иногда при создании приложения вам может внезапно потребоваться какой-то дополнительный пакет. Или, иногда, чтобы заставить приложение работать, нужно обновить тот или иной пакет. Именно поэтому образы UBI поставляются с набором RPM, которые доступны посредством yum, и которые распространяются с помощью быстрой и высокодоступной сети доставки контента (вам пакет!). Когда вы запускаете yum-обновление на своем CI \u002F CD в тот критический момент релиза, вы можете быть уверены – оно будет работать.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch3\u003ERHEL – это основа\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\nМы не устаем повторять, что RHEL – это основа всего. Знаете, какие команды в Red Hat работают над созданием базовых образов? Например вот эти:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003EИнженерно-техническая группа, отвечающая за обеспечение того, чтобы базовые библиотеки, такие как glibc и OpenSSL, а также языковые среды выполнения, такие как Python и Ruby, обеспечивали стабильную производительность и надежно работали с рабочими нагрузками, при использовании в контейнерах. \u003C\u002Fli\u003E\r\n\u003Cli\u003EГруппа обеспечения безопасности продуктов занимается своевременным исправлением ошибок и проблем безопасности в библиотеках и языковых средах, эффективность их работы оценивается с помощью специального индекса \u003Ca href=\"https:\u002F\u002Faccess.redhat.com\u002Farticles\u002F2803031\"\u003EContainer Health Index grade\u003C\u002Fa\u003E. \u003C\u002Fli\u003E\r\n\u003Cli\u003EКоманда менеджеров по продукту и инженеров занимается добавлением новых функций и обеспечивают длительный жизненный цикл продукта, что дает уверенность во вложенных инвестициях, которые можно будет использовать в качестве основы. \u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\nRed Hat Enterprise Linux выступает в роли отличного хоста и образа для контейнеров, но для многих разработчиков важна возможность работы с системой в самых различных форматах, некоторые из которых могут выходить за рамки поддерживаемых сценариев использования Linux системы. И здесь на помощь приходят универсальные образы UBI. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПредположим, конкретно сейчас, на данном этапе, вы просто ищете базовый образ, чтобы начать работу над простым контейнизированным приложением. Или вы уже ближе к будущему и двигаетесь от автономных контейнеров, работающих на container engine, к cloud-native истории с использованием операторов (building and certifying Operators), работающих на OpenShift. В любом случае UBI обеспечит для этого отличную основу. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cdiv style=\"text-align:center;\"\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fiw\u002Fij\u002Ftk\u002Fiwijtkdviykoi78-6rnwhpt2fbk.png\"\u002F\u003E\u003C\u002Fdiv\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nКонтейнеры включают в себя облегченную версию пользовательского пространства операционной системы в новом формате пакетирования. Выпуск образов UBI устанавливает новый отраслевой стандарт для контейнизированной разработки, при этом контейнеры корпоративного класса становятся доступными для любых пользователей, независимых разработчиков ПО, open source сообществ. В частности, разработчики ПО могут стандартизировать свои продукты, используя единую, проверенную основу для всех своих контейнизированных приложений, в том числе \u003Ca href=\"https:\u002F\u002Foperatorhub.io\u002F\"\u003EKubernetes Operators\u003C\u002Fa\u003E. Компаниям-разработчикам, использующим UBI, также доступны сертификация Red Hat Container Certification и Red Hat OpenShift Operator Certification, а это в свою очередь позволяет непрерывно верифицировать программное обеспечение, запускаемое на платформах Red Hat, таких как OpenShift. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cdiv style=\"text-align:center;\"\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fzx\u002Fr9\u002Fqb\u002Fzxr9qbjzr9asgnzmbwp3fox-bs8.png\"\u002F\u003E\u003C\u002Fdiv\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch3\u003EКак начать работать с образом \u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\nЕсли коротко – очень просто. Podman доступен не только в RHEL, но также в Fedora, CentOS и в ряде других дистрибутивов Linux. Все, что нужно сделать – выгрузить образ из одного из следующих репозиториев, и вперед. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nДля UBI 8: \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003Epodman pull registry.access.redhat.com\u002Fubi8\u002Fubi\npodman pull registry.access.redhat.com\u002Fubi8\u002Fubi-minimal\npodman pull registry.access.redhat.com\u002Fubi8\u002Fubi-init\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nДля UBI 7: \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003Epodman pull registry.access.redhat.com\u002Fubi7\u002Fubi\npodman pull registry.access.redhat.com\u002Fubi7\u002Fubi-minimal\npodman pull registry.access.redhat.com\u002Fubi7\u002Fubi-init\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nНу и посмотрите полный Universal Base Image Guide \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003E\u003Ca href=\"https:\u002F\u002Faccess.redhat.com\u002Fdocumentation\u002Fen-us\u002Fred_hat_enterprise_linux\u002F8\u002Fhtml-single\u002Fbuilding_running_and_managing_containers\u002Findex?lb_target=stage#using_red_hat_universal_base_images_standard_minimal_and_runtimes\"\u003ERHEL 8 How To\u003C\u002Fa\u003E\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Ca href=\"https:\u002F\u002Faccess.redhat.com\u002Fdocumentation\u002Fen-us\u002Fred_hat_enterprise_linux_atomic_host\u002F7\u002Fhtml-single\u002Fgetting_started_with_containers\u002Findex#using_red_hat_universal_base_images_standard_minimal_and_runtimes\"\u003ERHEL 7 How To\u003C\u002Fa\u003E\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003C\u002Fdiv\u003E","tags":[{"titleHtml":"Red Hat"},{"titleHtml":"open source"},{"titleHtml":"container"},{"titleHtml":"linux"}],"metadata":{"stylesUrls":[],"scriptUrls":[],"shareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F451090\u002F46105cbea0dcfbac71504e03fbe9c597\u002F","shareImageWidth":1200,"shareImageHeight":630,"vkShareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F451090\u002F46105cbea0dcfbac71504e03fbe9c597\u002F?format=vk","schemaJsonLd":"{\"@context\":\"http:\\\u002F\\\u002Fschema.org\",\"@type\":\"Article\",\"mainEntityOfPage\":{\"@type\":\"WebPage\",\"@id\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fru\\\u002Fcompany\\\u002Fredhatrussia\\\u002Fblog\\\u002F451090\\\u002F\"},\"headline\":\"Red Hat Universal Base Image (UBI) строить и жить помогает\",\"datePublished\":\"2019-05-09T11:45:00+03:00\",\"dateModified\":\"2019-12-20T15:58:01+03:00\",\"author\":{\"@type\":\"Person\",\"name\":\"Red Hat\"},\"publisher\":{\"@type\":\"Organization\",\"name\":\"Habr\",\"logo\":{\"@type\":\"ImageObject\",\"url\":\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fa_\\\u002Flk\\\u002F9m\\\u002Fa_lk9mjkccjox-zccjrpfolmkmq.png\"}},\"description\":\"Контейнеры представляют собой облегченную версию пользовательского пространства операционной системы Linux &ndash; фактически, это &laquo;голый&raquo; минимум. Тем не менее, это в...\",\"url\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fru\\\u002Fcompany\\\u002Fredhatrussia\\\u002Fblog\\\u002F451090\\\u002F#post-content-body\",\"about\":[\"c_redhatrussia\",\"h_open_source\",\"h_it_testing\",\"h_server_side_optimization\",\"h_linux_dev\",\"f_develop\",\"f_admin\"],\"image\":[\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fhx\\\u002Fu3\\\u002Fod\\\u002Fhxu3odkdfiubgm8ssdzvpfjlq8q.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fcq\\\u002Faa\\\u002Fty\\\u002Fcqaaty6ssasbdzyp_ggi1hi3j_8.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fzk\\\u002Foh\\\u002Fk6\\\u002Fzkohk6zgosdwup5rmq3rc6fwdae.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fsi\\\u002Ftn\\\u002F09\\\u002Fsitn09h7vft0ymxm2nrvvuotoz4.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Feb\\\u002F0s\\\u002Fdl\\\u002Feb0sdls2ifq_af6re1mwfbr9088.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fxo\\\u002Fac\\\u002F3n\\\u002Fxoac3nymugxqeb4_dd3tioz1lwu.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fr9\\\u002Fnd\\\u002Fbv\\\u002Fr9ndbv7mqyzc5h687xalsiq-dga.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fdj\\\u002Ffa\\\u002Fhq\\\u002Fdjfahqitjennkzjnhnhqh4nno_e.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Ftc\\\u002Fda\\\u002Fz4\\\u002Ftcdaz4qepvrbgv2vij1chplyj44.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fiw\\\u002Fij\\\u002Ftk\\\u002Fiwijtkdviykoi78-6rnwhpt2fbk.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fzx\\\u002Fr9\\\u002Fqb\\\u002Fzxr9qbjzr9asgnzmbwp3fox-bs8.png\"]}","metaDescription":"Контейнеры представляют собой облегченную версию пользовательского пространства операционной системы Linux – фактически, это «голый» минимум. Тем не менее, это все равно полноценная операционная...","mainImageUrl":null,"amp":false},"polls":[],"commentsEnabled":true,"rulesRemindEnabled":false,"votesEnabled":true,"status":"published","plannedPublishTime":null,"checked":null,"isEditorial":false}},"articlesIds":{},"isLoading":false,"pagesCount":{},"route":{},"reasonsList":null,"view":"cards","lastVisitedRoute":{},"ssrCommentsArticleIds":[""],"karma":{}},"authorContribution":{"authors":{}},"betaTest":{"currentAnnouncement":null,"announcements":{},"announcementCards":null,"announcementComments":{},"announcementCommentThreads":{},"announcementCommentingStatuses":{},"archivedList":[]},"authorStatistics":{"articleRefs":{},"articleIds":{},"pagesCount":{},"route":{},"viewsCount":[],"maxStatsCount":{}},"career":{"seoLandings":[],"hubs":""},"comments":{"articleComments":{},"searchCommentsResults":null,"previewComment":null,"pagesCount":null,"commentAccess":{},"scrollParents":{},"pageArticleComments":{"lastViewedComment":0,"postId":null,"lastCommentTimestamp":"","moderated":[],"moderatedIds":[],"commentRoute":""}},"companies":{"companyRefs":{"redhatrussia":{"alias":"redhatrussia","imageUrl":"\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fcompany\u002F720\u002Fff2\u002F9bc\u002F720ff29bc39d072d3a31453c84da73c8.png","titleHtml":"Red Hat","descriptionHtml":"Программные решения с открытым исходным кодом","relatedData":null,"statistics":{"postsCount":135,"newsCount":0,"vacanciesCount":0,"employeesCount":3,"careerRating":null,"subscribersCount":897,"rating":42.22,"invest":null},"foundationDate":{"year":"1993","month":"10","day":"31"},"location":{"city":{"id":"475368","title":"Raleigh"},"region":{"id":"1016","title":"North Carolina"},"country":{"id":"198","title":"США"}},"siteUrl":"https:\u002F\u002Fwww.redhat.com\u002Fen\u002Fglobal\u002Frussia","staffNumber":"5 001–10 000 человек","registrationDate":"2018-02-26T08:00:04+00:00","representativeUser":null,"contacts":[{"title":"Сайт","url":"https:\u002F\u002Fwww.redhat.com\u002Fen\u002Fglobal\u002Frussia"}],"settings":{"analyticsSettings":[],"branding":null,"status":"active"},"metadata":{"titleHtml":"Red Hat, Raleigh - Программные решения с открытым исходным кодом с 31 октября 1993 г.","title":"Red Hat, Raleigh - Программные решения с открытым исходным кодом с 31 октября 1993 г.","keywords":["Open source","Виртуализация","Openshift","Облачные вычисления","Настройка Linux","microsoft","azure","visual studio","windows",".net","windows azure","windows phone","microsoft azure","c#","windows 8","разработка","windows 10","asp.net","iot","xamarin","devcon","облако","javascript","cloud","machine learning"],"descriptionHtml":"135 статей от авторов компании Red Hat","description":"135 статей от авторов компании Red Hat"},"aDeskSettings":null,"careerAlias":"redhat","maxCustomTrackerLinks":0}},"companyIds":{},"companyTopIds":{},"pagesCount":{},"companyProfiles":{},"companiesCategories":[],"companiesCategoriesTotalCount":0,"companiesWidgets":{},"companiesWorkers":{},"companiesFans":{},"route":{},"isLoading":false,"companyWorkersLoading":false,"companyFansLoading":false,"vacancies":{}},"companiesContribution":{"hubs":{},"flows":{},"companyRefs":{}},"companyHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"conversation":{"messages":[],"respondent":null,"isLoadMore":false},"conversations":{"conversations":[],"unreadCount":0,"pagesCount":0,"isLoadMore":false},"desktopState":{"desktopFl":null,"desktopHl":null,"isChecked":false,"isLoginDemanded":false},"dfp":{"slotsDict":{}},"docs":{"menu":{},"articles":{},"mainMenu":[],"loading":{"main":false,"dropdown":false,"article":false}},"feature":{"isProbablyVisible":"true"},"flows":{"flows":[{"alias":"develop","id":1,"route":{"name":"FLOW_PAGE","params":{"flowName":"develop"}}},{"alias":"admin","id":6,"route":{"name":"FLOW_PAGE","params":{"flowName":"admin"}}},{"alias":"design","id":2,"route":{"name":"FLOW_PAGE","params":{"flowName":"design"}}},{"alias":"management","id":3,"route":{"name":"FLOW_PAGE","params":{"flowName":"management"}}},{"alias":"marketing","id":4,"route":{"name":"FLOW_PAGE","params":{"flowName":"marketing"}}},{"alias":"popsci","id":7,"route":{"name":"FLOW_PAGE","params":{"flowName":"popsci"}}}]},"global":{"isPwa":false,"device":"desktop","isHabrCom":true},"hubs":{"hubRefs":{},"hubIds":{},"pagesCount":{},"isLoading":false,"route":{}},"hubsBlock":{"hubRefs":{},"hubIds":{}},"i18n":{"fl":"ru","hl":"ru"},"info":{"infoPage":{},"isLoading":true},"location":{"urlStruct":{"protocol":null,"slashes":null,"auth":null,"host":null,"port":null,"hostname":null,"hash":null,"search":null,"query":{},"pathname":null,"path":null,"href":""},"searchQuery":null},"me":{"user":null,"ppgDemanded":false,"karmaResetInfo":{"canReincarnate":null,"wasReincarnated":null,"currentScore":null},"notes":null},"mostReadingList":{"mostReadingListIds":[],"mostReadingListRefs":null,"promoPost":null},"pinnedPost":{"pinnedPost":null},"ppa":{"articles":{},"card":null,"transactions":null,"totalTransactions":null,"isAccessible":null},"projectsBlocks":{"activeBlocks":{}},"pullRefresh":{"shouldRefresh":false},"sandbox":{"articleIds":[],"articleRefs":{},"pagesCount":null,"route":{},"lastVisitedRoute":{},"isLoading":false},"settingsOther":{"inputs":{"uiLang":{"errors":[],"ref":null,"value":""},"articlesLangEnglish":{"errors":[],"ref":null,"value":false},"articlesLangRussian":{"errors":[],"ref":null,"value":false},"agreement":{"errors":[],"ref":null,"value":false},"email":{"errors":[],"ref":null,"value":true},"digest":{"errors":[],"ref":null,"value":true}}},"similarList":{"similarListIds":[],"similarListRefs":null},"ssr":{"error":null,"isDataLoaded":false,"isDataLoading":false,"isHydrationFailed":false,"isServer":false},"userHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"userInvites":{"availableInvites":0,"usedInvitesIds":[],"usedInvitesRefs":{},"usedInvitesPagesCount":0,"unusedInvitesIds":[],"unusedInvitesRefs":{},"unusedInvitesPagesCount":0},"users":{"authorRefs":{},"authorIds":{},"pagesCount":{},"authorProfiles":{},"userHubs":{},"userInvitations":{},"authorFollowers":{},"authorFollowed":{},"karmaStats":[],"statistics":null,"isLoading":false,"authorFollowersLoading":false,"authorFollowedLoading":false,"userHubsLoading":false,"userInvitationsLoading":false,"route":{}},"viewport":{"prevScrollY":{},"scrollY":0,"width":0},"tracker":{"items":{},"pagesCache":{},"markedViewedSilently":{},"markedRead":{},"unreadCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null},"unviewedCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null}}};(function(){var s;(s=document.currentScript||document.scripts[document.scripts.length-1]).parentNode.removeChild(s);}());</script>
+<script src="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" defer></script><script src="https://assets.habr.com/habr-web/js/app.c0af73e7.js" defer></script>
+
+
+
+    <script>
+      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+        (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+        m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+      })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+    </script>
+  
+  <script type="text/javascript" >
+    (function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+    m[i].l=1*new Date();k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})
+    (window, document, "script", "https://mc.yandex.ru/metrika/tag.js", "ym");
+
+    ym(24049213, "init", {
+      defer:true,
+      trackLinks:true,
+      accurateTrackBounce:true,
+      webvisor:false,
+    });
+  </script>
+  <noscript>
+    <div>
+      <img src="https://mc.yandex.ru/watch/24049213" style="position:absolute; left:-9999px;" alt="" />
+    </div>
+  </noscript>
+  
+    <script type="text/javascript">
+      window.addEventListener('load', function () {
+        setTimeout(() => {
+          const img = new Image();
+          img.src = 'https://vk.com/rtrg?p=VK-RTRG-421343-57vKE';
+        }, 0);
+      });
+    </script>
+  
+</body>
+</html>

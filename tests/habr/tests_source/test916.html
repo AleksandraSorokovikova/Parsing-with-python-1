@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="ru" data-vue-meta="%7B%22lang%22:%7B%22ssr%22:%22ru%22%7D%7D">
+<head >
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
+  <title>.NET: Инструменты для работы с многопоточностью и асинхронностью. Часть 1 / Хабр</title>
+  <style>
+    /* cyrillic-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSxf6TF0.woff2) format('woff2');
+      unicode-range: U+0460-052F, U+1C80-1C88, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+    }
+
+    /* cyrillic */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveQhf6TF0.woff2) format('woff2');
+      unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+    }
+
+    /* latin-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSBf6TF0.woff2) format('woff2');
+      unicode-range: U+0100-024F, U+0259, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20CF, U+2113, U+2C60-2C7F, U+A720-A7FF;
+    }
+
+    /* latin */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveRhf6.woff2) format('woff2');
+      unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+    }
+  </style>
+  <link rel="preload" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" as="script"><link rel="preload" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/app.c0af73e7.js" as="script">
+  <link rel="stylesheet" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css"><link rel="stylesheet" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css">
+  <script>window.i18nFetch = new Promise((res, rej) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open('GET', '/js/i18n/ru-compiled.85eb77f0b17c8235e7b64b9f81ea5ec2.json');
+          xhr.responseType = 'json';
+          xhr.onload = function(e) {
+            if (this.status === 200) {
+              res({ru: xhr.response});
+            } else {
+              rej(e);
+            }
+          };
+          xhr.send();
+        });</script>
+  
+  <script data-vue-meta="ssr" src="/js/ads.js" onload="window['zhY4i4nJ9K'] = true" data-vmid="checkad"></script><script data-vue-meta="ssr" type="application/ld+json" data-vmid="ldjson-schema">{"@context":"http:\/\/schema.org","@type":"Article","mainEntityOfPage":{"@type":"WebPage","@id":"https:\/\/habr.com\/ru\/post\/452094\/"},"headline":".NET: Инструменты для работы с многопоточностью и асинхронностью. Часть 1","datePublished":"2019-05-23T11:22:37+03:00","dateModified":"2019-10-30T19:28:51+03:00","author":{"@type":"Person","name":"Andrey Podkolzin"},"publisher":{"@type":"Organization","name":"Habr","logo":{"@type":"ImageObject","url":"https:\/\/habrastorage.org\/webt\/a_\/lk\/9m\/a_lk9mjkccjox-zccjrpfolmkmq.png"}},"description":"Публикую на Хабр оригинал статьи, перевод которой размещен в блоге Codingsight. Вторая часть доступна здесь  Необходимость делать что-то асинхронно, не дожидаясь...","url":"https:\/\/habr.com\/ru\/post\/452094\/#post-content-body","about":["h_sys_admin","h_net","h_asp","h_csharp","f_develop","f_admin"],"image":["https:\/\/habrastorage.org\/webt\/ow\/kq\/i5\/owkqi5zdx2m8oe7iava3q1mikri.png","https:\/\/habrastorage.org\/webt\/tb\/fv\/3l\/tbfv3l-sdz-jw0mpcakbt_-lve8.png"]}</script>
+  <script src="//www.googletagservices.com/tag/js/gpt.js" async></script>
+  <style>.grecaptcha-badge{visibility: hidden;}</style>
+  <meta name="habr-version" content="2.49.0">
+  
+  <meta data-vue-meta="ssr" property="fb:app_id" content="444736788986613"><meta data-vue-meta="ssr" property="fb:pages" content="472597926099084"><meta data-vue-meta="ssr" name="twitter:card" content="summary_large_image"><meta data-vue-meta="ssr" name="twitter:site" content="@habr_eng"><meta data-vue-meta="ssr" property="og:title" content=".NET: Инструменты для работы с многопоточностью и асинхронностью. Часть 1" data-vmid="og:title"><meta data-vue-meta="ssr" name="twitter:title" content=".NET: Инструменты для работы с многопоточностью и асинхронностью. Часть 1" data-vmid="twitter:title"><meta data-vue-meta="ssr" name="aiturec:title" content=".NET: Инструменты для работы с многопоточностью и асинхронностью. Часть 1" data-vmid="aiturec:title"><meta data-vue-meta="ssr" name="description" content="Публикую на Хабр оригинал статьи, перевод которой размещен в блоге Codingsight.
+Вторая часть доступна здесь
+
+Необходимость делать что-то асинхронно, не дожидаясь результат здесь и сейчас, или..." data-vmid="description"><meta data-vue-meta="ssr" itemprop="description" content="Публикую на Хабр оригинал статьи, перевод которой размещен в блоге Codingsight.
+Вторая часть доступна здесь
+
+Необходимость делать что-то асинхронно, не дожидаясь результат здесь и сейчас, или..." data-vmid="description:itemprop"><meta data-vue-meta="ssr" property="og:description" content="Публикую на Хабр оригинал статьи, перевод которой размещен в блоге Codingsight.
+Вторая часть доступна здесь
+
+Необходимость делать что-то асинхронно, не дожидаясь результат здесь и сейчас, или..." data-vmid="og:description"><meta data-vue-meta="ssr" name="twitter:description" content="Публикую на Хабр оригинал статьи, перевод которой размещен в блоге Codingsight.
+Вторая часть доступна здесь
+
+Необходимость делать что-то асинхронно, не дожидаясь результат здесь и сейчас, или..." data-vmid="twitter:description"><meta data-vue-meta="ssr" property="aiturec:description" content="Публикую на Хабр оригинал статьи, перевод которой размещен в блоге Codingsight.
+Вторая часть доступна здесь
+
+Необходимость делать что-то асинхронно, не дожидаясь результат здесь и сейчас, или..." data-vmid="aiturec:description"><meta data-vue-meta="ssr" itemprop="image" content="https://habr.com/share/publication/452094/d629a9110077a466775d7fcf6c85ee8e/" data-vmid="image:itemprop"><meta data-vue-meta="ssr" property="og:image" content="https://habr.com/share/publication/452094/d629a9110077a466775d7fcf6c85ee8e/" data-vmid="og:image"><meta data-vue-meta="ssr" property="aiturec:image" content="https://habr.com/share/publication/452094/d629a9110077a466775d7fcf6c85ee8e/" data-vmid="aiturec:image"><meta data-vue-meta="ssr" name="twitter:image" content="https://habr.com/share/publication/452094/d629a9110077a466775d7fcf6c85ee8e/" data-vmid="twitter:image"><meta data-vue-meta="ssr" property="vk:image" content="https://habr.com/share/publication/452094/d629a9110077a466775d7fcf6c85ee8e/" data-vmid="vk:image"><meta data-vue-meta="ssr" property="aiturec:item_id" content="452094" data-vmid="aiturec:item_id"><meta data-vue-meta="ssr" property="aiturec:datetime" content="2019-05-23T08:22:37.000Z" data-vmid="aiturec:datetime"><meta data-vue-meta="ssr" property="og:type" content="article" data-vmid="og:type"><meta data-vue-meta="ssr" property="og:locale" content="ru_RU" data-vmid="og:locale"><meta data-vue-meta="ssr" property="og:image:width" content="1200" data-vmid="og:image:width"><meta data-vue-meta="ssr" property="og:image:height" content="630" data-vmid="og:image:height">
+  <link data-vue-meta="ssr" href="https://habr.com/ru/rss/post/452094/?fl=ru" type="application/rss+xml" title="" rel="alternate" name="rss"><link data-vue-meta="ssr" href="https://habr.com/ru/post/452094/" rel="canonical" data-vmid="canonical"><link data-vue-meta="ssr" data-vmid="hreflang"><link data-vue-meta="ssr" image_src="image" href="https://habr.com/share/publication/452094/d629a9110077a466775d7fcf6c85ee8e/" data-vmid="image:href">
+  <meta name="apple-mobile-web-app-status-bar-style" content="#303b44">
+  <meta name="msapplication-TileColor" content="#629FBC">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="16x16"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-16.png"
+  >
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="32x32"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-32.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="76x76"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-76.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="120x120"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="152x152"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-152.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="180x180"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-180.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="256x256"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-256.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1136x640.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2436x1125.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1792x828.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_828x1792.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1334x750.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2208x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1125x2436.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2208.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2732x2048.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2688x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2224x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_750x1334.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x2732.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2388x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2224.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_640x1136.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2388.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x1536.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1536x2048.png"
+  >
+  <link
+    rel="mask-icon"
+    color="#77a2b6"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.svg"
+  >
+  <link
+    crossorigin="use-credentials"
+    href="/manifest.webmanifest"
+    rel="manifest"
+  >
+</head>
+<body>
+
+
+<div id="app" data-server-rendered="true" data-async-called="true"><div class="tm-layout__wrapper"><!----> <div></div> <!----> <header class="tm-header"><div class="tm-page-width"><div class="tm-header__container"><!----> <span class="tm-header__logo-wrap"><a href="/ru/" class="tm-header__logo tm-header__logo_ru"><svg height="16" width="16" class="tm-svg-img tm-header__icon"><title>Хабр</title> <use xlink:href="/img/habr-logo-ru.svg#logo"></use></svg></a> <span class="tm-header__beta-sign" style="display:none;">β</span></span> <div class="tm-dropdown tm-header__projects"><div class="tm-dropdown__head"><button class="tm-header__dropdown-toggle"><svg height="16" width="16" class="tm-svg-img tm-header__icon tm-header__icon_dropdown"><title>Открыть список</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#arrow-down"></use></svg></button></div> <!----></div> <a href="/ru/sandbox/start/" class="tm-header__become-author-btn">
+            Как стать автором
+          </a> <div class="tm-feature tm-header__feature tm-feature_variant-inline"><!----></div> <!----> <!----></div></div></header> <div class="tm-layout"><div class="tm-page-progress-bar"></div> <div data-menu-sticky="true" class="tm-base-layout__header tm-base-layout__header_is-sticky"><div class="tm-page-width"><div class="tm-base-layout__header-wrapper"><div class="tm-main-menu"><div class="tm-main-menu__section"><nav class="tm-main-menu__section-content"><!----> <a href="/ru/all/" class="tm-main-menu__item">
+        Все потоки
+      </a> <a href="/ru/flows/develop/" class="tm-main-menu__item">
+          Разработка
+        </a><a href="/ru/flows/admin/" class="tm-main-menu__item">
+          Администрирование
+        </a><a href="/ru/flows/design/" class="tm-main-menu__item">
+          Дизайн
+        </a><a href="/ru/flows/management/" class="tm-main-menu__item">
+          Менеджмент
+        </a><a href="/ru/flows/marketing/" class="tm-main-menu__item">
+          Маркетинг
+        </a><a href="/ru/flows/popsci/" class="tm-main-menu__item">
+          Научпоп
+        </a></nav></div></div> <div class="tm-header-user-menu tm-base-layout__user-menu"><a href="/ru/search/" class="tm-header-user-menu__item tm-header-user-menu__search"><svg height="24" width="24" class="tm-svg-img tm-header-user-menu__icon tm-header-user-menu__icon_search tm-header-user-menu__icon_dark"><title>Поиск</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#search"></use></svg></a> <!----> <!----> <!----> <div class="tm-header-user-menu__item tm-header-user-menu__user_desktop"><div class="tm-dropdown"><div class="tm-dropdown__head"><svg height="24" width="24" data-test-id="menu-toggle-guest" class="tm-svg-img tm-header-user-menu__icon"><title>Профиль</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#header-user"></use></svg> <!----></div> <!----></div> <!----></div> <!----></div></div></div></div> <!----> <div class="tm-page-width"></div> <main class="tm-layout__container"><div hl="ru" data-async-called="true" class="tm-page"><div class="tm-page-width"><!----> <div class="tm-page__wrapper"><div class="tm-page__main tm-page__main_has-sidebar"><div class="pull-down"><div class="pull-down__header" style="height:0px;"><div class="pull-down__content" style="bottom:10px;"><svg height="24" width="24" class="tm-svg-img pull-down__arrow"><title>Обновить</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#pull-arrow"></use></svg></div></div> <div class="tm-article-presenter"> <div class="tm-article-presenter__body"><div class="tm-misprint-area"><div class="tm-misprint-area__wrapper"><article class="tm-article-presenter__content tm-article-presenter__content_narrow"><div class="tm-article-presenter__header"> <div class="tm-article-snippet tm-article-presenter__snippet"><div class="tm-article-snippet__meta-container"><div class="tm-article-snippet__meta"><span class="tm-user-info tm-article-snippet__author"><a href="/ru/users/podkolzzzin/" title="podkolzzzin" class="tm-user-info__userpic"><div class="tm-entity-image"><svg height="24" width="24" class="tm-svg-img tm-image-placeholder tm-image-placeholder_lilac"><!----> <use xlink:href="/img/megazord-v24.ce74655c.svg#placeholder-user"></use></svg></div></a> <span class="tm-user-info__user"><a href="/ru/users/podkolzzzin/" class="tm-user-info__username">
+      podkolzzzin
+    </a> </span></span> <span class="tm-article-snippet__datetime-published"><time datetime="2019-05-23T08:22:37.000Z" title="2019-05-23, 11:22">23  мая  2019 в 11:22</time></span></div> <!----></div> <h1 lang="ru" class="tm-article-snippet__title tm-article-snippet__title_h1"><span>.NET: Инструменты для работы с многопоточностью и асинхронностью. Часть 1</span></h1> <div class="tm-article-snippet__hubs"><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/sys_admin/" class="tm-article-snippet__hubs-item-link"><span>Системное администрирование</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/net/" class="tm-article-snippet__hubs-item-link"><span>.NET</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/asp/" class="tm-article-snippet__hubs-item-link"><span>ASP</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/csharp/" class="tm-article-snippet__hubs-item-link"><span>C#</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span></div> <!----> <!----> <!----></div></div> <!----> <div data-gallery-root="" lang="ru" class="tm-article-body"><div id="post-content-body" class="article-formatted-body article-formatted-body_version-1"><div xmlns="http://www.w3.org/1999/xhtml"><i>Публикую на Хабр оригинал статьи, перевод которой размещен в блоге <a href="https://codingsight.com/net-tools-for-working-with-multi-threading-and-asynchrony-part-1/">Codingsight</a>.</i><br/>
+<i>Вторая часть доступна <a href="https://habr.com/post/459514/">здесь</a></i><br/>
+<br/>
+Необходимость делать что-то асинхронно, не дожидаясь результат здесь и сейчас, или разделять большую работу между несколькими выполняющими ее единицами была и до появления компьютеров. С их появлением такая необходимость стала очень ощутимой. Сейчас, в 2019, набирая эту статью на ноутбуке с 8 ядерным процессором Intel Core, на котором параллельно этому работает не одна сотня процессов, а потоков и того больше. Рядом, лежит уже немного потрепанный, купленный пару лет назад телефон, у него на борту 8 ядерный процессор. На тематических ресурсах полно статей и видео, где их авторы восхищаются флагманскими смартфонами этого года куда ставят 16ти-ядерные процессоры. MS Azure предоставляет менее чем за 20$/час виртуальную машину со 128 ядерным процессором и 2 TB RAM. К сожалению невозможно извлечь максимум и обуздать эту мощь не умея управлять взаимодействием потоков.<br/>
+<a name="habracut"></a><br/>
+<h3>Терминология</h3><br/>
+ <b>Процесс (Process)</b> — объект ОС, изолированное адресное пространство, содержит потоки.<br/>
+ <b>Поток (Thread)</b> — объект ОС, наименьшая единица выполнения, часть процесса, потоки делят память и другие ресурсы между собой в рамках процесса.<br/>
+ <b>Многозадачность </b> — свойство ОС, возможность выполнять несколько процессов одновременно<br/>
+ <b>Многоядерность </b> — свойство процессора, возможность использовать несколько ядер для обработки данных<br/>
+ <b>Многопроцессорность </b> — свойство компьютера, возможность одновременно работать с несколькими процессорами физически<br/>
+ <b>Многопоточность </b> — свойство процесса, возможность распределять обработку данных между несколькими потоками.<br/>
+ <b>Параллельность </b> — выполнение нескольких действий физически одновременно в единицу времени<br/>
+ <b>Асинхронность </b> — выполнение операции без ожидания окончания завершения этой обработки, результат же выполнения может быть обработан позднее.<br/>
+<br/>
+<h3>Метафора</h3><br/>
+Не все определения хороши и некоторые нуждаются в дополнительном объяснении, потому к формально введенной терминологии добавлю метафору о приготовлении завтрака. Приготовление завтрака в этой метафоре — process.<br/>
+<br/>
+Готовя завтрак с утра я (<b>CPU</b>) прихожу на кухню (<b>Компьютер</b>). У меня 2 руки (<b>Cores</b>). На кухне есть ряд устройств (<b>IO</b>): печь, чайник, тостер, холодильник. Я включаю газ, ставлю на него сковородку и наливаю туда масло, не дожидаясь пока она разогреется (<b>асинхронно, Non-Blocking-IO-Wait</b>), я достаю из холодильника яйца и разбиваю их в тарелку, после чего взбиваю одной рукой (<b>Thread#1</b>), а второй (<b>Thread#2</b>) придерживаю тарелку (Shared Resource). Сейчас бы еще включить чайник, но рук не хватает (<b>Thread Starvation</b>) За это время разогревается сковородка (Обработка результата) куда я выливаю то что взбил. Я дотягиваюсь до чайника и включаю его и тупо смотрю как вода в нем закипает (<b>Blocking-IO-Wait</b>), хотя мог бы за это время вымыть тарелку, где взбивал омлет.<br/>
+<br/>
+Я готовил омлет используя всего 2 руки, да больше у меня и нет, но при этом в момент взбивания омлета происходило сразу 3 операции: взбивание омлета, придерживание тарелки, разогревание сковородки.CPU — является самой быстрой частью компьютера, IO это то, что чаще всего тормозит, потому часто эффективным решением является занять чем-то CPU пока идет получение данных от IO. <br/>
+<br/>
+Продолжая метафору: <br/>
+<br/>
+<ul>
+<li>Если бы в процессе готовки омлета, я бы еще и пытался переодеться это был бы пример многозадачности. Важный нюанс: у компьютеров с этим куда лучше чем у людей.</li>
+<li>Кухня с несколькими поварами, например в ресторане — многоядерный компьютер.</li>
+<li>Множество ресторанов на фудкорте в торговом центре — датацентр</li>
+</ul><br/>
+<h3>Инструменты .NET</h3><br/>
+В работе с потоками, как и во многом другом, .NET хорош. С каждой новой версией он представляет все больше новых инструментов для работы с ними, новые слои абстракции над потоками ОС. В работе с построением абстракций разработчики фреймворка используют подход оставляющий возможность при использовании высокоуровневой абстракции, спустится на один или несколько уровней ниже. Чаще всего в этом нет необходимости, более того это открывает возможность для выстрела себе в ногу из дробовика, но иногда, в редких случаях, это может оказаться единственным способом решить проблему, не решающую на текущем уровне абстракции.<br/>
+<br/>
+Под инструментами я имею ввиду как программные интерфейсы (API) предоставляемые фреймворком и сторонними пакетами, так и целый программные решения упрощающий поиск каких-либо проблем связанных с многопоточным кодом.<br/>
+<br/>
+<h4>Запуск потока</h4><br/>
+Класс Thread, самый базовый в .NET для работы с потоками. В конструктор принимает один из двух делегатов: <br/>
+<br/>
+<ul>
+<li>ThreadStart — Без параметров</li>
+<li>ParametrizedThreadStart — с одним параметром типа object.</li>
+</ul><br/>
+Делегат будет выполнен во вновь созданном потоке после вызова метода Start, если в конструктор был передан делегат типа ParametrizedThreadStart, то в метод Start необходимо передать объект. Этот механизм нужен для передачи любой локальной информации в поток. Стоит отметить что создание потока это дорогостоящая операция, а сам поток это тяжелый объект, как минимум потому, что происходит выделение 1МБ памяти на стек, и требует взаимодействия с API ОС.<br/>
+<br/>
+<pre><code class="cs">new Thread(...).Start(...);
+</code></pre><br/>
+Класс ThreadPool представляет концепцию пула. В .NET пул потоков является произведением инженерного искусства и разработчики из Microsoft вложили множество усилий, чтобы он работал оптимально в самых разных сценариях. <br/>
+<br/>
+<b>Общая концепция: </b><br/>
+<br/>
+<i>С момента старта приложение в фоне создает несколько потоков про запас и предоставляет возможность брать их в пользование. Если потоки используются часто и в большом количестве, то пул расширяется, чтобы удовлетворить потребность вызывающего кода. Когда в пуле в нужный момент времени не оказывается свободных потоков он или дождется возврата одного из потоков, либо создаст новый. Из этого следует, что пул потоков отлично подходит для неких коротких действий и плохо подходит, для операций работающих как службы на протяжении всей работы приложений.<br/>
+<br/>
+Для использования потока из пула, есть метод QueueUserWorkItem, который принимает делегат типа WaitCallback, что по сигнатуре совпадает с ParametrizedThreadStart, а передаваемый в него параметр выполняет туже функцию.</i><br/>
+<br/>
+<pre><code class="cs">ThreadPool.QueueUserWorkItem(...);
+</code></pre><br/>
+Менее известный метод пула потоков RegisterWaitForSingleObject служит для организации неблокирующих IO операций. Делегат переданный в этот метод будет вызван тогда, когда WaitHandle переданный в метод будет “отпущен”(Released).<br/>
+<br/>
+<pre><code class="cs">ThreadPool.RegisterWaitForSingleObject(...)
+</code></pre><br/>
+В .NET есть потоковый таймер и отличается он от таймеров WinForms/WPF тем, что его обработчик будет вызван в потоке взятом из пула.<br/>
+<br/>
+<pre><code class="cs">System.Threading.Timer
+</code></pre><br/>
+Так же есть довольно экзотический способ отправить делегат на выполнение в поток из пула — метод BeginInvoke.<br/>
+<br/>
+<pre><code class="cs">DelegateInstance.BeginInvoke
+</code></pre><br/>
+Хочу еще вскользь остановится на функции к вызову которой сводится многие из вышеуказанных методов — CreateThread из Kernel32.dll Win32 API. Существует способ, благодаря механизму extern методов вызвать эту функцию. Я видел такой вызов лишь однажды в жутчайшем примере legacy кода, а мотивация автора сделавшего именно так все еще остается для меня загадкой.<br/>
+<br/>
+<pre><code class="cs">Kernel32.dll CreateThread
+</code></pre><br/>
+<h4>Просмотр и отладка потоков</h4><br/>
+Созданные вами лично, всеми третисторонними компонентами и пулом .NET потоки можно просмотреть в окне Threads Visual Studio. Это окно отобразит информацию о потоках лишь, когда приложение будет находится под отладкой и в режиме останова (Break mode). Здесь можно удобно просмотреть стек имена и приоритеты каждого потока, переключить отладку на конкретный поток. Свойством Priority класса Thread можно задать приоритет потока, который OC и CLR будут воспринимать как рекомендацию при разделении процессорного времени между потоками.<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/ow/kq/i5/owkqi5zdx2m8oe7iava3q1mikri.png"/><br/>
+<br/>
+<h4>Task Parallel Library</h4><br/>
+Task Parallel Library (TPL) появился в .NET 4.0. Сейчас это стандарт и основной инструмент для работы с асинхронностью. Любой код использующий более старые подход считается legacy. Основной единицей TPL является класс Task из пространства имен System.Threading.Tasks. Task представляет собой абстракцию над потоком. С новой версией языка C# мы получили изящный способ работы с Task`ами — операторы async/await. Эти концепции позволили писать асинхронный код так, как если бы он был простым и синхронным, это дало возможность даже людям слабо понимающим внутреннюю кухню потоков писать приложения их использующие, приложения не зависающие при выполнении долгих операций. Использование async/await тема для одной или даже нескольких статей, но я попробую в нескольких предложениях уложить суть:<br/>
+<br/>
+<ul>
+<li>async это модификатор метода возвращающего Task или void</li>
+<li>а await оператор неблокирующего ожидания Task`а.</li>
+</ul><br/>
+Еще раз: оператор await, в общем случае (есть исключения), отпустит текущий поток выполнения дальше, а когда Task закончит свое выполнение, а поток (на самом деле правильнее сказать контекст, но об этом позднее) будет свободен продолжит выполнении метода дальше. Внутри .NET этот механизм реализован так же как и yield return, когда написанный метод превращается в целый класс, который является машиной состояний и может быть выполнен отдельными кусками в зависимости от этих состояний. Кому интересно может написать любой несложный код с использованием asynс/await, скомпилировать и просмотреть сборку с помощью JetBrains dotPeek с включенным Compiler Generated Code. <br/>
+<br/>
+Рассмотрим варианты запуска и использования Task’а. На примере кода ниже, мы создаем новый таск, который не делает ничего полезного (<i>Thread.Sleep(10000)</i>), но в реальной жизни это должна быть некая сложная задействующая CPU работа. <br/>
+<br/>
+<pre><code class="cs">using TCO = System.Threading.Tasks.TaskCreationOptions;
+
+public static async void VoidAsyncMethod() {
+    var cancellationSource = new CancellationTokenSource();
+
+    await Task.Factory.StartNew(
+        // Code of action will be executed on other context
+        () => Thread.Sleep(10000),
+        cancellationSource.Token,
+        TCO.LongRunning | TCO.AttachedToParent | TCO.PreferFairness,
+        scheduler
+    );
+
+    //  Code after await will be executed on captured context
+}
+</code></pre><br/>
+Task создается с рядом опций:<br/>
+<br/>
+<ul>
+<li>LongRunning — подсказка о том, что задача не будет выполнена быстро, а значит, возможно, стоит подумать над тем чтобы не брать поток из пула, а создать отдельный под эту Task’у чтобы не навредить остальным.</li>
+<li>AttachedToParent — Task’и могут выстраиваться в иерархии. Если была использована эта опция, то Task может находится в состоянии, когда сам он выполнился и дожидается выполнения дочерних.</li>
+<li>PreferFairness — означает, что хорошо бы выполнять Task’и отправленные на выполнение раньше перед теми, что были отправлены позже. Но это всего лишь рекомендация и результат не гарантирован.</li>
+</ul><br/>
+Вторым параметром в метод передан CancellationToken. Для корректной обработки отмены операции после ее запуска выполняемый код должен быть наполнен проверками состояния CancellationToken. Если проверок нет, то метод Cancel вызванный на объекте CancellationTokenSource сможет остановить выполнение Task’а лишь до его запуска.<br/>
+<br/>
+Последним параметром передан объект scheduler типа TaskScheduler. Этот класс и его наследники предназначены для управления стратегиями распределения Task’ов по потокам, по умолчанию Task будет выполнен на случайном потоке из пула.<br/>
+<br/>
+К созданному Task’у применен оператор await, а значит код написанный после него, если такой есть будет выполнен в том же контексте (часто это означает что на том же потоке), что и код до await.<br/>
+<br/>
+Метод помечен как async void, это значит, что в нем допустимо использование оператора await, но вызывающий код не сможет дождаться выполнения. Если такая возможность необходима, то метод должен возвращать Task. Методы помеченные async void встречаются довольно часто: как правило это обработчики событий или другие методы, работающие по принципу выполнить и забыть (fire and forget). Если необходимо не только дать возможность дождаться окончания выполнения, но и вернуть результат, то необходимо использовать Task.<br/>
+<br/>
+На Task’е что вернул метод StartNew, впрочем как и на любом другом, можно вызвать метод ConfigureAwait с параметром false, тогда выполнение после await продолжится не на захваченном контексте, а на произвольном. Это нужно делать всегда, когда для кода после await не принципиален контекст выполнения. Также это является рекомендацией от MS при написании кода, что будет поставляться упакованном в библиотеку виде.<br/>
+<br/>
+Давайте еще немного остановимся на том, как можно дождаться окончания выполнения Task’и. Ниже пример кода, с комментариями, когда ожидание сделано условно хорошо и когда условно плохо.<br/>
+<br/>
+<pre><code class="cs">public static async void AnotherMethod() {
+
+    int result = await AsyncMethod(); // good
+
+    result = AsyncMethod().Result; // bad
+
+    AsyncMethod().Wait(); // bad
+
+    IEnumerable&lt;Task> tasks = new Task[] {
+        AsyncMethod(), OtherAsyncMethod()
+    };
+
+    await Task.WhenAll(tasks); // good
+    await Task.WhenAny(tasks); // good
+
+    Task.WaitAll(tasks.ToArray()); // bad
+}
+</code></pre><br/>
+В первом примере мы дожидаемся выполнения Task’и не блокируя вызывающий поток, к обработке результата вернемся лишь когда он уже будет, до тех пор вызывающий поток предоставлен себе.<br/>
+<br/>
+Во втором варианте мы блокируем вызывающий поток до тех пор пока не будет подсчитан результат метода. Это плохо не только потому, что мы заняли поток, столь ценный ресурс программы, простым безделием, но еще и потому, что если в коде метода что мы вызываем есть await, а контекст синхронизации предполагает возвращение в вызывающий поток после await, то мы получим deadlock: вызывающий поток ждет пока будет вычислен результат асинхронного метода, асинхронный метод тщетно пытается продолжить свое выполнение в вызывающем потоке. <br/>
+<br/>
+Еще одним недостатком такого подхода является усложненная обработка ошибок. Дело в том, что ошибки в асинхронном коде при использовании async/await обрабатывать очень легко — они ведут себя так же как если бы код был синхронным. В то время, как если мы применяем <s>экзорцизм</s> синхронное ожидание к Task’e оригинальное исключение оборачивается в AggregateException, т.о. Для обработки исключения придется исследовать тип InnerException и самому писать цепочку if внутри одного catch блока или использовать конструкцию catch when, вместо более привычной в C# мире цепочки catch блоков.<br/>
+<br/>
+Третий и последний примеры так же отмечены плохими по той же причине и содержат все те же проблемы.<br/>
+<br/>
+Методы WhenAny и WhenAll крайне удобны в ожидании группы Task’ов, они оборачивают группу Task’ов в один, который сработает либо по первому срабатыванию Task’а из группы, либо когда свое выполнение закончат все. <br/>
+<br/>
+<h4>Остановка потоков</h4><br/>
+По разным причинам может появится необходимость остановить поток после его старта. Для этого существует ряд способов. У класса Thread есть два метода с подходящими названиями — это <b>Abort </b>и <b>Interrupt</b>. Первый крайне не рекомендуется к использованию, т.к. после его вызова в любой случайный момент, в процессе обработки любой инструкции, будет выброшено исключение <b>ThreadAbortedException</b>. Вы ведь не ожидаете что такое исключение вылетит при инкременте какой-либо целочисленной переменной, верно? А при использовании этого метода это вполне реальная ситуация. В случае необходимости запретить CLR генерировать такое исключение в определенном участке кода можно обернуть его в вызовы <b>Thread.BeginCriticalRegion</b>, <b>Thread.EndCriticalRegion</b>. Такими вызовами оборачивается любой код написанный в finally блоке. По этой причине в недрах кода фреймворка можно найти блоки с пустым try, но не пустым finally. Microsoft настолько не рекомендует использовать этот метод, что не включили его в .net core.<br/>
+<br/>
+Метод Interrupt работает более предсказуемо. Он может прервать поток исключением <b>ThreadInterruptedException </b>только в те моменты, когда поток находится в состоянии ожидания. В такое состояние он переходит подвисая в ожидании WaitHandle, lock или после вызова Thread.Sleep. <br/>
+<br/>
+Оба описанных выше варианта, плохи своей непредсказуемостью. Выходом является использование структуры <b>CancellationToken </b>и класса <b>CancellationTokenSource</b>. Суть в следующем: создается экземпляр класса CancellationTokenSource и только тот кто им владеет, может остановить операцию вызвав метод <b>Cancel</b>. В саму же операцию передается только лишь CancellationToken. Владельцы CancellationToken не могут сами отменить операцию, а могут лишь проверить не была ли операция отменена. Для этого есть булево свойство <b>IsCancellationRequested </b>и метод <b>ThrowIfCancelRequested</b>. Последний сгенерирует исключение <b>TaskCancelledException </b>если на пародившем CancellationToken экземпляре CancellationTokenSource был вызван метод Cancel. И именно этот метод я рекомендую использовать. Это лучше предыдущих вариантов получением полного контроля над тем в какие моменты исключение операция может быть прервана.<br/>
+<br/>
+Самым жестоким вариантом остановки потока, является вызов функции Win32 API TerminateThread. Поведение CLR после вызова этой функции может быть непредсказуемым. На MSDN же про эту функцию написано следующее: <i>“TerminateThread is a dangerous function that should only be used in the most extreme cases. “</i><br/>
+<br/>
+<h4>Преобразование legacy-API в Task Based с помощью метода FromAsync</h4><br/>
+Если вам посчастливилось работать на проекте, что был начат уже после того как Task’и были введены и перестали вызывать тихий ужас большинства разработчиков, то вам не придется иметь дело с большим количеством старых API, как третисторонних, так и вымученых вашей командой в прошлом. К счастью, команда разработки .NET Framework позаботилась о нас, хотя возможно целью была забота о себе. Как бы то ни было в .NET есть ряд инструментов для безболезненного преобразования кода написанного в старых подходах асинхронного программирования в новую. Один из них это метод FromAsync у TaskFactory. На примере кода ниже, я оборачиваю старые асинхронные методы класса WebRequest в Task с помощью этого метода. <br/>
+<br/>
+<pre><code class="cs">object state = null;
+WebRequest wr = WebRequest.CreateHttp("http://github.com");
+await Task.Factory.FromAsync(
+    wr.BeginGetResponse,
+    we.EndGetResponse
+);
+</code></pre><br/>
+<i>Это лишь пример и делать такое со встроенными типами вам вряд ли придется, но любой старый проект просто кишит методами BeginDoSomething возвращающими IAsyncResult и методами EndDoSomething его принимающими.</i><br/>
+<br/>
+<h4>Преобразование legacy-API в Task Based с помощью класса TaskCompletionSource</h4><br/>
+Еще один важный для рассмотрения инструмент, это класс <b>TaskCompletionSource</b>. По функциям, назначению и принципу работы он чем-то может напомнить метод RegisterWaitForSingleObject класса ThreadPool о котором я писал выше. С помощью этого класса можно легко и удобно оборачивать старые асинхронные API в Task’и. <br/>
+<br/>
+<i>Вы скажете, что я уже говорил о методе FromAsync класса TaskFactory предназначенном для этих целей. Здесь придется вспомнить всю историю развития асинхронных моделей в .net что предлагал microsoft за последние 15 лет: до Task-Based Asynchronous Pattern (TAP) существовали Asynchronous Programming Pattern (APP), который был о методах <b>Begin</b>DoSomething возвращающем <b>IAsyncResult </b>и методах <b>End</b>DoSomething его принимающем и для legacy этих годов как раз отлично подходит метод FromAsync, но со временем, на смену ему пришел Event Based Asynchronous Pattern (<b>EAP</b>), который предполагал, что по завершению выполнения асинхронной операции будет вызвано событие.</i><br/>
+<br/>
+TaskCompletionSource как раз отлично подходит для обертки в Task’и legacy-API построенных вокруг событийной модели. Суть его работы в следующем: у объекта этого класса есть публичное свойство типа Task состоянием которого можно управлять через методы SetResult, SetException и пр. Класса TaskCompletionSource. В местах же где был применен оператор await к этому Task’у он будет выполнен или обрушен с исключением в зависимости от примененного к TaskCompletionSource метода. Если все еще не понятно, то давайте посмотрим на этот пример кода, где некое старое API времен EAP заворачивается в Task при помощи TaskCompletionSource: при срабатывании события Task будет переведен в состояние Completed, а метод применивший к этому Task’у оператор await возобновит свое выполнение получив объект <b>result</b>.<br/>
+<br/>
+<pre><code class="cs">public static Task&lt;Result> DoAsync(this SomeApiInstance someApiObj) {
+
+    var completionSource = new TaskCompletionSource&lt;Result>();
+    someApiObj.Done += 
+        result => completionSource.SetResult(result);
+    someApiObj.Do();
+
+    result completionSource.Task;
+}
+</code></pre><br/>
+<h4>TaskCompletionSource Tips &amp; Tricks</h4><br/>
+Обертка старых API это не все что можно провернуть с помощью TaskCompletionSource. Использование этого класса открывает интересную возможность проектирования различных API, на Task’ах, что не занимают потоки. А поток, как мы помним ресурс дорогой и количество их ограничено (в основном объемом RAM). Этого ограничения легко достичь разрабатывая, например, нагруженное web-приложение со сложной бизнес логикой. Рассмотрим те возможности о которых я говорю на реализации такого трюка как Long-Polling. <br/>
+<br/>
+<i>Если коротко суть трюка вот в чем: вам нужно получать от API информацию о некоторых событиях происходящих на его стороне, при этом API по каким-то причинам не может сообщить о событии, а может лишь вернуть состояние. Пример таких — все API построенные поверх HTTP до времен WebSocket или при невозможности по какой-то причине использовать эту технологию. Клиент может спросить у HTTP сервера. HTTP сервер не может сам спровоцировать общение с клиентом. Простым решением является опрос сервера по таймеру, но это создает дополнительную нагрузку на сервер и дополнительную задержку в среднем TimerInterval / 2. Для обхода этого был изобретен трюк получивший название Long Polling, которые предполагает задержку ответа от сервера до тех пор пока не истечет Timeout или не произойдет событие. Если событие произошло, то оно обрабатывается, если нет, то запрос посылается заново.</i><br/>
+<br/>
+<pre><code class="cs">while(!eventOccures &amp;&amp; !timeoutExceeded)  {
+
+  CheckTimout();
+  CheckEvent();
+  Thread.Sleep(1);
+}
+</code></pre><br/>
+Но такое решение покажет себя ужасно, как только число клиентом ожидающих событие вырастет, т.к. Каждый такой клиент в ожидании события занимает целый поток. Да и получаем дополнительную задержку в 1мс на срабатывании события, чаще всего это не существенно, но зачем делать ПО хуже чем оно может быть? Если же убрать Thread.Sleep(1), то зазря загрузим одно ядро процессора на 100% в холостую вращаясь в бесполезном цикле. С помощью TaskCompletionSource можно легко переделать этот код и решить все обозначенные выше проблемы:<br/>
+<br/>
+<pre><code class="cs">class LongPollingApi {
+
+    private Dictionary&lt;int, TaskCompletionSource&lt;Msg>> tasks;
+
+    public async Task&lt;Msg> AcceptMessageAsync(int userId, int duration) {
+
+        var cs = new TaskCompletionSource&lt;Msg>();
+        tasks[userId] = cs;
+        await Task.WhenAny(Task.Delay(duration), cs.Task);
+        return cs.Task.IsCompleted ? cs.Task.Result : null;
+    }
+
+    public void SendMessage(int userId, Msg m) {
+
+        if (tasks.TryGetValue(userId, out var completionSource))
+            completionSource.SetResult(m);
+    }
+}
+</code></pre><br/>
+<i>Этот код не является production-ready, а лишь демонстрационным. Для использования в реальных случаях нужно еще, как-минимум, обработать ситуацию когда сообщение пришло в момент, когда его никто не ожидает: в таком случае метод AsseptMessageAsync должен вернуть уже завершенный Task. Если же этот случай и является наиболее частым, то можно подумать и об использовании ValueTask.</i><br/>
+<br/>
+При получении запроса на сообщение мы создаем и помещаем в словарь TaskCompletionSource, а далее ждем что произойдет первее: истечет заданный интервал времени или будет получено сообщение.<br/>
+<br/>
+<h4>ValueTask: зачем и как</h4><br/>
+Операторы async/await как и оператор yield return генерирует из метода машину состояний, а это создание нового объекта, что почти всегда не важно, но в редких случаях может создать проблему. Этим случаем может быть метод вызываемый действительно часто, речь о десятках и сотнях тысяч вызовов в секунду. Если такой метод написан так, что в большинстве случаев он возвращает результат обходя все await методы, то .NET предоставляет инструмент что бы это оптимизировать — структура ValueTask. Чтобы стало понятно рассмотрим пример его использования: есть кеш в который мы ходим очень часто. Какие-то значения в нем есть и тогда мы их просто возвращаем, если нет, то идем в какой-нибудь медленный IO за ними. Последнее хочется делать асинхронно, а значит весь метод получается асинхронным. Таким образом очевидный вариант написания метода — следующий:<br/>
+<br/>
+<pre><code class="cs">public async Task&lt;string> GetById(int id) {
+
+    if (cache.TryGetValue(id, out string val))
+        return val;
+    return await RequestById(id);
+}
+</code></pre><br/>
+Из-за желания немного оптимизировать, и легкой боязни по-поводу того что сгенерирует Roslyn компилируя этот код, можно этот пример переписать следующим образом:<br/>
+<br/>
+<pre><code class="cs">public Task&lt;string> GetById(int id) {
+
+    if (cache.TryGetValue(id, out string val))
+        return Task.FromResult(val);
+    return RequestById(id);
+}
+</code></pre><br/>
+Действительно же оптимальным решением в этом случае будет оптимизировать hot-path, а именно получение значения из словаря вообще без лишних аллокаций и нагрузки на GC, в то время когда в тех редких случаях, когда нам все таки нужно идти в IO за данными все останется плюс/минус по старому:<br/>
+<br/>
+<pre><code class="cs">public ValueTask&lt;string> GetById(int id) {
+
+    if (cache.TryGetValue(id, out string val))
+        return new ValueTask&lt;string>(val);
+    return new ValueTask&lt;string>(RequestById(id));
+}
+</code></pre><br/>
+Давайте подробнее разберем этот фрагмент кода: при наличиии значения в кеше мы создаем структуру, в противном случае реальный же таск будет завернут в значимый. Вызывающему коду все равно по какому пути выполнялся этот код: ValueTask с точки зрения синтаксиса C# будет вести себя так же как и обычный Task в этом случае.<br/>
+<br/>
+<h4>TaskScheduler’ы: управление стратегиями запуска Task’ов</h4><br/>
+Следующее API, что хотелось бы рассмотреть это класс <b>TaskScheduler </b>и его производные. Я уже упоминал выше, что в TPL есть возможность управлять стратегиями распределения Task’ов по потокам. Такие стратегии определяются в наследниках класса TaskScheduler. Практически любая стратегия, что может понадобится будет найдена в библиотеке <b>ParallelExtensionsExtras</b>, разработанной microsoft, но не являющейся частью .NET, а поставляемую в виде Nuget пакета. Коротко рассмотрим некоторые из них:<br/>
+<br/>
+<ul>
+<li><b>CurrentThreadTaskScheduler </b> — выполняет Task’и на текущем потоке</li>
+<li><b>LimitedConcurrencyLevelTaskScheduler </b> — ограничивает число выполняемых одновременно Task’ов параметром N, что принимает в конструкторе</li>
+<li><b>OrderedTaskScheduler </b> — определяется как LimitedConcurrencyLevelTaskScheduler(1), потому задачи будут выполняться последовательно.</li>
+<li><b>WorkStealingTaskScheduler </b> — реализует <a href="https://en.wikipedia.org/wiki/Work_stealing">work-stealing</a> подход к распределению задач. По сути является отдельным ThreadPool. Решает проблему того, что в .NET ThreadPool это статический класс, один на все приложения, а значит его перегрузка или неправильное использование в одной части программы может привести к побочным эффектам в другой. Более того понять причину таких деффектов крайне сложно. Т.о. может существовать необходимость использовать отдельные WorkStealingTaskScheduler’ы в тех частях программы, где использование ThreadPool может быть агрессивным и непредсказуемым.</li>
+<li><b>QueuedTaskScheduler </b> — позволяет выполнять задачи по правилам очереди с приоритетами</li>
+<li><b>ThreadPerTaskScheduler </b> — создает отдельный поток на каждый Task что на нем выполняется. Может быть полезно для задач выполняющихся непредсказуемо долго.</li>
+</ul><br/>
+Есть хорошая подробная <a href="https://devblogs.microsoft.com/pfxteam/parallelextensionsextras-tour-7-additional-taskschedulers/">статья</a> о TaskScheduler’ах в блоге microsoft.<br/>
+<br/>
+Для удобной отладки всего связанного с Task’ами в Visual Studio есть окно Tasks. В этом окне можно увидеть текущее состояние задачи и перейти к выполняемой в данный момент строчке кода.<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/tb/fv/3l/tbfv3l-sdz-jw0mpcakbt_-lve8.png"/><br/>
+<br/>
+<h4>PLinq и класс Parallel</h4><br/>
+Кроме Task’ов и всего с ними сказанного в .NET есть еще два интересных инструмента это PLinq(Linq2Parallel) и класс Parallel. Первый обещает параллельное выполнение всех Linq операций на нескольких потоках. Число потоков можно сконфигурировать методом-расширением WithDegreeOfParallelism. К сожалению, чаще всего PLinq в режиме работаты по умолчанию не хватит информации о внутренностях вашего источника данных, чтобы обеспечить существенный выигрыш по скорости, с другой стороны цена попытки очень низкая: нужно всего лишь вызвать метод AsParallel перед цепочкой Linq методов и провести тесты производительности. Более того существует возможность передать в PLinq дополнительную информацию о природе вашего источника данных при помощи механизма Partitions. Подробнее можно почитать <a href="https://devblogs.microsoft.com/pfxteam/partitioning-in-plinq/">здесь </a>и <a href="https://docs.microsoft.com/en-us/dotnet/standard/parallel-programming/custom-partitioners-for-plinq-and-tpl">здесь</a>.<br/>
+<br/>
+Статический класс Parallel предоставляет методы для параллельного перебора коллекции Foreach, выполнения цикла For и выполнения нескольких делегатов в параллель Invoke. Выполнение текущего потока будет остановлено до окончания выполнения расчетов. Количество потоков можно сконфигурировать передав ParallelOptions последним аргументом. С помощью опций также можно указать TaskScheduler и CancellationToken.<br/>
+<br/>
+<h4>Выводы</h4><br/>
+Когда я начинал писать эту статью по материалам своего доклада и информации что собрал за время работы после него, я не ожидал, что ее получится так много. Сейчас, когда текстовый редактор в котором я набираю эту статью укоризненно говорит мне о том, что пошла 15я страница, я подведу промежуточные итоги. Другие трюки, API, визуальные инструменты и подводные камни будут рассмотрены в следующей статье.<br/>
+<br/>
+<b>Выводы:</b><br/>
+<br/>
+<ul>
+<li>Нужно знать инструменты работы с потоками, асинхронностью и параллелизмом, чтобы использовать ресурсы современных ПК.</li>
+<li>В .NET много различных инструментов для этих целей</li>
+<li>Не все они появились сразу, потому часто можно встретить legacy, впрочем есть способы для преобразования старых API без особых усилий.</li>
+<li>Работа с потоками в .NET представлена классами Thread и ThreadPool</li>
+<li>Методы Thread.Abort, Thread.Interrupt, функция Win32 API TerminateThread опасны и не рекомендуются к использованию. Вместо них лучше использовать механизм CancellationToken’ов</li>
+<li>Поток — ценный ресурс, их количество ограничено. Нужно избегать ситуаций, когда потоки заняты ожиданием событий. Для этого удобно использовать класс TaskCompletionSource</li>
+<li>Наиболее мощным и продвинутым инструментов .NET для работы с параллелизмом и асинхронностью являются Task’и.</li>
+<li>Операторы c# async/await реализуют концепцию неблокирующего ожидания</li>
+<li>Управлять распределением Task’ов по потокам можно с помощью производных TaskScheduler’у классов</li>
+<li>Структура ValueTask может быть полезна в оптимизации hot-paths и memory-traffic</li>
+<li>Окна Tasks и Threads Visual Studio предоставляют много полезной для отладки многопоточного или асинхронного кода информации</li>
+<li>PLinq крутой инструмент, но у него может не быть достаточно информации о вашем источнике данных, впрочем это можно исправить с помощью механизма partitioning</li>
+<li>Продолжение <a href="https://habr.com/ru/post/459514/">следует</a>...</li>
+</ul></div></div> <!----> <!----></div> <div class="tm-article-presenter__meta"><div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Теги:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5BC%23%5D" class="tm-tags-list__link">C#</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5B.net%5D" class="tm-tags-list__link">.net</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bmultithreading%5D" class="tm-tags-list__link">multithreading</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5B%D0%BC%D0%BD%D0%BE%D0%B3%D0%BE%D0%BF%D0%BE%D1%82%D0%BE%D1%87%D0%BD%D0%BE%D1%81%D1%82%D1%8C%5D" class="tm-tags-list__link">многопоточность</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Basync%2Fawait%5D" class="tm-tags-list__link">async/await</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Basynchronous%5D" class="tm-tags-list__link">asynchronous</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5B%D0%B0%D1%81%D0%B8%D0%BD%D1%85%D1%80%D0%BE%D0%BD%D0%BD%D0%BE%D1%81%D1%82%D1%8C%5D" class="tm-tags-list__link">асинхронность</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5BTPL%5D" class="tm-tags-list__link">TPL</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bparallelism%5D" class="tm-tags-list__link">parallelism</a></li></ul></div> <div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Хабы:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/hub/sys_admin/" class="tm-hubs-list__link">
+    Системное администрирование
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/net/" class="tm-hubs-list__link">
+    .NET
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/asp/" class="tm-hubs-list__link">
+    ASP
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/csharp/" class="tm-hubs-list__link">
+    C#
+  </a></li></ul></div></div></article></div> <!----></div> <div class="tm-article-sticky-panel"><div class="tm-data-icons tm-article-sticky-panel__icons"><div class="tm-article-rating tm-data-icons__item"><div class="tm-votes-meter tm-article-rating__votes-switcher"><svg height="16" width="16" class="tm-svg-img tm-votes-meter__icon tm-votes-meter__icon_medium"><title>Всего голосов 34: ↑34 и ↓0</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-rating"></use></svg> <span title="Всего голосов 34: ↑34 и ↓0" class="tm-votes-meter__value tm-votes-meter__value_positive tm-votes-meter__value_medium">+34</span></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----> <span title="Количество просмотров" class="tm-icon-counter tm-data-icons__item"><svg height="16" width="16" class="tm-svg-img tm-icon-counter__icon"><title>Просмотры</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-views"></use></svg> <span class="tm-icon-counter__value">40K</span></span> <button title="Добавить в закладки" type="button" class="bookmarks-button tm-data-icons__item"><span title="Добавить в закладки" class="tm-svg-icon__wrapper bookmarks-button__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Добавить в закладки</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-favorite"></use></svg></span> <span title="Количество пользователей, добавивших публикацию в закладки" class="bookmarks-button__counter">
+    261
+  </span></button> <!----> <div title="Поделиться" class="tm-sharing tm-data-icons__item"><button type="button" class="tm-sharing__button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="tm-sharing__icon"><path fill="currentColor" d="M10.33.275l9.047 7.572a.2.2 0 010 .306l-9.048 7.572a.2.2 0 01-.328-.153V11c-8 0-9.94 6-9.94 6S-1 5 10 5V.428a.2.2 0 01.328-.153z"></path></svg></button> <!----></div> <DIV class="v-portal" style="display:none;"></DIV></div> </div></div> <!----> <!----> <div class="tm-article-presenter__footer"><div class="tm-article-blocks"><!----> <section class="tm-block tm-block_spacing-bottom"><!----> <div class="tm-block__body tm-block__body_variant-balanced"><div class="tm-article-author"> <div class="tm-user-card tm-article-author__user-card tm-user-card_variant-article"><div class="tm-user-card__info-container"><div class="tm-user-card__header"><div class="tm-user-card__header-data"><a href="/ru/users/podkolzzzin/" class="tm-user-card__userpic tm-user-card__userpic_size-40"><div class="tm-entity-image"><svg class="tm-svg-img tm-image-placeholder tm-image-placeholder_lilac"><!----> <use xlink:href="/img/megazord-v24.ce74655c.svg#placeholder-user"></use></svg></div></a> <div class="tm-user-card__meta"><div title=" 29 голосов " class="tm-karma tm-user-card__karma"><div class="tm-karma__votes tm-karma__votes_positive">
+    27
+  </div> <div class="tm-karma__text">
+    Карма
+  </div></div> <div title="Рейтинг пользователя" class="tm-rating tm-user-card__rating"><div class="tm-rating__header"> <div class="tm-rating__counter">0</div></div> <div class="tm-rating__text">
+    Рейтинг
+  </div></div></div></div></div> <div class="tm-user-card__info tm-user-card__info_variant-article"><div class="tm-user-card__title tm-user-card__title_variant-article"><span class="tm-user-card__name tm-user-card__name_variant-article">Andrey Podkolzin</span> <a href="/ru/users/podkolzzzin/" class="tm-user-card__nickname tm-user-card__nickname_variant-article">
+          @podkolzzzin
+        </a> <!----></div> <p class="tm-user-card__short-info tm-user-card__short-info_variant-article">Developer</p></div></div> <div class="tm-user-card__buttons tm-user-card__buttons_variant-article"><!----> <!----> <!----> <!----> <!----></div></div> <!----></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----></section> <div class="tm-article-blocks__comments"><div class="tm-article-page-comments"><div class="tm-article-comments-counter-link tm-article-comments-counter-button"><a href="/ru/post/452094/comments/" class="tm-article-comments-counter-link__link tm-article-comments-counter-link__link_button-style"><svg height="16" width="16" class="tm-svg-img tm-article-comments-counter-link__icon tm-article-comments-counter-link__icon_contrasted"><title>Комментарии</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-comments"></use></svg> <span class="tm-article-comments-counter-link__value tm-article-comments-counter-link__value_contrasted">
+       Комментарии 5 
+    </span></a> <!----></div></div></div> <div class="tm-ad-banner__container tm-page-article__banner"><!----> <div id="articleBottomBanner" class="tm-ad-banner"></div></div> <!----> <!----> <!----> <!----> </div></div></div></div></div> <div class="tm-page__sidebar"><div class="tm-layout-sidebar"><div class="tm-layout-sidebar__ads tm-layout-sidebar__ads_initial"><div class="tm-ad-banner__container tm-layout-sidebar__banner"><!----> <div id="sidebarBanner" class="tm-ad-banner"></div></div></div> <div class="tm-sexy-sidebar tm-sexy-sidebar_initial" style="margin-top:0px;"><!----> <!----></div></div></div></div></div></div></main> <!----></div> <div class="tm-footer-menu"><div class="tm-page-width"><div class="tm-footer-menu__container"><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Ваш аккаунт
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr/?back=/ru/post/452094/&amp;hl=ru" rel="nofollow" target="_self">
+                Войти
+              </a></li><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr-register/?back=/ru/post/452094/&amp;hl=ru" rel="nofollow" target="_self">
+                Регистрация
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Разделы
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/" class="footer-menu__item-link router-link-active">
+                Публикации
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/news/" class="footer-menu__item-link">
+                Новости
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/hubs/" class="footer-menu__item-link">
+                Хабы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/companies/" class="footer-menu__item-link">
+                Компании
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/users/" class="footer-menu__item-link">
+                Авторы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/sandbox/" class="footer-menu__item-link">
+                Песочница
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Информация
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/docs/help/" class="footer-menu__item-link">
+                Устройство сайта
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/authors/codex/" class="footer-menu__item-link">
+                Для авторов
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/companies/corpblogs/" class="footer-menu__item-link">
+                Для компаний
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/docs/transparency/" class="footer-menu__item-link">
+                Документы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/agreement" target="_blank">
+                Соглашение
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/confidential/" target="_blank">
+                Конфиденциальность
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Услуги
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQLwRfQmXibiUlWaRg-BAc38s7oM3lJiaPju7qmdJsp8ysIvZ_G-Npem0njJLMozE2bPHMpDqiI5hhy/pub?start=false&amp;loop=false&amp;delayms=60000&amp;slide=id.g91a03369cd_4_297" target="_blank">
+                Реклама
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://habrastorage.org/storage/stuff/habr/service_price.pdf" target="_blank">
+                Тарифы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQJJds8-Di7BQSP_guHxICN7woVYoN5NP_22ra-BIo4bqnTT9FR6fB-Ku2P0AoRpX0Ds-LRkDeAoD8F/pub?start=false&amp;loop=false&amp;delayms=60000" target="_blank">
+                Контент
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://tmtm.timepad.ru/" target="_blank">
+                Семинары
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/megaprojects/" class="footer-menu__item-link">
+                Мегапроекты
+              </a></li></ul></div></div></div></div></div> <div class="tm-footer"><div class="tm-page-width"><div class="tm-footer__container"><!----> <div class="tm-footer__social"><a href="https://www.facebook.com/habrahabr.ru" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Facebook</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-facebook"></use></svg></a><a href="https://twitter.com/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Twitter</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-twitter"></use></svg></a><a href="https://vk.com/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>VK</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-vkontakte"></use></svg></a><a href="https://telegram.me/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Telegram</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-telegram"></use></svg></a><a href="https://www.youtube.com/channel/UCd_sTwKqVrweTt4oAKY5y4w" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Youtube</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-youtube"></use></svg></a><a href="https://zen.yandex.ru/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Яндекс Дзен</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-zen"></use></svg></a></div> <DIV class="v-portal" style="display:none;"></DIV> <button class="tm-footer__link"><!---->
+        Настройка языка
+      </button> <a href="/ru/about" class="tm-footer__link">
+        О сайте
+      </a> <a href="/ru/feedback/" class="tm-footer__link">
+        Техническая поддержка
+      </a> <!----> <a href="/berserk-mode-nope" class="tm-footer__link">
+        Вернуться на старую версию
+      </a> <div class="tm-footer-copyright"><span class="tm-copyright"><span class="tm-copyright__years">© 2006–2021 </span> <span class="tm-copyright__name">«<a href="https://company.habr.com/" rel="noopener" target="_blank" class="tm-copyright__link">Habr</a>»</span></span></div></div></div></div> <!----> <!----></div> <div class="vue-portal-target"></div></div>
+<script>window.__INITIAL_STATE__={"adblock":{"hasAcceptableAdsFilter":false,"hasAdblock":false},"articlesList":{"articlesList":{"452094":{"id":"452094","timePublished":"2019-05-23T08:22:37+00:00","isCorporative":false,"lang":"ru","titleHtml":".NET: Инструменты для работы с многопоточностью и асинхронностью. Часть 1","leadData":{"textHtml":"\u003Ci\u003EПубликую на Хабр оригинал статьи, перевод которой размещен в блоге \u003Ca href=\"https:\u002F\u002Fcodingsight.com\u002Fnet-tools-for-working-with-multi-threading-and-asynchrony-part-1\u002F\"\u003ECodingsight\u003C\u002Fa\u003E.\u003C\u002Fi\u003E\u003Cbr\u003E\r\n\u003Ci\u003EВторая часть доступна \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fpost\u002F459514\u002F\"\u003Eздесь\u003C\u002Fa\u003E\u003C\u002Fi\u003E\u003Cbr\u003E\r\n\u003Cbr\u003E\r\nНеобходимость делать что-то асинхронно, не дожидаясь результат здесь и сейчас, или разделять большую работу между несколькими выполняющими ее единицами была и до появления компьютеров. С их появлением такая необходимость стала очень ощутимой. Сейчас, в 2019, набирая эту статью на ноутбуке с 8 ядерным процессором Intel Core, на котором параллельно этому работает не одна сотня процессов, а потоков и того больше. Рядом, лежит уже немного потрепанный, купленный пару лет назад телефон, у него на борту 8 ядерный процессор. На тематических ресурсах полно статей и видео, где их авторы восхищаются флагманскими смартфонами этого года куда ставят 16ти-ядерные процессоры. MS Azure предоставляет менее чем за 20$\u002Fчас виртуальную машину со 128 ядерным процессором и 2 TB RAM. К сожалению невозможно извлечь максимум и обуздать эту мощь не умея управлять взаимодействием потоков.\u003Cbr\u003E","imageUrl":null,"buttonTextHtml":"Читать дальше →","image":null},"editorVersion":"1.0","postType":"article","postLabels":[],"author":{"scoreStats":{"score":27,"votesCount":29},"rating":0,"relatedData":null,"contacts":[],"authorContacts":[],"paymentDetails":{"paymentYandexMoney":null,"paymentPayPalMe":null,"paymentWebmoney":null},"id":"202931","alias":"podkolzzzin","fullname":"Andrey Podkolzin","avatarUrl":null,"speciality":"Developer"},"statistics":{"commentsCount":5,"favoritesCount":261,"readingCount":39582,"score":34,"votesCount":34},"hubs":[{"relatedData":null,"id":"221","alias":"sys_admin","type":"collective","title":"Системное администрирование","titleHtml":"Системное администрирование","isProfiled":true},{"relatedData":null,"id":"546","alias":"net","type":"collective","title":".NET","titleHtml":".NET","isProfiled":true},{"relatedData":null,"id":"7149","alias":"asp","type":"collective","title":"ASP","titleHtml":"ASP","isProfiled":true},{"relatedData":null,"id":"17718","alias":"csharp","type":"collective","title":"C#","titleHtml":"C#","isProfiled":true}],"flows":[{"id":"1","alias":"develop","title":"Разработка"},{"id":"6","alias":"admin","title":"Администрирование"}],"relatedData":null,"textHtml":"\u003Cdiv xmlns=\"http:\u002F\u002Fwww.w3.org\u002F1999\u002Fxhtml\"\u003E\u003Ci\u003EПубликую на Хабр оригинал статьи, перевод которой размещен в блоге \u003Ca href=\"https:\u002F\u002Fcodingsight.com\u002Fnet-tools-for-working-with-multi-threading-and-asynchrony-part-1\u002F\"\u003ECodingsight\u003C\u002Fa\u003E.\u003C\u002Fi\u003E\u003Cbr\u002F\u003E\r\n\u003Ci\u003EВторая часть доступна \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fpost\u002F459514\u002F\"\u003Eздесь\u003C\u002Fa\u003E\u003C\u002Fi\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nНеобходимость делать что-то асинхронно, не дожидаясь результат здесь и сейчас, или разделять большую работу между несколькими выполняющими ее единицами была и до появления компьютеров. С их появлением такая необходимость стала очень ощутимой. Сейчас, в 2019, набирая эту статью на ноутбуке с 8 ядерным процессором Intel Core, на котором параллельно этому работает не одна сотня процессов, а потоков и того больше. Рядом, лежит уже немного потрепанный, купленный пару лет назад телефон, у него на борту 8 ядерный процессор. На тематических ресурсах полно статей и видео, где их авторы восхищаются флагманскими смартфонами этого года куда ставят 16ти-ядерные процессоры. MS Azure предоставляет менее чем за 20$\u002Fчас виртуальную машину со 128 ядерным процессором и 2 TB RAM. К сожалению невозможно извлечь максимум и обуздать эту мощь не умея управлять взаимодействием потоков.\u003Cbr\u002F\u003E\r\n\u003Ca name=\"habracut\"\u003E\u003C\u002Fa\u003E\u003Cbr\u002F\u003E\r\n\u003Ch3\u003EТерминология\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\n \u003Cb\u003EПроцесс (Process)\u003C\u002Fb\u003E — объект ОС, изолированное адресное пространство, содержит потоки.\u003Cbr\u002F\u003E\r\n \u003Cb\u003EПоток (Thread)\u003C\u002Fb\u003E — объект ОС, наименьшая единица выполнения, часть процесса, потоки делят память и другие ресурсы между собой в рамках процесса.\u003Cbr\u002F\u003E\r\n \u003Cb\u003EМногозадачность \u003C\u002Fb\u003E — свойство ОС, возможность выполнять несколько процессов одновременно\u003Cbr\u002F\u003E\r\n \u003Cb\u003EМногоядерность \u003C\u002Fb\u003E — свойство процессора, возможность использовать несколько ядер для обработки данных\u003Cbr\u002F\u003E\r\n \u003Cb\u003EМногопроцессорность \u003C\u002Fb\u003E — свойство компьютера, возможность одновременно работать с несколькими процессорами физически\u003Cbr\u002F\u003E\r\n \u003Cb\u003EМногопоточность \u003C\u002Fb\u003E — свойство процесса, возможность распределять обработку данных между несколькими потоками.\u003Cbr\u002F\u003E\r\n \u003Cb\u003EПараллельность \u003C\u002Fb\u003E — выполнение нескольких действий физически одновременно в единицу времени\u003Cbr\u002F\u003E\r\n \u003Cb\u003EАсинхронность \u003C\u002Fb\u003E — выполнение операции без ожидания окончания завершения этой обработки, результат же выполнения может быть обработан позднее.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch3\u003EМетафора\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\nНе все определения хороши и некоторые нуждаются в дополнительном объяснении, потому к формально введенной терминологии добавлю метафору о приготовлении завтрака. Приготовление завтрака в этой метафоре — process.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nГотовя завтрак с утра я (\u003Cb\u003ECPU\u003C\u002Fb\u003E) прихожу на кухню (\u003Cb\u003EКомпьютер\u003C\u002Fb\u003E). У меня 2 руки (\u003Cb\u003ECores\u003C\u002Fb\u003E). На кухне есть ряд устройств (\u003Cb\u003EIO\u003C\u002Fb\u003E): печь, чайник, тостер, холодильник. Я включаю газ, ставлю на него сковородку и наливаю туда масло, не дожидаясь пока она разогреется (\u003Cb\u003Eасинхронно, Non-Blocking-IO-Wait\u003C\u002Fb\u003E), я достаю из холодильника яйца и разбиваю их в тарелку, после чего взбиваю одной рукой (\u003Cb\u003EThread#1\u003C\u002Fb\u003E), а второй (\u003Cb\u003EThread#2\u003C\u002Fb\u003E) придерживаю тарелку (Shared Resource). Сейчас бы еще включить чайник, но рук не хватает (\u003Cb\u003EThread Starvation\u003C\u002Fb\u003E) За это время разогревается сковородка (Обработка результата) куда я выливаю то что взбил. Я дотягиваюсь до чайника и включаю его и тупо смотрю как вода в нем закипает (\u003Cb\u003EBlocking-IO-Wait\u003C\u002Fb\u003E), хотя мог бы за это время вымыть тарелку, где взбивал омлет.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЯ готовил омлет используя всего 2 руки, да больше у меня и нет, но при этом в момент взбивания омлета происходило сразу 3 операции: взбивание омлета, придерживание тарелки, разогревание сковородки.CPU — является самой быстрой частью компьютера, IO это то, что чаще всего тормозит, потому часто эффективным решением является занять чем-то CPU пока идет получение данных от IO. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПродолжая метафору: \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003EЕсли бы в процессе готовки омлета, я бы еще и пытался переодеться это был бы пример многозадачности. Важный нюанс: у компьютеров с этим куда лучше чем у людей.\u003C\u002Fli\u003E\r\n\u003Cli\u003EКухня с несколькими поварами, например в ресторане — многоядерный компьютер.\u003C\u002Fli\u003E\r\n\u003Cli\u003EМножество ресторанов на фудкорте в торговом центре — датацентр\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\n\u003Ch3\u003EИнструменты .NET\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\nВ работе с потоками, как и во многом другом, .NET хорош. С каждой новой версией он представляет все больше новых инструментов для работы с ними, новые слои абстракции над потоками ОС. В работе с построением абстракций разработчики фреймворка используют подход оставляющий возможность при использовании высокоуровневой абстракции, спустится на один или несколько уровней ниже. Чаще всего в этом нет необходимости, более того это открывает возможность для выстрела себе в ногу из дробовика, но иногда, в редких случаях, это может оказаться единственным способом решить проблему, не решающую на текущем уровне абстракции.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПод инструментами я имею ввиду как программные интерфейсы (API) предоставляемые фреймворком и сторонними пакетами, так и целый программные решения упрощающий поиск каких-либо проблем связанных с многопоточным кодом.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch4\u003EЗапуск потока\u003C\u002Fh4\u003E\u003Cbr\u002F\u003E\r\nКласс Thread, самый базовый в .NET для работы с потоками. В конструктор принимает один из двух делегатов: \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003EThreadStart — Без параметров\u003C\u002Fli\u003E\r\n\u003Cli\u003EParametrizedThreadStart — с одним параметром типа object.\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\nДелегат будет выполнен во вновь созданном потоке после вызова метода Start, если в конструктор был передан делегат типа ParametrizedThreadStart, то в метод Start необходимо передать объект. Этот механизм нужен для передачи любой локальной информации в поток. Стоит отметить что создание потока это дорогостоящая операция, а сам поток это тяжелый объект, как минимум потому, что происходит выделение 1МБ памяти на стек, и требует взаимодействия с API ОС.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"cs\"\u003Enew Thread(...).Start(...);\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nКласс ThreadPool представляет концепцию пула. В .NET пул потоков является произведением инженерного искусства и разработчики из Microsoft вложили множество усилий, чтобы он работал оптимально в самых разных сценариях. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cb\u003EОбщая концепция: \u003C\u002Fb\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ci\u003EС момента старта приложение в фоне создает несколько потоков про запас и предоставляет возможность брать их в пользование. Если потоки используются часто и в большом количестве, то пул расширяется, чтобы удовлетворить потребность вызывающего кода. Когда в пуле в нужный момент времени не оказывается свободных потоков он или дождется возврата одного из потоков, либо создаст новый. Из этого следует, что пул потоков отлично подходит для неких коротких действий и плохо подходит, для операций работающих как службы на протяжении всей работы приложений.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nДля использования потока из пула, есть метод QueueUserWorkItem, который принимает делегат типа WaitCallback, что по сигнатуре совпадает с ParametrizedThreadStart, а передаваемый в него параметр выполняет туже функцию.\u003C\u002Fi\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"cs\"\u003EThreadPool.QueueUserWorkItem(...);\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nМенее известный метод пула потоков RegisterWaitForSingleObject служит для организации неблокирующих IO операций. Делегат переданный в этот метод будет вызван тогда, когда WaitHandle переданный в метод будет “отпущен”(Released).\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"cs\"\u003EThreadPool.RegisterWaitForSingleObject(...)\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nВ .NET есть потоковый таймер и отличается он от таймеров WinForms\u002FWPF тем, что его обработчик будет вызван в потоке взятом из пула.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"cs\"\u003ESystem.Threading.Timer\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nТак же есть довольно экзотический способ отправить делегат на выполнение в поток из пула — метод BeginInvoke.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"cs\"\u003EDelegateInstance.BeginInvoke\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nХочу еще вскользь остановится на функции к вызову которой сводится многие из вышеуказанных методов — CreateThread из Kernel32.dll Win32 API. Существует способ, благодаря механизму extern методов вызвать эту функцию. Я видел такой вызов лишь однажды в жутчайшем примере legacy кода, а мотивация автора сделавшего именно так все еще остается для меня загадкой.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"cs\"\u003EKernel32.dll CreateThread\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Ch4\u003EПросмотр и отладка потоков\u003C\u002Fh4\u003E\u003Cbr\u002F\u003E\r\nСозданные вами лично, всеми третисторонними компонентами и пулом .NET потоки можно просмотреть в окне Threads Visual Studio. Это окно отобразит информацию о потоках лишь, когда приложение будет находится под отладкой и в режиме останова (Break mode). Здесь можно удобно просмотреть стек имена и приоритеты каждого потока, переключить отладку на конкретный поток. Свойством Priority класса Thread можно задать приоритет потока, который OC и CLR будут воспринимать как рекомендацию при разделении процессорного времени между потоками.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fow\u002Fkq\u002Fi5\u002Fowkqi5zdx2m8oe7iava3q1mikri.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch4\u003ETask Parallel Library\u003C\u002Fh4\u003E\u003Cbr\u002F\u003E\r\nTask Parallel Library (TPL) появился в .NET 4.0. Сейчас это стандарт и основной инструмент для работы с асинхронностью. Любой код использующий более старые подход считается legacy. Основной единицей TPL является класс Task из пространства имен System.Threading.Tasks. Task представляет собой абстракцию над потоком. С новой версией языка C# мы получили изящный способ работы с Task`ами — операторы async\u002Fawait. Эти концепции позволили писать асинхронный код так, как если бы он был простым и синхронным, это дало возможность даже людям слабо понимающим внутреннюю кухню потоков писать приложения их использующие, приложения не зависающие при выполнении долгих операций. Использование async\u002Fawait тема для одной или даже нескольких статей, но я попробую в нескольких предложениях уложить суть:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003Easync это модификатор метода возвращающего Task или void\u003C\u002Fli\u003E\r\n\u003Cli\u003Eа await оператор неблокирующего ожидания Task`а.\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\nЕще раз: оператор await, в общем случае (есть исключения), отпустит текущий поток выполнения дальше, а когда Task закончит свое выполнение, а поток (на самом деле правильнее сказать контекст, но об этом позднее) будет свободен продолжит выполнении метода дальше. Внутри .NET этот механизм реализован так же как и yield return, когда написанный метод превращается в целый класс, который является машиной состояний и может быть выполнен отдельными кусками в зависимости от этих состояний. Кому интересно может написать любой несложный код с использованием asynс\u002Fawait, скомпилировать и просмотреть сборку с помощью JetBrains dotPeek с включенным Compiler Generated Code. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nРассмотрим варианты запуска и использования Task’а. На примере кода ниже, мы создаем новый таск, который не делает ничего полезного (\u003Ci\u003EThread.Sleep(10000)\u003C\u002Fi\u003E), но в реальной жизни это должна быть некая сложная задействующая CPU работа. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"cs\"\u003Eusing TCO = System.Threading.Tasks.TaskCreationOptions;\n\npublic static async void VoidAsyncMethod() {\n    var cancellationSource = new CancellationTokenSource();\n\n    await Task.Factory.StartNew(\n        \u002F\u002F Code of action will be executed on other context\n        () =\u003E Thread.Sleep(10000),\n        cancellationSource.Token,\n        TCO.LongRunning | TCO.AttachedToParent | TCO.PreferFairness,\n        scheduler\n    );\n\n    \u002F\u002F  Code after await will be executed on captured context\n}\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nTask создается с рядом опций:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003ELongRunning — подсказка о том, что задача не будет выполнена быстро, а значит, возможно, стоит подумать над тем чтобы не брать поток из пула, а создать отдельный под эту Task’у чтобы не навредить остальным.\u003C\u002Fli\u003E\r\n\u003Cli\u003EAttachedToParent — Task’и могут выстраиваться в иерархии. Если была использована эта опция, то Task может находится в состоянии, когда сам он выполнился и дожидается выполнения дочерних.\u003C\u002Fli\u003E\r\n\u003Cli\u003EPreferFairness — означает, что хорошо бы выполнять Task’и отправленные на выполнение раньше перед теми, что были отправлены позже. Но это всего лишь рекомендация и результат не гарантирован.\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\nВторым параметром в метод передан CancellationToken. Для корректной обработки отмены операции после ее запуска выполняемый код должен быть наполнен проверками состояния CancellationToken. Если проверок нет, то метод Cancel вызванный на объекте CancellationTokenSource сможет остановить выполнение Task’а лишь до его запуска.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПоследним параметром передан объект scheduler типа TaskScheduler. Этот класс и его наследники предназначены для управления стратегиями распределения Task’ов по потокам, по умолчанию Task будет выполнен на случайном потоке из пула.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nК созданному Task’у применен оператор await, а значит код написанный после него, если такой есть будет выполнен в том же контексте (часто это означает что на том же потоке), что и код до await.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nМетод помечен как async void, это значит, что в нем допустимо использование оператора await, но вызывающий код не сможет дождаться выполнения. Если такая возможность необходима, то метод должен возвращать Task. Методы помеченные async void встречаются довольно часто: как правило это обработчики событий или другие методы, работающие по принципу выполнить и забыть (fire and forget). Если необходимо не только дать возможность дождаться окончания выполнения, но и вернуть результат, то необходимо использовать Task.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nНа Task’е что вернул метод StartNew, впрочем как и на любом другом, можно вызвать метод ConfigureAwait с параметром false, тогда выполнение после await продолжится не на захваченном контексте, а на произвольном. Это нужно делать всегда, когда для кода после await не принципиален контекст выполнения. Также это является рекомендацией от MS при написании кода, что будет поставляться упакованном в библиотеку виде.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nДавайте еще немного остановимся на том, как можно дождаться окончания выполнения Task’и. Ниже пример кода, с комментариями, когда ожидание сделано условно хорошо и когда условно плохо.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"cs\"\u003Epublic static async void AnotherMethod() {\n\n    int result = await AsyncMethod(); \u002F\u002F good\n\n    result = AsyncMethod().Result; \u002F\u002F bad\n\n    AsyncMethod().Wait(); \u002F\u002F bad\n\n    IEnumerable&lt;Task\u003E tasks = new Task[] {\n        AsyncMethod(), OtherAsyncMethod()\n    };\n\n    await Task.WhenAll(tasks); \u002F\u002F good\n    await Task.WhenAny(tasks); \u002F\u002F good\n\n    Task.WaitAll(tasks.ToArray()); \u002F\u002F bad\n}\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nВ первом примере мы дожидаемся выполнения Task’и не блокируя вызывающий поток, к обработке результата вернемся лишь когда он уже будет, до тех пор вызывающий поток предоставлен себе.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВо втором варианте мы блокируем вызывающий поток до тех пор пока не будет подсчитан результат метода. Это плохо не только потому, что мы заняли поток, столь ценный ресурс программы, простым безделием, но еще и потому, что если в коде метода что мы вызываем есть await, а контекст синхронизации предполагает возвращение в вызывающий поток после await, то мы получим deadlock: вызывающий поток ждет пока будет вычислен результат асинхронного метода, асинхронный метод тщетно пытается продолжить свое выполнение в вызывающем потоке. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЕще одним недостатком такого подхода является усложненная обработка ошибок. Дело в том, что ошибки в асинхронном коде при использовании async\u002Fawait обрабатывать очень легко — они ведут себя так же как если бы код был синхронным. В то время, как если мы применяем \u003Cs\u003Eэкзорцизм\u003C\u002Fs\u003E синхронное ожидание к Task’e оригинальное исключение оборачивается в AggregateException, т.о. Для обработки исключения придется исследовать тип InnerException и самому писать цепочку if внутри одного catch блока или использовать конструкцию catch when, вместо более привычной в C# мире цепочки catch блоков.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nТретий и последний примеры так же отмечены плохими по той же причине и содержат все те же проблемы.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nМетоды WhenAny и WhenAll крайне удобны в ожидании группы Task’ов, они оборачивают группу Task’ов в один, который сработает либо по первому срабатыванию Task’а из группы, либо когда свое выполнение закончат все. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch4\u003EОстановка потоков\u003C\u002Fh4\u003E\u003Cbr\u002F\u003E\r\nПо разным причинам может появится необходимость остановить поток после его старта. Для этого существует ряд способов. У класса Thread есть два метода с подходящими названиями — это \u003Cb\u003EAbort \u003C\u002Fb\u003Eи \u003Cb\u003EInterrupt\u003C\u002Fb\u003E. Первый крайне не рекомендуется к использованию, т.к. после его вызова в любой случайный момент, в процессе обработки любой инструкции, будет выброшено исключение \u003Cb\u003EThreadAbortedException\u003C\u002Fb\u003E. Вы ведь не ожидаете что такое исключение вылетит при инкременте какой-либо целочисленной переменной, верно? А при использовании этого метода это вполне реальная ситуация. В случае необходимости запретить CLR генерировать такое исключение в определенном участке кода можно обернуть его в вызовы \u003Cb\u003EThread.BeginCriticalRegion\u003C\u002Fb\u003E, \u003Cb\u003EThread.EndCriticalRegion\u003C\u002Fb\u003E. Такими вызовами оборачивается любой код написанный в finally блоке. По этой причине в недрах кода фреймворка можно найти блоки с пустым try, но не пустым finally. Microsoft настолько не рекомендует использовать этот метод, что не включили его в .net core.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nМетод Interrupt работает более предсказуемо. Он может прервать поток исключением \u003Cb\u003EThreadInterruptedException \u003C\u002Fb\u003Eтолько в те моменты, когда поток находится в состоянии ожидания. В такое состояние он переходит подвисая в ожидании WaitHandle, lock или после вызова Thread.Sleep. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nОба описанных выше варианта, плохи своей непредсказуемостью. Выходом является использование структуры \u003Cb\u003ECancellationToken \u003C\u002Fb\u003Eи класса \u003Cb\u003ECancellationTokenSource\u003C\u002Fb\u003E. Суть в следующем: создается экземпляр класса CancellationTokenSource и только тот кто им владеет, может остановить операцию вызвав метод \u003Cb\u003ECancel\u003C\u002Fb\u003E. В саму же операцию передается только лишь CancellationToken. Владельцы CancellationToken не могут сами отменить операцию, а могут лишь проверить не была ли операция отменена. Для этого есть булево свойство \u003Cb\u003EIsCancellationRequested \u003C\u002Fb\u003Eи метод \u003Cb\u003EThrowIfCancelRequested\u003C\u002Fb\u003E. Последний сгенерирует исключение \u003Cb\u003ETaskCancelledException \u003C\u002Fb\u003Eесли на пародившем CancellationToken экземпляре CancellationTokenSource был вызван метод Cancel. И именно этот метод я рекомендую использовать. Это лучше предыдущих вариантов получением полного контроля над тем в какие моменты исключение операция может быть прервана.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nСамым жестоким вариантом остановки потока, является вызов функции Win32 API TerminateThread. Поведение CLR после вызова этой функции может быть непредсказуемым. На MSDN же про эту функцию написано следующее: \u003Ci\u003E“TerminateThread is a dangerous function that should only be used in the most extreme cases. “\u003C\u002Fi\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch4\u003EПреобразование legacy-API в Task Based с помощью метода FromAsync\u003C\u002Fh4\u003E\u003Cbr\u002F\u003E\r\nЕсли вам посчастливилось работать на проекте, что был начат уже после того как Task’и были введены и перестали вызывать тихий ужас большинства разработчиков, то вам не придется иметь дело с большим количеством старых API, как третисторонних, так и вымученых вашей командой в прошлом. К счастью, команда разработки .NET Framework позаботилась о нас, хотя возможно целью была забота о себе. Как бы то ни было в .NET есть ряд инструментов для безболезненного преобразования кода написанного в старых подходах асинхронного программирования в новую. Один из них это метод FromAsync у TaskFactory. На примере кода ниже, я оборачиваю старые асинхронные методы класса WebRequest в Task с помощью этого метода. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"cs\"\u003Eobject state = null;\nWebRequest wr = WebRequest.CreateHttp(\"http:\u002F\u002Fgithub.com\");\nawait Task.Factory.FromAsync(\n    wr.BeginGetResponse,\n    we.EndGetResponse\n);\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Ci\u003EЭто лишь пример и делать такое со встроенными типами вам вряд ли придется, но любой старый проект просто кишит методами BeginDoSomething возвращающими IAsyncResult и методами EndDoSomething его принимающими.\u003C\u002Fi\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch4\u003EПреобразование legacy-API в Task Based с помощью класса TaskCompletionSource\u003C\u002Fh4\u003E\u003Cbr\u002F\u003E\r\nЕще один важный для рассмотрения инструмент, это класс \u003Cb\u003ETaskCompletionSource\u003C\u002Fb\u003E. По функциям, назначению и принципу работы он чем-то может напомнить метод RegisterWaitForSingleObject класса ThreadPool о котором я писал выше. С помощью этого класса можно легко и удобно оборачивать старые асинхронные API в Task’и. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ci\u003EВы скажете, что я уже говорил о методе FromAsync класса TaskFactory предназначенном для этих целей. Здесь придется вспомнить всю историю развития асинхронных моделей в .net что предлагал microsoft за последние 15 лет: до Task-Based Asynchronous Pattern (TAP) существовали Asynchronous Programming Pattern (APP), который был о методах \u003Cb\u003EBegin\u003C\u002Fb\u003EDoSomething возвращающем \u003Cb\u003EIAsyncResult \u003C\u002Fb\u003Eи методах \u003Cb\u003EEnd\u003C\u002Fb\u003EDoSomething его принимающем и для legacy этих годов как раз отлично подходит метод FromAsync, но со временем, на смену ему пришел Event Based Asynchronous Pattern (\u003Cb\u003EEAP\u003C\u002Fb\u003E), который предполагал, что по завершению выполнения асинхронной операции будет вызвано событие.\u003C\u002Fi\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nTaskCompletionSource как раз отлично подходит для обертки в Task’и legacy-API построенных вокруг событийной модели. Суть его работы в следующем: у объекта этого класса есть публичное свойство типа Task состоянием которого можно управлять через методы SetResult, SetException и пр. Класса TaskCompletionSource. В местах же где был применен оператор await к этому Task’у он будет выполнен или обрушен с исключением в зависимости от примененного к TaskCompletionSource метода. Если все еще не понятно, то давайте посмотрим на этот пример кода, где некое старое API времен EAP заворачивается в Task при помощи TaskCompletionSource: при срабатывании события Task будет переведен в состояние Completed, а метод применивший к этому Task’у оператор await возобновит свое выполнение получив объект \u003Cb\u003Eresult\u003C\u002Fb\u003E.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"cs\"\u003Epublic static Task&lt;Result\u003E DoAsync(this SomeApiInstance someApiObj) {\n\n    var completionSource = new TaskCompletionSource&lt;Result\u003E();\n    someApiObj.Done += \n        result =\u003E completionSource.SetResult(result);\n    someApiObj.Do();\n\n    result completionSource.Task;\n}\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Ch4\u003ETaskCompletionSource Tips &amp; Tricks\u003C\u002Fh4\u003E\u003Cbr\u002F\u003E\r\nОбертка старых API это не все что можно провернуть с помощью TaskCompletionSource. Использование этого класса открывает интересную возможность проектирования различных API, на Task’ах, что не занимают потоки. А поток, как мы помним ресурс дорогой и количество их ограничено (в основном объемом RAM). Этого ограничения легко достичь разрабатывая, например, нагруженное web-приложение со сложной бизнес логикой. Рассмотрим те возможности о которых я говорю на реализации такого трюка как Long-Polling. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ci\u003EЕсли коротко суть трюка вот в чем: вам нужно получать от API информацию о некоторых событиях происходящих на его стороне, при этом API по каким-то причинам не может сообщить о событии, а может лишь вернуть состояние. Пример таких — все API построенные поверх HTTP до времен WebSocket или при невозможности по какой-то причине использовать эту технологию. Клиент может спросить у HTTP сервера. HTTP сервер не может сам спровоцировать общение с клиентом. Простым решением является опрос сервера по таймеру, но это создает дополнительную нагрузку на сервер и дополнительную задержку в среднем TimerInterval \u002F 2. Для обхода этого был изобретен трюк получивший название Long Polling, которые предполагает задержку ответа от сервера до тех пор пока не истечет Timeout или не произойдет событие. Если событие произошло, то оно обрабатывается, если нет, то запрос посылается заново.\u003C\u002Fi\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"cs\"\u003Ewhile(!eventOccures &amp;&amp; !timeoutExceeded)  {\n\n  CheckTimout();\n  CheckEvent();\n  Thread.Sleep(1);\n}\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nНо такое решение покажет себя ужасно, как только число клиентом ожидающих событие вырастет, т.к. Каждый такой клиент в ожидании события занимает целый поток. Да и получаем дополнительную задержку в 1мс на срабатывании события, чаще всего это не существенно, но зачем делать ПО хуже чем оно может быть? Если же убрать Thread.Sleep(1), то зазря загрузим одно ядро процессора на 100% в холостую вращаясь в бесполезном цикле. С помощью TaskCompletionSource можно легко переделать этот код и решить все обозначенные выше проблемы:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"cs\"\u003Eclass LongPollingApi {\n\n    private Dictionary&lt;int, TaskCompletionSource&lt;Msg\u003E\u003E tasks;\n\n    public async Task&lt;Msg\u003E AcceptMessageAsync(int userId, int duration) {\n\n        var cs = new TaskCompletionSource&lt;Msg\u003E();\n        tasks[userId] = cs;\n        await Task.WhenAny(Task.Delay(duration), cs.Task);\n        return cs.Task.IsCompleted ? cs.Task.Result : null;\n    }\n\n    public void SendMessage(int userId, Msg m) {\n\n        if (tasks.TryGetValue(userId, out var completionSource))\n            completionSource.SetResult(m);\n    }\n}\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Ci\u003EЭтот код не является production-ready, а лишь демонстрационным. Для использования в реальных случаях нужно еще, как-минимум, обработать ситуацию когда сообщение пришло в момент, когда его никто не ожидает: в таком случае метод AsseptMessageAsync должен вернуть уже завершенный Task. Если же этот случай и является наиболее частым, то можно подумать и об использовании ValueTask.\u003C\u002Fi\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПри получении запроса на сообщение мы создаем и помещаем в словарь TaskCompletionSource, а далее ждем что произойдет первее: истечет заданный интервал времени или будет получено сообщение.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch4\u003EValueTask: зачем и как\u003C\u002Fh4\u003E\u003Cbr\u002F\u003E\r\nОператоры async\u002Fawait как и оператор yield return генерирует из метода машину состояний, а это создание нового объекта, что почти всегда не важно, но в редких случаях может создать проблему. Этим случаем может быть метод вызываемый действительно часто, речь о десятках и сотнях тысяч вызовов в секунду. Если такой метод написан так, что в большинстве случаев он возвращает результат обходя все await методы, то .NET предоставляет инструмент что бы это оптимизировать — структура ValueTask. Чтобы стало понятно рассмотрим пример его использования: есть кеш в который мы ходим очень часто. Какие-то значения в нем есть и тогда мы их просто возвращаем, если нет, то идем в какой-нибудь медленный IO за ними. Последнее хочется делать асинхронно, а значит весь метод получается асинхронным. Таким образом очевидный вариант написания метода — следующий:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"cs\"\u003Epublic async Task&lt;string\u003E GetById(int id) {\n\n    if (cache.TryGetValue(id, out string val))\n        return val;\n    return await RequestById(id);\n}\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nИз-за желания немного оптимизировать, и легкой боязни по-поводу того что сгенерирует Roslyn компилируя этот код, можно этот пример переписать следующим образом:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"cs\"\u003Epublic Task&lt;string\u003E GetById(int id) {\n\n    if (cache.TryGetValue(id, out string val))\n        return Task.FromResult(val);\n    return RequestById(id);\n}\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nДействительно же оптимальным решением в этом случае будет оптимизировать hot-path, а именно получение значения из словаря вообще без лишних аллокаций и нагрузки на GC, в то время когда в тех редких случаях, когда нам все таки нужно идти в IO за данными все останется плюс\u002Fминус по старому:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"cs\"\u003Epublic ValueTask&lt;string\u003E GetById(int id) {\n\n    if (cache.TryGetValue(id, out string val))\n        return new ValueTask&lt;string\u003E(val);\n    return new ValueTask&lt;string\u003E(RequestById(id));\n}\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nДавайте подробнее разберем этот фрагмент кода: при наличиии значения в кеше мы создаем структуру, в противном случае реальный же таск будет завернут в значимый. Вызывающему коду все равно по какому пути выполнялся этот код: ValueTask с точки зрения синтаксиса C# будет вести себя так же как и обычный Task в этом случае.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch4\u003ETaskScheduler’ы: управление стратегиями запуска Task’ов\u003C\u002Fh4\u003E\u003Cbr\u002F\u003E\r\nСледующее API, что хотелось бы рассмотреть это класс \u003Cb\u003ETaskScheduler \u003C\u002Fb\u003Eи его производные. Я уже упоминал выше, что в TPL есть возможность управлять стратегиями распределения Task’ов по потокам. Такие стратегии определяются в наследниках класса TaskScheduler. Практически любая стратегия, что может понадобится будет найдена в библиотеке \u003Cb\u003EParallelExtensionsExtras\u003C\u002Fb\u003E, разработанной microsoft, но не являющейся частью .NET, а поставляемую в виде Nuget пакета. Коротко рассмотрим некоторые из них:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003E\u003Cb\u003ECurrentThreadTaskScheduler \u003C\u002Fb\u003E — выполняет Task’и на текущем потоке\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Cb\u003ELimitedConcurrencyLevelTaskScheduler \u003C\u002Fb\u003E — ограничивает число выполняемых одновременно Task’ов параметром N, что принимает в конструкторе\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Cb\u003EOrderedTaskScheduler \u003C\u002Fb\u003E — определяется как LimitedConcurrencyLevelTaskScheduler(1), потому задачи будут выполняться последовательно.\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Cb\u003EWorkStealingTaskScheduler \u003C\u002Fb\u003E — реализует \u003Ca href=\"https:\u002F\u002Fen.wikipedia.org\u002Fwiki\u002FWork_stealing\"\u003Ework-stealing\u003C\u002Fa\u003E подход к распределению задач. По сути является отдельным ThreadPool. Решает проблему того, что в .NET ThreadPool это статический класс, один на все приложения, а значит его перегрузка или неправильное использование в одной части программы может привести к побочным эффектам в другой. Более того понять причину таких деффектов крайне сложно. Т.о. может существовать необходимость использовать отдельные WorkStealingTaskScheduler’ы в тех частях программы, где использование ThreadPool может быть агрессивным и непредсказуемым.\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Cb\u003EQueuedTaskScheduler \u003C\u002Fb\u003E — позволяет выполнять задачи по правилам очереди с приоритетами\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Cb\u003EThreadPerTaskScheduler \u003C\u002Fb\u003E — создает отдельный поток на каждый Task что на нем выполняется. Может быть полезно для задач выполняющихся непредсказуемо долго.\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\nЕсть хорошая подробная \u003Ca href=\"https:\u002F\u002Fdevblogs.microsoft.com\u002Fpfxteam\u002Fparallelextensionsextras-tour-7-additional-taskschedulers\u002F\"\u003Eстатья\u003C\u002Fa\u003E о TaskScheduler’ах в блоге microsoft.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nДля удобной отладки всего связанного с Task’ами в Visual Studio есть окно Tasks. В этом окне можно увидеть текущее состояние задачи и перейти к выполняемой в данный момент строчке кода.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Ftb\u002Ffv\u002F3l\u002Ftbfv3l-sdz-jw0mpcakbt_-lve8.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch4\u003EPLinq и класс Parallel\u003C\u002Fh4\u003E\u003Cbr\u002F\u003E\r\nКроме Task’ов и всего с ними сказанного в .NET есть еще два интересных инструмента это PLinq(Linq2Parallel) и класс Parallel. Первый обещает параллельное выполнение всех Linq операций на нескольких потоках. Число потоков можно сконфигурировать методом-расширением WithDegreeOfParallelism. К сожалению, чаще всего PLinq в режиме работаты по умолчанию не хватит информации о внутренностях вашего источника данных, чтобы обеспечить существенный выигрыш по скорости, с другой стороны цена попытки очень низкая: нужно всего лишь вызвать метод AsParallel перед цепочкой Linq методов и провести тесты производительности. Более того существует возможность передать в PLinq дополнительную информацию о природе вашего источника данных при помощи механизма Partitions. Подробнее можно почитать \u003Ca href=\"https:\u002F\u002Fdevblogs.microsoft.com\u002Fpfxteam\u002Fpartitioning-in-plinq\u002F\"\u003Eздесь \u003C\u002Fa\u003Eи \u003Ca href=\"https:\u002F\u002Fdocs.microsoft.com\u002Fen-us\u002Fdotnet\u002Fstandard\u002Fparallel-programming\u002Fcustom-partitioners-for-plinq-and-tpl\"\u003Eздесь\u003C\u002Fa\u003E.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nСтатический класс Parallel предоставляет методы для параллельного перебора коллекции Foreach, выполнения цикла For и выполнения нескольких делегатов в параллель Invoke. Выполнение текущего потока будет остановлено до окончания выполнения расчетов. Количество потоков можно сконфигурировать передав ParallelOptions последним аргументом. С помощью опций также можно указать TaskScheduler и CancellationToken.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch4\u003EВыводы\u003C\u002Fh4\u003E\u003Cbr\u002F\u003E\r\nКогда я начинал писать эту статью по материалам своего доклада и информации что собрал за время работы после него, я не ожидал, что ее получится так много. Сейчас, когда текстовый редактор в котором я набираю эту статью укоризненно говорит мне о том, что пошла 15я страница, я подведу промежуточные итоги. Другие трюки, API, визуальные инструменты и подводные камни будут рассмотрены в следующей статье.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cb\u003EВыводы:\u003C\u002Fb\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003EНужно знать инструменты работы с потоками, асинхронностью и параллелизмом, чтобы использовать ресурсы современных ПК.\u003C\u002Fli\u003E\r\n\u003Cli\u003EВ .NET много различных инструментов для этих целей\u003C\u002Fli\u003E\r\n\u003Cli\u003EНе все они появились сразу, потому часто можно встретить legacy, впрочем есть способы для преобразования старых API без особых усилий.\u003C\u002Fli\u003E\r\n\u003Cli\u003EРабота с потоками в .NET представлена классами Thread и ThreadPool\u003C\u002Fli\u003E\r\n\u003Cli\u003EМетоды Thread.Abort, Thread.Interrupt, функция Win32 API TerminateThread опасны и не рекомендуются к использованию. Вместо них лучше использовать механизм CancellationToken’ов\u003C\u002Fli\u003E\r\n\u003Cli\u003EПоток — ценный ресурс, их количество ограничено. Нужно избегать ситуаций, когда потоки заняты ожиданием событий. Для этого удобно использовать класс TaskCompletionSource\u003C\u002Fli\u003E\r\n\u003Cli\u003EНаиболее мощным и продвинутым инструментов .NET для работы с параллелизмом и асинхронностью являются Task’и.\u003C\u002Fli\u003E\r\n\u003Cli\u003EОператоры c# async\u002Fawait реализуют концепцию неблокирующего ожидания\u003C\u002Fli\u003E\r\n\u003Cli\u003EУправлять распределением Task’ов по потокам можно с помощью производных TaskScheduler’у классов\u003C\u002Fli\u003E\r\n\u003Cli\u003EСтруктура ValueTask может быть полезна в оптимизации hot-paths и memory-traffic\u003C\u002Fli\u003E\r\n\u003Cli\u003EОкна Tasks и Threads Visual Studio предоставляют много полезной для отладки многопоточного или асинхронного кода информации\u003C\u002Fli\u003E\r\n\u003Cli\u003EPLinq крутой инструмент, но у него может не быть достаточно информации о вашем источнике данных, впрочем это можно исправить с помощью механизма partitioning\u003C\u002Fli\u003E\r\n\u003Cli\u003EПродолжение \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fpost\u002F459514\u002F\"\u003Eследует\u003C\u002Fa\u003E...\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003C\u002Fdiv\u003E","tags":[{"titleHtml":"C#"},{"titleHtml":".net"},{"titleHtml":"multithreading"},{"titleHtml":"многопоточность"},{"titleHtml":"async\u002Fawait"},{"titleHtml":"asynchronous"},{"titleHtml":"асинхронность"},{"titleHtml":"TPL"},{"titleHtml":"parallelism"}],"metadata":{"stylesUrls":[],"scriptUrls":[],"shareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F452094\u002Fd629a9110077a466775d7fcf6c85ee8e\u002F","shareImageWidth":1200,"shareImageHeight":630,"vkShareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F452094\u002Fd629a9110077a466775d7fcf6c85ee8e\u002F?format=vk","schemaJsonLd":"{\"@context\":\"http:\\\u002F\\\u002Fschema.org\",\"@type\":\"Article\",\"mainEntityOfPage\":{\"@type\":\"WebPage\",\"@id\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fru\\\u002Fpost\\\u002F452094\\\u002F\"},\"headline\":\".NET: Инструменты для работы с многопоточностью и асинхронностью. Часть 1\",\"datePublished\":\"2019-05-23T11:22:37+03:00\",\"dateModified\":\"2019-10-30T19:28:51+03:00\",\"author\":{\"@type\":\"Person\",\"name\":\"Andrey Podkolzin\"},\"publisher\":{\"@type\":\"Organization\",\"name\":\"Habr\",\"logo\":{\"@type\":\"ImageObject\",\"url\":\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fa_\\\u002Flk\\\u002F9m\\\u002Fa_lk9mjkccjox-zccjrpfolmkmq.png\"}},\"description\":\"Публикую на Хабр оригинал статьи, перевод которой размещен в блоге Codingsight. Вторая часть доступна здесь  Необходимость делать что-то асинхронно, не дожидаясь...\",\"url\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fru\\\u002Fpost\\\u002F452094\\\u002F#post-content-body\",\"about\":[\"h_sys_admin\",\"h_net\",\"h_asp\",\"h_csharp\",\"f_develop\",\"f_admin\"],\"image\":[\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fow\\\u002Fkq\\\u002Fi5\\\u002Fowkqi5zdx2m8oe7iava3q1mikri.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Ftb\\\u002Ffv\\\u002F3l\\\u002Ftbfv3l-sdz-jw0mpcakbt_-lve8.png\"]}","metaDescription":"Публикую на Хабр оригинал статьи, перевод которой размещен в блоге Codingsight.\r\nВторая часть доступна здесь\r\n\r\nНеобходимость делать что-то асинхронно, не дожидаясь результат здесь и сейчас, или...","mainImageUrl":null,"amp":false},"polls":[],"commentsEnabled":true,"rulesRemindEnabled":false,"votesEnabled":true,"status":"published","plannedPublishTime":null,"checked":null,"isEditorial":false}},"articlesIds":{},"isLoading":false,"pagesCount":{},"route":{},"reasonsList":null,"view":"cards","lastVisitedRoute":{},"ssrCommentsArticleIds":[""],"karma":{}},"authorContribution":{"authors":{}},"betaTest":{"currentAnnouncement":null,"announcements":{},"announcementCards":null,"announcementComments":{},"announcementCommentThreads":{},"announcementCommentingStatuses":{},"archivedList":[]},"authorStatistics":{"articleRefs":{},"articleIds":{},"pagesCount":{},"route":{},"viewsCount":[],"maxStatsCount":{}},"career":{"seoLandings":[],"hubs":"sys_admin,net,asp,csharp"},"comments":{"articleComments":{},"searchCommentsResults":null,"previewComment":null,"pagesCount":null,"commentAccess":{},"scrollParents":{},"pageArticleComments":{"lastViewedComment":0,"postId":null,"lastCommentTimestamp":"","moderated":[],"moderatedIds":[],"commentRoute":""}},"companies":{"companyRefs":{},"companyIds":{},"companyTopIds":{},"pagesCount":{},"companyProfiles":{},"companiesCategories":[],"companiesCategoriesTotalCount":0,"companiesWidgets":{},"companiesWorkers":{},"companiesFans":{},"route":{},"isLoading":false,"companyWorkersLoading":false,"companyFansLoading":false,"vacancies":{}},"companiesContribution":{"hubs":{},"flows":{},"companyRefs":{}},"companyHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"conversation":{"messages":[],"respondent":null,"isLoadMore":false},"conversations":{"conversations":[],"unreadCount":0,"pagesCount":0,"isLoadMore":false},"desktopState":{"desktopFl":null,"desktopHl":null,"isChecked":false,"isLoginDemanded":false},"dfp":{"slotsDict":{}},"docs":{"menu":{},"articles":{},"mainMenu":[],"loading":{"main":false,"dropdown":false,"article":false}},"feature":{"isProbablyVisible":"true"},"flows":{"flows":[{"alias":"develop","id":1,"route":{"name":"FLOW_PAGE","params":{"flowName":"develop"}}},{"alias":"admin","id":6,"route":{"name":"FLOW_PAGE","params":{"flowName":"admin"}}},{"alias":"design","id":2,"route":{"name":"FLOW_PAGE","params":{"flowName":"design"}}},{"alias":"management","id":3,"route":{"name":"FLOW_PAGE","params":{"flowName":"management"}}},{"alias":"marketing","id":4,"route":{"name":"FLOW_PAGE","params":{"flowName":"marketing"}}},{"alias":"popsci","id":7,"route":{"name":"FLOW_PAGE","params":{"flowName":"popsci"}}}]},"global":{"isPwa":false,"device":"desktop","isHabrCom":true},"hubs":{"hubRefs":{},"hubIds":{},"pagesCount":{},"isLoading":false,"route":{}},"hubsBlock":{"hubRefs":{},"hubIds":{}},"i18n":{"fl":"ru","hl":"ru"},"info":{"infoPage":{},"isLoading":true},"location":{"urlStruct":{"protocol":null,"slashes":null,"auth":null,"host":null,"port":null,"hostname":null,"hash":null,"search":null,"query":{},"pathname":null,"path":null,"href":""},"searchQuery":null},"me":{"user":null,"ppgDemanded":false,"karmaResetInfo":{"canReincarnate":null,"wasReincarnated":null,"currentScore":null},"notes":null},"mostReadingList":{"mostReadingListIds":[],"mostReadingListRefs":null,"promoPost":null},"pinnedPost":{"pinnedPost":null},"ppa":{"articles":{},"card":null,"transactions":null,"totalTransactions":null,"isAccessible":null},"projectsBlocks":{"activeBlocks":{}},"pullRefresh":{"shouldRefresh":false},"sandbox":{"articleIds":[],"articleRefs":{},"pagesCount":null,"route":{},"lastVisitedRoute":{},"isLoading":false},"settingsOther":{"inputs":{"uiLang":{"errors":[],"ref":null,"value":""},"articlesLangEnglish":{"errors":[],"ref":null,"value":false},"articlesLangRussian":{"errors":[],"ref":null,"value":false},"agreement":{"errors":[],"ref":null,"value":false},"email":{"errors":[],"ref":null,"value":true},"digest":{"errors":[],"ref":null,"value":true}}},"similarList":{"similarListIds":[],"similarListRefs":null},"ssr":{"error":null,"isDataLoaded":false,"isDataLoading":false,"isHydrationFailed":false,"isServer":false},"userHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"userInvites":{"availableInvites":0,"usedInvitesIds":[],"usedInvitesRefs":{},"usedInvitesPagesCount":0,"unusedInvitesIds":[],"unusedInvitesRefs":{},"unusedInvitesPagesCount":0},"users":{"authorRefs":{},"authorIds":{},"pagesCount":{},"authorProfiles":{},"userHubs":{},"userInvitations":{},"authorFollowers":{},"authorFollowed":{},"karmaStats":[],"statistics":null,"isLoading":false,"authorFollowersLoading":false,"authorFollowedLoading":false,"userHubsLoading":false,"userInvitationsLoading":false,"route":{}},"viewport":{"prevScrollY":{},"scrollY":0,"width":0},"tracker":{"items":{},"pagesCache":{},"markedViewedSilently":{},"markedRead":{},"unreadCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null},"unviewedCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null}}};(function(){var s;(s=document.currentScript||document.scripts[document.scripts.length-1]).parentNode.removeChild(s);}());</script>
+<script src="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" defer></script><script src="https://assets.habr.com/habr-web/js/app.c0af73e7.js" defer></script>
+
+
+
+    <script>
+      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+        (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+        m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+      })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+    </script>
+  
+  <script type="text/javascript" >
+    (function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+    m[i].l=1*new Date();k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})
+    (window, document, "script", "https://mc.yandex.ru/metrika/tag.js", "ym");
+
+    ym(24049213, "init", {
+      defer:true,
+      trackLinks:true,
+      accurateTrackBounce:true,
+      webvisor:false,
+    });
+  </script>
+  <noscript>
+    <div>
+      <img src="https://mc.yandex.ru/watch/24049213" style="position:absolute; left:-9999px;" alt="" />
+    </div>
+  </noscript>
+  
+    <script type="text/javascript">
+      window.addEventListener('load', function () {
+        setTimeout(() => {
+          const img = new Image();
+          img.src = 'https://vk.com/rtrg?p=VK-RTRG-421343-57vKE';
+        }, 0);
+      });
+    </script>
+  
+</body>
+</html>

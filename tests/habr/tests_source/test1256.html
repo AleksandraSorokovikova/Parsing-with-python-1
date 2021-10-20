@@ -1,0 +1,997 @@
+<!DOCTYPE html>
+<html lang="ru" data-vue-meta="%7B%22lang%22:%7B%22ssr%22:%22ru%22%7D%7D">
+<head >
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
+  <title>Indexes in PostgreSQL — 9 (BRIN) / Хабр</title>
+  <style>
+    /* cyrillic-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSxf6TF0.woff2) format('woff2');
+      unicode-range: U+0460-052F, U+1C80-1C88, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+    }
+
+    /* cyrillic */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveQhf6TF0.woff2) format('woff2');
+      unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+    }
+
+    /* latin-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSBf6TF0.woff2) format('woff2');
+      unicode-range: U+0100-024F, U+0259, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20CF, U+2113, U+2C60-2C7F, U+A720-A7FF;
+    }
+
+    /* latin */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveRhf6.woff2) format('woff2');
+      unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+    }
+  </style>
+  <link rel="preload" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" as="script"><link rel="preload" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/app.c0af73e7.js" as="script">
+  <link rel="stylesheet" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css"><link rel="stylesheet" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css">
+  <script>window.i18nFetch = new Promise((res, rej) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open('GET', '/js/i18n/ru-compiled.85eb77f0b17c8235e7b64b9f81ea5ec2.json');
+          xhr.responseType = 'json';
+          xhr.onload = function(e) {
+            if (this.status === 200) {
+              res({ru: xhr.response});
+            } else {
+              rej(e);
+            }
+          };
+          xhr.send();
+        });</script>
+  
+  <script data-vue-meta="ssr" src="/js/ads.js" onload="window['zhY4i4nJ9K'] = true" data-vmid="checkad"></script><script data-vue-meta="ssr" type="application/ld+json" data-vmid="ldjson-schema">{"@context":"http:\/\/schema.org","@type":"Article","mainEntityOfPage":{"@type":"WebPage","@id":"https:\/\/habr.com\/en\/company\/postgrespro\/blog\/452900\/"},"headline":"Indexes in PostgreSQL — 9 (BRIN)","datePublished":"2019-06-03T15:53:58+03:00","dateModified":"2019-06-10T23:04:44+03:00","author":{"@type":"Person","name":"Егор Рогов"},"publisher":{"@type":"Organization","name":"Habr","logo":{"@type":"ImageObject","url":"https:\/\/habrastorage.org\/webt\/a_\/lk\/9m\/a_lk9mjkccjox-zccjrpfolmkmq.png"}},"description":"In the previous articles we discussed PostgreSQL indexing engine, the interface of access methods, and the following methods: hash indexes, B-trees, GiST,...","url":"https:\/\/habr.com\/en\/company\/postgrespro\/blog\/452900\/#post-content-body","about":["c_postgrespro","h_postgresql","h_sql","f_develop"],"image":["https:\/\/habrastorage.org\/webt\/nr\/pm\/s9\/nrpms932o5clzubwymywxtud6q4.png","https:\/\/habrastorage.org\/getpro\/habr\/post_images\/ba7\/6ce\/e4c\/ba76cee4c3d40e9f428954d0478ecee0.png"]}</script>
+  <script src="//www.googletagservices.com/tag/js/gpt.js" async></script>
+  <style>.grecaptcha-badge{visibility: hidden;}</style>
+  <meta name="habr-version" content="2.49.0">
+  
+  <meta data-vue-meta="ssr" property="fb:app_id" content="444736788986613"><meta data-vue-meta="ssr" property="fb:pages" content="472597926099084"><meta data-vue-meta="ssr" name="twitter:card" content="summary_large_image"><meta data-vue-meta="ssr" name="twitter:site" content="@habr_eng"><meta data-vue-meta="ssr" property="og:title" content="Indexes in PostgreSQL — 9 (BRIN)" data-vmid="og:title"><meta data-vue-meta="ssr" name="twitter:title" content="Indexes in PostgreSQL — 9 (BRIN)" data-vmid="twitter:title"><meta data-vue-meta="ssr" name="aiturec:title" content="Indexes in PostgreSQL — 9 (BRIN)" data-vmid="aiturec:title"><meta data-vue-meta="ssr" name="description" content="In the previous articles we discussed PostgreSQL indexing engine, the interface of access methods, and the following methods: hash indexes, B-trees, GiST, SP-GiST, GIN, and RUM. The topic of this..." data-vmid="description"><meta data-vue-meta="ssr" itemprop="description" content="In the previous articles we discussed PostgreSQL indexing engine, the interface of access methods, and the following methods: hash indexes, B-trees, GiST, SP-GiST, GIN, and RUM. The topic of this..." data-vmid="description:itemprop"><meta data-vue-meta="ssr" property="og:description" content="In the previous articles we discussed PostgreSQL indexing engine, the interface of access methods, and the following methods: hash indexes, B-trees, GiST, SP-GiST, GIN, and RUM. The topic of this..." data-vmid="og:description"><meta data-vue-meta="ssr" name="twitter:description" content="In the previous articles we discussed PostgreSQL indexing engine, the interface of access methods, and the following methods: hash indexes, B-trees, GiST, SP-GiST, GIN, and RUM. The topic of this..." data-vmid="twitter:description"><meta data-vue-meta="ssr" property="aiturec:description" content="In the previous articles we discussed PostgreSQL indexing engine, the interface of access methods, and the following methods: hash indexes, B-trees, GiST, SP-GiST, GIN, and RUM. The topic of this..." data-vmid="aiturec:description"><meta data-vue-meta="ssr" itemprop="image" content="https://habr.com/share/publication/452900/3b5e65aba1500c15460abdd613dbadc9/" data-vmid="image:itemprop"><meta data-vue-meta="ssr" property="og:image" content="https://habr.com/share/publication/452900/3b5e65aba1500c15460abdd613dbadc9/" data-vmid="og:image"><meta data-vue-meta="ssr" property="aiturec:image" content="https://habr.com/share/publication/452900/3b5e65aba1500c15460abdd613dbadc9/" data-vmid="aiturec:image"><meta data-vue-meta="ssr" name="twitter:image" content="https://habr.com/share/publication/452900/3b5e65aba1500c15460abdd613dbadc9/" data-vmid="twitter:image"><meta data-vue-meta="ssr" property="vk:image" content="https://habr.com/share/publication/452900/3b5e65aba1500c15460abdd613dbadc9/" data-vmid="vk:image"><meta data-vue-meta="ssr" property="aiturec:item_id" content="452900" data-vmid="aiturec:item_id"><meta data-vue-meta="ssr" property="aiturec:datetime" content="2019-06-03T12:53:58.000Z" data-vmid="aiturec:datetime"><meta data-vue-meta="ssr" property="og:type" content="article" data-vmid="og:type"><meta data-vue-meta="ssr" property="og:locale" content="en_US" data-vmid="og:locale"><meta data-vue-meta="ssr" property="og:image:width" content="1200" data-vmid="og:image:width"><meta data-vue-meta="ssr" property="og:image:height" content="630" data-vmid="og:image:height">
+  <link data-vue-meta="ssr" href="https://habr.com/ru/rss/post/452900/?fl=ru" type="application/rss+xml" title="" rel="alternate" name="rss"><link data-vue-meta="ssr" href="https://habr.com/en/company/postgrespro/blog/452900/" rel="canonical" data-vmid="canonical"><link data-vue-meta="ssr" data-vmid="hreflang"><link data-vue-meta="ssr" image_src="image" href="https://habr.com/share/publication/452900/3b5e65aba1500c15460abdd613dbadc9/" data-vmid="image:href">
+  <meta name="apple-mobile-web-app-status-bar-style" content="#303b44">
+  <meta name="msapplication-TileColor" content="#629FBC">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="16x16"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-16.png"
+  >
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="32x32"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-32.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="76x76"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-76.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="120x120"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="152x152"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-152.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="180x180"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-180.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="256x256"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-256.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1136x640.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2436x1125.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1792x828.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_828x1792.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1334x750.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2208x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1125x2436.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2208.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2732x2048.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2688x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2224x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_750x1334.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x2732.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2388x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2224.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_640x1136.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2388.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x1536.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1536x2048.png"
+  >
+  <link
+    rel="mask-icon"
+    color="#77a2b6"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.svg"
+  >
+  <link
+    crossorigin="use-credentials"
+    href="/manifest.webmanifest"
+    rel="manifest"
+  >
+</head>
+<body>
+
+
+<div id="app" data-server-rendered="true" data-async-called="true"><div class="tm-layout__wrapper"><!----> <div></div> <!----> <header class="tm-header"><div class="tm-page-width"><div class="tm-header__container"><!----> <span class="tm-header__logo-wrap"><a href="/ru/" class="tm-header__logo tm-header__logo_ru"><svg height="16" width="16" class="tm-svg-img tm-header__icon"><title>Хабр</title> <use xlink:href="/img/habr-logo-ru.svg#logo"></use></svg></a> <span class="tm-header__beta-sign" style="display:none;">β</span></span> <div class="tm-dropdown tm-header__projects"><div class="tm-dropdown__head"><button class="tm-header__dropdown-toggle"><svg height="16" width="16" class="tm-svg-img tm-header__icon tm-header__icon_dropdown"><title>Открыть список</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#arrow-down"></use></svg></button></div> <!----></div> <a href="/ru/sandbox/start/" class="tm-header__become-author-btn">
+            Как стать автором
+          </a> <div class="tm-feature tm-header__feature tm-feature_variant-inline"><!----></div> <!----> <!----></div></div></header> <div class="tm-layout"><div class="tm-page-progress-bar"></div> <div data-menu-sticky="true" class="tm-base-layout__header tm-base-layout__header_is-sticky"><div class="tm-page-width"><div class="tm-base-layout__header-wrapper"><div class="tm-main-menu"><div class="tm-main-menu__section"><nav class="tm-main-menu__section-content"><!----> <a href="/ru/all/" class="tm-main-menu__item">
+        Все потоки
+      </a> <a href="/ru/flows/develop/" class="tm-main-menu__item">
+          Разработка
+        </a><a href="/ru/flows/admin/" class="tm-main-menu__item">
+          Администрирование
+        </a><a href="/ru/flows/design/" class="tm-main-menu__item">
+          Дизайн
+        </a><a href="/ru/flows/management/" class="tm-main-menu__item">
+          Менеджмент
+        </a><a href="/ru/flows/marketing/" class="tm-main-menu__item">
+          Маркетинг
+        </a><a href="/ru/flows/popsci/" class="tm-main-menu__item">
+          Научпоп
+        </a></nav></div></div> <div class="tm-header-user-menu tm-base-layout__user-menu"><a href="/ru/search/" class="tm-header-user-menu__item tm-header-user-menu__search"><svg height="24" width="24" class="tm-svg-img tm-header-user-menu__icon tm-header-user-menu__icon_search tm-header-user-menu__icon_dark"><title>Поиск</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#search"></use></svg></a> <!----> <!----> <!----> <div class="tm-header-user-menu__item tm-header-user-menu__user_desktop"><div class="tm-dropdown"><div class="tm-dropdown__head"><svg height="24" width="24" data-test-id="menu-toggle-guest" class="tm-svg-img tm-header-user-menu__icon"><title>Профиль</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#header-user"></use></svg> <!----></div> <!----></div> <!----></div> <!----></div></div></div></div> <!----> <div class="tm-page-width"></div> <main class="tm-layout__container"><div hl="ru" companyName="postgrespro" data-async-called="true" class="tm-page"><div class="tm-page-width"><div class="tm-page__header"><!----></div> <div class="tm-page__wrapper"><div class="tm-page__main tm-page__main_has-sidebar"><div class="pull-down"><div class="pull-down__header" style="height:0px;"><div class="pull-down__content" style="bottom:10px;"><svg height="24" width="24" class="tm-svg-img pull-down__arrow"><title>Обновить</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#pull-arrow"></use></svg></div></div> <div class="tm-article-presenter"><div class="tm-company-card tm-company-article__company-card"><div class="tm-company-card__info"><div class="tm-company-card__header"><a href="/ru/company/postgrespro/profile/" class="tm-company-card__avatar"><div class="tm-entity-image"><img alt="" height="48" src="//habrastorage.org/getpro/habr/company/4e0/339/621/4e0339621abc865fefb88f9e9f44748f.jpg" width="48" class="tm-entity-image__pic"></div></a> <!----> <div class="tm-rating tm-company-card__rating"><div class="tm-rating__header"> <div class="tm-rating__counter">218.69</div></div> <div class="tm-rating__text">
+    Рейтинг
+  </div></div></div> <div class="tm-company-card__info"><a href="/ru/company/postgrespro/profile/" class="tm-company-card__name">
+        Postgres Professional
+      </a> <div class="tm-company-card__description">Разработчик СУБД Postgres Pro</div></div></div> <div class="tm-company-card__buttons"><!----> <!----></div></div> <div class="tm-article-presenter__body"><div class="tm-misprint-area"><div class="tm-misprint-area__wrapper"><article class="tm-article-presenter__content tm-article-presenter__content_narrow"><div class="tm-article-presenter__header"> <div class="tm-article-snippet tm-article-presenter__snippet"><div class="tm-article-snippet__meta-container"><div class="tm-article-snippet__meta"><span class="tm-user-info tm-article-snippet__author"><a href="/ru/users/erogov/" title="erogov" class="tm-user-info__userpic"><div class="tm-entity-image"><img alt="" height="24" loading="lazy" src="//habrastorage.org/r/w32/getpro/habr/avatars/d16/573/7e4/d165737e421383f77f007015ebd01fb1.jpg" width="24" class="tm-entity-image__pic"></div></a> <span class="tm-user-info__user"><a href="/ru/users/erogov/" class="tm-user-info__username">
+      erogov
+    </a> </span></span> <span class="tm-article-snippet__datetime-published"><time datetime="2019-06-03T12:53:58.000Z" title="2019-06-03, 15:53">3  июня  2019 в 15:53</time></span></div> <!----></div> <h1 lang="en" class="tm-article-snippet__title tm-article-snippet__title_h1"><span>Indexes in PostgreSQL — 9 (BRIN)</span></h1> <div class="tm-article-snippet__hubs"><span class="tm-article-snippet__hubs-item"><a href="/ru/company/postgrespro/blog/" class="tm-article-snippet__hubs-item-link router-link-active"><span>Блог компании Postgres Professional</span> <!----></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/postgresql/" class="tm-article-snippet__hubs-item-link"><span>PostgreSQL</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/sql/" class="tm-article-snippet__hubs-item-link"><span>SQL</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span></div> <div class="tm-article-snippet__labels"><div class="tm-article-snippet__label"><span>
+        Перевод
+      </span></div></div> <!----> <!----></div></div> <div class="tm-article-presenter__origin"><a href="https://habr.com/ru/company/postgrespro/blog/346460/" target="_blank" class="tm-article-presenter__origin-link">
+                Автор оригинала:
+                <span>
+                  Egor Rogov
+                </span></a></div> <div data-gallery-root="" lang="en" class="tm-article-body"><div id="post-content-body" class="article-formatted-body article-formatted-body_version-1"><div xmlns="http://www.w3.org/1999/xhtml">In the previous articles we discussed PostgreSQL <a href="https://habr.com/ru/company/postgrespro/blog/441962/">indexing engine</a>, the interface of access methods, and the following methods: <a href="https://habr.com/post/442776/">hash indexes</a>, <a href="https://habr.com/ru/company/postgrespro/blog/443284/">B-trees</a>, <a href="https://habr.com/ru/company/postgrespro/blog/444742/">GiST</a>, <a href="https://habr.com/ru/company/postgrespro/blog/446624/">SP-GiST</a>, <a href="https://habr.com/ru/company/postgrespro/blog/448746/">GIN</a>, and <a href="https://habr.com/ru/company/postgrespro/blog/452116/">RUM</a>. The topic of this article is BRIN indexes.<br/>
+<br/>
+<h1>BRIN</h1><br/>
+<h2>General concept</h2><br/>
+Unlike indexes with which we've already got acquainted, the idea of BRIN is to avoid looking through definitely unsuited rows rather than quickly find the matching ones. This is always an inaccurate index: it does not contain TIDs of table rows at all.<br/>
+<br/>
+Simplistically, BRIN works fine for columns where values correlate with their physical location in the table. In other words, if a query without ORDER BY clause returns the column values virtually in the increasing or decreasing order (and there are no indexes on that column).<br/>
+<br/>
+This access method was created in scope of <a href="https://axleproject.eu/">Axle</a>, the European project for extremely large analytical databases, with an eye on tables that are several terabyte or dozens of terabytes large. An important feature of BRIN that enables us to create indexes on such tables is a small size and minimal overhead costs of maintenance.<br/>
+<br/>
+This works as follows. The table is split into <em>ranges</em> that are several pages large (or several blocks large, which is the same) — hence the name: Block Range Index, BRIN. The index stores <em>summary information</em> on the data in each range. As a rule, this is the minimal and maximal values, but it happens to be different, as shown further. Assume that a query is performed that contains the condition for a column; if the sought values do not get into the interval, the whole range can be skipped; but if they do get, all rows in all blocks will have to be looked through to choose the matching ones among them.<br/>
+<br/>
+It will not be a mistake to treat BRIN not as an index, but as an accelerator of sequential scan. We can regard BRIN as an alternative to partitioning if we consider each range as a «virtual» partition.<br/>
+<br/>
+Now let's discuss the structure of the index in more detail.<br/>
+<a name="habracut"></a><br/>
+<h2>Structure</h2><br/>
+The first (more exactly, zero) page contains the metadata.<br/>
+<br/>
+Pages with the summary information are located at a certain offset from the metadata. Each index row on those pages contains summary information on one range.<br/>
+<br/>
+Between the meta page and summary data, pages with the <em>reverse range map</em> (abbreviated as «revmap») are located. Actually, this is an array of pointers (TIDs) to the corresponding index rows.<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/nr/pm/s9/nrpms932o5clzubwymywxtud6q4.png"/><br/>
+<br/>
+For some ranges, the pointer in «revmap» can lead to no index row (one is marked in gray in the figure). In such a case, the range is considered to have no summary information yet.<br/>
+<br/>
+<h2>Scanning the index</h2><br/>
+How is the index used if it does not contain references to table rows? This access method certainly cannot return rows TID by TID, but it can build a bitmap. There can be two kinds of bitmap pages: accurate, to the row, and inaccurate, to the page. It's an inaccurate bitmap that is used.<br/>
+<br/>
+The algorithm is simple. The map of ranges is sequentially scanned (that is, the ranges are went through in the order of their location in the table). The pointers are used to determine index rows with summary information on each range. If a range does not contain the value sought, it is skipped, and if it can contain the value (or summary information is unavailable), all pages of the range are added to the bitmap. The resulting bitmap is then used as usual.<br/>
+<br/>
+<h2>Updating the index</h2><br/>
+It is more interesting how the index is updated when the table is changed.<br/>
+<br/>
+When <strong>adding</strong> a new version of a row to a table page, we determine which range it is contained in and use the map of ranges to find the index row with the summary information. All these are simple arithmetic operations. Let, for instance, the size of a range be four and on page 13, a row version with the value of 42 occur. The number of the range (starting with zero) is 13 / 4 = 3, therefore, in «revmap» we take the pointer with the offset of 3 (its order number is four).<br/>
+<br/>
+The minimal value for this range is 31, and the maximal one is 40. Since the new value of 42 is out of the interval, we update the maximal value (see the figure). But if the new value is still within the stored limits, the index does not need to be updated.<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/getpro/habr/post_images/ba7/6ce/e4c/ba76cee4c3d40e9f428954d0478ecee0.png"/><br/>
+<br/>
+All this relates to the situation when the new version of the page occurs in a range for which the summary information is available. When the index is created, the summary information is computed for all ranges available, but while the table is further expanded, new pages can occur that fall out of the limits. Two options are available here:<br/>
+<br/>
+<ol>
+<li>Usually the index is not updated immediately. This is not a big deal: as already mentioned, when scanning the index, the whole range will be looked through. Actual update is done during «vacuum», or it can be done manually by calling «brin_summarize_new_values» function.</li>
+<li>If we create the index with «autosummarize» parameter, the update will be done immediately. But when pages of the range are populated with new values, updates can happen too often, therefore, this parameter is turned off by default.</li>
+</ol><br/>
+When new ranges occur, the size of «revmap» can increase. Whenever the map, located between the meta page and summary data, needs to be extended by another page, existing row versions are moved to some other pages. So, the map of ranges is always located between the meta page and summary data.<br/>
+<br/>
+When a row is <strong>deleted</strong>,… nothing happens. We can notice that sometimes the minimal or maximal value will be deleted, in which case the interval could be reduced. But to detect this, we would have to read all values in the range, and this is costly.<br/>
+<br/>
+The correctness of the index is not affected, but search may require looking through more ranges than is actually needed. In general, summary information can be manually recalculated for such a zone (by calling «brin_desummarize_range» and «brin_summarize_new_values» functions), but how can we detect such a need? Anyway, no conventional procedure is available to this end.<br/>
+<br/>
+Finally, <strong>updating a row</strong> is just a deletion of the outdated version and addition of a new one.<br/>
+<br/>
+<h2>Example</h2><br/>
+Let's try to build our own mini data warehouse for the data from tables of the <a href="https://postgrespro.ru/education/demodb">demo database</a>. Let's assume that for the purpose of BI reporting, a denormalized table is needed to reflect the flights departed from an airport or landed in the airport to the accuracy of a seat in the cabin. The data for each airport will be added to the table once a day, when it is midnight in the appropriate time zone. The data will be neither updated nor deleted.<br/>
+<br/>
+The table will look as follows:<br/>
+<br/>
+<pre><code class="pgsql">demo=# create table flights_bi(
+  airport_code char(3),
+  airport_coord point,         -- geo coordinates of airport
+  airport_utc_offset interval, -- time zone
+  flight_no char(6),           -- flight number
+  flight_type text.            -- flight type: departure / arrival 
+  scheduled_time timestamptz,  -- scheduled departure/arrival time of flight
+  actual_time timestamptz,     -- actual time of flight
+  aircraft_code char(3),
+  seat_no varchar(4),          -- seat number
+  fare_conditions varchar(10), -- travel class
+  passenger_id varchar(20),
+  passenger_name text
+);
+</code></pre><br/>
+We can simulate the procedure of loading the data using nested loops: an external one — by days (we will consider <a href="https://edu.postgrespro.com/demo-big-en.zip">a large database</a>, therefore 365 days), and an internal loop — by time zones (from UTC+02 to UTC+12). The query is pretty long and not of particular interest, so I'll hide it under the spoiler.<br/>
+<br/>
+<div class="spoiler"><b class="spoiler_title">Simulation of loading the data to the storage</b><div class="spoiler_text"><pre><code class="pgsql">DO $$
+&lt;&lt;local>>
+DECLARE
+  curdate date := (SELECT min(scheduled_departure) FROM flights);
+  utc_offset interval;
+BEGIN
+  WHILE (curdate &lt;= bookings.now()::date) LOOP
+    utc_offset := interval '12 hours';
+    WHILE (utc_offset >= interval '2 hours') LOOP
+      INSERT INTO flights_bi
+        WITH flight (
+          airport_code,
+          airport_coord,
+          flight_id,
+          flight_no,
+          scheduled_time,
+          actual_time,
+          aircraft_code,
+          flight_type
+        ) AS (
+        -- прибытия
+        SELECT a.airport_code,
+               a.coordinates,
+               f.flight_id,
+               f.flight_no,
+               f.scheduled_departure,
+               f.actual_departure,
+               f.aircraft_code,
+               'departure'
+        FROM   airports a,
+               flights f,
+               pg_timezone_names tzn
+        WHERE  a.airport_code = f.departure_airport
+        AND    f.actual_departure IS NOT NULL
+        AND    tzn.name = a.timezone
+        AND    tzn.utc_offset = local.utc_offset
+        AND    timezone(a.timezone, f.actual_departure)::date = curdate
+        UNION ALL
+        -- вылеты
+        SELECT a.airport_code,
+               a.coordinates,
+               f.flight_id,
+               f.flight_no,
+               f.scheduled_arrival,
+               f.actual_arrival,
+               f.aircraft_code,
+               'arrival'
+        FROM   airports a,
+               flights f,
+               pg_timezone_names tzn
+        WHERE  a.airport_code = f.arrival_airport
+        AND    f.actual_arrival IS NOT NULL
+        AND    tzn.name = a.timezone
+        AND    tzn.utc_offset = local.utc_offset
+        AND    timezone(a.timezone, f.actual_arrival)::date = curdate
+      )
+      SELECT f.airport_code,
+             f.airport_coord,
+             local.utc_offset,
+             f.flight_no,
+             f.flight_type,
+             f.scheduled_time,
+             f.actual_time,
+             f.aircraft_code,
+             s.seat_no,
+             s.fare_conditions,
+             t.passenger_id,
+             t.passenger_name
+      FROM   flight f
+             JOIN seats s
+               ON s.aircraft_code = f.aircraft_code
+             LEFT JOIN boarding_passes bp
+               ON bp.flight_id = f.flight_id
+              AND bp.seat_no = s.seat_no
+             LEFT JOIN ticket_flights tf
+               ON tf.ticket_no = bp.ticket_no
+              AND tf.flight_id = bp.flight_id
+             LEFT JOIN tickets t
+               ON t.ticket_no = tf.ticket_no;
+
+      RAISE NOTICE '%, %', curdate, utc_offset;
+      utc_offset := utc_offset - interval '1 hour';
+    END LOOP;
+    curdate := curdate + 1;
+  END LOOP;
+END;
+$$;
+</code></pre><br/>
+</div></div><br/>
+<pre><code class="pgsql">demo=# select count(*) from flights_bi;
+</code></pre><pre><code class="plaintext">  count  
+----------
+ 30517076
+(1 row)
+</code></pre><br/>
+<pre><code class="pgsql">demo=# select pg_size_pretty(pg_total_relation_size('flights_bi'));
+</code></pre><pre><code class="plaintext"> pg_size_pretty
+----------------
+ 4127 MB
+(1 row)
+</code></pre><br/>
+We get 30 million rows and 4 GB. Not so large a size, but good enough for a laptop: sequential scan took me about 10 seconds.<br/>
+<br/>
+<h3>On what columns should we create the index?</h3><br/>
+Since BRIN indexes have a small size and moderate overhead costs and updates happen infrequently, if any, a rare opportunity arises to build many indexes «just in case», for example, on all fields on which analyst users can create their ad-hoc queries. Won't come useful — never mind, but even an index that is not very efficient will work better than sequential scan for sure. Of course, there are fields on which it is absolutely useless to build an index; pure common sense will prompt them.<br/>
+<br/>
+But it should be odd to limit ourselves to this piece of advice, therefore, let's try to state a more accurate criterion.<br/>
+<br/>
+We've already mentioned that the data must somewhat correlate with its physical location. Here it makes sense to remember that PostgreSQL gathers table column statistics, which include the correlation value. The planner uses this value to select between a regular index scan and bitmap scan, and we can use it to estimate the applicability of BRIN index.<br/>
+<br/>
+In the above example, the data is evidently ordered by days (by «scheduled_time», as well as by «actual_time» — there is no much difference). This is because when rows are added to the table (without deletions and updates), they are laid out in the file one after another. In the simulation of data loading we did not even use ORDER BY clause, therefore, dates within a day can be, in general, mixed up in an arbitrary way, but ordering must be in place. Let's check this:<br/>
+<br/>
+<pre><code class="pgsql">demo=# analyze flights_bi;
+
+demo=# select attname, correlation from pg_stats where tablename='flights_bi' 
+order by correlation desc nulls last;
+</code></pre><pre><code class="plaintext">      attname       | correlation
+--------------------+-------------
+ scheduled_time     |    0.999994
+ actual_time        |    0.999994
+ fare_conditions    |    0.796719
+ flight_type        |    0.495937
+ airport_utc_offset |    0.438443
+ aircraft_code      |    0.172262
+ airport_code       |   0.0543143
+ flight_no          |   0.0121366
+ seat_no            |  0.00568042
+ passenger_name     |   0.0046387
+ passenger_id       | -0.00281272
+ airport_coord      |            
+(12 rows)
+</code></pre><br/>
+The value that is not too close to zero (ideally, near plus-minus one, as in this case), tells us that BRIN index will be appropriate.<br/>
+<br/>
+The travel class «fare_condition» (the column contains three unique values) and type of the flight «flight_type» (two unique values) unexpectedly appeared to be in the second and third places. This is an illusion: formally the correlation is high, while actually on several successive pages all possible values will be encountered for sure, which means that BRIN won't do any good.<br/>
+<br/>
+The time zone «airport_utc_offset» goes next: in the considered example, within a day cycle, airports are ordered by time zones «by construction».<br/>
+<br/>
+It's these two fields, time and time zone, that we will further experiment with.<br/>
+<br/>
+<h3>Possible weakening of the correlation</h3><br/>
+The correlation that is place «by construction» can be easily weakened when the data is changed. And the matter here is not in a change to a particular value, but in the structure of the multiversion concurrency control: the outdated row version is deleted on one page, but a new version may be inserted wherever free space is available. Due to this, whole rows get mixed up during updates.<br/>
+<br/>
+We can partially control this effect by reducing the value of «fillfactor» storage parameter and this way leaving free space on a page for future updates. But do we want to increase the size of an already huge table? Besides, this does not resolve the issue of deletions: they also «set traps» for new rows by freeing the space somewhere inside existing pages. Due to this, rows that otherwise would get to the end of file, will be inserted at some arbitrary place.<br/>
+<br/>
+By the way, this is a curious fact. Since BRIN index does not contain references to table rows, its availability should not hinder HOT updates at all, but it does.<br/>
+<br/>
+So, BRIN is mainly designed for tables of large and even huge sizes that are either not updated at all or updated very slightly. However, it perfectly copes with the addition of new rows (to the end of the table). This is not surprising since this access method was created with a view to data warehouses and analytical reporting.<br/>
+<br/>
+<h3>What size of a range do we need to select?</h3><br/>
+If we deal with a terabyte table, our main concern when selecting the size of a range will probably be not to make BRIN index too large. However, in our situation, we can afford analyzing data more accurately.<br/>
+<br/>
+To do this, we can select unique values of a column and see on how many pages they occur. Localization of the values increases the chances of success in applying BRIN index. Moreover, the found number of pages will prompt the size of a range. But if the value is «spread» over all pages, BRIN is useless.<br/>
+<br/>
+Of course, we should use this technique keeping a watchful eye on an internal structure of the data. For example, it makes no sense to consider each date (more exactly, a timestamp, also including time) as a unique value — we need to round it to days.<br/>
+<br/>
+Technically, this analysis can be done by looking at the value of the hidden «ctid» column, which provides the pointer to a row version (TID): the number of the page and the number of the row inside the page. Unfortunately, there is no conventional technique to decompose TID into its two components, therefore, we have to cast types through the text representation:<br/>
+<br/>
+<pre><code class="pgsql">demo=# select min(numblk), round(avg(numblk)) avg, max(numblk)
+from ( 
+  select count(distinct (ctid::text::point)[0]) numblk
+  from flights_bi
+  group by scheduled_time::date
+) t;
+</code></pre><pre><code class="plaintext"> min  | avg  | max  
+------+------+------
+ 1192 | 1500 | 1796
+(1 row)
+</code></pre><pre><code class="pgsql">demo=# select relpages from pg_class where relname = 'flights_bi';
+</code></pre><pre><code class="plaintext"> relpages
+----------
+   528172
+(1 row)
+</code></pre><br/>
+We can see that each day is distributed across pages pretty evenly, and days are slightly mixed up with each other (1500 &amp;times 365 = 547500, which is only a little larger than the number of pages in the table 528172). This is actually clear «by construction» anyway.<br/>
+<br/>
+Valuable information here is a specific number of pages. With a conventional range size of 128 pages, each day will populate 9–14 ranges. This seems realistic: with a query for a specific day, we can expect an error around 10%.<br/>
+<br/>
+Let's try:<br/>
+<br/>
+<pre><code class="pgsql">demo=# create index on flights_bi using brin(scheduled_time);
+</code></pre><br/>
+The size of the index is as small as 184 KB:<br/>
+<br/>
+<pre><code class="pgsql">demo=# select pg_size_pretty(pg_total_relation_size('flights_bi_scheduled_time_idx'));
+</code></pre><pre><code class="plaintext"> pg_size_pretty
+----------------
+ 184 kB
+(1 row)
+</code></pre><br/>
+In this case, it hardly makes sense to increase the size of a range at the cost of losing the accuracy. But we can reduce the size if required, and the accuracy will, on the contrary, increase (along with the size of the index).<br/>
+<br/>
+Now let's look at time zones. Here we cannot use a brute-force approach either. All values should be divided by the number of day cycles instead since the distribution is repeated within each day. Besides, since there are few time zones only, we can look at the entire distribution:<br/>
+<br/>
+<pre><code class="pgsql">demo=# select airport_utc_offset, count(distinct (ctid::text::point)[0])/365 numblk
+from flights_bi                                    
+group by airport_utc_offset
+order by 2;
+</code></pre><pre><code class="plaintext"> airport_utc_offset | numblk
+--------------------+--------
+ 12:00:00           |      6
+ 06:00:00           |      8
+ 02:00:00           |     10
+ 11:00:00           |     13
+ 08:00:00           |     28
+ 09:00:00           |     29
+ 10:00:00           |     40
+ 04:00:00           |     47
+ 07:00:00           |    110
+ 05:00:00           |    231
+ 03:00:00           |    932
+(11 rows)
+</code></pre><br/>
+On average, the data for each time zone populates 133 pages a day, but the distribution is highly non-uniform: Petropavlovsk-Kamchatskiy and Anadyr fit as few as six pages, while Moscow and its neighborhood require hundreds of them. The default size of a range is no good here; let's, for example, set it to four pages.<br/>
+<br/>
+<pre><code class="pgsql">demo=# create index on flights_bi using brin(airport_utc_offset) with (pages_per_range=4);
+
+demo=# select pg_size_pretty(pg_total_relation_size('flights_bi_airport_utc_offset_idx'));
+</code></pre><pre><code class="plaintext"> pg_size_pretty
+----------------
+ 6528 kB
+(1 row)
+</code></pre><br/>
+<h2>Execution plan</h2><br/>
+Let's look at how our indexes work. Let's select some day, say, a week ago (in the demo database, «today» is determined by «booking.now» function):<br/>
+<br/>
+<pre><code class="pgsql">demo=# \set d 'bookings.now()::date - interval \'7 days\''
+
+demo=# explain (costs off,analyze)
+  select *
+  from flights_bi
+  where scheduled_time >= :d and scheduled_time &lt; :d + interval '1 day';
+</code></pre><pre><code class="plaintext">                                  QUERY PLAN
+--------------------------------------------------------------------------------
+ Bitmap Heap Scan on flights_bi (actual time=10.282..94.328 rows=83954 loops=1)
+   Recheck Cond: ...
+   Rows Removed by Index Recheck: 12045
+   Heap Blocks: lossy=1664
+   ->  Bitmap Index Scan on flights_bi_scheduled_time_idx
+       (actual time=3.013..3.013 rows=16640 loops=1)
+         Index Cond: ...
+ Planning time: 0.375 ms
+ Execution time: 97.805 ms
+</code></pre><br/>
+As we can see, the planner used the index created. How accurate is it? The ratio of the number of rows that meet the query conditions («rows» of Bitmap Heap Scan node) to the total number of rows returned using the index (the same value plus Rows Removed by Index Recheck) tells us about this. In this case 83954 / (83954 + 12045), which is approximately 90%, as expected (this value will change from one day to another).<br/>
+<br/>
+Where does the 16640 number in «actual rows» of Bitmap Index Scan node originate from? The thing is that this node of the plan builds an inaccurate (page-by-page) bitmap and is completely unaware of how many rows the bitmap will touch, while something needs to be shown. Therefore, in despair one page is assumed to contain 10 rows. The bitmap contains 1664 pages in total (this value is shown in «Heap Blocks: lossy=1664»); so, we just get 16640. Altogether, this is a senseless number, which we should not pay attention to.<br/>
+<br/>
+How about airports? For example, let's take the time zone of Vladivostok, which populates 28 pages a day:<br/>
+<br/>
+<pre><code class="pgsql">demo=# explain (costs off,analyze)
+  select *
+  from flights_bi
+  where airport_utc_offset = interval '8 hours';
+</code></pre><pre><code class="plaintext">                                   QUERY PLAN
+----------------------------------------------------------------------------------
+ Bitmap Heap Scan on flights_bi (actual time=75.151..192.210 rows=587353 loops=1)
+   Recheck Cond: (airport_utc_offset = '08:00:00'::interval)
+   Rows Removed by Index Recheck: 191318
+   Heap Blocks: lossy=13380
+   ->  Bitmap Index Scan on flights_bi_airport_utc_offset_idx
+       (actual time=74.999..74.999 rows=133800 loops=1)
+         Index Cond: (airport_utc_offset = '08:00:00'::interval)
+ Planning time: 0.168 ms
+ Execution time: 212.278 ms
+</code></pre><br/>
+The planner again uses the BRIN index created. The accuracy is worse (about 75% in this case), but this is expected since the correlation is lower.<br/>
+<br/>
+Several BRIN indexes (just like any other ones) can certainly be joined at the bitmap level. For example, the following is the data on the selected time zone for a month (notice «BitmapAnd» node):<br/>
+<br/>
+<pre><code class="pgsql">demo=# \set d 'bookings.now()::date - interval \'60 days\''
+
+demo=# explain (costs off,analyze)
+  select *
+  from flights_bi
+  where scheduled_time >= :d and scheduled_time &lt; :d + interval '30 days'
+    and airport_utc_offset = interval '8 hours';
+</code></pre><pre><code class="plaintext">                                   QUERY PLAN
+---------------------------------------------------------------------------------
+ Bitmap Heap Scan on flights_bi (actual time=62.046..113.849 rows=48154 loops=1)
+   Recheck Cond: ...
+   Rows Removed by Index Recheck: 18856
+   Heap Blocks: lossy=1152
+   ->  BitmapAnd (actual time=61.777..61.777 rows=0 loops=1)
+         ->  Bitmap Index Scan on flights_bi_scheduled_time_idx
+             (actual time=5.490..5.490 rows=435200 loops=1)
+               Index Cond: ...
+         ->  Bitmap Index Scan on flights_bi_airport_utc_offset_idx
+             (actual time=55.068..55.068 rows=133800 loops=1)
+               Index Cond: ...
+ Planning time: 0.408 ms
+ Execution time: 115.475 ms
+</code></pre><br/>
+<h3>Comparison with B-tree</h3><br/>
+What if we create regular B-tree index on the same field as BRIN?<br/>
+<br/>
+<pre><code class="pgsql">demo=# create index flights_bi_scheduled_time_btree on flights_bi(scheduled_time);
+
+demo=# select pg_size_pretty(pg_total_relation_size('flights_bi_scheduled_time_btree'));
+</code></pre><pre><code class="plaintext"> pg_size_pretty
+----------------
+ 654 MB
+(1 row)
+</code></pre><br/>
+It appeared to be <em>several thousand times larger</em> than our BRIN! However, the query is performed a little faster: the planner used statistics to figure out that the data is physically ordered and it is not needed to build a bitmap and, mainly, that the index condition does not need to be rechecked:<br/>
+<br/>
+<pre><code class="pgsql">demo=# explain (costs off,analyze)
+  select *
+  from flights_bi
+  where scheduled_time >= :d and scheduled_time &lt; :d + interval '1 day';
+</code></pre><pre><code class="plaintext">                          QUERY PLAN
+----------------------------------------------------------------
+ Index Scan using flights_bi_scheduled_time_btree on flights_bi
+ (actual time=0.099..79.416 rows=83954 loops=1)
+   Index Cond: ...
+ Planning time: 0.500 ms
+ Execution time: 85.044 ms
+</code></pre><br/>
+That's what is so wonderful about BRIN: we sacrifice the efficiency, but gain very much space.<br/>
+<br/>
+<h2>Operator classes</h2><br/>
+<h3>minmax</h3><br/>
+For data types whose values can be compared with one another, summary information consists of <em>the minimal and maximal values</em>. Names of the corresponding operator classes contain «minmax», for example, «date_minmax_ops». Actually, these are data types that we were considering so far, and most of the types are of this kind.<br/>
+<br/>
+<h3>inclusive</h3><br/>
+Comparison operators are defined not for all data types. For example, they are not defined for points («point» type), which represent the geographical coordinates of airports. By the way, it's for this reason that the statistics do not show the correlation for this column.<br/>
+<br/>
+<pre><code class="pgsql">demo=# select attname, correlation
+from pg_stats
+where tablename='flights_bi' and attname = 'airport_coord';
+</code></pre><pre><code class="plaintext">    attname    | correlation
+---------------+-------------
+ airport_coord |            
+(1 row)
+</code></pre><br/>
+But many of such types enable us to introduce a concept of a «bounding area», for example, a bounding rectangle for geometric shapes. We discussed in detail how <a href="https://habr.com/ru/company/postgrespro/blog/444742/">GiST</a> index uses this feature. Similarly, BRIN also enables gathering summary information on columns having data types like these: <em>the bounding area for all values inside a range</em> is just the summary value.<br/>
+<br/>
+Unlike for GiST, the summary value for BRIN must be of the same type as the values being indexed. Therefore, we cannot build the index for points, although it is clear that the coordinates could work in BRIN: the longitude is closely connected with the time zone. Fortunately, nothing hinders creation of the index on an expression after transforming points into degenerate rectangles. At the same time, we will set the size of a range to one page, just to show the limit case:<br/>
+<br/>
+<pre><code class="pgsql">demo=# create index on flights_bi using brin (box(airport_coord)) with (pages_per_range=1);
+</code></pre><br/>
+The size of the index is as small as 30 MB even in such an extreme situation:<br/>
+<br/>
+<pre><code class="pgsql">demo=# select pg_size_pretty(pg_total_relation_size('flights_bi_box_idx'));
+</code></pre><pre><code class="plaintext"> pg_size_pretty
+----------------
+ 30 MB
+(1 row)
+</code></pre><br/>
+Now we can make up queries that limit the airports by coordinates. For example:<br/>
+<br/>
+<pre><code class="pgsql">demo=# select airport_code, airport_name
+from airports 
+where box(coordinates) &lt;@ box '120,40,140,50';
+</code></pre><pre><code class="plaintext"> airport_code |  airport_name  
+--------------+-----------------
+ KHV          | Khabarovsk-Novyi
+ VVO          | Vladivostok
+(2 rows)
+</code></pre><br/>
+The planner will, however, refuse to use our index.<br/>
+<br/>
+<pre><code class="pgsql">demo=# analyze flights_bi;
+
+demo=# explain select * from flights_bi
+where box(airport_coord) &lt;@ box '120,40,140,50';
+</code></pre><pre><code class="plaintext">                             QUERY PLAN                              
+---------------------------------------------------------------------
+ Seq Scan on flights_bi  (cost=0.00..985928.14 rows=30517 width=111)
+   Filter: (box(airport_coord) &lt;@ '(140,50),(120,40)'::box)
+</code></pre><br/>
+Why? Let's disable sequential scan and see what happens:<br/>
+<br/>
+<pre><code class="pgsql">demo=# set enable_seqscan = off;
+
+demo=# explain select * from flights_bi 
+where box(airport_coord) &lt;@ box '120,40,140,50';
+</code></pre><pre><code class="plaintext">                                   QUERY PLAN
+--------------------------------------------------------------------------------
+ Bitmap Heap Scan on flights_bi  (cost=14079.67..1000007.81 rows=30517 width=111)
+   Recheck Cond: (box(airport_coord) &lt;@ '(140,50),(120,40)'::box)
+   ->  Bitmap Index Scan on flights_bi_box_idx
+       (cost=0.00..14072.04 rows=30517076 width=0)
+         Index Cond: (box(airport_coord) &lt;@ '(140,50),(120,40)'::box)
+</code></pre><br/>
+It appears that the index <em>can be</em> used, but the planner supposes that the bitmap will have to be built on the whole table (look at «rows» of Bitmap Index Scan node), and it is no wonder that the planner chooses sequential scan in this case. The issue here is that for geometric types, PostgreSQL does not gather any statistics, and the planner has to go blindly:<br/>
+<br/>
+<pre><code class="pgsql">demo=# select * from pg_stats where tablename = 'flights_bi_box_idx' \gx
+</code></pre><pre><code class="plaintext">-[ RECORD 1 ]----------+-------------------
+schemaname             | bookings
+tablename              | flights_bi_box_idx
+attname                | box
+inherited              | f
+null_frac              | 0
+avg_width              | 32
+n_distinct             | 0
+most_common_vals       |
+most_common_freqs      |
+histogram_bounds       |
+correlation            |
+most_common_elems      |
+most_common_elem_freqs | 
+elem_count_histogram   |
+</code></pre><br/>
+Alas. But there are no complaints about the index — it does work and works fine:<br/>
+<br/>
+<pre><code class="pgsql">demo=# explain (costs off,analyze)
+select * from flights_bi where box(airport_coord) &lt;@ box '120,40,140,50';
+</code></pre><pre><code class="plaintext">                                    QUERY PLAN
+----------------------------------------------------------------------------------
+ Bitmap Heap Scan on flights_bi (actual time=158.142..315.445 rows=781790 loops=1)
+   Recheck Cond: (box(airport_coord) &lt;@ '(140,50),(120,40)'::box)
+   Rows Removed by Index Recheck: 70726
+   Heap Blocks: lossy=14772
+   ->  Bitmap Index Scan on flights_bi_box_idx
+       (actual time=158.083..158.083 rows=147720 loops=1)
+         Index Cond: (box(airport_coord) &lt;@ '(140,50),(120,40)'::box)
+ Planning time: 0.137 ms
+ Execution time: 340.593 ms
+</code></pre><br/>
+The conclusion must be like this: PostGIS is needed if anything nontrivial is required of the geometry. It can gather statistics anyway.<br/>
+<br/>
+<h2>Internals</h2><br/>
+The conventional extension «pageinspect» enables us to look inside BRIN index.<br/>
+<br/>
+First, the metainformation will prompt us the size of a range and how many pages are allocated for «revmap»:<br/>
+<br/>
+<pre><code class="pgsql">demo=# select *
+from brin_metapage_info(get_raw_page('flights_bi_scheduled_time_idx',0));
+</code></pre><pre><code class="plaintext">   magic    | version | pagesperrange | lastrevmappage
+------------+---------+---------------+----------------
+ 0xA8109CFA |       1 |           128 |              3
+(1 row)
+</code></pre><br/>
+Pages 1–3 here are allocated for «revmap», while the rest contain summary data. From «revmap» we can get references to summary data for each range. Say, the information on the first range, incorporating first 128 pages, is located here:<br/>
+<br/>
+<pre><code class="pgsql">demo=# select *
+from brin_revmap_data(get_raw_page('flights_bi_scheduled_time_idx',1))
+limit 1;
+</code></pre><pre><code class="plaintext">  pages  
+---------
+ (6,197)
+(1 row)
+</code></pre><br/>
+And this is the summary data itself:<br/>
+<br/>
+<pre><code class="pgsql">demo=# select allnulls, hasnulls, value
+from brin_page_items(
+  get_raw_page('flights_bi_scheduled_time_idx',6),
+  'flights_bi_scheduled_time_idx'
+)
+where itemoffset = 197;
+</code></pre><pre><code class="plaintext"> allnulls | hasnulls |                       value                        
+----------+----------+----------------------------------------------------
+ f        | f        | {2016-08-15 02:45:00+03 .. 2016-08-15 17:15:00+03}
+(1 row)
+</code></pre><br/>
+Next range:<br/>
+<br/>
+<pre><code class="pgsql">demo=# select *
+from brin_revmap_data(get_raw_page('flights_bi_scheduled_time_idx',1))
+offset 1 limit 1;
+</code></pre><pre><code class="plaintext">  pages  
+---------
+ (6,198)
+(1 row)
+</code></pre><pre><code class="pgsql">demo=# select allnulls, hasnulls, value
+from brin_page_items(
+  get_raw_page('flights_bi_scheduled_time_idx',6),
+  'flights_bi_scheduled_time_idx'
+)
+where itemoffset = 198;
+</code></pre><pre><code class="plaintext"> allnulls | hasnulls |                       value                        
+----------+----------+----------------------------------------------------
+ f        | f        | {2016-08-15 06:00:00+03 .. 2016-08-15 18:55:00+03}
+(1 row)
+</code></pre><br/>
+And so on.<br/>
+<br/>
+For «inclusion» classes, the «value» field will display something like<br/>
+<br/>
+<pre><code class="plaintext"> {(94.4005966186523,69.3110961914062),(77.6600036621,51.6693992614746) .. f .. f}
+</code></pre><br/>
+The first value is the embedding rectangle, and «f» letters at the end denote lacking empty elements (the first one) and lacking unmergeable values (the second one). Actually, the only unmergeable values are «IPv4» and «IPv6» addresses («inet» data type).<br/>
+<br/>
+<h2>Properties</h2><br/>
+Reminding you of the queries that <a href="https://habr.com/ru/company/postgrespro/blog/442546/">have already been provided</a>.<br/>
+<br/>
+The following are the properties of the access method:<br/>
+<br/>
+<pre><code class="plaintext"> amname |     name      | pg_indexam_has_property
+--------+---------------+-------------------------
+ brin   | can_order     | f
+ brin   | can_unique    | f
+ brin   | can_multi_col | t
+ brin   | can_exclude   | f
+</code></pre><br/>
+Indexes can be created on several columns. In this case, its own summary statistics are gathered for each column, but they are stored together for each range. Of course, this index makes sense if one and the same size of a range is suitable for all columns.<br/>
+<br/>
+The following index-layer properties are available:<br/>
+<br/>
+<pre><code class="plaintext">     name      | pg_index_has_property
+---------------+-----------------------
+ clusterable   | f
+ index_scan    | f
+ bitmap_scan   | t
+ backward_scan | f
+</code></pre><br/>
+Evidently, only bitmap scan is supported.<br/>
+<br/>
+However, lack of clustering may seem confusing. Seemingly, since BRIN index is sensitive to physical order of rows, it would be logical to be able to cluster data according to the index. But this is not so. We can only create a «regular» index (B-tree or GiST, depending on the data type) and cluster according to it. By the way, do you want to cluster a supposedly huge table taking into account Exclusive locks, execution time, and consumption of disk space during rebuilding?<br/>
+<br/>
+The following are the column-layer properties:<br/>
+<br/>
+<pre><code class="plaintext">        name        | pg_index_column_has_property 
+--------------------+------------------------------
+ asc                | f
+ desc               | f
+ nulls_first        | f
+ nulls_last         | f
+ orderable          | f
+ distance_orderable | f
+ returnable         | f
+ search_array       | f
+ search_nulls       | t
+</code></pre><br/>
+The only available property is the ability to manipulate NULLs.<br/>
+<br/>
+<a href="https://habr.com/ru/company/postgrespro/blog/452968/">Read on</a>.</div></div> <!----> <!----></div> <div class="tm-article-presenter__meta"><div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Теги:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bpostgresql%5D" class="tm-tags-list__link">postgresql</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bpostgres%5D" class="tm-tags-list__link">postgres</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bindex%5D" class="tm-tags-list__link">index</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bindexing%5D" class="tm-tags-list__link">indexing</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bsql%5D" class="tm-tags-list__link">sql</a></li></ul></div> <div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Хабы:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/company/postgrespro/blog/" class="tm-hubs-list__link router-link-active">
+    Блог компании Postgres Professional
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/postgresql/" class="tm-hubs-list__link">
+    PostgreSQL
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/sql/" class="tm-hubs-list__link">
+    SQL
+  </a></li></ul></div></div></article></div> <!----></div> <div class="tm-article-sticky-panel"><div class="tm-data-icons tm-article-sticky-panel__icons"><div class="tm-article-rating tm-data-icons__item"><div class="tm-votes-meter tm-article-rating__votes-switcher"><svg height="16" width="16" class="tm-svg-img tm-votes-meter__icon tm-votes-meter__icon_medium"><title>Всего голосов 14: ↑14 и ↓0</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-rating"></use></svg> <span title="Всего голосов 14: ↑14 и ↓0" class="tm-votes-meter__value tm-votes-meter__value_positive tm-votes-meter__value_medium">+14</span></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----> <span title="Количество просмотров" class="tm-icon-counter tm-data-icons__item"><svg height="16" width="16" class="tm-svg-img tm-icon-counter__icon"><title>Просмотры</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-views"></use></svg> <span class="tm-icon-counter__value">6.3K</span></span> <button title="Добавить в закладки" type="button" class="bookmarks-button tm-data-icons__item"><span title="Добавить в закладки" class="tm-svg-icon__wrapper bookmarks-button__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Добавить в закладки</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-favorite"></use></svg></span> <span title="Количество пользователей, добавивших публикацию в закладки" class="bookmarks-button__counter">
+    6
+  </span></button> <!----> <div title="Поделиться" class="tm-sharing tm-data-icons__item"><button type="button" class="tm-sharing__button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="tm-sharing__icon"><path fill="currentColor" d="M10.33.275l9.047 7.572a.2.2 0 010 .306l-9.048 7.572a.2.2 0 01-.328-.153V11c-8 0-9.94 6-9.94 6S-1 5 10 5V.428a.2.2 0 01.328-.153z"></path></svg></button> <!----></div> <DIV class="v-portal" style="display:none;"></DIV></div> </div></div> <!----> <!----> <div class="tm-article-presenter__footer"><div class="tm-article-blocks"><!----> <section class="tm-block tm-block_spacing-bottom"><!----> <div class="tm-block__body tm-block__body_variant-balanced"><div class="tm-article-author"><div class="tm-article-author__company"><div class="tm-article-author__company-card"><div class="tm-company-snippet"><a href="/ru/company/postgrespro/profile/" class="tm-company-snippet__logo-link"><div class="tm-entity-image"><img alt="" height="40" src="//habrastorage.org/getpro/habr/company/4e0/339/621/4e0339621abc865fefb88f9e9f44748f.jpg" width="40" class="tm-entity-image__pic"></div></a> <div class="tm-company-snippet__info"><a href="/ru/company/postgrespro/profile/" class="tm-company-snippet__title">Postgres Professional</a> <div class="tm-company-snippet__description">Разработчик СУБД Postgres Pro</div></div></div> <div class="tm-article-author__buttons"><!----> <!----></div></div> <div class="tm-article-author__company-contacts"><a href="https://facebook.com/PostgresProfessional" rel="noopener" target="_blank" class="tm-article-author__contact">
+      Facebook
+    </a><a href="https://twitter.com/PostgresPro" rel="noopener" target="_blank" class="tm-article-author__contact">
+      Twitter
+    </a><a href="https://vk.com/public101507899" rel="noopener" target="_blank" class="tm-article-author__contact">
+      ВКонтакте
+    </a><a href="https://plus.google.com/+PostgresproRuCompany" rel="noopener" target="_blank" class="tm-article-author__contact">
+      Google+
+    </a><a href="https://postgrespro.livejournal.com/" rel="noopener" target="_blank" class="tm-article-author__contact">
+      LiveJournal
+    </a></div> <div class="tm-article-author__separator"></div></div> <div class="tm-user-card tm-article-author__user-card tm-user-card_variant-article"><div class="tm-user-card__info-container"><div class="tm-user-card__header"><div class="tm-user-card__header-data"><a href="/ru/users/erogov/" class="tm-user-card__userpic tm-user-card__userpic_size-40"><div class="tm-entity-image"><img alt="" src="//habrastorage.org/getpro/habr/avatars/d16/573/7e4/d165737e421383f77f007015ebd01fb1.jpg" class="tm-entity-image__pic"></div></a> <div class="tm-user-card__meta"><div title=" 170 голосов " class="tm-karma tm-user-card__karma"><div class="tm-karma__votes tm-karma__votes_positive">
+    163.5
+  </div> <div class="tm-karma__text">
+    Карма
+  </div></div> <div title="Рейтинг пользователя" class="tm-rating tm-user-card__rating"><div class="tm-rating__header"> <div class="tm-rating__counter">55</div></div> <div class="tm-rating__text">
+    Рейтинг
+  </div></div></div></div></div> <div class="tm-user-card__info tm-user-card__info_variant-article"><div class="tm-user-card__title tm-user-card__title_variant-article"><span class="tm-user-card__name tm-user-card__name_variant-article">Егор Рогов</span> <a href="/ru/users/erogov/" class="tm-user-card__nickname tm-user-card__nickname_variant-article">
+          @erogov
+        </a> <!----></div> <p class="tm-user-card__short-info tm-user-card__short-info_variant-article">Пользователь</p></div></div> <div class="tm-user-card__buttons tm-user-card__buttons_variant-article"><!----> <!----> <!----> <!----> <!----></div></div> <div class="tm-article-author__user-contacts"><a href="http://egorius.dreamwidth.org/" rel="noopener" target="_blank" class="tm-article-author__contact">
+      Сайт
+    </a></div></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----></section> <div class="tm-article-blocks__comments"><div class="tm-article-page-comments"><div class="tm-article-comments-counter-link tm-article-comments-counter-button"><a href="/ru/company/postgrespro/blog/452900/comments/" class="tm-article-comments-counter-link__link tm-article-comments-counter-link__link_button-style"><svg height="16" width="16" class="tm-svg-img tm-article-comments-counter-link__icon tm-article-comments-counter-link__icon_contrasted"><title>Комментарии</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-comments"></use></svg> <span class="tm-article-comments-counter-link__value tm-article-comments-counter-link__value_contrasted">
+       Комментировать 
+    </span></a> <!----></div></div></div>  <!---->  <!----> <!----></div></div></div></div></div> <div class="tm-page__sidebar"><div class="tm-layout-sidebar"><div class="tm-layout-sidebar__placeholder_initial"></div> <div class="tm-sexy-sidebar tm-sexy-sidebar_initial" style="margin-top:0px;"><!----> <section class="tm-block tm-block_spacing-bottom"><header class="tm-block__header"><h2 class="tm-block__title">Информация</h2> <!----></header> <div class="tm-block__body"><div class="tm-company-basic-info"><dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Дата основания</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><time datetime="2015-01-26T21:00:00.000Z" title="2015-01-27, 00:00">27  января  2015</time></dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Местоположение</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap">
+    Россия
+  </dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Сайт</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><a href="http://www.postgrespro.ru/" target="_blank" class="tm-company-basic-info__link">
+      www.postgrespro.ru
+    </a></dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Численность</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap">
+    51–100 человек
+  </dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Дата регистрации</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><time datetime="2015-09-30T07:41:09.000Z" title="2015-09-30, 10:41">30  сентября  2015</time></dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Представитель</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><a href="/ru/users/x-wao/" class="tm-company-basic-info__link">
+      Иван Панченко
+    </a></dd></dl></div></div> <!----></section> <div class="tm-company-widgets"></div> <!----></div></div></div></div></div></div></main> <!----></div> <div class="tm-footer-menu"><div class="tm-page-width"><div class="tm-footer-menu__container"><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Ваш аккаунт
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr/?back=/ru/company/postgrespro/blog/452900/&amp;hl=ru" rel="nofollow" target="_self">
+                Войти
+              </a></li><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr-register/?back=/ru/company/postgrespro/blog/452900/&amp;hl=ru" rel="nofollow" target="_self">
+                Регистрация
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Разделы
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/" class="footer-menu__item-link router-link-active">
+                Публикации
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/news/" class="footer-menu__item-link">
+                Новости
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/hubs/" class="footer-menu__item-link">
+                Хабы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/companies/" class="footer-menu__item-link">
+                Компании
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/users/" class="footer-menu__item-link">
+                Авторы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/sandbox/" class="footer-menu__item-link">
+                Песочница
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Информация
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/docs/help/" class="footer-menu__item-link">
+                Устройство сайта
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/authors/codex/" class="footer-menu__item-link">
+                Для авторов
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/companies/corpblogs/" class="footer-menu__item-link">
+                Для компаний
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/docs/transparency/" class="footer-menu__item-link">
+                Документы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/agreement" target="_blank">
+                Соглашение
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/confidential/" target="_blank">
+                Конфиденциальность
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Услуги
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQLwRfQmXibiUlWaRg-BAc38s7oM3lJiaPju7qmdJsp8ysIvZ_G-Npem0njJLMozE2bPHMpDqiI5hhy/pub?start=false&amp;loop=false&amp;delayms=60000&amp;slide=id.g91a03369cd_4_297" target="_blank">
+                Реклама
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://habrastorage.org/storage/stuff/habr/service_price.pdf" target="_blank">
+                Тарифы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQJJds8-Di7BQSP_guHxICN7woVYoN5NP_22ra-BIo4bqnTT9FR6fB-Ku2P0AoRpX0Ds-LRkDeAoD8F/pub?start=false&amp;loop=false&amp;delayms=60000" target="_blank">
+                Контент
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://tmtm.timepad.ru/" target="_blank">
+                Семинары
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/megaprojects/" class="footer-menu__item-link">
+                Мегапроекты
+              </a></li></ul></div></div></div></div></div> <div class="tm-footer"><div class="tm-page-width"><div class="tm-footer__container"><!----> <div class="tm-footer__social"><a href="https://www.facebook.com/habrahabr.ru" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Facebook</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-facebook"></use></svg></a><a href="https://twitter.com/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Twitter</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-twitter"></use></svg></a><a href="https://vk.com/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>VK</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-vkontakte"></use></svg></a><a href="https://telegram.me/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Telegram</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-telegram"></use></svg></a><a href="https://www.youtube.com/channel/UCd_sTwKqVrweTt4oAKY5y4w" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Youtube</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-youtube"></use></svg></a><a href="https://zen.yandex.ru/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Яндекс Дзен</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-zen"></use></svg></a></div> <DIV class="v-portal" style="display:none;"></DIV> <button class="tm-footer__link"><!---->
+        Настройка языка
+      </button> <a href="/ru/about" class="tm-footer__link">
+        О сайте
+      </a> <a href="/ru/feedback/" class="tm-footer__link">
+        Техническая поддержка
+      </a> <!----> <a href="/berserk-mode-nope" class="tm-footer__link">
+        Вернуться на старую версию
+      </a> <div class="tm-footer-copyright"><span class="tm-copyright"><span class="tm-copyright__years">© 2006–2021 </span> <span class="tm-copyright__name">«<a href="https://company.habr.com/" rel="noopener" target="_blank" class="tm-copyright__link">Habr</a>»</span></span></div></div></div></div> <!----> <!----></div> <div class="vue-portal-target"></div></div>
+<script>window.__INITIAL_STATE__={"adblock":{"hasAcceptableAdsFilter":false,"hasAdblock":false},"articlesList":{"articlesList":{"452900":{"id":"452900","timePublished":"2019-06-03T12:53:58+00:00","isCorporative":true,"lang":"en","titleHtml":"Indexes in PostgreSQL — 9 (BRIN)","leadData":{"textHtml":"In the previous articles we discussed PostgreSQL \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fpostgrespro\u002Fblog\u002F441962\u002F\"\u003Eindexing engine\u003C\u002Fa\u003E, the interface of access methods, and the following methods: \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fpost\u002F442776\u002F\"\u003Ehash indexes\u003C\u002Fa\u003E, \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fpostgrespro\u002Fblog\u002F443284\u002F\"\u003EB-trees\u003C\u002Fa\u003E, \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fpostgrespro\u002Fblog\u002F444742\u002F\"\u003EGiST\u003C\u002Fa\u003E, \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fpostgrespro\u002Fblog\u002F446624\u002F\"\u003ESP-GiST\u003C\u002Fa\u003E, \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fpostgrespro\u002Fblog\u002F448746\u002F\"\u003EGIN\u003C\u002Fa\u003E, and \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fpostgrespro\u002Fblog\u002F452116\u002F\"\u003ERUM\u003C\u002Fa\u003E. The topic of this article is BRIN indexes.\u003Cbr\u003E\r\n\u003Cbr\u003E\r\n\u003Ch1\u003EBRIN\u003C\u002Fh1\u003E\u003Cbr\u003E\r\n\u003Ch2\u003EGeneral concept\u003C\u002Fh2\u003E\u003Cbr\u003E\r\nUnlike indexes with which we've already got acquainted, the idea of BRIN is to avoid looking through definitely unsuited rows rather than quickly find the matching ones. This is always an inaccurate index: it does not contain TIDs of table rows at all.\u003Cbr\u003E\r\n\u003Cbr\u003E\r\nSimplistically, BRIN works fine for columns where values correlate with their physical location in the table. In other words, if a query without ORDER BY clause returns the column values virtually in the increasing or decreasing order (and there are no indexes on that column).\u003Cbr\u003E\r\n\u003Cbr\u003E\r\nThis access method was created in scope of \u003Ca href=\"https:\u002F\u002Faxleproject.eu\u002F\"\u003EAxle\u003C\u002Fa\u003E, the European project for extremely large analytical databases, with an eye on tables that are several terabyte or dozens of terabytes large. An important feature of BRIN that enables us to create indexes on such tables is a small size and minimal overhead costs of maintenance.\u003Cbr\u003E\r\n\u003Cbr\u003E\r\nThis works as follows. The table is split into \u003Cem\u003Eranges\u003C\u002Fem\u003E that are several pages large (or several blocks large, which is the same) — hence the name: Block Range Index, BRIN. The index stores \u003Cem\u003Esummary information\u003C\u002Fem\u003E on the data in each range. As a rule, this is the minimal and maximal values, but it happens to be different, as shown further. Assume that a query is performed that contains the condition for a column; if the sought values do not get into the interval, the whole range can be skipped; but if they do get, all rows in all blocks will have to be looked through to choose the matching ones among them.\u003Cbr\u003E\r\n\u003Cbr\u003E\r\nIt will not be a mistake to treat BRIN not as an index, but as an accelerator of sequential scan. We can regard BRIN as an alternative to partitioning if we consider each range as a «virtual» partition.\u003Cbr\u003E\r\n\u003Cbr\u003E\r\nNow let's discuss the structure of the index in more detail.\u003Cbr\u003E","imageUrl":null,"buttonTextHtml":"Read more →","image":null},"editorVersion":"1.0","postType":"article","postLabels":[{"type":"translation","data":{"originalAuthorName":"Egor Rogov","originalUrl":"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fpostgrespro\u002Fblog\u002F346460\u002F"}}],"author":{"scoreStats":{"score":163.5,"votesCount":170},"rating":55,"relatedData":null,"contacts":[{"title":"Сайт","url":"http:\u002F\u002Fegorius.dreamwidth.org\u002F","value":"http:\u002F\u002Fegorius.dreamwidth.org\u002F"}],"authorContacts":[{"title":"Сайт","url":"http:\u002F\u002Fegorius.dreamwidth.org\u002F","value":"http:\u002F\u002Fegorius.dreamwidth.org\u002F"}],"paymentDetails":{"paymentYandexMoney":null,"paymentPayPalMe":null,"paymentWebmoney":null},"id":"594155","alias":"erogov","fullname":"Егор Рогов","avatarUrl":"\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Favatars\u002Fd16\u002F573\u002F7e4\u002Fd165737e421383f77f007015ebd01fb1.jpg","speciality":"Пользователь"},"statistics":{"commentsCount":0,"favoritesCount":6,"readingCount":6281,"score":14,"votesCount":14},"hubs":[{"relatedData":null,"id":"19663","alias":"postgrespro","type":"corporative","title":"Блог компании Postgres Professional","titleHtml":"Блог компании Postgres Professional","isProfiled":false},{"relatedData":null,"id":"358","alias":"postgresql","type":"collective","title":"PostgreSQL","titleHtml":"PostgreSQL","isProfiled":true},{"relatedData":null,"id":"594","alias":"sql","type":"collective","title":"SQL","titleHtml":"SQL","isProfiled":true}],"flows":[{"id":"1","alias":"develop","title":"Разработка"}],"relatedData":null,"textHtml":"\u003Cdiv xmlns=\"http:\u002F\u002Fwww.w3.org\u002F1999\u002Fxhtml\"\u003EIn the previous articles we discussed PostgreSQL \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fpostgrespro\u002Fblog\u002F441962\u002F\"\u003Eindexing engine\u003C\u002Fa\u003E, the interface of access methods, and the following methods: \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fpost\u002F442776\u002F\"\u003Ehash indexes\u003C\u002Fa\u003E, \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fpostgrespro\u002Fblog\u002F443284\u002F\"\u003EB-trees\u003C\u002Fa\u003E, \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fpostgrespro\u002Fblog\u002F444742\u002F\"\u003EGiST\u003C\u002Fa\u003E, \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fpostgrespro\u002Fblog\u002F446624\u002F\"\u003ESP-GiST\u003C\u002Fa\u003E, \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fpostgrespro\u002Fblog\u002F448746\u002F\"\u003EGIN\u003C\u002Fa\u003E, and \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fpostgrespro\u002Fblog\u002F452116\u002F\"\u003ERUM\u003C\u002Fa\u003E. The topic of this article is BRIN indexes.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch1\u003EBRIN\u003C\u002Fh1\u003E\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EGeneral concept\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nUnlike indexes with which we've already got acquainted, the idea of BRIN is to avoid looking through definitely unsuited rows rather than quickly find the matching ones. This is always an inaccurate index: it does not contain TIDs of table rows at all.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nSimplistically, BRIN works fine for columns where values correlate with their physical location in the table. In other words, if a query without ORDER BY clause returns the column values virtually in the increasing or decreasing order (and there are no indexes on that column).\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nThis access method was created in scope of \u003Ca href=\"https:\u002F\u002Faxleproject.eu\u002F\"\u003EAxle\u003C\u002Fa\u003E, the European project for extremely large analytical databases, with an eye on tables that are several terabyte or dozens of terabytes large. An important feature of BRIN that enables us to create indexes on such tables is a small size and minimal overhead costs of maintenance.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nThis works as follows. The table is split into \u003Cem\u003Eranges\u003C\u002Fem\u003E that are several pages large (or several blocks large, which is the same) — hence the name: Block Range Index, BRIN. The index stores \u003Cem\u003Esummary information\u003C\u002Fem\u003E on the data in each range. As a rule, this is the minimal and maximal values, but it happens to be different, as shown further. Assume that a query is performed that contains the condition for a column; if the sought values do not get into the interval, the whole range can be skipped; but if they do get, all rows in all blocks will have to be looked through to choose the matching ones among them.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nIt will not be a mistake to treat BRIN not as an index, but as an accelerator of sequential scan. We can regard BRIN as an alternative to partitioning if we consider each range as a «virtual» partition.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nNow let's discuss the structure of the index in more detail.\u003Cbr\u002F\u003E\r\n\u003Ca name=\"habracut\"\u003E\u003C\u002Fa\u003E\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EStructure\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nThe first (more exactly, zero) page contains the metadata.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nPages with the summary information are located at a certain offset from the metadata. Each index row on those pages contains summary information on one range.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nBetween the meta page and summary data, pages with the \u003Cem\u003Ereverse range map\u003C\u002Fem\u003E (abbreviated as «revmap») are located. Actually, this is an array of pointers (TIDs) to the corresponding index rows.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fnr\u002Fpm\u002Fs9\u002Fnrpms932o5clzubwymywxtud6q4.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nFor some ranges, the pointer in «revmap» can lead to no index row (one is marked in gray in the figure). In such a case, the range is considered to have no summary information yet.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EScanning the index\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nHow is the index used if it does not contain references to table rows? This access method certainly cannot return rows TID by TID, but it can build a bitmap. There can be two kinds of bitmap pages: accurate, to the row, and inaccurate, to the page. It's an inaccurate bitmap that is used.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nThe algorithm is simple. The map of ranges is sequentially scanned (that is, the ranges are went through in the order of their location in the table). The pointers are used to determine index rows with summary information on each range. If a range does not contain the value sought, it is skipped, and if it can contain the value (or summary information is unavailable), all pages of the range are added to the bitmap. The resulting bitmap is then used as usual.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EUpdating the index\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nIt is more interesting how the index is updated when the table is changed.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nWhen \u003Cstrong\u003Eadding\u003C\u002Fstrong\u003E a new version of a row to a table page, we determine which range it is contained in and use the map of ranges to find the index row with the summary information. All these are simple arithmetic operations. Let, for instance, the size of a range be four and on page 13, a row version with the value of 42 occur. The number of the range (starting with zero) is 13 \u002F 4 = 3, therefore, in «revmap» we take the pointer with the offset of 3 (its order number is four).\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nThe minimal value for this range is 31, and the maximal one is 40. Since the new value of 42 is out of the interval, we update the maximal value (see the figure). But if the new value is still within the stored limits, the index does not need to be updated.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fpost_images\u002Fba7\u002F6ce\u002Fe4c\u002Fba76cee4c3d40e9f428954d0478ecee0.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nAll this relates to the situation when the new version of the page occurs in a range for which the summary information is available. When the index is created, the summary information is computed for all ranges available, but while the table is further expanded, new pages can occur that fall out of the limits. Two options are available here:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Col\u003E\r\n\u003Cli\u003EUsually the index is not updated immediately. This is not a big deal: as already mentioned, when scanning the index, the whole range will be looked through. Actual update is done during «vacuum», or it can be done manually by calling «brin_summarize_new_values» function.\u003C\u002Fli\u003E\r\n\u003Cli\u003EIf we create the index with «autosummarize» parameter, the update will be done immediately. But when pages of the range are populated with new values, updates can happen too often, therefore, this parameter is turned off by default.\u003C\u002Fli\u003E\r\n\u003C\u002Fol\u003E\u003Cbr\u002F\u003E\r\nWhen new ranges occur, the size of «revmap» can increase. Whenever the map, located between the meta page and summary data, needs to be extended by another page, existing row versions are moved to some other pages. So, the map of ranges is always located between the meta page and summary data.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nWhen a row is \u003Cstrong\u003Edeleted\u003C\u002Fstrong\u003E,… nothing happens. We can notice that sometimes the minimal or maximal value will be deleted, in which case the interval could be reduced. But to detect this, we would have to read all values in the range, and this is costly.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nThe correctness of the index is not affected, but search may require looking through more ranges than is actually needed. In general, summary information can be manually recalculated for such a zone (by calling «brin_desummarize_range» and «brin_summarize_new_values» functions), but how can we detect such a need? Anyway, no conventional procedure is available to this end.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nFinally, \u003Cstrong\u003Eupdating a row\u003C\u002Fstrong\u003E is just a deletion of the outdated version and addition of a new one.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EExample\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nLet's try to build our own mini data warehouse for the data from tables of the \u003Ca href=\"https:\u002F\u002Fpostgrespro.ru\u002Feducation\u002Fdemodb\"\u003Edemo database\u003C\u002Fa\u003E. Let's assume that for the purpose of BI reporting, a denormalized table is needed to reflect the flights departed from an airport or landed in the airport to the accuracy of a seat in the cabin. The data for each airport will be added to the table once a day, when it is midnight in the appropriate time zone. The data will be neither updated nor deleted.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nThe table will look as follows:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003Edemo=# create table flights_bi(\n  airport_code char(3),\n  airport_coord point,         -- geo coordinates of airport\n  airport_utc_offset interval, -- time zone\n  flight_no char(6),           -- flight number\n  flight_type text.            -- flight type: departure \u002F arrival \n  scheduled_time timestamptz,  -- scheduled departure\u002Farrival time of flight\n  actual_time timestamptz,     -- actual time of flight\n  aircraft_code char(3),\n  seat_no varchar(4),          -- seat number\n  fare_conditions varchar(10), -- travel class\n  passenger_id varchar(20),\n  passenger_name text\n);\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nWe can simulate the procedure of loading the data using nested loops: an external one — by days (we will consider \u003Ca href=\"https:\u002F\u002Fedu.postgrespro.com\u002Fdemo-big-en.zip\"\u003Ea large database\u003C\u002Fa\u003E, therefore 365 days), and an internal loop — by time zones (from UTC+02 to UTC+12). The query is pretty long and not of particular interest, so I'll hide it under the spoiler.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cdiv class=\"spoiler\"\u003E\u003Cb class=\"spoiler_title\"\u003ESimulation of loading the data to the storage\u003C\u002Fb\u003E\u003Cdiv class=\"spoiler_text\"\u003E\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003EDO $$\n&lt;&lt;local\u003E\u003E\nDECLARE\n  curdate date := (SELECT min(scheduled_departure) FROM flights);\n  utc_offset interval;\nBEGIN\n  WHILE (curdate &lt;= bookings.now()::date) LOOP\n    utc_offset := interval '12 hours';\n    WHILE (utc_offset \u003E= interval '2 hours') LOOP\n      INSERT INTO flights_bi\n        WITH flight (\n          airport_code,\n          airport_coord,\n          flight_id,\n          flight_no,\n          scheduled_time,\n          actual_time,\n          aircraft_code,\n          flight_type\n        ) AS (\n        -- прибытия\n        SELECT a.airport_code,\n               a.coordinates,\n               f.flight_id,\n               f.flight_no,\n               f.scheduled_departure,\n               f.actual_departure,\n               f.aircraft_code,\n               'departure'\n        FROM   airports a,\n               flights f,\n               pg_timezone_names tzn\n        WHERE  a.airport_code = f.departure_airport\n        AND    f.actual_departure IS NOT NULL\n        AND    tzn.name = a.timezone\n        AND    tzn.utc_offset = local.utc_offset\n        AND    timezone(a.timezone, f.actual_departure)::date = curdate\n        UNION ALL\n        -- вылеты\n        SELECT a.airport_code,\n               a.coordinates,\n               f.flight_id,\n               f.flight_no,\n               f.scheduled_arrival,\n               f.actual_arrival,\n               f.aircraft_code,\n               'arrival'\n        FROM   airports a,\n               flights f,\n               pg_timezone_names tzn\n        WHERE  a.airport_code = f.arrival_airport\n        AND    f.actual_arrival IS NOT NULL\n        AND    tzn.name = a.timezone\n        AND    tzn.utc_offset = local.utc_offset\n        AND    timezone(a.timezone, f.actual_arrival)::date = curdate\n      )\n      SELECT f.airport_code,\n             f.airport_coord,\n             local.utc_offset,\n             f.flight_no,\n             f.flight_type,\n             f.scheduled_time,\n             f.actual_time,\n             f.aircraft_code,\n             s.seat_no,\n             s.fare_conditions,\n             t.passenger_id,\n             t.passenger_name\n      FROM   flight f\n             JOIN seats s\n               ON s.aircraft_code = f.aircraft_code\n             LEFT JOIN boarding_passes bp\n               ON bp.flight_id = f.flight_id\n              AND bp.seat_no = s.seat_no\n             LEFT JOIN ticket_flights tf\n               ON tf.ticket_no = bp.ticket_no\n              AND tf.flight_id = bp.flight_id\n             LEFT JOIN tickets t\n               ON t.ticket_no = tf.ticket_no;\n\n      RAISE NOTICE '%, %', curdate, utc_offset;\n      utc_offset := utc_offset - interval '1 hour';\n    END LOOP;\n    curdate := curdate + 1;\n  END LOOP;\nEND;\n$$;\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003C\u002Fdiv\u003E\u003C\u002Fdiv\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003Edemo=# select count(*) from flights_bi;\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E  count  \n----------\n 30517076\n(1 row)\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003Edemo=# select pg_size_pretty(pg_total_relation_size('flights_bi'));\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E pg_size_pretty\n----------------\n 4127 MB\n(1 row)\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nWe get 30 million rows and 4 GB. Not so large a size, but good enough for a laptop: sequential scan took me about 10 seconds.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch3\u003EOn what columns should we create the index?\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\nSince BRIN indexes have a small size and moderate overhead costs and updates happen infrequently, if any, a rare opportunity arises to build many indexes «just in case», for example, on all fields on which analyst users can create their ad-hoc queries. Won't come useful — never mind, but even an index that is not very efficient will work better than sequential scan for sure. Of course, there are fields on which it is absolutely useless to build an index; pure common sense will prompt them.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nBut it should be odd to limit ourselves to this piece of advice, therefore, let's try to state a more accurate criterion.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nWe've already mentioned that the data must somewhat correlate with its physical location. Here it makes sense to remember that PostgreSQL gathers table column statistics, which include the correlation value. The planner uses this value to select between a regular index scan and bitmap scan, and we can use it to estimate the applicability of BRIN index.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nIn the above example, the data is evidently ordered by days (by «scheduled_time», as well as by «actual_time» — there is no much difference). This is because when rows are added to the table (without deletions and updates), they are laid out in the file one after another. In the simulation of data loading we did not even use ORDER BY clause, therefore, dates within a day can be, in general, mixed up in an arbitrary way, but ordering must be in place. Let's check this:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003Edemo=# analyze flights_bi;\n\ndemo=# select attname, correlation from pg_stats where tablename='flights_bi' \norder by correlation desc nulls last;\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E      attname       | correlation\n--------------------+-------------\n scheduled_time     |    0.999994\n actual_time        |    0.999994\n fare_conditions    |    0.796719\n flight_type        |    0.495937\n airport_utc_offset |    0.438443\n aircraft_code      |    0.172262\n airport_code       |   0.0543143\n flight_no          |   0.0121366\n seat_no            |  0.00568042\n passenger_name     |   0.0046387\n passenger_id       | -0.00281272\n airport_coord      |            \n(12 rows)\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nThe value that is not too close to zero (ideally, near plus-minus one, as in this case), tells us that BRIN index will be appropriate.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nThe travel class «fare_condition» (the column contains three unique values) and type of the flight «flight_type» (two unique values) unexpectedly appeared to be in the second and third places. This is an illusion: formally the correlation is high, while actually on several successive pages all possible values will be encountered for sure, which means that BRIN won't do any good.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nThe time zone «airport_utc_offset» goes next: in the considered example, within a day cycle, airports are ordered by time zones «by construction».\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nIt's these two fields, time and time zone, that we will further experiment with.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch3\u003EPossible weakening of the correlation\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\nThe correlation that is place «by construction» can be easily weakened when the data is changed. And the matter here is not in a change to a particular value, but in the structure of the multiversion concurrency control: the outdated row version is deleted on one page, but a new version may be inserted wherever free space is available. Due to this, whole rows get mixed up during updates.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nWe can partially control this effect by reducing the value of «fillfactor» storage parameter and this way leaving free space on a page for future updates. But do we want to increase the size of an already huge table? Besides, this does not resolve the issue of deletions: they also «set traps» for new rows by freeing the space somewhere inside existing pages. Due to this, rows that otherwise would get to the end of file, will be inserted at some arbitrary place.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nBy the way, this is a curious fact. Since BRIN index does not contain references to table rows, its availability should not hinder HOT updates at all, but it does.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nSo, BRIN is mainly designed for tables of large and even huge sizes that are either not updated at all or updated very slightly. However, it perfectly copes with the addition of new rows (to the end of the table). This is not surprising since this access method was created with a view to data warehouses and analytical reporting.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch3\u003EWhat size of a range do we need to select?\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\nIf we deal with a terabyte table, our main concern when selecting the size of a range will probably be not to make BRIN index too large. However, in our situation, we can afford analyzing data more accurately.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nTo do this, we can select unique values of a column and see on how many pages they occur. Localization of the values increases the chances of success in applying BRIN index. Moreover, the found number of pages will prompt the size of a range. But if the value is «spread» over all pages, BRIN is useless.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nOf course, we should use this technique keeping a watchful eye on an internal structure of the data. For example, it makes no sense to consider each date (more exactly, a timestamp, also including time) as a unique value — we need to round it to days.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nTechnically, this analysis can be done by looking at the value of the hidden «ctid» column, which provides the pointer to a row version (TID): the number of the page and the number of the row inside the page. Unfortunately, there is no conventional technique to decompose TID into its two components, therefore, we have to cast types through the text representation:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003Edemo=# select min(numblk), round(avg(numblk)) avg, max(numblk)\nfrom ( \n  select count(distinct (ctid::text::point)[0]) numblk\n  from flights_bi\n  group by scheduled_time::date\n) t;\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E min  | avg  | max  \n------+------+------\n 1192 | 1500 | 1796\n(1 row)\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003Edemo=# select relpages from pg_class where relname = 'flights_bi';\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E relpages\n----------\n   528172\n(1 row)\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nWe can see that each day is distributed across pages pretty evenly, and days are slightly mixed up with each other (1500 &amp;times 365 = 547500, which is only a little larger than the number of pages in the table 528172). This is actually clear «by construction» anyway.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nValuable information here is a specific number of pages. With a conventional range size of 128 pages, each day will populate 9–14 ranges. This seems realistic: with a query for a specific day, we can expect an error around 10%.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nLet's try:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003Edemo=# create index on flights_bi using brin(scheduled_time);\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nThe size of the index is as small as 184 KB:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003Edemo=# select pg_size_pretty(pg_total_relation_size('flights_bi_scheduled_time_idx'));\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E pg_size_pretty\n----------------\n 184 kB\n(1 row)\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nIn this case, it hardly makes sense to increase the size of a range at the cost of losing the accuracy. But we can reduce the size if required, and the accuracy will, on the contrary, increase (along with the size of the index).\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nNow let's look at time zones. Here we cannot use a brute-force approach either. All values should be divided by the number of day cycles instead since the distribution is repeated within each day. Besides, since there are few time zones only, we can look at the entire distribution:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003Edemo=# select airport_utc_offset, count(distinct (ctid::text::point)[0])\u002F365 numblk\nfrom flights_bi                                    \ngroup by airport_utc_offset\norder by 2;\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E airport_utc_offset | numblk\n--------------------+--------\n 12:00:00           |      6\n 06:00:00           |      8\n 02:00:00           |     10\n 11:00:00           |     13\n 08:00:00           |     28\n 09:00:00           |     29\n 10:00:00           |     40\n 04:00:00           |     47\n 07:00:00           |    110\n 05:00:00           |    231\n 03:00:00           |    932\n(11 rows)\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nOn average, the data for each time zone populates 133 pages a day, but the distribution is highly non-uniform: Petropavlovsk-Kamchatskiy and Anadyr fit as few as six pages, while Moscow and its neighborhood require hundreds of them. The default size of a range is no good here; let's, for example, set it to four pages.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003Edemo=# create index on flights_bi using brin(airport_utc_offset) with (pages_per_range=4);\n\ndemo=# select pg_size_pretty(pg_total_relation_size('flights_bi_airport_utc_offset_idx'));\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E pg_size_pretty\n----------------\n 6528 kB\n(1 row)\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EExecution plan\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nLet's look at how our indexes work. Let's select some day, say, a week ago (in the demo database, «today» is determined by «booking.now» function):\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003Edemo=# \\set d 'bookings.now()::date - interval \\'7 days\\''\n\ndemo=# explain (costs off,analyze)\n  select *\n  from flights_bi\n  where scheduled_time \u003E= :d and scheduled_time &lt; :d + interval '1 day';\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E                                  QUERY PLAN\n--------------------------------------------------------------------------------\n Bitmap Heap Scan on flights_bi (actual time=10.282..94.328 rows=83954 loops=1)\n   Recheck Cond: ...\n   Rows Removed by Index Recheck: 12045\n   Heap Blocks: lossy=1664\n   -\u003E  Bitmap Index Scan on flights_bi_scheduled_time_idx\n       (actual time=3.013..3.013 rows=16640 loops=1)\n         Index Cond: ...\n Planning time: 0.375 ms\n Execution time: 97.805 ms\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nAs we can see, the planner used the index created. How accurate is it? The ratio of the number of rows that meet the query conditions («rows» of Bitmap Heap Scan node) to the total number of rows returned using the index (the same value plus Rows Removed by Index Recheck) tells us about this. In this case 83954 \u002F (83954 + 12045), which is approximately 90%, as expected (this value will change from one day to another).\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nWhere does the 16640 number in «actual rows» of Bitmap Index Scan node originate from? The thing is that this node of the plan builds an inaccurate (page-by-page) bitmap and is completely unaware of how many rows the bitmap will touch, while something needs to be shown. Therefore, in despair one page is assumed to contain 10 rows. The bitmap contains 1664 pages in total (this value is shown in «Heap Blocks: lossy=1664»); so, we just get 16640. Altogether, this is a senseless number, which we should not pay attention to.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nHow about airports? For example, let's take the time zone of Vladivostok, which populates 28 pages a day:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003Edemo=# explain (costs off,analyze)\n  select *\n  from flights_bi\n  where airport_utc_offset = interval '8 hours';\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E                                   QUERY PLAN\n----------------------------------------------------------------------------------\n Bitmap Heap Scan on flights_bi (actual time=75.151..192.210 rows=587353 loops=1)\n   Recheck Cond: (airport_utc_offset = '08:00:00'::interval)\n   Rows Removed by Index Recheck: 191318\n   Heap Blocks: lossy=13380\n   -\u003E  Bitmap Index Scan on flights_bi_airport_utc_offset_idx\n       (actual time=74.999..74.999 rows=133800 loops=1)\n         Index Cond: (airport_utc_offset = '08:00:00'::interval)\n Planning time: 0.168 ms\n Execution time: 212.278 ms\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nThe planner again uses the BRIN index created. The accuracy is worse (about 75% in this case), but this is expected since the correlation is lower.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nSeveral BRIN indexes (just like any other ones) can certainly be joined at the bitmap level. For example, the following is the data on the selected time zone for a month (notice «BitmapAnd» node):\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003Edemo=# \\set d 'bookings.now()::date - interval \\'60 days\\''\n\ndemo=# explain (costs off,analyze)\n  select *\n  from flights_bi\n  where scheduled_time \u003E= :d and scheduled_time &lt; :d + interval '30 days'\n    and airport_utc_offset = interval '8 hours';\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E                                   QUERY PLAN\n---------------------------------------------------------------------------------\n Bitmap Heap Scan on flights_bi (actual time=62.046..113.849 rows=48154 loops=1)\n   Recheck Cond: ...\n   Rows Removed by Index Recheck: 18856\n   Heap Blocks: lossy=1152\n   -\u003E  BitmapAnd (actual time=61.777..61.777 rows=0 loops=1)\n         -\u003E  Bitmap Index Scan on flights_bi_scheduled_time_idx\n             (actual time=5.490..5.490 rows=435200 loops=1)\n               Index Cond: ...\n         -\u003E  Bitmap Index Scan on flights_bi_airport_utc_offset_idx\n             (actual time=55.068..55.068 rows=133800 loops=1)\n               Index Cond: ...\n Planning time: 0.408 ms\n Execution time: 115.475 ms\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Ch3\u003EComparison with B-tree\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\nWhat if we create regular B-tree index on the same field as BRIN?\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003Edemo=# create index flights_bi_scheduled_time_btree on flights_bi(scheduled_time);\n\ndemo=# select pg_size_pretty(pg_total_relation_size('flights_bi_scheduled_time_btree'));\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E pg_size_pretty\n----------------\n 654 MB\n(1 row)\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nIt appeared to be \u003Cem\u003Eseveral thousand times larger\u003C\u002Fem\u003E than our BRIN! However, the query is performed a little faster: the planner used statistics to figure out that the data is physically ordered and it is not needed to build a bitmap and, mainly, that the index condition does not need to be rechecked:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003Edemo=# explain (costs off,analyze)\n  select *\n  from flights_bi\n  where scheduled_time \u003E= :d and scheduled_time &lt; :d + interval '1 day';\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E                          QUERY PLAN\n----------------------------------------------------------------\n Index Scan using flights_bi_scheduled_time_btree on flights_bi\n (actual time=0.099..79.416 rows=83954 loops=1)\n   Index Cond: ...\n Planning time: 0.500 ms\n Execution time: 85.044 ms\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nThat's what is so wonderful about BRIN: we sacrifice the efficiency, but gain very much space.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EOperator classes\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\n\u003Ch3\u003Eminmax\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\nFor data types whose values can be compared with one another, summary information consists of \u003Cem\u003Ethe minimal and maximal values\u003C\u002Fem\u003E. Names of the corresponding operator classes contain «minmax», for example, «date_minmax_ops». Actually, these are data types that we were considering so far, and most of the types are of this kind.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch3\u003Einclusive\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\nComparison operators are defined not for all data types. For example, they are not defined for points («point» type), which represent the geographical coordinates of airports. By the way, it's for this reason that the statistics do not show the correlation for this column.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003Edemo=# select attname, correlation\nfrom pg_stats\nwhere tablename='flights_bi' and attname = 'airport_coord';\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E    attname    | correlation\n---------------+-------------\n airport_coord |            \n(1 row)\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nBut many of such types enable us to introduce a concept of a «bounding area», for example, a bounding rectangle for geometric shapes. We discussed in detail how \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fpostgrespro\u002Fblog\u002F444742\u002F\"\u003EGiST\u003C\u002Fa\u003E index uses this feature. Similarly, BRIN also enables gathering summary information on columns having data types like these: \u003Cem\u003Ethe bounding area for all values inside a range\u003C\u002Fem\u003E is just the summary value.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nUnlike for GiST, the summary value for BRIN must be of the same type as the values being indexed. Therefore, we cannot build the index for points, although it is clear that the coordinates could work in BRIN: the longitude is closely connected with the time zone. Fortunately, nothing hinders creation of the index on an expression after transforming points into degenerate rectangles. At the same time, we will set the size of a range to one page, just to show the limit case:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003Edemo=# create index on flights_bi using brin (box(airport_coord)) with (pages_per_range=1);\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nThe size of the index is as small as 30 MB even in such an extreme situation:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003Edemo=# select pg_size_pretty(pg_total_relation_size('flights_bi_box_idx'));\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E pg_size_pretty\n----------------\n 30 MB\n(1 row)\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nNow we can make up queries that limit the airports by coordinates. For example:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003Edemo=# select airport_code, airport_name\nfrom airports \nwhere box(coordinates) &lt;@ box '120,40,140,50';\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E airport_code |  airport_name  \n--------------+-----------------\n KHV          | Khabarovsk-Novyi\n VVO          | Vladivostok\n(2 rows)\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nThe planner will, however, refuse to use our index.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003Edemo=# analyze flights_bi;\n\ndemo=# explain select * from flights_bi\nwhere box(airport_coord) &lt;@ box '120,40,140,50';\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E                             QUERY PLAN                              \n---------------------------------------------------------------------\n Seq Scan on flights_bi  (cost=0.00..985928.14 rows=30517 width=111)\n   Filter: (box(airport_coord) &lt;@ '(140,50),(120,40)'::box)\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nWhy? Let's disable sequential scan and see what happens:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003Edemo=# set enable_seqscan = off;\n\ndemo=# explain select * from flights_bi \nwhere box(airport_coord) &lt;@ box '120,40,140,50';\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E                                   QUERY PLAN\n--------------------------------------------------------------------------------\n Bitmap Heap Scan on flights_bi  (cost=14079.67..1000007.81 rows=30517 width=111)\n   Recheck Cond: (box(airport_coord) &lt;@ '(140,50),(120,40)'::box)\n   -\u003E  Bitmap Index Scan on flights_bi_box_idx\n       (cost=0.00..14072.04 rows=30517076 width=0)\n         Index Cond: (box(airport_coord) &lt;@ '(140,50),(120,40)'::box)\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nIt appears that the index \u003Cem\u003Ecan be\u003C\u002Fem\u003E used, but the planner supposes that the bitmap will have to be built on the whole table (look at «rows» of Bitmap Index Scan node), and it is no wonder that the planner chooses sequential scan in this case. The issue here is that for geometric types, PostgreSQL does not gather any statistics, and the planner has to go blindly:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003Edemo=# select * from pg_stats where tablename = 'flights_bi_box_idx' \\gx\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E-[ RECORD 1 ]----------+-------------------\nschemaname             | bookings\ntablename              | flights_bi_box_idx\nattname                | box\ninherited              | f\nnull_frac              | 0\navg_width              | 32\nn_distinct             | 0\nmost_common_vals       |\nmost_common_freqs      |\nhistogram_bounds       |\ncorrelation            |\nmost_common_elems      |\nmost_common_elem_freqs | \nelem_count_histogram   |\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nAlas. But there are no complaints about the index — it does work and works fine:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003Edemo=# explain (costs off,analyze)\nselect * from flights_bi where box(airport_coord) &lt;@ box '120,40,140,50';\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E                                    QUERY PLAN\n----------------------------------------------------------------------------------\n Bitmap Heap Scan on flights_bi (actual time=158.142..315.445 rows=781790 loops=1)\n   Recheck Cond: (box(airport_coord) &lt;@ '(140,50),(120,40)'::box)\n   Rows Removed by Index Recheck: 70726\n   Heap Blocks: lossy=14772\n   -\u003E  Bitmap Index Scan on flights_bi_box_idx\n       (actual time=158.083..158.083 rows=147720 loops=1)\n         Index Cond: (box(airport_coord) &lt;@ '(140,50),(120,40)'::box)\n Planning time: 0.137 ms\n Execution time: 340.593 ms\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nThe conclusion must be like this: PostGIS is needed if anything nontrivial is required of the geometry. It can gather statistics anyway.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EInternals\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nThe conventional extension «pageinspect» enables us to look inside BRIN index.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nFirst, the metainformation will prompt us the size of a range and how many pages are allocated for «revmap»:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003Edemo=# select *\nfrom brin_metapage_info(get_raw_page('flights_bi_scheduled_time_idx',0));\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E   magic    | version | pagesperrange | lastrevmappage\n------------+---------+---------------+----------------\n 0xA8109CFA |       1 |           128 |              3\n(1 row)\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nPages 1–3 here are allocated for «revmap», while the rest contain summary data. From «revmap» we can get references to summary data for each range. Say, the information on the first range, incorporating first 128 pages, is located here:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003Edemo=# select *\nfrom brin_revmap_data(get_raw_page('flights_bi_scheduled_time_idx',1))\nlimit 1;\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E  pages  \n---------\n (6,197)\n(1 row)\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nAnd this is the summary data itself:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003Edemo=# select allnulls, hasnulls, value\nfrom brin_page_items(\n  get_raw_page('flights_bi_scheduled_time_idx',6),\n  'flights_bi_scheduled_time_idx'\n)\nwhere itemoffset = 197;\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E allnulls | hasnulls |                       value                        \n----------+----------+----------------------------------------------------\n f        | f        | {2016-08-15 02:45:00+03 .. 2016-08-15 17:15:00+03}\n(1 row)\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nNext range:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003Edemo=# select *\nfrom brin_revmap_data(get_raw_page('flights_bi_scheduled_time_idx',1))\noffset 1 limit 1;\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E  pages  \n---------\n (6,198)\n(1 row)\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003Edemo=# select allnulls, hasnulls, value\nfrom brin_page_items(\n  get_raw_page('flights_bi_scheduled_time_idx',6),\n  'flights_bi_scheduled_time_idx'\n)\nwhere itemoffset = 198;\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E allnulls | hasnulls |                       value                        \n----------+----------+----------------------------------------------------\n f        | f        | {2016-08-15 06:00:00+03 .. 2016-08-15 18:55:00+03}\n(1 row)\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nAnd so on.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nFor «inclusion» classes, the «value» field will display something like\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E {(94.4005966186523,69.3110961914062),(77.6600036621,51.6693992614746) .. f .. f}\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nThe first value is the embedding rectangle, and «f» letters at the end denote lacking empty elements (the first one) and lacking unmergeable values (the second one). Actually, the only unmergeable values are «IPv4» and «IPv6» addresses («inet» data type).\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EProperties\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nReminding you of the queries that \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fpostgrespro\u002Fblog\u002F442546\u002F\"\u003Ehave already been provided\u003C\u002Fa\u003E.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nThe following are the properties of the access method:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E amname |     name      | pg_indexam_has_property\n--------+---------------+-------------------------\n brin   | can_order     | f\n brin   | can_unique    | f\n brin   | can_multi_col | t\n brin   | can_exclude   | f\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nIndexes can be created on several columns. In this case, its own summary statistics are gathered for each column, but they are stored together for each range. Of course, this index makes sense if one and the same size of a range is suitable for all columns.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nThe following index-layer properties are available:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E     name      | pg_index_has_property\n---------------+-----------------------\n clusterable   | f\n index_scan    | f\n bitmap_scan   | t\n backward_scan | f\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nEvidently, only bitmap scan is supported.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nHowever, lack of clustering may seem confusing. Seemingly, since BRIN index is sensitive to physical order of rows, it would be logical to be able to cluster data according to the index. But this is not so. We can only create a «regular» index (B-tree or GiST, depending on the data type) and cluster according to it. By the way, do you want to cluster a supposedly huge table taking into account Exclusive locks, execution time, and consumption of disk space during rebuilding?\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nThe following are the column-layer properties:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E        name        | pg_index_column_has_property \n--------------------+------------------------------\n asc                | f\n desc               | f\n nulls_first        | f\n nulls_last         | f\n orderable          | f\n distance_orderable | f\n returnable         | f\n search_array       | f\n search_nulls       | t\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nThe only available property is the ability to manipulate NULLs.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fpostgrespro\u002Fblog\u002F452968\u002F\"\u003ERead on\u003C\u002Fa\u003E.\u003C\u002Fdiv\u003E","tags":[{"titleHtml":"postgresql"},{"titleHtml":"postgres"},{"titleHtml":"index"},{"titleHtml":"indexing"},{"titleHtml":"sql"}],"metadata":{"stylesUrls":[],"scriptUrls":[],"shareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F452900\u002F3b5e65aba1500c15460abdd613dbadc9\u002F","shareImageWidth":1200,"shareImageHeight":630,"vkShareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F452900\u002F3b5e65aba1500c15460abdd613dbadc9\u002F?format=vk","schemaJsonLd":"{\"@context\":\"http:\\\u002F\\\u002Fschema.org\",\"@type\":\"Article\",\"mainEntityOfPage\":{\"@type\":\"WebPage\",\"@id\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fen\\\u002Fcompany\\\u002Fpostgrespro\\\u002Fblog\\\u002F452900\\\u002F\"},\"headline\":\"Indexes in PostgreSQL — 9 (BRIN)\",\"datePublished\":\"2019-06-03T15:53:58+03:00\",\"dateModified\":\"2019-06-10T23:04:44+03:00\",\"author\":{\"@type\":\"Person\",\"name\":\"Егор Рогов\"},\"publisher\":{\"@type\":\"Organization\",\"name\":\"Habr\",\"logo\":{\"@type\":\"ImageObject\",\"url\":\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fa_\\\u002Flk\\\u002F9m\\\u002Fa_lk9mjkccjox-zccjrpfolmkmq.png\"}},\"description\":\"In the previous articles we discussed PostgreSQL indexing engine, the interface of access methods, and the following methods: hash indexes, B-trees, GiST,...\",\"url\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fen\\\u002Fcompany\\\u002Fpostgrespro\\\u002Fblog\\\u002F452900\\\u002F#post-content-body\",\"about\":[\"c_postgrespro\",\"h_postgresql\",\"h_sql\",\"f_develop\"],\"image\":[\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fnr\\\u002Fpm\\\u002Fs9\\\u002Fnrpms932o5clzubwymywxtud6q4.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fgetpro\\\u002Fhabr\\\u002Fpost_images\\\u002Fba7\\\u002F6ce\\\u002Fe4c\\\u002Fba76cee4c3d40e9f428954d0478ecee0.png\"]}","metaDescription":"In the previous articles we discussed PostgreSQL indexing engine, the interface of access methods, and the following methods: hash indexes, B-trees, GiST, SP-GiST, GIN, and RUM. The topic of this...","mainImageUrl":null,"amp":false},"polls":[],"commentsEnabled":true,"rulesRemindEnabled":false,"votesEnabled":true,"status":"published","plannedPublishTime":null,"checked":null,"isEditorial":false}},"articlesIds":{},"isLoading":false,"pagesCount":{},"route":{},"reasonsList":null,"view":"cards","lastVisitedRoute":{},"ssrCommentsArticleIds":[""],"karma":{}},"authorContribution":{"authors":{}},"betaTest":{"currentAnnouncement":null,"announcements":{},"announcementCards":null,"announcementComments":{},"announcementCommentThreads":{},"announcementCommentingStatuses":{},"archivedList":[]},"authorStatistics":{"articleRefs":{},"articleIds":{},"pagesCount":{},"route":{},"viewsCount":[],"maxStatsCount":{}},"career":{"seoLandings":[],"hubs":""},"comments":{"articleComments":{},"searchCommentsResults":null,"previewComment":null,"pagesCount":null,"commentAccess":{},"scrollParents":{},"pageArticleComments":{"lastViewedComment":0,"postId":null,"lastCommentTimestamp":"","moderated":[],"moderatedIds":[],"commentRoute":""}},"companies":{"companyRefs":{"postgrespro":{"alias":"postgrespro","imageUrl":"\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fcompany\u002F4e0\u002F339\u002F621\u002F4e0339621abc865fefb88f9e9f44748f.jpg","titleHtml":"Postgres Professional","descriptionHtml":"Разработчик СУБД Postgres Pro","relatedData":null,"statistics":{"postsCount":151,"newsCount":0,"vacanciesCount":0,"employeesCount":22,"careerRating":null,"subscribersCount":41642,"rating":218.69,"invest":null},"foundationDate":{"year":"2015","month":"01","day":"27"},"location":{"city":{"id":"447159","title":"Москва"},"region":{"id":"1885","title":"Москва и Московская обл."},"country":{"id":"168","title":"Россия"}},"siteUrl":"http:\u002F\u002Fwww.postgrespro.ru\u002F","staffNumber":"51–100 человек","registrationDate":"2015-09-30T07:41:09+00:00","representativeUser":{"alias":"x-wao","fullname":"Иван Панченко"},"contacts":[{"title":"Facebook","url":"https:\u002F\u002Ffacebook.com\u002FPostgresProfessional"},{"title":"Twitter","url":"https:\u002F\u002Ftwitter.com\u002FPostgresPro"},{"title":"ВКонтакте","url":"https:\u002F\u002Fvk.com\u002Fpublic101507899"},{"title":"Google+","url":"https:\u002F\u002Fplus.google.com\u002F+PostgresproRuCompany"},{"title":"LiveJournal","url":"https:\u002F\u002Fpostgrespro.livejournal.com\u002F"}],"settings":{"analyticsSettings":[{"type":"ga","trackingId":"UA-55152600-4"}],"branding":null,"status":"active"},"metadata":{"titleHtml":"Postgres Professional, Москва - Разработчик СУБД Postgres Pro с 27 января 2015 г.","title":"Postgres Professional, Москва - Разработчик СУБД Postgres Pro с 27 января 2015 г.","keywords":["PostgreSQL","SQL","Занимательные задачки","Конференции","Администрирование баз данных"],"descriptionHtml":"151 статья от авторов компании Postgres Professional","description":"151 статья от авторов компании Postgres Professional"},"aDeskSettings":null,"careerAlias":"postgrespro","maxCustomTrackerLinks":0}},"companyIds":{},"companyTopIds":{},"pagesCount":{},"companyProfiles":{},"companiesCategories":[],"companiesCategoriesTotalCount":0,"companiesWidgets":{},"companiesWorkers":{},"companiesFans":{},"route":{},"isLoading":false,"companyWorkersLoading":false,"companyFansLoading":false,"vacancies":{}},"companiesContribution":{"hubs":{},"flows":{},"companyRefs":{}},"companyHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"conversation":{"messages":[],"respondent":null,"isLoadMore":false},"conversations":{"conversations":[],"unreadCount":0,"pagesCount":0,"isLoadMore":false},"desktopState":{"desktopFl":null,"desktopHl":null,"isChecked":false,"isLoginDemanded":false},"dfp":{"slotsDict":{}},"docs":{"menu":{},"articles":{},"mainMenu":[],"loading":{"main":false,"dropdown":false,"article":false}},"feature":{"isProbablyVisible":"true"},"flows":{"flows":[{"alias":"develop","id":1,"route":{"name":"FLOW_PAGE","params":{"flowName":"develop"}}},{"alias":"admin","id":6,"route":{"name":"FLOW_PAGE","params":{"flowName":"admin"}}},{"alias":"design","id":2,"route":{"name":"FLOW_PAGE","params":{"flowName":"design"}}},{"alias":"management","id":3,"route":{"name":"FLOW_PAGE","params":{"flowName":"management"}}},{"alias":"marketing","id":4,"route":{"name":"FLOW_PAGE","params":{"flowName":"marketing"}}},{"alias":"popsci","id":7,"route":{"name":"FLOW_PAGE","params":{"flowName":"popsci"}}}]},"global":{"isPwa":false,"device":"desktop","isHabrCom":true},"hubs":{"hubRefs":{},"hubIds":{},"pagesCount":{},"isLoading":false,"route":{}},"hubsBlock":{"hubRefs":{},"hubIds":{}},"i18n":{"fl":"ru","hl":"ru"},"info":{"infoPage":{},"isLoading":true},"location":{"urlStruct":{"protocol":null,"slashes":null,"auth":null,"host":null,"port":null,"hostname":null,"hash":null,"search":null,"query":{},"pathname":null,"path":null,"href":""},"searchQuery":null},"me":{"user":null,"ppgDemanded":false,"karmaResetInfo":{"canReincarnate":null,"wasReincarnated":null,"currentScore":null},"notes":null},"mostReadingList":{"mostReadingListIds":[],"mostReadingListRefs":null,"promoPost":null},"pinnedPost":{"pinnedPost":null},"ppa":{"articles":{},"card":null,"transactions":null,"totalTransactions":null,"isAccessible":null},"projectsBlocks":{"activeBlocks":{}},"pullRefresh":{"shouldRefresh":false},"sandbox":{"articleIds":[],"articleRefs":{},"pagesCount":null,"route":{},"lastVisitedRoute":{},"isLoading":false},"settingsOther":{"inputs":{"uiLang":{"errors":[],"ref":null,"value":""},"articlesLangEnglish":{"errors":[],"ref":null,"value":false},"articlesLangRussian":{"errors":[],"ref":null,"value":false},"agreement":{"errors":[],"ref":null,"value":false},"email":{"errors":[],"ref":null,"value":true},"digest":{"errors":[],"ref":null,"value":true}}},"similarList":{"similarListIds":[],"similarListRefs":null},"ssr":{"error":null,"isDataLoaded":false,"isDataLoading":false,"isHydrationFailed":false,"isServer":false},"userHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"userInvites":{"availableInvites":0,"usedInvitesIds":[],"usedInvitesRefs":{},"usedInvitesPagesCount":0,"unusedInvitesIds":[],"unusedInvitesRefs":{},"unusedInvitesPagesCount":0},"users":{"authorRefs":{},"authorIds":{},"pagesCount":{},"authorProfiles":{},"userHubs":{},"userInvitations":{},"authorFollowers":{},"authorFollowed":{},"karmaStats":[],"statistics":null,"isLoading":false,"authorFollowersLoading":false,"authorFollowedLoading":false,"userHubsLoading":false,"userInvitationsLoading":false,"route":{}},"viewport":{"prevScrollY":{},"scrollY":0,"width":0},"tracker":{"items":{},"pagesCache":{},"markedViewedSilently":{},"markedRead":{},"unreadCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null},"unviewedCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null}}};(function(){var s;(s=document.currentScript||document.scripts[document.scripts.length-1]).parentNode.removeChild(s);}());</script>
+<script src="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" defer></script><script src="https://assets.habr.com/habr-web/js/app.c0af73e7.js" defer></script>
+
+
+
+    <script>
+      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+        (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+        m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+      })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+    </script>
+  
+  <script type="text/javascript" >
+    (function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+    m[i].l=1*new Date();k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})
+    (window, document, "script", "https://mc.yandex.ru/metrika/tag.js", "ym");
+
+    ym(24049213, "init", {
+      defer:true,
+      trackLinks:true,
+      accurateTrackBounce:true,
+      webvisor:false,
+    });
+  </script>
+  <noscript>
+    <div>
+      <img src="https://mc.yandex.ru/watch/24049213" style="position:absolute; left:-9999px;" alt="" />
+    </div>
+  </noscript>
+  
+    <script type="text/javascript">
+      window.addEventListener('load', function () {
+        setTimeout(() => {
+          const img = new Image();
+          img.src = 'https://vk.com/rtrg?p=VK-RTRG-421343-57vKE';
+        }, 0);
+      });
+    </script>
+  
+</body>
+</html>

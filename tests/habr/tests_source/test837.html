@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="ru" data-vue-meta="%7B%22lang%22:%7B%22ssr%22:%22ru%22%7D%7D">
+<head >
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
+  <title>Асинхронный PHP и история одного велосипеда / Хабр</title>
+  <style>
+    /* cyrillic-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSxf6TF0.woff2) format('woff2');
+      unicode-range: U+0460-052F, U+1C80-1C88, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+    }
+
+    /* cyrillic */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveQhf6TF0.woff2) format('woff2');
+      unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+    }
+
+    /* latin-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSBf6TF0.woff2) format('woff2');
+      unicode-range: U+0100-024F, U+0259, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20CF, U+2113, U+2C60-2C7F, U+A720-A7FF;
+    }
+
+    /* latin */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveRhf6.woff2) format('woff2');
+      unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+    }
+  </style>
+  <link rel="preload" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" as="script"><link rel="preload" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/app.c0af73e7.js" as="script">
+  <link rel="stylesheet" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css"><link rel="stylesheet" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css">
+  <script>window.i18nFetch = new Promise((res, rej) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open('GET', '/js/i18n/ru-compiled.85eb77f0b17c8235e7b64b9f81ea5ec2.json');
+          xhr.responseType = 'json';
+          xhr.onload = function(e) {
+            if (this.status === 200) {
+              res({ru: xhr.response});
+            } else {
+              rej(e);
+            }
+          };
+          xhr.send();
+        });</script>
+  
+  <script data-vue-meta="ssr" src="/js/ads.js" onload="window['zhY4i4nJ9K'] = true" data-vmid="checkad"></script><script data-vue-meta="ssr" type="application/ld+json" data-vmid="ldjson-schema">{"@context":"http:\/\/schema.org","@type":"Article","mainEntityOfPage":{"@type":"WebPage","@id":"https:\/\/habr.com\/ru\/post\/451916\/"},"headline":"Асинхронный PHP и история одного велосипеда","datePublished":"2019-05-15T12:58:51+03:00","dateModified":"2019-05-15T15:54:40+03:00","author":{"@type":"Person","name":"Масюкевич Максим"},"publisher":{"@type":"Organization","name":"Habr","logo":{"@type":"ImageObject","url":"https:\/\/habrastorage.org\/webt\/a_\/lk\/9m\/a_lk9mjkccjox-zccjrpfolmkmq.png"}},"description":"После выхода PHP7 появилась возможность сравнительно небольшой ценой писать долгоживущие приложения. Для программистов стали доступны такие проекты, как prooph,...","url":"https:\/\/habr.com\/ru\/post\/451916\/#post-content-body","about":["h_php","f_develop"],"image":["https:\/\/habr.com\/share\/publication\/451916\/031382467971ac51d7c53c2400ebc19e\/"]}</script>
+  <script src="//www.googletagservices.com/tag/js/gpt.js" async></script>
+  <style>.grecaptcha-badge{visibility: hidden;}</style>
+  <meta name="habr-version" content="2.49.0">
+  
+  <meta data-vue-meta="ssr" property="fb:app_id" content="444736788986613"><meta data-vue-meta="ssr" property="fb:pages" content="472597926099084"><meta data-vue-meta="ssr" name="twitter:card" content="summary_large_image"><meta data-vue-meta="ssr" name="twitter:site" content="@habr_eng"><meta data-vue-meta="ssr" property="og:title" content="Асинхронный PHP и история одного велосипеда" data-vmid="og:title"><meta data-vue-meta="ssr" name="twitter:title" content="Асинхронный PHP и история одного велосипеда" data-vmid="twitter:title"><meta data-vue-meta="ssr" name="aiturec:title" content="Асинхронный PHP и история одного велосипеда" data-vmid="aiturec:title"><meta data-vue-meta="ssr" name="description" content="После выхода PHP7 появилась возможность сравнительно небольшой ценой писать долгоживущие приложения. Для программистов стали доступны такие проекты, как prooph, broadway, tactician, messenger, авторы..." data-vmid="description"><meta data-vue-meta="ssr" itemprop="description" content="После выхода PHP7 появилась возможность сравнительно небольшой ценой писать долгоживущие приложения. Для программистов стали доступны такие проекты, как prooph, broadway, tactician, messenger, авторы..." data-vmid="description:itemprop"><meta data-vue-meta="ssr" property="og:description" content="После выхода PHP7 появилась возможность сравнительно небольшой ценой писать долгоживущие приложения. Для программистов стали доступны такие проекты, как prooph, broadway, tactician, messenger, авторы..." data-vmid="og:description"><meta data-vue-meta="ssr" name="twitter:description" content="После выхода PHP7 появилась возможность сравнительно небольшой ценой писать долгоживущие приложения. Для программистов стали доступны такие проекты, как prooph, broadway, tactician, messenger, авторы..." data-vmid="twitter:description"><meta data-vue-meta="ssr" property="aiturec:description" content="После выхода PHP7 появилась возможность сравнительно небольшой ценой писать долгоживущие приложения. Для программистов стали доступны такие проекты, как prooph, broadway, tactician, messenger, авторы..." data-vmid="aiturec:description"><meta data-vue-meta="ssr" itemprop="image" content="https://habr.com/share/publication/451916/031382467971ac51d7c53c2400ebc19e/" data-vmid="image:itemprop"><meta data-vue-meta="ssr" property="og:image" content="https://habr.com/share/publication/451916/031382467971ac51d7c53c2400ebc19e/" data-vmid="og:image"><meta data-vue-meta="ssr" property="aiturec:image" content="https://habr.com/share/publication/451916/031382467971ac51d7c53c2400ebc19e/" data-vmid="aiturec:image"><meta data-vue-meta="ssr" name="twitter:image" content="https://habr.com/share/publication/451916/031382467971ac51d7c53c2400ebc19e/" data-vmid="twitter:image"><meta data-vue-meta="ssr" property="vk:image" content="https://habr.com/share/publication/451916/031382467971ac51d7c53c2400ebc19e/" data-vmid="vk:image"><meta data-vue-meta="ssr" property="aiturec:item_id" content="451916" data-vmid="aiturec:item_id"><meta data-vue-meta="ssr" property="aiturec:datetime" content="2019-05-15T09:58:51.000Z" data-vmid="aiturec:datetime"><meta data-vue-meta="ssr" property="og:type" content="article" data-vmid="og:type"><meta data-vue-meta="ssr" property="og:locale" content="ru_RU" data-vmid="og:locale"><meta data-vue-meta="ssr" property="og:image:width" content="1200" data-vmid="og:image:width"><meta data-vue-meta="ssr" property="og:image:height" content="630" data-vmid="og:image:height">
+  <link data-vue-meta="ssr" href="https://habr.com/ru/rss/post/451916/?fl=ru" type="application/rss+xml" title="" rel="alternate" name="rss"><link data-vue-meta="ssr" href="https://habr.com/ru/post/451916/" rel="canonical" data-vmid="canonical"><link data-vue-meta="ssr" data-vmid="hreflang"><link data-vue-meta="ssr" image_src="image" href="https://habr.com/share/publication/451916/031382467971ac51d7c53c2400ebc19e/" data-vmid="image:href">
+  <meta name="apple-mobile-web-app-status-bar-style" content="#303b44">
+  <meta name="msapplication-TileColor" content="#629FBC">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="16x16"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-16.png"
+  >
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="32x32"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-32.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="76x76"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-76.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="120x120"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="152x152"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-152.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="180x180"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-180.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="256x256"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-256.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1136x640.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2436x1125.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1792x828.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_828x1792.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1334x750.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2208x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1125x2436.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2208.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2732x2048.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2688x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2224x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_750x1334.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x2732.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2388x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2224.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_640x1136.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2388.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x1536.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1536x2048.png"
+  >
+  <link
+    rel="mask-icon"
+    color="#77a2b6"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.svg"
+  >
+  <link
+    crossorigin="use-credentials"
+    href="/manifest.webmanifest"
+    rel="manifest"
+  >
+</head>
+<body>
+
+
+<div id="app" data-server-rendered="true" data-async-called="true"><div class="tm-layout__wrapper"><!----> <div></div> <!----> <header class="tm-header"><div class="tm-page-width"><div class="tm-header__container"><!----> <span class="tm-header__logo-wrap"><a href="/ru/" class="tm-header__logo tm-header__logo_ru"><svg height="16" width="16" class="tm-svg-img tm-header__icon"><title>Хабр</title> <use xlink:href="/img/habr-logo-ru.svg#logo"></use></svg></a> <span class="tm-header__beta-sign" style="display:none;">β</span></span> <div class="tm-dropdown tm-header__projects"><div class="tm-dropdown__head"><button class="tm-header__dropdown-toggle"><svg height="16" width="16" class="tm-svg-img tm-header__icon tm-header__icon_dropdown"><title>Открыть список</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#arrow-down"></use></svg></button></div> <!----></div> <a href="/ru/sandbox/start/" class="tm-header__become-author-btn">
+            Как стать автором
+          </a> <div class="tm-feature tm-header__feature tm-feature_variant-inline"><!----></div> <!----> <!----></div></div></header> <div class="tm-layout"><div class="tm-page-progress-bar"></div> <div data-menu-sticky="true" class="tm-base-layout__header tm-base-layout__header_is-sticky"><div class="tm-page-width"><div class="tm-base-layout__header-wrapper"><div class="tm-main-menu"><div class="tm-main-menu__section"><nav class="tm-main-menu__section-content"><!----> <a href="/ru/all/" class="tm-main-menu__item">
+        Все потоки
+      </a> <a href="/ru/flows/develop/" class="tm-main-menu__item">
+          Разработка
+        </a><a href="/ru/flows/admin/" class="tm-main-menu__item">
+          Администрирование
+        </a><a href="/ru/flows/design/" class="tm-main-menu__item">
+          Дизайн
+        </a><a href="/ru/flows/management/" class="tm-main-menu__item">
+          Менеджмент
+        </a><a href="/ru/flows/marketing/" class="tm-main-menu__item">
+          Маркетинг
+        </a><a href="/ru/flows/popsci/" class="tm-main-menu__item">
+          Научпоп
+        </a></nav></div></div> <div class="tm-header-user-menu tm-base-layout__user-menu"><a href="/ru/search/" class="tm-header-user-menu__item tm-header-user-menu__search"><svg height="24" width="24" class="tm-svg-img tm-header-user-menu__icon tm-header-user-menu__icon_search tm-header-user-menu__icon_dark"><title>Поиск</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#search"></use></svg></a> <!----> <!----> <!----> <div class="tm-header-user-menu__item tm-header-user-menu__user_desktop"><div class="tm-dropdown"><div class="tm-dropdown__head"><svg height="24" width="24" data-test-id="menu-toggle-guest" class="tm-svg-img tm-header-user-menu__icon"><title>Профиль</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#header-user"></use></svg> <!----></div> <!----></div> <!----></div> <!----></div></div></div></div> <!----> <div class="tm-page-width"></div> <main class="tm-layout__container"><div hl="ru" data-async-called="true" class="tm-page"><div class="tm-page-width"><!----> <div class="tm-page__wrapper"><div class="tm-page__main tm-page__main_has-sidebar"><div class="pull-down"><div class="pull-down__header" style="height:0px;"><div class="pull-down__content" style="bottom:10px;"><svg height="24" width="24" class="tm-svg-img pull-down__arrow"><title>Обновить</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#pull-arrow"></use></svg></div></div> <div class="tm-article-presenter"> <div class="tm-article-presenter__body"><div class="tm-misprint-area"><div class="tm-misprint-area__wrapper"><article class="tm-article-presenter__content tm-article-presenter__content_narrow"><div class="tm-article-presenter__header"> <div class="tm-article-snippet tm-article-presenter__snippet"><div class="tm-article-snippet__meta-container"><div class="tm-article-snippet__meta"><span class="tm-user-info tm-article-snippet__author"><a href="/ru/users/mmasiukevich/" title="mmasiukevich" class="tm-user-info__userpic"><div class="tm-entity-image"><svg height="24" width="24" class="tm-svg-img tm-image-placeholder tm-image-placeholder_lilac"><!----> <use xlink:href="/img/megazord-v24.ce74655c.svg#placeholder-user"></use></svg></div></a> <span class="tm-user-info__user"><a href="/ru/users/mmasiukevich/" class="tm-user-info__username">
+      mmasiukevich
+    </a> </span></span> <span class="tm-article-snippet__datetime-published"><time datetime="2019-05-15T09:58:51.000Z" title="2019-05-15, 12:58">15  мая  2019 в 12:58</time></span></div> <!----></div> <h1 lang="ru" class="tm-article-snippet__title tm-article-snippet__title_h1"><span>Асинхронный PHP и история одного велосипеда</span></h1> <div class="tm-article-snippet__hubs"><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/php/" class="tm-article-snippet__hubs-item-link"><span>PHP</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span></div> <div class="tm-article-snippet__labels"><div class="tm-article-snippet__label"><span>
+        Из песочницы
+      </span></div></div> <!----> <!----></div></div> <!----> <div data-gallery-root="" lang="ru" class="tm-article-body"><div id="post-content-body" class="article-formatted-body article-formatted-body_version-1"><div xmlns="http://www.w3.org/1999/xhtml"><p>После выхода PHP7 появилась возможность сравнительно небольшой ценой писать долгоживущие приложения. Для программистов стали доступны такие проекты, как <code>prooph</code>, <code>broadway</code>, <code>tactician</code>, <code>messenger</code>, авторы которых берут на себя решение наиболее частых проблем. Но что если сделать небольшой шаг вперёд, углубившись в вопрос?</p><br/>
+<p>Попробуем разобрать судьбу ещё одного велосипеда, который позволяет реализовать Publish/Subscribe приложение.</p><a name="habracut"></a><br/>
+<p>Для начала постараемся вкратце рассмотреть современные тенденции в мире PHP, а также поверхностно коснёмся асинхронной работы.</p><br/>
+<h3 id="php-sozdan-chtoby-umirat">PHP создан, чтобы умирать</h3><br/>
+<p>Долгое время PHP использовался в основном в схеме работы request/response. С точки зрения разработчиков это довольно удобно, ведь нет необходимости беспокоиться об утечках памяти, следить за подключениями. </p><br/>
+<p>Все запросы будут выполнены изолированно друг от друга, занимаемые ресурсы высвобождены, а подключения, например, к базе данных закрыты при завершении процесса. </p><br/>
+<p>В качестве примера можно взять обычное CRUD приложение, написанное на базе фреймворка Symfony. Для того, чтобы выполнить чтение из базы данных и вернуть JSON, необходимо выполнить ряд шагов (для экономии места и времени исключим шаги по генерации/выполнению опкодов):</p><br/>
+<ul>
+<li>Разбор конфигурации;</li>
+<li>Компиляция контейнера;</li>
+<li>Маршрутизация запроса;</li>
+<li>Выполнение;</li>
+<li>Рендеринг результата.</li>
+</ul><br/>
+<p>Как и в случае с PHP (использование акселераторов), фреймворк активно пользуется кешированием (часть задач не будет выполнена при следующем запросе), а также отложенной инициализацией. Начиная с версии 7.4 станет доступен <a href="https://wiki.php.net/rfc/preload">preload</a>, который позволит дополнительно оптимизировать инициализацию приложения. </p><br/>
+<p>Тем не менее, полностью все накладные расходы на инициализацию убрать не получится. </p><br/>
+<h3 id="pomozhem-php-vyzhit">Поможем PHP выжить</h3><br/>
+<p>Решение проблемы выглядит довольно простым: если запускать приложение каждый раз слишком дорого, то его надо инициализировать единожды и затем просто передавать ему запросы, контролируя их выполнение.</p><br/>
+<p>В экосистеме PHP есть такие проекты, как <a href="https://github.com/php-pm/php-pm">php-pm</a> и <a href="https://github.com/spiral/roadrunner">RoadRunner</a>. Оба концептуально делают одно и то же:</p><br/>
+<ul>
+<li>Создаётся родительский процесс, который выполняет роль супервайзера;</li>
+<li>Создаётся пул дочерних процессов;</li>
+<li>При получении запроса master извлекает из пула процесс, передаёт ему запрос. Клиент в это время удерживается в ожидании;</li>
+<li>Как только задача выполнена, master возвращает результат клиенту, а дочерний процесс отправляется обратно в пул.</li>
+</ul><br/>
+<p>Если какой-либо дочерний процесс умирает, то супервайзер создаёт его вновь и добавляет в пул. Мы сделали из нашего приложения демона с одной единственной целью: убрать накладные расходы на инициализацию, существенно повысив скорость обработки запросов. Это самый безболезненный способ повышения производительности, но не единственный.</p><br/>
+<blockquote>Примечание:<br/>
+в сети гуляет множество примеров из серии «берём ReactPHP и ускоряем Laravel в N раз». Важно понимать разницу между демонизацией (и, как следствие, экономии времени на бутстрапинге приложения) и многозадачностью.<br/>
+При использовании php-pm или roadrunner ваш код не становится неблокирующим. Вы просто экономите время на инициализации.<br/>
+Сравнивать php-pm, roadrunner и ReactPHP/Amp/Swoole некорректно по определению.</blockquote><br/>
+<h5 id="php-i-io">PHP и I/O</h5><br/>
+<p>Взаимодействие с I/O в PHP по умолчанию выполняется в блокирующем режиме. Это означает то, что если мы выполним запрос на обновление информации в таблице, то поток выполнения приостановится в ожидании ответа от базы данных. Чем больше таких вызовов в процессе обработки запроса, тем большее время ресурсы сервера простаивают. Ведь в процессе обработки запроса нам необходимо несколько раз сходить в базу данных, записать что-либо в лог, да и вернуть клиенту результат, в конце концов — тоже блокирующая операция.</p><br/>
+<blockquote>Представьте, что вы — оператор call-центра и вам за час надо обзвонить 50 клиентов.<br/>
+Вы набираете первый номер, а там занято (абонент обсуждает по телефону последнюю серию Игры Престолов и то, во что скатился сериал).<br/>
+И вот вы сидите и до победы пытаетесь до него дозвониться. Время идёт, смена подходит к концу. Потеряв 40 минут на попытку дозвониться до первого абонента, вы упустили возможность связаться с прочими и закономерно получили от начальника.<br/>
+Но вы можете поступить иначе: не дожидаться пока первый абонент освободится и как только услышали гудки, положить трубку и начать набор следующего номера. К первому можно вернуться несколько позднее.<br/>
+При таком подходе шансы обзвонить максимальное количество человек сильно повышаются, а скорость вашей работы не упирается в самую медленную задачу.</blockquote><p>Код, который не блокирует поток выполнения (не использует блокирующих I/O вызовов, а также функций вроде <code>sleep()</code>), называют асинхронным.</p><br/>
+<p>Вернёмся к нашему Symfony CRUD приложению. Практически невозможно его заставить работать в асинхронном режиме из-за обилия использования блокирующих функций: вся работа с конфигами, кешами, логированием, рендерингом ответа, взаимодействие с базой данных.</p><br/>
+<p>Но это всё условности, давайте попробуем выкинуть Symfony и воспользоваться для решения нашей задачи <a href="https://amphp.org/amp/">Amp</a>, который предоставляет реализацию Event Loop (включающую ряд биндингов), Promises и Coroutines в качестве вишенки на тортик.</p><br/>
+<p>Promise — это один из способов организации асинхронного кода. Например, нам необходимо выполнить обращение к какому-либо http ресурсу. </p><br/>
+<p>Мы создаём объект запроса и передаём его в транспорт, который возвращает нам Promise, содержащий текущее состояние. Всего возможны три состояния:</p><br/>
+<ul>
+<li>Успех: наш запрос был успешно выполнен;</li>
+<li>Ошибка: в процессе выполнения запроса что-то пошло не так (например, сервер вернул 500 ответ);</li>
+<li>Ожидание: обработка запроса ещё не началась.</li>
+</ul><br/>
+<p>Каждый Promise имеет один метод (в примере разбирается <a href="https://amphp.org/amp/promises/">Promise от Amp</a>) — <code>onResolve()</code>, в который передаётся callback функция с двумя аргументами</p><br/>
+<pre><code class="php">$promise->onResolve(
+    static function(?/Throwable $throwable, $result): void {
+        if(null !== $throwable) {
+            /** Произошла ошибка */
+            return;
+        }
+
+        /** Успех */
+    }
+);</code></pre><br/>
+<p>После того, как мы получили Promise, возникает вопрос: а кто будет следить за его состоянием и сообщит нам об изменении статуса?</p><br/>
+<p>Для этого используется Event Loop.</p><br/>
+<p>В сущности, Event Loop — это планировщик, который контролирует выполнение. Как только выполнение задачи будет завершено (не важно, как), будет вызван callable, который мы передали в Promise.</p><br/>
+<p>Что касается нюансов, то я бы рекомендовал почитать статью от Никиты Попова: <a href="https://nikic.github.io/2012/12/22/Cooperative-multitasking-using-coroutines-in-PHP.html">Cooperative multitasking using coroutines</a>. Она поможет внести некоторую ясность относительно того, что происходит и причём тут генераторы.</p><br/>
+<p>Вооружившись новыми знаниями попробуем вернуться к нашей задаче по рендерингу JSON.<br/>
+<a href="https://github.com/amphp/http-server/blob/master/examples/hello-world.php">Пример</a> обработки входящего http запроса с помощью <a href="https://github.com/amphp/http-server">amphp/http-server</a>.<br/>
+Как только мы получили запрос, выполняется асинхронное чтение из базы данных (получаем Promise) и по его завершению пользователю будет отдан заветный JSON, сформированный на основании полученных данных.</p><br/>
+<blockquote>Если нам необходимо слушать один порт из нескольких процессов, можно посмотреть в сторону <a href="https://github.com/amphp/cluster">amphp/cluster</a></blockquote><p>Основное различие в том, что один единственный процесс может обслуживать несколько запросов единовременно за счёт того, что поток выполнения не заблокирован. Клиент получит свой ответ тогда, когда завершится чтение из базы данных, а пока ответа нет, можно заняться обслуживанием следующего запроса.</p><br/>
+<h3 id="divnyy-mir-asinhronnogo-php">Дивный мир асинхронного PHP</h3><br/>
+<blockquote>Дисклеймер<br/>
+Асинхронный PHP рассматривается в контексте экзотики и не считается чем-то здоровым/нормальным. В основном будут ждать смешки в стиле «возьми GO/Kotlin, дура» и т.д. Я бы не сказал, что эти люди не правы, но...</blockquote><p>Существует ряд проектов, которые помогают в написании неблокирующего PHP кода. В рамках статьи я не стану полностью разбирать все плюсы и минусы, а постараюсь лишь поверхностно рассмотреть каждый из них.</p><br/>
+<h5 id="swoolehttpswwwswoolecouk"><a href="https://www.swoole.co.uk/">Swoole</a></h5><br/>
+<p>Асинхронный фреймворк, написанный в отличии от остальных на Си и поставляемый в виде расширения к PHP. Обладает, пожалуй, лучшими показателями производительности на текущий момент. </p><br/>
+<p>Имеется реализация каналов, корутин и прочих вкусных штук, но есть у него 1 большой минус — документация. Она хоть и отчасти на английском языке, но на мой взгляд не очень детализирована, а сам api не очень очевидный. </p><br/>
+<p>Что касается комьюнити, то тоже не всё просто и однозначно. Лично я не знаю ни одного живого человека, кто использует Swoole в бою. Возможно, я поборю свои страхи и мигрирую на него, но это случится не в ближайшее время.</p><br/>
+<p>К минусам можно добавить ещё и то, что внести свой вклад в проект (с помощью pull request) с какими-либо изменениями тоже затруднительно в случае, если не знаешь Си на должном уровне.</p><br/>
+<h5 id="workermanhttpsgithubcomwalkorworkerman"><a href="https://github.com/walkor/Workerman">Workerman</a></h5><br/>
+<p>Если и проигрывает в скорости своему конкуренту (речь о Swoole), то не сильно ощутимо и разницей в ряде сценариев можно пренебречь. </p><br/>
+<p>Имеет интеграцию с ReactPHP, что в свою очередь расширяет количество имплементаций инфраструктурных моментов. Для экономии места, минусы опишу вместе с ReactPHP.</p><br/>
+<h5 id="reactphphttpsreactphporg"><a href="https://reactphp.org/">ReactPHP</a></h5><br/>
+<p>К плюсам можно отнести довольно большое комьюнити и огромное количество примеров. Минусы же начинают проявляться в процессе использования — это концепция Promise.<br/>
+Если необходимо выполнить несколько асинхронных операций, код превращается в бесконечную портянку вызовов then (вот <a href="https://github.com/jakubkulhan/bunny#asynchronous-usage">пример простого подключения к RabbiqMQ</a> без создания exchange/queue и их биндингов). </p><br/>
+<p>При некоторой доработке напильником (считается нормой), можно получить реализацию корутин, которая поможет избавиться от Promise hell. </p><br/>
+<p>Без проекта <a href="https://github.com/recoilphp">recoilphp/recoil</a> использовать ReactPHP, на мой взгляд, не представляется возможным в сколько-нибудь вменяемом приложении. </p><br/>
+<p>Так же, помимо всего прочего, складывается ощущение, что его разработка очень сильно замедлилась. Не хватает, например, нормальной работы с PostgreSQL.</p><br/>
+<h5 id="amphttpsamphporgamp"><a href="https://amphp.org/amp/">Amp</a></h5><br/>
+<p>На мой взгляд самый лучший из вариантов, существующих на текущий момент времени.<br/>
+Помимо привычных Promise, есть реализация Coroutine, что здорово облегчает процесс разработки и код выглядит наиболее привычно для PHP программистов. </p><br/>
+<p>Разработчики постоянно дополняют и улучшают проект, с обратной связью так же нет никаких проблем. </p><br/>
+<p>К сожалению, при всех плюсах фреймворка, комьюнити относительно небольшое, но при этом есть реализации, например, работы с PostgreSQL, а также всех базовых вещей (файловая система, http клиент, DNS, etc).</p><br/>
+<p>Мне ещё не совсем понятна судьба проекта ext-async, но ребята идут с ним в ногу. Что из этого получится в 3-й версии, покажет время.</p><br/>
+<h3 id="pristupaem-k-realizacii">Приступаем к реализации</h3><br/>
+<p>Итак, мы немного разобрали теоретическую часть, самое время переходить к практике и набивать шишки.</p><br/>
+<p>Для начала немного формализуем требования:</p><br/>
+<ul>
+<li>Асинхронный обмен сообщениями (само понятие <code>message</code> можно разделить на 2 типа)<br/>
+<ul>
+<li><code>command</code>: указание на необходимость выполнить задачу. Не возвращает результат (как минимум, в случае асинхронного общения);</li>
+<li><code>event</code>: сообщает о каком-либо изменении состояния (например, в следствии команды).</li>
+</ul></li>
+<li>Неблокирующий формат работы с I/O;</li>
+<li>Возможность легко увеличить количество обработчиков;</li>
+<li>Возможность писать обработчики сообщений на любом языке.</li>
+</ul><br/>
+<blockquote>Любое сообщение по своей сути является простой структурой и разделяются лишь семантикой. Именование сообщений крайне важно с точки зрения понимания типа и назначения (хоть и в примере этот момент проигнорирован).</blockquote><p>По списку требований лучше всего подходит простая реализация <a href="https://docs.microsoft.com/en-us/azure/architecture/patterns/publisher-subscriber">Publish/Subscribe</a> паттерна.<br/>
+Чтобы обеспечить распределённое выполнение, в качестве брокера сообщений воспользуемся RabbitMQ.</p><br/>
+<p>Прототип был написан с помощью <a href="https://reactphp.org/">ReactPHP</a>, <a href="https://github.com/jakubkulhan/bunny">Bunny</a> и <a href="https://github.com/doctrine/dbal">DoctrineDBAL</a>.<br/>
+Внимательный читатель мог заметить, что Dbal использует внутри блокирующие вызовы pdo/mysqli, но на текущем этапе это было не особо важно, так как надо было понимать, что должно получиться в итоге. </p><br/>
+<p>Одной из проблем стало отсутствие библиотек для работы с PostgreSQL. Какие-то наброски есть, но этого недостаточно для полноценной работы (об этом ниже).</p><br/>
+<p>После непродолжительных изысканий ReactPHP был убран в пользу Amp, так как он относительно простой и очень активно развивается.</p><br/>
+<h5 id="rabbitmq-transport">RabbitMQ транспорт</h5><br/>
+<p>Но при всех плюсах Amp была 1 проблема: драйвера для RabbitMQ у Amp готового нет (<a href="https://github.com/jakubkulhan/bunny">Bunny</a> поддерживает только ReactPHP). </p><br/>
+<p>В теории, Amp позволяет использовать Promise от конкурента. Казалось бы, всё должно быть просто, но для работы с сокетами в библиотеке используется Event Loop от ReactPHP.<br/>
+В один момент времени, очевидно, не может быть запущено двух разных Event Loop'ов, поэтому я не мог воспользоваться функцией <a href="https://github.com/Amphp/Amp/blob/master/lib/functions.php#L267">adapt()</a>. </p><br/>
+<p>К сожалению, качество кода в bunny оставляло желать лучшего и адекватно подменить одну реализацию на другую не получилось. Что бы не останавливать работу было принято решение немного переписать библиотеку так, чтобы она заработала с Amp и не приводила к блокировке потока выполнения.</p><br/>
+<p>Данная адаптация выглядела очень страшно, всё время мне за неё было безумно стыдно, но самое главное — она работала. Ну а так как нет ничего более постоянного, чем временное, адаптер остался в ожидании человека, которому не лень будет заниматься реализацией драйвера.</p><br/>
+<p>И такой человек нашёлся. Проект <a href="https://github.com/phpinnacle">PHPinnacle</a>, помимо всего прочего, предоставляет реализацию <a href="https://github.com/phpinnacle/ridge">адаптера</a>, заточенного под использование Amp.</p><br/>
+<blockquote>Автора зовут Антон Шабовта, который <a href="https://phprussia.ru/2019/abstracts/5013">расскажет про асинхронный php</a> в рамках <a href="https://phprussia.ru/2019">PHP Russia</a> и про <a href="https://fwdays.com/en/event/php-fwdays-2019/review/implementing-async-binary-clients-in-php">разработку драйверов</a> на <a href="https://fwdays.com/en/event/php-fwdays-2019">PHP fwdays</a>.</blockquote><br/>
+<h5 id="postgresql">PostgreSQL</h5><br/>
+<p>Вторая особенность работы — взаимодействие с базой данных. В условиях «традиционного» PHP у нас всё просто: есть подключение и все запросы выполняются последовательно. </p><br/>
+<p>В случае с асинхронным выполнением, мы должны уметь единовременно выполнять несколько запросов (например, 3 транзакции). Для того, чтобы иметь такую возможность, необходима реализация пула соединений. </p><br/>
+<p>Механизм работы довольно простой: </p><br/>
+<ul>
+<li>мы открываем <em>N</em> соединений при старте (либо отложенная инициализация, не суть);</li>
+<li>при необходимости мы забираем из пула соединение, гарантируя что им не сможет воспользоваться никто другой;</li>
+<li>выполняем запрос и либо уничтожаем подключение, либо возвращаем его в пул (предпочтительно).</li>
+</ul><br/>
+<p>Во-первых, это нам позволяет запускать несколько транзакций в один момент времени, а, во-вторых, ускоряет работу за счёт наличия уже открытых соединений. У Amp есть компонент <a href="https://github.com/amphp/postgres">amphp/postgres</a>. Он берёт на себя работу с подключениями: следит за их количеством, сроком жизни и всё это без блокирования потока выполнения. </p><br/>
+<p>К слову сказать, при использовании, например, ReactPHP, это придётся реализовать самостоятельно если вы захотите работать с базой данных.</p><br/>
+<h5 id="mutex">Mutex</h5><br/>
+<p>Для эффективной и, самое главное, правильной работы приложения необходимо реализовать что-то на подобии мьютексов. Мы можем выделить 3 сценария их использования:</p><br/>
+<ul>
+<li>В рамках одного процесса подойдёт простой in memory механизм без всяких излишков;</li>
+<li>Если мы хотим обеспечить блокировку в нескольких процессах, то можно воспользоваться файловой системой (разумеется, в неблокирующем режиме);</li>
+<li>Если в разрезе нескольких серверов, то тут уже надо думать о чём-то вроде Zookeeper.</li>
+</ul><br/>
+<p>Мьютексы нужны для решения проблем, связанных с <a href="https://ru.wikipedia.org/wiki/%D0%A1%D0%BE%D1%81%D1%82%D0%BE%D1%8F%D0%BD%D0%B8%D0%B5_%D0%B3%D0%BE%D0%BD%D0%BA%D0%B8">race condition</a>. Ведь мы не знаем (и не можем знать) в каком порядке у нас будут выполняться задачи, но тем не менее мы должны обеспечивать целостность данных.</p><br/>
+<h5 id="logirovaniekonteksty">Логирование/контексты</h5><br/>
+<p>Для логирования используется уже ставший стандартом <a href="https://github.com/Seldaek/monolog">Monolog</a>, но с некоторыми оговорками: мы не можем использовать встроенные хэндлеры, так как они будут приводить к блокировкам.<br/>
+Для записи в stdOut можно взять <a href="https://github.com/amphp/log">amphp/log</a>, либо написать простую отправку сообщений в какой-нибудь Graylog.</p><br/>
+<p>Так как в один момент времени у нас может обрабатывать множество задач и при записи логов необходимо понимать, в каком контексте пишутся данные. В ходе экспериментов было принято решение сделать <code>trace_id</code> (<a href="https://microservices.io/patterns/observability/distributed-tracing.html">Distributed tracing</a>). Суть в том, что вся цепочка вызовов должна сопровождаться сквозным идентификатором, который можно отследить. Дополнительно в момент приёма сообщения генерируется <code>package_id</code>, который указывает именно на полученное сообщение.</p><br/>
+<p>Таким образом при использовании обоих идентификаторов мы можем легко отследить к чему относится конкретная запись. Всё дело в том, что в традиционном PHP все записи у нас попадают в лог в основном в том порядке, в котором они были записаны. В случае с асинхронным выполнением, никакой закономерности в порядке записей нет.</p><br/>
+<h5 id="terminating">Terminating</h5><br/>
+<p>Ещё один из нюансов асинхронной разработки — контроль за отключением нашего демона. Если просто убить процесс, то все выполняющиеся задачи не будут завершены, а данные будут потеряны.В обычном подходе такая проблема также есть, но она не столь велика, ведь одновременно выполняется лишь одна задача.</p><br/>
+<p>Что бы корректно завершить выполнение нам необходимо:</p><br/>
+<ul>
+<li>Отменить подписку на очередь. Иными словами, сделать невозможным приём новых сообщений;</li>
+<li>Доделать все оставшиеся задачи (дождаться резолвинга промисов);</li>
+<li>И только после этого завершить работу скрипта.</li>
+</ul><br/>
+<h5 id="utechki-otladka">Утечки, отладка</h5><br/>
+<p>Вопреки распространённому мнению, в современном PHP не так уж и просто столкнуться с ситуациями, при которых возникает утечка памяти. Необходимо сделать что-то абсолютно неправильно.</p><br/>
+<p>Тем не менее, единожды столкнулся и с этим, но из-за банальной невнимательности. Во время реализации heartbeat сделал так, что каждые 40 секунд добавлялся новый таймер для опроса подключения. Не трудно догадаться, что спустя некоторое время использование памяти начинало ползти вверх и довольно быстро.</p><br/>
+<p>Также, помимо всего прочего, написал простенький watcher, который опционально будет запускаться каждые 10 минут и вызывать <a href="https://www.php.net/manual/ru/function.gc-collect-cycles.php">gc_collect_cycles()</a> и <a href="https://php.net/manual/ru/function.gc-mem-caches.php">gc_mem_caches()</a>.<br/>
+Но принудительный запуск сборщика мусора не является чем-то нужным и принципиальным.</p><br/>
+<p>Для того, чтобы постоянно видеть использование памяти, в логирование был добавлен стандартный <a href="https://github.com/Seldaek/monolog/blob/master/src/Monolog/Processor/MemoryUsageProcessor.php">MemoryUsageProcessor</a>. </p><br/>
+<p>Если возникает мысль о том, что Event Loop чем-то блокируется, это можно также легко проверить: достаточно подключить <a href="https://github.com/php-service-bus/service-bus/blob/v3.2/src/Infrastructure/Watchers/LoopBlockWatcher.php">LoopBlockWatcher</a>.</p><br/>
+<p>Но необходимо убедиться, что данный наблюдатель не запускается в production окружении. Эта возможность используется исключительно во время разработки.</p><br/>
+<h3 id="rezultaty">Результаты</h3><br/>
+<p>На свет появился очередной велосипед: <a href="https://github.com/php-service-bus">php-service-bus</a>, который позволяет реализовать Message Based приложение.</p><br/>
+<p>Попробуем сделать простой демон, который принимает команду и отправляет событие в качестве реакции:</p><br/>
+<pre><code class="plaintext">composer create-project php-service-bus/skeleton pub-sub-example
+cd pub-sub-example
+docker-compose up --build -d</code></pre><br/>
+<p>Пока сервис запускается, мы можем немного разобраться в том, как устроен пример. </p><br/>
+<p>В файле <code>/bin/consumer</code> описана инициализация демона, а также конфигурация запуска.<br/>
+В директории <code>/src</code> находится 3 файла: <code>Ping</code> выполняет роль команды; <code>Pong</code>: выступает в качестве события; <code>PingService</code>: контейнер, содержащий наши обработчики.<br/>
+Если остановиться подробнее на <code>PingService</code>, то в нём можно увидеть 2 метода:</p><br/>
+<pre><code class="php">    /** @CommandHandler() */
+    public function handle(Ping $command, KernelContext $context): Promise
+    {
+        return $context->delivery(new Pong());
+    }
+
+    /** @EventListener() */
+    public function whenPong(Pong $event, KernelContext $context): void
+    {
+        $context->logContextMessage('Pong message received');
+    }</code></pre><br/>
+<ul>
+<li><code>handle</code> является обработчиком команды (для каждой команды в приложении может быть только 1 обработчик). Все обработчики команд помечаются аннотацией <code>@CommandHandler</code>;<br/>
+<ul>
+<li>Метод возвращает Promise потому, что в нём используется отправка сообщения в RabbitMQ (с помощью метода <code>delivery()</code>). Соответственно задача будет выполнена только после того, как от RabbitMQ будет получено подтверждение записи.</li>
+</ul></li>
+<li><code>whenPong</code> — слушатель события <code>Pong</code>. Слушателей напротив может быть сколько угодно и каждый из них выполняется независимо. Слушатели событий помечаются аннотацией <code>@EventListener</code>;<br/>
+<blockquote>Привычные события, представленные в современных фреймворках — не совсем события. Это, скорее, хуки, необходимые в качестве точек расширения. События же в контексте php-service-bus невозможно модифицировать, отменить, а ошибка во время обработки в одном подписчике не повлияет на второго.<br/>
+</blockquote></li>
+</ul><br/>
+<p>Любой обработчик содержит минимум 2 аргумента: собственно, само сообщение (всегда идёт первым) и контекст. Контекст содержит в себе методы по работе с входящим сообщением, метод отправки сообщения в шину, а также несколько хэлперов (например, логирование).</p><br/>
+<p>Наш пример получает команду <code>Ping</code>, при её получении отправляет событие <code>Pong</code>. При получении события записывается лог.</p><br/>
+<p>Для примера есть файл, запустив который мы отправим сообщение в RabbitMQ:</p><br/>
+<pre><code class="plaintext">tools/ping</code></pre><br/>
+<p>Если подвести некоторые итоги, то php-service-bus позволяет относительно легко реализовать приложение, использующее Message based архитектуру.</p><br/>
+<p>Ping\Pong, указанный в примере — это, по сути, обычный <code>Hello, world</code> и не несёт в себе никакой ценности. </p><br/>
+<p>Чтобы узнать про все возможности, можно обратиться к <a href="https://github.com/php-service-bus/documentation">документации</a>. </p><br/>
+<p>Если сама тема будет кому-либо интересна, распишу дополнительно как применяется, например, Saga pattern (Process manager) и какие проблемы можно решить с его помощью.</p><br/>
+<h3 id="nu-i-kak-zhe-ne-pomeryatsya">Ну и как же не померяться</h3><br/>
+<p>Что касается производительности, то есть <a href="https://github.com/php-service-bus/performance-comparison">сравнение с symfony/messenger</a>. </p><br/>
+<p>Оно не очень объективное, так как сравнивается мягкое с тёплым, но прекрасно демонстрирует преимущества неблокирующих вызовов.</p></div></div> <!----> <!----></div> <div class="tm-article-presenter__meta"><div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Теги:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bphp7%5D" class="tm-tags-list__link">php7</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Basync-php%5D" class="tm-tags-list__link">async-php</a></li></ul></div> <div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Хабы:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/hub/php/" class="tm-hubs-list__link">
+    PHP
+  </a></li></ul></div></div></article></div> <!----></div> <div class="tm-article-sticky-panel"><div class="tm-data-icons tm-article-sticky-panel__icons"><div class="tm-article-rating tm-data-icons__item"><div class="tm-votes-meter tm-article-rating__votes-switcher"><svg height="16" width="16" class="tm-svg-img tm-votes-meter__icon tm-votes-meter__icon_medium"><title>Всего голосов 36: ↑35 и ↓1</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-rating"></use></svg> <span title="Всего голосов 36: ↑35 и ↓1" class="tm-votes-meter__value tm-votes-meter__value_positive tm-votes-meter__value_medium">+34</span></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----> <span title="Количество просмотров" class="tm-icon-counter tm-data-icons__item"><svg height="16" width="16" class="tm-svg-img tm-icon-counter__icon"><title>Просмотры</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-views"></use></svg> <span class="tm-icon-counter__value">21K</span></span> <button title="Добавить в закладки" type="button" class="bookmarks-button tm-data-icons__item"><span title="Добавить в закладки" class="tm-svg-icon__wrapper bookmarks-button__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Добавить в закладки</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-favorite"></use></svg></span> <span title="Количество пользователей, добавивших публикацию в закладки" class="bookmarks-button__counter">
+    143
+  </span></button> <!----> <div title="Поделиться" class="tm-sharing tm-data-icons__item"><button type="button" class="tm-sharing__button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="tm-sharing__icon"><path fill="currentColor" d="M10.33.275l9.047 7.572a.2.2 0 010 .306l-9.048 7.572a.2.2 0 01-.328-.153V11c-8 0-9.94 6-9.94 6S-1 5 10 5V.428a.2.2 0 01.328-.153z"></path></svg></button> <!----></div> <DIV class="v-portal" style="display:none;"></DIV></div> </div></div> <!----> <!----> <div class="tm-article-presenter__footer"><div class="tm-article-blocks"><!----> <section class="tm-block tm-block_spacing-bottom"><!----> <div class="tm-block__body tm-block__body_variant-balanced"><div class="tm-article-author"> <div class="tm-user-card tm-article-author__user-card tm-user-card_variant-article"><div class="tm-user-card__info-container"><div class="tm-user-card__header"><div class="tm-user-card__header-data"><a href="/ru/users/mmasiukevich/" class="tm-user-card__userpic tm-user-card__userpic_size-40"><div class="tm-entity-image"><svg class="tm-svg-img tm-image-placeholder tm-image-placeholder_lilac"><!----> <use xlink:href="/img/megazord-v24.ce74655c.svg#placeholder-user"></use></svg></div></a> <div class="tm-user-card__meta"><div title=" 31 голос " class="tm-karma tm-user-card__karma"><div class="tm-karma__votes tm-karma__votes_positive">
+    17.7
+  </div> <div class="tm-karma__text">
+    Карма
+  </div></div> <div title="Рейтинг пользователя" class="tm-rating tm-user-card__rating"><div class="tm-rating__header"> <div class="tm-rating__counter">0</div></div> <div class="tm-rating__text">
+    Рейтинг
+  </div></div></div></div></div> <div class="tm-user-card__info tm-user-card__info_variant-article"><div class="tm-user-card__title tm-user-card__title_variant-article"><span class="tm-user-card__name tm-user-card__name_variant-article">Масюкевич Максим</span> <a href="/ru/users/mmasiukevich/" class="tm-user-card__nickname tm-user-card__nickname_variant-article">
+          @mmasiukevich
+        </a> <!----></div> <p class="tm-user-card__short-info tm-user-card__short-info_variant-article">Software developer</p></div></div> <div class="tm-user-card__buttons tm-user-card__buttons_variant-article"><!----> <!----> <button type="submit" class="tm-user-card__button btn btn_transparent btn_small">
+      Задонатить
+    </button> <!----> <!----></div></div> <div class="tm-article-author__user-contacts"><a href="https://github.com/mmasiukevich/" rel="noopener" target="_blank" class="tm-article-author__contact">
+      Github
+    </a></div></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----></section> <div class="tm-article-blocks__comments"><div class="tm-article-page-comments"><div class="tm-article-comments-counter-link tm-article-comments-counter-button"><a href="/ru/post/451916/comments/" class="tm-article-comments-counter-link__link tm-article-comments-counter-link__link_button-style"><svg height="16" width="16" class="tm-svg-img tm-article-comments-counter-link__icon tm-article-comments-counter-link__icon_contrasted"><title>Комментарии</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-comments"></use></svg> <span class="tm-article-comments-counter-link__value tm-article-comments-counter-link__value_contrasted">
+       Комментарии 38 
+    </span></a> <!----></div></div></div> <div class="tm-ad-banner__container tm-page-article__banner"><!----> <div id="articleBottomBanner" class="tm-ad-banner"></div></div> <!----> <!----> <!----> <!----> </div></div></div></div></div> <div class="tm-page__sidebar"><div class="tm-layout-sidebar"><div class="tm-layout-sidebar__ads tm-layout-sidebar__ads_initial"><div class="tm-ad-banner__container tm-layout-sidebar__banner"><!----> <div id="sidebarBanner" class="tm-ad-banner"></div></div></div> <div class="tm-sexy-sidebar tm-sexy-sidebar_initial" style="margin-top:0px;"><!----> <section data-async-called="true" class="tm-block tm-block_spacing-bottom"><header class="tm-block__header"><h2 class="tm-block__title">Работа</h2> <!----></header> <div class="tm-block__body"><div class="tm-vacancies-block__item"><a href="https://career.habr.com/vacancies/php_programmist" target="_blank" class="tm-vacancies-block__vacancy-title">
+        PHP программист
+      </a> <div class="tm-vacancies-block__vacancies-count">
+        288
+    вакансий
+      </div></div><div class="tm-vacancies-block__item"><a href="https://career.habr.com/vacancies/programmist_laravel" target="_blank" class="tm-vacancies-block__vacancy-title">
+        Разработчик Laravel
+      </a> <div class="tm-vacancies-block__vacancies-count">
+        106
+    вакансий
+      </div></div></div> <footer class="tm-block__footer"><a href="https://career.habr.com/vacancies" class="tm-block-extralink">
+      Все вакансии
+    </a></footer></section></div></div></div></div></div></div></main> <!----></div> <div class="tm-footer-menu"><div class="tm-page-width"><div class="tm-footer-menu__container"><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Ваш аккаунт
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr/?back=/ru/post/451916/&amp;hl=ru" rel="nofollow" target="_self">
+                Войти
+              </a></li><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr-register/?back=/ru/post/451916/&amp;hl=ru" rel="nofollow" target="_self">
+                Регистрация
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Разделы
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/" class="footer-menu__item-link router-link-active">
+                Публикации
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/news/" class="footer-menu__item-link">
+                Новости
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/hubs/" class="footer-menu__item-link">
+                Хабы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/companies/" class="footer-menu__item-link">
+                Компании
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/users/" class="footer-menu__item-link">
+                Авторы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/sandbox/" class="footer-menu__item-link">
+                Песочница
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Информация
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/docs/help/" class="footer-menu__item-link">
+                Устройство сайта
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/authors/codex/" class="footer-menu__item-link">
+                Для авторов
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/companies/corpblogs/" class="footer-menu__item-link">
+                Для компаний
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/docs/transparency/" class="footer-menu__item-link">
+                Документы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/agreement" target="_blank">
+                Соглашение
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/confidential/" target="_blank">
+                Конфиденциальность
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Услуги
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQLwRfQmXibiUlWaRg-BAc38s7oM3lJiaPju7qmdJsp8ysIvZ_G-Npem0njJLMozE2bPHMpDqiI5hhy/pub?start=false&amp;loop=false&amp;delayms=60000&amp;slide=id.g91a03369cd_4_297" target="_blank">
+                Реклама
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://habrastorage.org/storage/stuff/habr/service_price.pdf" target="_blank">
+                Тарифы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQJJds8-Di7BQSP_guHxICN7woVYoN5NP_22ra-BIo4bqnTT9FR6fB-Ku2P0AoRpX0Ds-LRkDeAoD8F/pub?start=false&amp;loop=false&amp;delayms=60000" target="_blank">
+                Контент
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://tmtm.timepad.ru/" target="_blank">
+                Семинары
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/megaprojects/" class="footer-menu__item-link">
+                Мегапроекты
+              </a></li></ul></div></div></div></div></div> <div class="tm-footer"><div class="tm-page-width"><div class="tm-footer__container"><!----> <div class="tm-footer__social"><a href="https://www.facebook.com/habrahabr.ru" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Facebook</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-facebook"></use></svg></a><a href="https://twitter.com/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Twitter</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-twitter"></use></svg></a><a href="https://vk.com/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>VK</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-vkontakte"></use></svg></a><a href="https://telegram.me/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Telegram</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-telegram"></use></svg></a><a href="https://www.youtube.com/channel/UCd_sTwKqVrweTt4oAKY5y4w" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Youtube</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-youtube"></use></svg></a><a href="https://zen.yandex.ru/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Яндекс Дзен</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-zen"></use></svg></a></div> <DIV class="v-portal" style="display:none;"></DIV> <button class="tm-footer__link"><!---->
+        Настройка языка
+      </button> <a href="/ru/about" class="tm-footer__link">
+        О сайте
+      </a> <a href="/ru/feedback/" class="tm-footer__link">
+        Техническая поддержка
+      </a> <!----> <a href="/berserk-mode-nope" class="tm-footer__link">
+        Вернуться на старую версию
+      </a> <div class="tm-footer-copyright"><span class="tm-copyright"><span class="tm-copyright__years">© 2006–2021 </span> <span class="tm-copyright__name">«<a href="https://company.habr.com/" rel="noopener" target="_blank" class="tm-copyright__link">Habr</a>»</span></span></div></div></div></div> <!----> <!----></div> <div class="vue-portal-target"></div></div>
+<script>window.__INITIAL_STATE__={"adblock":{"hasAcceptableAdsFilter":false,"hasAdblock":false},"articlesList":{"articlesList":{"451916":{"id":"451916","timePublished":"2019-05-15T09:58:51+00:00","isCorporative":false,"lang":"ru","titleHtml":"Асинхронный PHP и история одного велосипеда","leadData":{"textHtml":"\u003Cp\u003EПосле выхода PHP7 появилась возможность сравнительно небольшой ценой писать долгоживущие приложения. Для программистов стали доступны такие проекты, как \u003Ccode\u003Eprooph\u003C\u002Fcode\u003E, \u003Ccode\u003Ebroadway\u003C\u002Fcode\u003E, \u003Ccode\u003Etactician\u003C\u002Fcode\u003E, \u003Ccode\u003Emessenger\u003C\u002Fcode\u003E, авторы которых берут на себя решение наиболее частых проблем. Но что если сделать небольшой шаг вперёд, углубившись в вопрос?\u003C\u002Fp\u003E\u003Cbr\u003E\r\n\u003Cp\u003EПопробуем разобрать судьбу ещё одного велосипеда, который позволяет реализовать Publish\u002FSubscribe приложение.\u003C\u002Fp\u003E","imageUrl":null,"buttonTextHtml":"Читать дальше →","image":null},"editorVersion":"1.0","postType":"article","postLabels":[{"type":"sandbox","data":null}],"author":{"scoreStats":{"score":17.7,"votesCount":31},"rating":0,"relatedData":null,"contacts":[{"title":"Github","url":"https:\u002F\u002Fgithub.com\u002Fmmasiukevich\u002F","value":"mmasiukevich"}],"authorContacts":[{"title":"Github","url":"https:\u002F\u002Fgithub.com\u002Fmmasiukevich\u002F","value":"mmasiukevich"}],"paymentDetails":{"paymentYandexMoney":null,"paymentPayPalMe":null,"paymentWebmoney":"247596271920"},"id":"1823701","alias":"mmasiukevich","fullname":"Масюкевич Максим","avatarUrl":null,"speciality":"Software developer"},"statistics":{"commentsCount":38,"favoritesCount":143,"readingCount":20762,"score":34,"votesCount":36},"hubs":[{"relatedData":null,"id":"260","alias":"php","type":"collective","title":"PHP","titleHtml":"PHP","isProfiled":true}],"flows":[{"id":"1","alias":"develop","title":"Разработка"}],"relatedData":null,"textHtml":"\u003Cdiv xmlns=\"http:\u002F\u002Fwww.w3.org\u002F1999\u002Fxhtml\"\u003E\u003Cp\u003EПосле выхода PHP7 появилась возможность сравнительно небольшой ценой писать долгоживущие приложения. Для программистов стали доступны такие проекты, как \u003Ccode\u003Eprooph\u003C\u002Fcode\u003E, \u003Ccode\u003Ebroadway\u003C\u002Fcode\u003E, \u003Ccode\u003Etactician\u003C\u002Fcode\u003E, \u003Ccode\u003Emessenger\u003C\u002Fcode\u003E, авторы которых берут на себя решение наиболее частых проблем. Но что если сделать небольшой шаг вперёд, углубившись в вопрос?\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EПопробуем разобрать судьбу ещё одного велосипеда, который позволяет реализовать Publish\u002FSubscribe приложение.\u003C\u002Fp\u003E\u003Ca name=\"habracut\"\u003E\u003C\u002Fa\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EДля начала постараемся вкратце рассмотреть современные тенденции в мире PHP, а также поверхностно коснёмся асинхронной работы.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Ch3 id=\"php-sozdan-chtoby-umirat\"\u003EPHP создан, чтобы умирать\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EДолгое время PHP использовался в основном в схеме работы request\u002Fresponse. С точки зрения разработчиков это довольно удобно, ведь нет необходимости беспокоиться об утечках памяти, следить за подключениями. \u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EВсе запросы будут выполнены изолированно друг от друга, занимаемые ресурсы высвобождены, а подключения, например, к базе данных закрыты при завершении процесса. \u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EВ качестве примера можно взять обычное CRUD приложение, написанное на базе фреймворка Symfony. Для того, чтобы выполнить чтение из базы данных и вернуть JSON, необходимо выполнить ряд шагов (для экономии места и времени исключим шаги по генерации\u002Fвыполнению опкодов):\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003EРазбор конфигурации;\u003C\u002Fli\u003E\r\n\u003Cli\u003EКомпиляция контейнера;\u003C\u002Fli\u003E\r\n\u003Cli\u003EМаршрутизация запроса;\u003C\u002Fli\u003E\r\n\u003Cli\u003EВыполнение;\u003C\u002Fli\u003E\r\n\u003Cli\u003EРендеринг результата.\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EКак и в случае с PHP (использование акселераторов), фреймворк активно пользуется кешированием (часть задач не будет выполнена при следующем запросе), а также отложенной инициализацией. Начиная с версии 7.4 станет доступен \u003Ca href=\"https:\u002F\u002Fwiki.php.net\u002Frfc\u002Fpreload\"\u003Epreload\u003C\u002Fa\u003E, который позволит дополнительно оптимизировать инициализацию приложения. \u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EТем не менее, полностью все накладные расходы на инициализацию убрать не получится. \u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Ch3 id=\"pomozhem-php-vyzhit\"\u003EПоможем PHP выжить\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EРешение проблемы выглядит довольно простым: если запускать приложение каждый раз слишком дорого, то его надо инициализировать единожды и затем просто передавать ему запросы, контролируя их выполнение.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EВ экосистеме PHP есть такие проекты, как \u003Ca href=\"https:\u002F\u002Fgithub.com\u002Fphp-pm\u002Fphp-pm\"\u003Ephp-pm\u003C\u002Fa\u003E и \u003Ca href=\"https:\u002F\u002Fgithub.com\u002Fspiral\u002Froadrunner\"\u003ERoadRunner\u003C\u002Fa\u003E. Оба концептуально делают одно и то же:\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003EСоздаётся родительский процесс, который выполняет роль супервайзера;\u003C\u002Fli\u003E\r\n\u003Cli\u003EСоздаётся пул дочерних процессов;\u003C\u002Fli\u003E\r\n\u003Cli\u003EПри получении запроса master извлекает из пула процесс, передаёт ему запрос. Клиент в это время удерживается в ожидании;\u003C\u002Fli\u003E\r\n\u003Cli\u003EКак только задача выполнена, master возвращает результат клиенту, а дочерний процесс отправляется обратно в пул.\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EЕсли какой-либо дочерний процесс умирает, то супервайзер создаёт его вновь и добавляет в пул. Мы сделали из нашего приложения демона с одной единственной целью: убрать накладные расходы на инициализацию, существенно повысив скорость обработки запросов. Это самый безболезненный способ повышения производительности, но не единственный.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cblockquote\u003EПримечание:\u003Cbr\u002F\u003E\r\nв сети гуляет множество примеров из серии «берём ReactPHP и ускоряем Laravel в N раз». Важно понимать разницу между демонизацией (и, как следствие, экономии времени на бутстрапинге приложения) и многозадачностью.\u003Cbr\u002F\u003E\r\nПри использовании php-pm или roadrunner ваш код не становится неблокирующим. Вы просто экономите время на инициализации.\u003Cbr\u002F\u003E\r\nСравнивать php-pm, roadrunner и ReactPHP\u002FAmp\u002FSwoole некорректно по определению.\u003C\u002Fblockquote\u003E\u003Cbr\u002F\u003E\r\n\u003Ch5 id=\"php-i-io\"\u003EPHP и I\u002FO\u003C\u002Fh5\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EВзаимодействие с I\u002FO в PHP по умолчанию выполняется в блокирующем режиме. Это означает то, что если мы выполним запрос на обновление информации в таблице, то поток выполнения приостановится в ожидании ответа от базы данных. Чем больше таких вызовов в процессе обработки запроса, тем большее время ресурсы сервера простаивают. Ведь в процессе обработки запроса нам необходимо несколько раз сходить в базу данных, записать что-либо в лог, да и вернуть клиенту результат, в конце концов — тоже блокирующая операция.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cblockquote\u003EПредставьте, что вы — оператор call-центра и вам за час надо обзвонить 50 клиентов.\u003Cbr\u002F\u003E\r\nВы набираете первый номер, а там занято (абонент обсуждает по телефону последнюю серию Игры Престолов и то, во что скатился сериал).\u003Cbr\u002F\u003E\r\nИ вот вы сидите и до победы пытаетесь до него дозвониться. Время идёт, смена подходит к концу. Потеряв 40 минут на попытку дозвониться до первого абонента, вы упустили возможность связаться с прочими и закономерно получили от начальника.\u003Cbr\u002F\u003E\r\nНо вы можете поступить иначе: не дожидаться пока первый абонент освободится и как только услышали гудки, положить трубку и начать набор следующего номера. К первому можно вернуться несколько позднее.\u003Cbr\u002F\u003E\r\nПри таком подходе шансы обзвонить максимальное количество человек сильно повышаются, а скорость вашей работы не упирается в самую медленную задачу.\u003C\u002Fblockquote\u003E\u003Cp\u003EКод, который не блокирует поток выполнения (не использует блокирующих I\u002FO вызовов, а также функций вроде \u003Ccode\u003Esleep()\u003C\u002Fcode\u003E), называют асинхронным.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EВернёмся к нашему Symfony CRUD приложению. Практически невозможно его заставить работать в асинхронном режиме из-за обилия использования блокирующих функций: вся работа с конфигами, кешами, логированием, рендерингом ответа, взаимодействие с базой данных.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EНо это всё условности, давайте попробуем выкинуть Symfony и воспользоваться для решения нашей задачи \u003Ca href=\"https:\u002F\u002Famphp.org\u002Famp\u002F\"\u003EAmp\u003C\u002Fa\u003E, который предоставляет реализацию Event Loop (включающую ряд биндингов), Promises и Coroutines в качестве вишенки на тортик.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EPromise — это один из способов организации асинхронного кода. Например, нам необходимо выполнить обращение к какому-либо http ресурсу. \u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EМы создаём объект запроса и передаём его в транспорт, который возвращает нам Promise, содержащий текущее состояние. Всего возможны три состояния:\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003EУспех: наш запрос был успешно выполнен;\u003C\u002Fli\u003E\r\n\u003Cli\u003EОшибка: в процессе выполнения запроса что-то пошло не так (например, сервер вернул 500 ответ);\u003C\u002Fli\u003E\r\n\u003Cli\u003EОжидание: обработка запроса ещё не началась.\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EКаждый Promise имеет один метод (в примере разбирается \u003Ca href=\"https:\u002F\u002Famphp.org\u002Famp\u002Fpromises\u002F\"\u003EPromise от Amp\u003C\u002Fa\u003E) — \u003Ccode\u003EonResolve()\u003C\u002Fcode\u003E, в который передаётся callback функция с двумя аргументами\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"php\"\u003E$promise-\u003EonResolve(\n    static function(?\u002FThrowable $throwable, $result): void {\n        if(null !== $throwable) {\n            \u002F** Произошла ошибка *\u002F\n            return;\n        }\n\n        \u002F** Успех *\u002F\n    }\n);\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EПосле того, как мы получили Promise, возникает вопрос: а кто будет следить за его состоянием и сообщит нам об изменении статуса?\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EДля этого используется Event Loop.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EВ сущности, Event Loop — это планировщик, который контролирует выполнение. Как только выполнение задачи будет завершено (не важно, как), будет вызван callable, который мы передали в Promise.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EЧто касается нюансов, то я бы рекомендовал почитать статью от Никиты Попова: \u003Ca href=\"https:\u002F\u002Fnikic.github.io\u002F2012\u002F12\u002F22\u002FCooperative-multitasking-using-coroutines-in-PHP.html\"\u003ECooperative multitasking using coroutines\u003C\u002Fa\u003E. Она поможет внести некоторую ясность относительно того, что происходит и причём тут генераторы.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EВооружившись новыми знаниями попробуем вернуться к нашей задаче по рендерингу JSON.\u003Cbr\u002F\u003E\r\n\u003Ca href=\"https:\u002F\u002Fgithub.com\u002Famphp\u002Fhttp-server\u002Fblob\u002Fmaster\u002Fexamples\u002Fhello-world.php\"\u003EПример\u003C\u002Fa\u003E обработки входящего http запроса с помощью \u003Ca href=\"https:\u002F\u002Fgithub.com\u002Famphp\u002Fhttp-server\"\u003Eamphp\u002Fhttp-server\u003C\u002Fa\u003E.\u003Cbr\u002F\u003E\r\nКак только мы получили запрос, выполняется асинхронное чтение из базы данных (получаем Promise) и по его завершению пользователю будет отдан заветный JSON, сформированный на основании полученных данных.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cblockquote\u003EЕсли нам необходимо слушать один порт из нескольких процессов, можно посмотреть в сторону \u003Ca href=\"https:\u002F\u002Fgithub.com\u002Famphp\u002Fcluster\"\u003Eamphp\u002Fcluster\u003C\u002Fa\u003E\u003C\u002Fblockquote\u003E\u003Cp\u003EОсновное различие в том, что один единственный процесс может обслуживать несколько запросов единовременно за счёт того, что поток выполнения не заблокирован. Клиент получит свой ответ тогда, когда завершится чтение из базы данных, а пока ответа нет, можно заняться обслуживанием следующего запроса.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Ch3 id=\"divnyy-mir-asinhronnogo-php\"\u003EДивный мир асинхронного PHP\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\n\u003Cblockquote\u003EДисклеймер\u003Cbr\u002F\u003E\r\nАсинхронный PHP рассматривается в контексте экзотики и не считается чем-то здоровым\u002Fнормальным. В основном будут ждать смешки в стиле «возьми GO\u002FKotlin, дура» и т.д. Я бы не сказал, что эти люди не правы, но...\u003C\u002Fblockquote\u003E\u003Cp\u003EСуществует ряд проектов, которые помогают в написании неблокирующего PHP кода. В рамках статьи я не стану полностью разбирать все плюсы и минусы, а постараюсь лишь поверхностно рассмотреть каждый из них.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Ch5 id=\"swoolehttpswwwswoolecouk\"\u003E\u003Ca href=\"https:\u002F\u002Fwww.swoole.co.uk\u002F\"\u003ESwoole\u003C\u002Fa\u003E\u003C\u002Fh5\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EАсинхронный фреймворк, написанный в отличии от остальных на Си и поставляемый в виде расширения к PHP. Обладает, пожалуй, лучшими показателями производительности на текущий момент. \u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EИмеется реализация каналов, корутин и прочих вкусных штук, но есть у него 1 большой минус — документация. Она хоть и отчасти на английском языке, но на мой взгляд не очень детализирована, а сам api не очень очевидный. \u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EЧто касается комьюнити, то тоже не всё просто и однозначно. Лично я не знаю ни одного живого человека, кто использует Swoole в бою. Возможно, я поборю свои страхи и мигрирую на него, но это случится не в ближайшее время.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EК минусам можно добавить ещё и то, что внести свой вклад в проект (с помощью pull request) с какими-либо изменениями тоже затруднительно в случае, если не знаешь Си на должном уровне.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Ch5 id=\"workermanhttpsgithubcomwalkorworkerman\"\u003E\u003Ca href=\"https:\u002F\u002Fgithub.com\u002Fwalkor\u002FWorkerman\"\u003EWorkerman\u003C\u002Fa\u003E\u003C\u002Fh5\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EЕсли и проигрывает в скорости своему конкуренту (речь о Swoole), то не сильно ощутимо и разницей в ряде сценариев можно пренебречь. \u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EИмеет интеграцию с ReactPHP, что в свою очередь расширяет количество имплементаций инфраструктурных моментов. Для экономии места, минусы опишу вместе с ReactPHP.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Ch5 id=\"reactphphttpsreactphporg\"\u003E\u003Ca href=\"https:\u002F\u002Freactphp.org\u002F\"\u003EReactPHP\u003C\u002Fa\u003E\u003C\u002Fh5\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EК плюсам можно отнести довольно большое комьюнити и огромное количество примеров. Минусы же начинают проявляться в процессе использования — это концепция Promise.\u003Cbr\u002F\u003E\r\nЕсли необходимо выполнить несколько асинхронных операций, код превращается в бесконечную портянку вызовов then (вот \u003Ca href=\"https:\u002F\u002Fgithub.com\u002Fjakubkulhan\u002Fbunny#asynchronous-usage\"\u003Eпример простого подключения к RabbiqMQ\u003C\u002Fa\u003E без создания exchange\u002Fqueue и их биндингов). \u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EПри некоторой доработке напильником (считается нормой), можно получить реализацию корутин, которая поможет избавиться от Promise hell. \u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EБез проекта \u003Ca href=\"https:\u002F\u002Fgithub.com\u002Frecoilphp\"\u003Erecoilphp\u002Frecoil\u003C\u002Fa\u003E использовать ReactPHP, на мой взгляд, не представляется возможным в сколько-нибудь вменяемом приложении. \u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EТак же, помимо всего прочего, складывается ощущение, что его разработка очень сильно замедлилась. Не хватает, например, нормальной работы с PostgreSQL.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Ch5 id=\"amphttpsamphporgamp\"\u003E\u003Ca href=\"https:\u002F\u002Famphp.org\u002Famp\u002F\"\u003EAmp\u003C\u002Fa\u003E\u003C\u002Fh5\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EНа мой взгляд самый лучший из вариантов, существующих на текущий момент времени.\u003Cbr\u002F\u003E\r\nПомимо привычных Promise, есть реализация Coroutine, что здорово облегчает процесс разработки и код выглядит наиболее привычно для PHP программистов. \u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EРазработчики постоянно дополняют и улучшают проект, с обратной связью так же нет никаких проблем. \u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EК сожалению, при всех плюсах фреймворка, комьюнити относительно небольшое, но при этом есть реализации, например, работы с PostgreSQL, а также всех базовых вещей (файловая система, http клиент, DNS, etc).\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EМне ещё не совсем понятна судьба проекта ext-async, но ребята идут с ним в ногу. Что из этого получится в 3-й версии, покажет время.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Ch3 id=\"pristupaem-k-realizacii\"\u003EПриступаем к реализации\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EИтак, мы немного разобрали теоретическую часть, самое время переходить к практике и набивать шишки.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EДля начала немного формализуем требования:\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003EАсинхронный обмен сообщениями (само понятие \u003Ccode\u003Emessage\u003C\u002Fcode\u003E можно разделить на 2 типа)\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003E\u003Ccode\u003Ecommand\u003C\u002Fcode\u003E: указание на необходимость выполнить задачу. Не возвращает результат (как минимум, в случае асинхронного общения);\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Ccode\u003Eevent\u003C\u002Fcode\u003E: сообщает о каком-либо изменении состояния (например, в следствии команды).\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003C\u002Fli\u003E\r\n\u003Cli\u003EНеблокирующий формат работы с I\u002FO;\u003C\u002Fli\u003E\r\n\u003Cli\u003EВозможность легко увеличить количество обработчиков;\u003C\u002Fli\u003E\r\n\u003Cli\u003EВозможность писать обработчики сообщений на любом языке.\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\n\u003Cblockquote\u003EЛюбое сообщение по своей сути является простой структурой и разделяются лишь семантикой. Именование сообщений крайне важно с точки зрения понимания типа и назначения (хоть и в примере этот момент проигнорирован).\u003C\u002Fblockquote\u003E\u003Cp\u003EПо списку требований лучше всего подходит простая реализация \u003Ca href=\"https:\u002F\u002Fdocs.microsoft.com\u002Fen-us\u002Fazure\u002Farchitecture\u002Fpatterns\u002Fpublisher-subscriber\"\u003EPublish\u002FSubscribe\u003C\u002Fa\u003E паттерна.\u003Cbr\u002F\u003E\r\nЧтобы обеспечить распределённое выполнение, в качестве брокера сообщений воспользуемся RabbitMQ.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EПрототип был написан с помощью \u003Ca href=\"https:\u002F\u002Freactphp.org\u002F\"\u003EReactPHP\u003C\u002Fa\u003E, \u003Ca href=\"https:\u002F\u002Fgithub.com\u002Fjakubkulhan\u002Fbunny\"\u003EBunny\u003C\u002Fa\u003E и \u003Ca href=\"https:\u002F\u002Fgithub.com\u002Fdoctrine\u002Fdbal\"\u003EDoctrineDBAL\u003C\u002Fa\u003E.\u003Cbr\u002F\u003E\r\nВнимательный читатель мог заметить, что Dbal использует внутри блокирующие вызовы pdo\u002Fmysqli, но на текущем этапе это было не особо важно, так как надо было понимать, что должно получиться в итоге. \u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EОдной из проблем стало отсутствие библиотек для работы с PostgreSQL. Какие-то наброски есть, но этого недостаточно для полноценной работы (об этом ниже).\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EПосле непродолжительных изысканий ReactPHP был убран в пользу Amp, так как он относительно простой и очень активно развивается.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Ch5 id=\"rabbitmq-transport\"\u003ERabbitMQ транспорт\u003C\u002Fh5\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EНо при всех плюсах Amp была 1 проблема: драйвера для RabbitMQ у Amp готового нет (\u003Ca href=\"https:\u002F\u002Fgithub.com\u002Fjakubkulhan\u002Fbunny\"\u003EBunny\u003C\u002Fa\u003E поддерживает только ReactPHP). \u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EВ теории, Amp позволяет использовать Promise от конкурента. Казалось бы, всё должно быть просто, но для работы с сокетами в библиотеке используется Event Loop от ReactPHP.\u003Cbr\u002F\u003E\r\nВ один момент времени, очевидно, не может быть запущено двух разных Event Loop'ов, поэтому я не мог воспользоваться функцией \u003Ca href=\"https:\u002F\u002Fgithub.com\u002FAmphp\u002FAmp\u002Fblob\u002Fmaster\u002Flib\u002Ffunctions.php#L267\"\u003Eadapt()\u003C\u002Fa\u003E. \u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EК сожалению, качество кода в bunny оставляло желать лучшего и адекватно подменить одну реализацию на другую не получилось. Что бы не останавливать работу было принято решение немного переписать библиотеку так, чтобы она заработала с Amp и не приводила к блокировке потока выполнения.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EДанная адаптация выглядела очень страшно, всё время мне за неё было безумно стыдно, но самое главное — она работала. Ну а так как нет ничего более постоянного, чем временное, адаптер остался в ожидании человека, которому не лень будет заниматься реализацией драйвера.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EИ такой человек нашёлся. Проект \u003Ca href=\"https:\u002F\u002Fgithub.com\u002Fphpinnacle\"\u003EPHPinnacle\u003C\u002Fa\u003E, помимо всего прочего, предоставляет реализацию \u003Ca href=\"https:\u002F\u002Fgithub.com\u002Fphpinnacle\u002Fridge\"\u003Eадаптера\u003C\u002Fa\u003E, заточенного под использование Amp.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cblockquote\u003EАвтора зовут Антон Шабовта, который \u003Ca href=\"https:\u002F\u002Fphprussia.ru\u002F2019\u002Fabstracts\u002F5013\"\u003Eрасскажет про асинхронный php\u003C\u002Fa\u003E в рамках \u003Ca href=\"https:\u002F\u002Fphprussia.ru\u002F2019\"\u003EPHP Russia\u003C\u002Fa\u003E и про \u003Ca href=\"https:\u002F\u002Ffwdays.com\u002Fen\u002Fevent\u002Fphp-fwdays-2019\u002Freview\u002Fimplementing-async-binary-clients-in-php\"\u003Eразработку драйверов\u003C\u002Fa\u003E на \u003Ca href=\"https:\u002F\u002Ffwdays.com\u002Fen\u002Fevent\u002Fphp-fwdays-2019\"\u003EPHP fwdays\u003C\u002Fa\u003E.\u003C\u002Fblockquote\u003E\u003Cbr\u002F\u003E\r\n\u003Ch5 id=\"postgresql\"\u003EPostgreSQL\u003C\u002Fh5\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EВторая особенность работы — взаимодействие с базой данных. В условиях «традиционного» PHP у нас всё просто: есть подключение и все запросы выполняются последовательно. \u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EВ случае с асинхронным выполнением, мы должны уметь единовременно выполнять несколько запросов (например, 3 транзакции). Для того, чтобы иметь такую возможность, необходима реализация пула соединений. \u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EМеханизм работы довольно простой: \u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003Eмы открываем \u003Cem\u003EN\u003C\u002Fem\u003E соединений при старте (либо отложенная инициализация, не суть);\u003C\u002Fli\u003E\r\n\u003Cli\u003Eпри необходимости мы забираем из пула соединение, гарантируя что им не сможет воспользоваться никто другой;\u003C\u002Fli\u003E\r\n\u003Cli\u003Eвыполняем запрос и либо уничтожаем подключение, либо возвращаем его в пул (предпочтительно).\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EВо-первых, это нам позволяет запускать несколько транзакций в один момент времени, а, во-вторых, ускоряет работу за счёт наличия уже открытых соединений. У Amp есть компонент \u003Ca href=\"https:\u002F\u002Fgithub.com\u002Famphp\u002Fpostgres\"\u003Eamphp\u002Fpostgres\u003C\u002Fa\u003E. Он берёт на себя работу с подключениями: следит за их количеством, сроком жизни и всё это без блокирования потока выполнения. \u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EК слову сказать, при использовании, например, ReactPHP, это придётся реализовать самостоятельно если вы захотите работать с базой данных.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Ch5 id=\"mutex\"\u003EMutex\u003C\u002Fh5\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EДля эффективной и, самое главное, правильной работы приложения необходимо реализовать что-то на подобии мьютексов. Мы можем выделить 3 сценария их использования:\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003EВ рамках одного процесса подойдёт простой in memory механизм без всяких излишков;\u003C\u002Fli\u003E\r\n\u003Cli\u003EЕсли мы хотим обеспечить блокировку в нескольких процессах, то можно воспользоваться файловой системой (разумеется, в неблокирующем режиме);\u003C\u002Fli\u003E\r\n\u003Cli\u003EЕсли в разрезе нескольких серверов, то тут уже надо думать о чём-то вроде Zookeeper.\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EМьютексы нужны для решения проблем, связанных с \u003Ca href=\"https:\u002F\u002Fru.wikipedia.org\u002Fwiki\u002F%D0%A1%D0%BE%D1%81%D1%82%D0%BE%D1%8F%D0%BD%D0%B8%D0%B5_%D0%B3%D0%BE%D0%BD%D0%BA%D0%B8\"\u003Erace condition\u003C\u002Fa\u003E. Ведь мы не знаем (и не можем знать) в каком порядке у нас будут выполняться задачи, но тем не менее мы должны обеспечивать целостность данных.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Ch5 id=\"logirovaniekonteksty\"\u003EЛогирование\u002Fконтексты\u003C\u002Fh5\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EДля логирования используется уже ставший стандартом \u003Ca href=\"https:\u002F\u002Fgithub.com\u002FSeldaek\u002Fmonolog\"\u003EMonolog\u003C\u002Fa\u003E, но с некоторыми оговорками: мы не можем использовать встроенные хэндлеры, так как они будут приводить к блокировкам.\u003Cbr\u002F\u003E\r\nДля записи в stdOut можно взять \u003Ca href=\"https:\u002F\u002Fgithub.com\u002Famphp\u002Flog\"\u003Eamphp\u002Flog\u003C\u002Fa\u003E, либо написать простую отправку сообщений в какой-нибудь Graylog.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EТак как в один момент времени у нас может обрабатывать множество задач и при записи логов необходимо понимать, в каком контексте пишутся данные. В ходе экспериментов было принято решение сделать \u003Ccode\u003Etrace_id\u003C\u002Fcode\u003E (\u003Ca href=\"https:\u002F\u002Fmicroservices.io\u002Fpatterns\u002Fobservability\u002Fdistributed-tracing.html\"\u003EDistributed tracing\u003C\u002Fa\u003E). Суть в том, что вся цепочка вызовов должна сопровождаться сквозным идентификатором, который можно отследить. Дополнительно в момент приёма сообщения генерируется \u003Ccode\u003Epackage_id\u003C\u002Fcode\u003E, который указывает именно на полученное сообщение.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EТаким образом при использовании обоих идентификаторов мы можем легко отследить к чему относится конкретная запись. Всё дело в том, что в традиционном PHP все записи у нас попадают в лог в основном в том порядке, в котором они были записаны. В случае с асинхронным выполнением, никакой закономерности в порядке записей нет.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Ch5 id=\"terminating\"\u003ETerminating\u003C\u002Fh5\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EЕщё один из нюансов асинхронной разработки — контроль за отключением нашего демона. Если просто убить процесс, то все выполняющиеся задачи не будут завершены, а данные будут потеряны.В обычном подходе такая проблема также есть, но она не столь велика, ведь одновременно выполняется лишь одна задача.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EЧто бы корректно завершить выполнение нам необходимо:\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003EОтменить подписку на очередь. Иными словами, сделать невозможным приём новых сообщений;\u003C\u002Fli\u003E\r\n\u003Cli\u003EДоделать все оставшиеся задачи (дождаться резолвинга промисов);\u003C\u002Fli\u003E\r\n\u003Cli\u003EИ только после этого завершить работу скрипта.\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\n\u003Ch5 id=\"utechki-otladka\"\u003EУтечки, отладка\u003C\u002Fh5\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EВопреки распространённому мнению, в современном PHP не так уж и просто столкнуться с ситуациями, при которых возникает утечка памяти. Необходимо сделать что-то абсолютно неправильно.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EТем не менее, единожды столкнулся и с этим, но из-за банальной невнимательности. Во время реализации heartbeat сделал так, что каждые 40 секунд добавлялся новый таймер для опроса подключения. Не трудно догадаться, что спустя некоторое время использование памяти начинало ползти вверх и довольно быстро.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EТакже, помимо всего прочего, написал простенький watcher, который опционально будет запускаться каждые 10 минут и вызывать \u003Ca href=\"https:\u002F\u002Fwww.php.net\u002Fmanual\u002Fru\u002Ffunction.gc-collect-cycles.php\"\u003Egc_collect_cycles()\u003C\u002Fa\u003E и \u003Ca href=\"https:\u002F\u002Fphp.net\u002Fmanual\u002Fru\u002Ffunction.gc-mem-caches.php\"\u003Egc_mem_caches()\u003C\u002Fa\u003E.\u003Cbr\u002F\u003E\r\nНо принудительный запуск сборщика мусора не является чем-то нужным и принципиальным.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EДля того, чтобы постоянно видеть использование памяти, в логирование был добавлен стандартный \u003Ca href=\"https:\u002F\u002Fgithub.com\u002FSeldaek\u002Fmonolog\u002Fblob\u002Fmaster\u002Fsrc\u002FMonolog\u002FProcessor\u002FMemoryUsageProcessor.php\"\u003EMemoryUsageProcessor\u003C\u002Fa\u003E. \u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EЕсли возникает мысль о том, что Event Loop чем-то блокируется, это можно также легко проверить: достаточно подключить \u003Ca href=\"https:\u002F\u002Fgithub.com\u002Fphp-service-bus\u002Fservice-bus\u002Fblob\u002Fv3.2\u002Fsrc\u002FInfrastructure\u002FWatchers\u002FLoopBlockWatcher.php\"\u003ELoopBlockWatcher\u003C\u002Fa\u003E.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EНо необходимо убедиться, что данный наблюдатель не запускается в production окружении. Эта возможность используется исключительно во время разработки.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Ch3 id=\"rezultaty\"\u003EРезультаты\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EНа свет появился очередной велосипед: \u003Ca href=\"https:\u002F\u002Fgithub.com\u002Fphp-service-bus\"\u003Ephp-service-bus\u003C\u002Fa\u003E, который позволяет реализовать Message Based приложение.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EПопробуем сделать простой демон, который принимает команду и отправляет событие в качестве реакции:\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003Ecomposer create-project php-service-bus\u002Fskeleton pub-sub-example\ncd pub-sub-example\ndocker-compose up --build -d\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EПока сервис запускается, мы можем немного разобраться в том, как устроен пример. \u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EВ файле \u003Ccode\u003E\u002Fbin\u002Fconsumer\u003C\u002Fcode\u003E описана инициализация демона, а также конфигурация запуска.\u003Cbr\u002F\u003E\r\nВ директории \u003Ccode\u003E\u002Fsrc\u003C\u002Fcode\u003E находится 3 файла: \u003Ccode\u003EPing\u003C\u002Fcode\u003E выполняет роль команды; \u003Ccode\u003EPong\u003C\u002Fcode\u003E: выступает в качестве события; \u003Ccode\u003EPingService\u003C\u002Fcode\u003E: контейнер, содержащий наши обработчики.\u003Cbr\u002F\u003E\r\nЕсли остановиться подробнее на \u003Ccode\u003EPingService\u003C\u002Fcode\u003E, то в нём можно увидеть 2 метода:\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"php\"\u003E    \u002F** @CommandHandler() *\u002F\n    public function handle(Ping $command, KernelContext $context): Promise\n    {\n        return $context-\u003Edelivery(new Pong());\n    }\n\n    \u002F** @EventListener() *\u002F\n    public function whenPong(Pong $event, KernelContext $context): void\n    {\n        $context-\u003ElogContextMessage('Pong message received');\n    }\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003E\u003Ccode\u003Ehandle\u003C\u002Fcode\u003E является обработчиком команды (для каждой команды в приложении может быть только 1 обработчик). Все обработчики команд помечаются аннотацией \u003Ccode\u003E@CommandHandler\u003C\u002Fcode\u003E;\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003EМетод возвращает Promise потому, что в нём используется отправка сообщения в RabbitMQ (с помощью метода \u003Ccode\u003Edelivery()\u003C\u002Fcode\u003E). Соответственно задача будет выполнена только после того, как от RabbitMQ будет получено подтверждение записи.\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Ccode\u003EwhenPong\u003C\u002Fcode\u003E — слушатель события \u003Ccode\u003EPong\u003C\u002Fcode\u003E. Слушателей напротив может быть сколько угодно и каждый из них выполняется независимо. Слушатели событий помечаются аннотацией \u003Ccode\u003E@EventListener\u003C\u002Fcode\u003E;\u003Cbr\u002F\u003E\r\n\u003Cblockquote\u003EПривычные события, представленные в современных фреймворках — не совсем события. Это, скорее, хуки, необходимые в качестве точек расширения. События же в контексте php-service-bus невозможно модифицировать, отменить, а ошибка во время обработки в одном подписчике не повлияет на второго.\u003Cbr\u002F\u003E\r\n\u003C\u002Fblockquote\u003E\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EЛюбой обработчик содержит минимум 2 аргумента: собственно, само сообщение (всегда идёт первым) и контекст. Контекст содержит в себе методы по работе с входящим сообщением, метод отправки сообщения в шину, а также несколько хэлперов (например, логирование).\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EНаш пример получает команду \u003Ccode\u003EPing\u003C\u002Fcode\u003E, при её получении отправляет событие \u003Ccode\u003EPong\u003C\u002Fcode\u003E. При получении события записывается лог.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EДля примера есть файл, запустив который мы отправим сообщение в RabbitMQ:\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003Etools\u002Fping\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EЕсли подвести некоторые итоги, то php-service-bus позволяет относительно легко реализовать приложение, использующее Message based архитектуру.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EPing\\Pong, указанный в примере — это, по сути, обычный \u003Ccode\u003EHello, world\u003C\u002Fcode\u003E и не несёт в себе никакой ценности. \u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EЧтобы узнать про все возможности, можно обратиться к \u003Ca href=\"https:\u002F\u002Fgithub.com\u002Fphp-service-bus\u002Fdocumentation\"\u003Eдокументации\u003C\u002Fa\u003E. \u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EЕсли сама тема будет кому-либо интересна, распишу дополнительно как применяется, например, Saga pattern (Process manager) и какие проблемы можно решить с его помощью.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Ch3 id=\"nu-i-kak-zhe-ne-pomeryatsya\"\u003EНу и как же не померяться\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EЧто касается производительности, то есть \u003Ca href=\"https:\u002F\u002Fgithub.com\u002Fphp-service-bus\u002Fperformance-comparison\"\u003Eсравнение с symfony\u002Fmessenger\u003C\u002Fa\u003E. \u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EОно не очень объективное, так как сравнивается мягкое с тёплым, но прекрасно демонстрирует преимущества неблокирующих вызовов.\u003C\u002Fp\u003E\u003C\u002Fdiv\u003E","tags":[{"titleHtml":"php7"},{"titleHtml":"async-php"}],"metadata":{"stylesUrls":[],"scriptUrls":[],"shareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F451916\u002F031382467971ac51d7c53c2400ebc19e\u002F","shareImageWidth":1200,"shareImageHeight":630,"vkShareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F451916\u002F031382467971ac51d7c53c2400ebc19e\u002F?format=vk","schemaJsonLd":"{\"@context\":\"http:\\\u002F\\\u002Fschema.org\",\"@type\":\"Article\",\"mainEntityOfPage\":{\"@type\":\"WebPage\",\"@id\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fru\\\u002Fpost\\\u002F451916\\\u002F\"},\"headline\":\"Асинхронный PHP и история одного велосипеда\",\"datePublished\":\"2019-05-15T12:58:51+03:00\",\"dateModified\":\"2019-05-15T15:54:40+03:00\",\"author\":{\"@type\":\"Person\",\"name\":\"Масюкевич Максим\"},\"publisher\":{\"@type\":\"Organization\",\"name\":\"Habr\",\"logo\":{\"@type\":\"ImageObject\",\"url\":\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fa_\\\u002Flk\\\u002F9m\\\u002Fa_lk9mjkccjox-zccjrpfolmkmq.png\"}},\"description\":\"После выхода PHP7 появилась возможность сравнительно небольшой ценой писать долгоживущие приложения. Для программистов стали доступны такие проекты, как prooph,...\",\"url\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fru\\\u002Fpost\\\u002F451916\\\u002F#post-content-body\",\"about\":[\"h_php\",\"f_develop\"],\"image\":[\"https:\\\u002F\\\u002Fhabr.com\\\u002Fshare\\\u002Fpublication\\\u002F451916\\\u002F031382467971ac51d7c53c2400ebc19e\\\u002F\"]}","metaDescription":"После выхода PHP7 появилась возможность сравнительно небольшой ценой писать долгоживущие приложения. Для программистов стали доступны такие проекты, как prooph, broadway, tactician, messenger, авторы...","mainImageUrl":null,"amp":false},"polls":[],"commentsEnabled":true,"rulesRemindEnabled":false,"votesEnabled":true,"status":"published","plannedPublishTime":null,"checked":null,"isEditorial":false}},"articlesIds":{},"isLoading":false,"pagesCount":{},"route":{},"reasonsList":null,"view":"cards","lastVisitedRoute":{},"ssrCommentsArticleIds":[""],"karma":{}},"authorContribution":{"authors":{}},"betaTest":{"currentAnnouncement":null,"announcements":{},"announcementCards":null,"announcementComments":{},"announcementCommentThreads":{},"announcementCommentingStatuses":{},"archivedList":[]},"authorStatistics":{"articleRefs":{},"articleIds":{},"pagesCount":{},"route":{},"viewsCount":[],"maxStatsCount":{}},"career":{"seoLandings":[{"title":"PHP программист","vacanciesCount":288,"itemUrl":"https:\u002F\u002Fcareer.habr.com\u002Fvacancies\u002Fphp_programmist","itemHubs":["php"]},{"title":"Разработчик Laravel","vacanciesCount":106,"itemUrl":"https:\u002F\u002Fcareer.habr.com\u002Fvacancies\u002Fprogrammist_laravel","itemHubs":["laravel","php"]}],"hubs":"php"},"comments":{"articleComments":{},"searchCommentsResults":null,"previewComment":null,"pagesCount":null,"commentAccess":{},"scrollParents":{},"pageArticleComments":{"lastViewedComment":0,"postId":null,"lastCommentTimestamp":"","moderated":[],"moderatedIds":[],"commentRoute":""}},"companies":{"companyRefs":{},"companyIds":{},"companyTopIds":{},"pagesCount":{},"companyProfiles":{},"companiesCategories":[],"companiesCategoriesTotalCount":0,"companiesWidgets":{},"companiesWorkers":{},"companiesFans":{},"route":{},"isLoading":false,"companyWorkersLoading":false,"companyFansLoading":false,"vacancies":{}},"companiesContribution":{"hubs":{},"flows":{},"companyRefs":{}},"companyHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"conversation":{"messages":[],"respondent":null,"isLoadMore":false},"conversations":{"conversations":[],"unreadCount":0,"pagesCount":0,"isLoadMore":false},"desktopState":{"desktopFl":null,"desktopHl":null,"isChecked":false,"isLoginDemanded":false},"dfp":{"slotsDict":{}},"docs":{"menu":{},"articles":{},"mainMenu":[],"loading":{"main":false,"dropdown":false,"article":false}},"feature":{"isProbablyVisible":"true"},"flows":{"flows":[{"alias":"develop","id":1,"route":{"name":"FLOW_PAGE","params":{"flowName":"develop"}}},{"alias":"admin","id":6,"route":{"name":"FLOW_PAGE","params":{"flowName":"admin"}}},{"alias":"design","id":2,"route":{"name":"FLOW_PAGE","params":{"flowName":"design"}}},{"alias":"management","id":3,"route":{"name":"FLOW_PAGE","params":{"flowName":"management"}}},{"alias":"marketing","id":4,"route":{"name":"FLOW_PAGE","params":{"flowName":"marketing"}}},{"alias":"popsci","id":7,"route":{"name":"FLOW_PAGE","params":{"flowName":"popsci"}}}]},"global":{"isPwa":false,"device":"desktop","isHabrCom":true},"hubs":{"hubRefs":{},"hubIds":{},"pagesCount":{},"isLoading":false,"route":{}},"hubsBlock":{"hubRefs":{},"hubIds":{}},"i18n":{"fl":"ru","hl":"ru"},"info":{"infoPage":{},"isLoading":true},"location":{"urlStruct":{"protocol":null,"slashes":null,"auth":null,"host":null,"port":null,"hostname":null,"hash":null,"search":null,"query":{},"pathname":null,"path":null,"href":""},"searchQuery":null},"me":{"user":null,"ppgDemanded":false,"karmaResetInfo":{"canReincarnate":null,"wasReincarnated":null,"currentScore":null},"notes":null},"mostReadingList":{"mostReadingListIds":[],"mostReadingListRefs":null,"promoPost":null},"pinnedPost":{"pinnedPost":null},"ppa":{"articles":{},"card":null,"transactions":null,"totalTransactions":null,"isAccessible":null},"projectsBlocks":{"activeBlocks":{}},"pullRefresh":{"shouldRefresh":false},"sandbox":{"articleIds":[],"articleRefs":{},"pagesCount":null,"route":{},"lastVisitedRoute":{},"isLoading":false},"settingsOther":{"inputs":{"uiLang":{"errors":[],"ref":null,"value":""},"articlesLangEnglish":{"errors":[],"ref":null,"value":false},"articlesLangRussian":{"errors":[],"ref":null,"value":false},"agreement":{"errors":[],"ref":null,"value":false},"email":{"errors":[],"ref":null,"value":true},"digest":{"errors":[],"ref":null,"value":true}}},"similarList":{"similarListIds":[],"similarListRefs":null},"ssr":{"error":null,"isDataLoaded":false,"isDataLoading":false,"isHydrationFailed":false,"isServer":false},"userHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"userInvites":{"availableInvites":0,"usedInvitesIds":[],"usedInvitesRefs":{},"usedInvitesPagesCount":0,"unusedInvitesIds":[],"unusedInvitesRefs":{},"unusedInvitesPagesCount":0},"users":{"authorRefs":{},"authorIds":{},"pagesCount":{},"authorProfiles":{},"userHubs":{},"userInvitations":{},"authorFollowers":{},"authorFollowed":{},"karmaStats":[],"statistics":null,"isLoading":false,"authorFollowersLoading":false,"authorFollowedLoading":false,"userHubsLoading":false,"userInvitationsLoading":false,"route":{}},"viewport":{"prevScrollY":{},"scrollY":0,"width":0},"tracker":{"items":{},"pagesCache":{},"markedViewedSilently":{},"markedRead":{},"unreadCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null},"unviewedCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null}}};(function(){var s;(s=document.currentScript||document.scripts[document.scripts.length-1]).parentNode.removeChild(s);}());</script>
+<script src="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" defer></script><script src="https://assets.habr.com/habr-web/js/app.c0af73e7.js" defer></script>
+
+
+
+    <script>
+      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+        (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+        m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+      })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+    </script>
+  
+  <script type="text/javascript" >
+    (function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+    m[i].l=1*new Date();k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})
+    (window, document, "script", "https://mc.yandex.ru/metrika/tag.js", "ym");
+
+    ym(24049213, "init", {
+      defer:true,
+      trackLinks:true,
+      accurateTrackBounce:true,
+      webvisor:false,
+    });
+  </script>
+  <noscript>
+    <div>
+      <img src="https://mc.yandex.ru/watch/24049213" style="position:absolute; left:-9999px;" alt="" />
+    </div>
+  </noscript>
+  
+    <script type="text/javascript">
+      window.addEventListener('load', function () {
+        setTimeout(() => {
+          const img = new Image();
+          img.src = 'https://vk.com/rtrg?p=VK-RTRG-421343-57vKE';
+        }, 0);
+      });
+    </script>
+  
+</body>
+</html>

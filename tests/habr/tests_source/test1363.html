@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="ru" data-vue-meta="%7B%22lang%22:%7B%22ssr%22:%22ru%22%7D%7D">
+<head >
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
+  <title>Who is stealing virtual CPU time? / Хабр</title>
+  <style>
+    /* cyrillic-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSxf6TF0.woff2) format('woff2');
+      unicode-range: U+0460-052F, U+1C80-1C88, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+    }
+
+    /* cyrillic */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveQhf6TF0.woff2) format('woff2');
+      unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+    }
+
+    /* latin-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSBf6TF0.woff2) format('woff2');
+      unicode-range: U+0100-024F, U+0259, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20CF, U+2113, U+2C60-2C7F, U+A720-A7FF;
+    }
+
+    /* latin */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveRhf6.woff2) format('woff2');
+      unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+    }
+  </style>
+  <link rel="preload" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" as="script"><link rel="preload" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/app.c0af73e7.js" as="script">
+  <link rel="stylesheet" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css"><link rel="stylesheet" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css">
+  <script>window.i18nFetch = new Promise((res, rej) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open('GET', '/js/i18n/ru-compiled.85eb77f0b17c8235e7b64b9f81ea5ec2.json');
+          xhr.responseType = 'json';
+          xhr.onload = function(e) {
+            if (this.status === 200) {
+              res({ru: xhr.response});
+            } else {
+              rej(e);
+            }
+          };
+          xhr.send();
+        });</script>
+  
+  <script data-vue-meta="ssr" src="/js/ads.js" onload="window['zhY4i4nJ9K'] = true" data-vmid="checkad"></script><script data-vue-meta="ssr" type="application/ld+json" data-vmid="ldjson-schema">{"@context":"http:\/\/schema.org","@type":"Article","mainEntityOfPage":{"@type":"WebPage","@id":"https:\/\/habr.com\/en\/company\/vk\/blog\/453140\/"},"headline":"Who is stealing virtual CPU time?","datePublished":"2019-05-23T16:26:36+03:00","dateModified":"2019-06-05T12:43:31+03:00","author":{"@type":"Person","name":"Dmitry Kudyukin"},"publisher":{"@type":"Organization","name":"Habr","logo":{"@type":"ImageObject","url":"https:\/\/habrastorage.org\/webt\/a_\/lk\/9m\/a_lk9mjkccjox-zccjrpfolmkmq.png"}},"description":"Hi! In this article, I want to explain, in layman&rsquo;s terms, how steal appears in VMs and tell you about some of the less-than-obvious artifacts that we found d...","url":"https:\/\/habr.com\/en\/company\/vk\/blog\/453140\/#post-content-body","about":["c_vk","h_linux","h_sys_admin","h_virtualization","f_admin"],"image":["https:\/\/habrastorage.org\/getpro\/habr\/post_images\/9d4\/ede\/bb8\/9d4edebb8a0253cb1b973bd5df46a9a9.jpg","https:\/\/habrastorage.org\/getpro\/habr\/post_images\/fff\/9f8\/5b1\/fff9f85b10523ddaecfc176f1fa18f33.png"]}</script>
+  <script src="//www.googletagservices.com/tag/js/gpt.js" async></script>
+  <style>.grecaptcha-badge{visibility: hidden;}</style>
+  <meta name="habr-version" content="2.49.0">
+  
+  <meta data-vue-meta="ssr" property="fb:app_id" content="444736788986613"><meta data-vue-meta="ssr" property="fb:pages" content="472597926099084"><meta data-vue-meta="ssr" name="twitter:card" content="summary_large_image"><meta data-vue-meta="ssr" name="twitter:site" content="@habr_eng"><meta data-vue-meta="ssr" property="og:title" content="Who is stealing virtual CPU time?" data-vmid="og:title"><meta data-vue-meta="ssr" name="twitter:title" content="Who is stealing virtual CPU time?" data-vmid="twitter:title"><meta data-vue-meta="ssr" name="aiturec:title" content="Who is stealing virtual CPU time?" data-vmid="aiturec:title"><meta data-vue-meta="ssr" name="description" content="Hi! In this article, I want to explain, in layman’s terms, how steal appears in VMs and tell you about some of the less-than-obvious artifacts that we found during research on the topic that I was..." data-vmid="description"><meta data-vue-meta="ssr" itemprop="description" content="Hi! In this article, I want to explain, in layman’s terms, how steal appears in VMs and tell you about some of the less-than-obvious artifacts that we found during research on the topic that I was..." data-vmid="description:itemprop"><meta data-vue-meta="ssr" property="og:description" content="Hi! In this article, I want to explain, in layman’s terms, how steal appears in VMs and tell you about some of the less-than-obvious artifacts that we found during research on the topic that I was..." data-vmid="og:description"><meta data-vue-meta="ssr" name="twitter:description" content="Hi! In this article, I want to explain, in layman’s terms, how steal appears in VMs and tell you about some of the less-than-obvious artifacts that we found during research on the topic that I was..." data-vmid="twitter:description"><meta data-vue-meta="ssr" property="aiturec:description" content="Hi! In this article, I want to explain, in layman’s terms, how steal appears in VMs and tell you about some of the less-than-obvious artifacts that we found during research on the topic that I was..." data-vmid="aiturec:description"><meta data-vue-meta="ssr" itemprop="image" content="https://habr.com/share/publication/453140/0483951f6f6ffa5a391e260c6c8a5b7c/" data-vmid="image:itemprop"><meta data-vue-meta="ssr" property="og:image" content="https://habr.com/share/publication/453140/0483951f6f6ffa5a391e260c6c8a5b7c/" data-vmid="og:image"><meta data-vue-meta="ssr" property="aiturec:image" content="https://habr.com/share/publication/453140/0483951f6f6ffa5a391e260c6c8a5b7c/" data-vmid="aiturec:image"><meta data-vue-meta="ssr" name="twitter:image" content="https://habr.com/share/publication/453140/0483951f6f6ffa5a391e260c6c8a5b7c/" data-vmid="twitter:image"><meta data-vue-meta="ssr" property="vk:image" content="https://habr.com/share/publication/453140/0483951f6f6ffa5a391e260c6c8a5b7c/" data-vmid="vk:image"><meta data-vue-meta="ssr" property="aiturec:item_id" content="453140" data-vmid="aiturec:item_id"><meta data-vue-meta="ssr" property="aiturec:datetime" content="2019-05-23T13:26:36.000Z" data-vmid="aiturec:datetime"><meta data-vue-meta="ssr" property="og:type" content="article" data-vmid="og:type"><meta data-vue-meta="ssr" property="og:locale" content="en_US" data-vmid="og:locale"><meta data-vue-meta="ssr" property="og:image:width" content="1200" data-vmid="og:image:width"><meta data-vue-meta="ssr" property="og:image:height" content="630" data-vmid="og:image:height">
+  <link data-vue-meta="ssr" href="https://habr.com/ru/rss/post/453140/?fl=ru" type="application/rss+xml" title="" rel="alternate" name="rss"><link data-vue-meta="ssr" href="https://habr.com/en/company/vk/blog/453140/" rel="canonical" data-vmid="canonical"><link data-vue-meta="ssr" data-vmid="hreflang"><link data-vue-meta="ssr" image_src="image" href="https://habr.com/share/publication/453140/0483951f6f6ffa5a391e260c6c8a5b7c/" data-vmid="image:href">
+  <meta name="apple-mobile-web-app-status-bar-style" content="#303b44">
+  <meta name="msapplication-TileColor" content="#629FBC">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="16x16"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-16.png"
+  >
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="32x32"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-32.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="76x76"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-76.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="120x120"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="152x152"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-152.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="180x180"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-180.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="256x256"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-256.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1136x640.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2436x1125.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1792x828.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_828x1792.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1334x750.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2208x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1125x2436.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2208.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2732x2048.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2688x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2224x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_750x1334.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x2732.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2388x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2224.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_640x1136.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2388.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x1536.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1536x2048.png"
+  >
+  <link
+    rel="mask-icon"
+    color="#77a2b6"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.svg"
+  >
+  <link
+    crossorigin="use-credentials"
+    href="/manifest.webmanifest"
+    rel="manifest"
+  >
+</head>
+<body>
+
+
+<div id="app" data-server-rendered="true" data-async-called="true"><div class="tm-layout__wrapper"><!----> <div></div> <!----> <header class="tm-header"><div class="tm-page-width"><div class="tm-header__container"><!----> <span class="tm-header__logo-wrap"><a href="/ru/" class="tm-header__logo tm-header__logo_ru"><svg height="16" width="16" class="tm-svg-img tm-header__icon"><title>Хабр</title> <use xlink:href="/img/habr-logo-ru.svg#logo"></use></svg></a> <span class="tm-header__beta-sign" style="display:none;">β</span></span> <div class="tm-dropdown tm-header__projects"><div class="tm-dropdown__head"><button class="tm-header__dropdown-toggle"><svg height="16" width="16" class="tm-svg-img tm-header__icon tm-header__icon_dropdown"><title>Открыть список</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#arrow-down"></use></svg></button></div> <!----></div> <a href="/ru/sandbox/start/" class="tm-header__become-author-btn">
+            Как стать автором
+          </a> <div class="tm-feature tm-header__feature tm-feature_variant-inline"><!----></div> <!----> <!----></div></div></header> <div class="tm-layout"><div class="tm-page-progress-bar"></div> <div data-menu-sticky="true" class="tm-base-layout__header tm-base-layout__header_is-sticky"><div class="tm-page-width"><div class="tm-base-layout__header-wrapper"><div class="tm-main-menu"><div class="tm-main-menu__section"><nav class="tm-main-menu__section-content"><!----> <a href="/ru/all/" class="tm-main-menu__item">
+        Все потоки
+      </a> <a href="/ru/flows/develop/" class="tm-main-menu__item">
+          Разработка
+        </a><a href="/ru/flows/admin/" class="tm-main-menu__item">
+          Администрирование
+        </a><a href="/ru/flows/design/" class="tm-main-menu__item">
+          Дизайн
+        </a><a href="/ru/flows/management/" class="tm-main-menu__item">
+          Менеджмент
+        </a><a href="/ru/flows/marketing/" class="tm-main-menu__item">
+          Маркетинг
+        </a><a href="/ru/flows/popsci/" class="tm-main-menu__item">
+          Научпоп
+        </a></nav></div></div> <div class="tm-header-user-menu tm-base-layout__user-menu"><a href="/ru/search/" class="tm-header-user-menu__item tm-header-user-menu__search"><svg height="24" width="24" class="tm-svg-img tm-header-user-menu__icon tm-header-user-menu__icon_search tm-header-user-menu__icon_dark"><title>Поиск</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#search"></use></svg></a> <!----> <!----> <!----> <div class="tm-header-user-menu__item tm-header-user-menu__user_desktop"><div class="tm-dropdown"><div class="tm-dropdown__head"><svg height="24" width="24" data-test-id="menu-toggle-guest" class="tm-svg-img tm-header-user-menu__icon"><title>Профиль</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#header-user"></use></svg> <!----></div> <!----></div> <!----></div> <!----></div></div></div></div> <!----> <div class="tm-page-width"></div> <main class="tm-layout__container"><div hl="ru" companyName="vk" data-async-called="true" class="tm-page"><div class="tm-page-width"><div class="tm-page__header"><div class="tm-company-card__branding tm-company-article__branding tm-company-card__branding_loading"><div class="tm-company-card__branding-placeholder"><!----></div> <a href="https://vk.com/vkteam"><img src="//habrastorage.org/getpro/habr/branding/174/2c4/3a5/1742c43a5b504987a0fadf577a0bd4de.png" width="100%" class="tm-company-card__branding-image"></a></div></div> <div class="tm-page__wrapper"><div class="tm-page__main tm-page__main_has-sidebar"><div class="pull-down"><div class="pull-down__header" style="height:0px;"><div class="pull-down__content" style="bottom:10px;"><svg height="24" width="24" class="tm-svg-img pull-down__arrow"><title>Обновить</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#pull-arrow"></use></svg></div></div> <div class="tm-article-presenter"><div class="tm-company-card tm-company-article__company-card"><div class="tm-company-card__info"><div class="tm-company-card__header"><a href="/ru/company/vk/profile/" class="tm-company-card__avatar"><div class="tm-entity-image"><img alt="" height="48" src="//habrastorage.org/getpro/habr/company/9ed/c74/6b4/9edc746b484c805ecad1f941b5f7068a.png" width="48" class="tm-entity-image__pic"></div></a> <a href="https://career.habr.com/companies/vk" rel="noopener" target="_blank" class="tm-grade tm-company-card__rating"><div class="tm-rating"><div class="tm-rating__header"><svg height="24" width="24" class="tm-svg-img tm-svg-grade__icon"><title>Оценка компании на Хабр Карьере</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#grade"></use></svg> <div class="tm-rating__counter tm-rating__counter_variant-grade">4.37</div></div> <div class="tm-rating__text tm-rating__text_variant-grade">
+    Оценка
+  </div></div></a> <div class="tm-rating tm-company-card__rating"><div class="tm-rating__header"> <div class="tm-rating__counter">331.84</div></div> <div class="tm-rating__text">
+    Рейтинг
+  </div></div></div> <div class="tm-company-card__info"><a href="/ru/company/vk/profile/" class="tm-company-card__name">
+        VK
+      </a> <div class="tm-company-card__description">Технологии, которые объединяют</div></div></div> <div class="tm-company-card__buttons"><!----> <!----></div></div> <div class="tm-article-presenter__body"><div class="tm-misprint-area"><div class="tm-misprint-area__wrapper"><article class="tm-article-presenter__content tm-article-presenter__content_narrow"><div class="tm-article-presenter__header"> <div class="tm-article-snippet tm-article-presenter__snippet"><div class="tm-article-snippet__meta-container"><div class="tm-article-snippet__meta"><span class="tm-user-info tm-article-snippet__author"><a href="/ru/users/gmorfy/" title="gmorfy" class="tm-user-info__userpic"><div class="tm-entity-image"><svg height="24" width="24" class="tm-svg-img tm-image-placeholder tm-image-placeholder_blue"><!----> <use xlink:href="/img/megazord-v24.ce74655c.svg#placeholder-user"></use></svg></div></a> <span class="tm-user-info__user"><a href="/ru/users/gmorfy/" class="tm-user-info__username">
+      gmorfy
+    </a> </span></span> <span class="tm-article-snippet__datetime-published"><time datetime="2019-05-23T13:26:36.000Z" title="2019-05-23, 16:26">23  мая  2019 в 16:26</time></span></div> <!----></div> <h1 lang="en" class="tm-article-snippet__title tm-article-snippet__title_h1"><span>Who is stealing virtual CPU time?</span></h1> <div class="tm-article-snippet__hubs"><span class="tm-article-snippet__hubs-item"><a href="/ru/company/vk/blog/" class="tm-article-snippet__hubs-item-link router-link-active"><span>Блог компании VK</span> <!----></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/linux/" class="tm-article-snippet__hubs-item-link"><span>Настройка Linux</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/sys_admin/" class="tm-article-snippet__hubs-item-link"><span>Системное администрирование</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/virtualization/" class="tm-article-snippet__hubs-item-link"><span>Виртуализация</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span></div> <!----> <!----> <!----></div></div> <!----> <div data-gallery-root="" lang="en" class="tm-article-body"><div id="post-content-body" class="article-formatted-body article-formatted-body_version-1"><div xmlns="http://www.w3.org/1999/xhtml"><img src="https://habrastorage.org/r/w780q1/getpro/habr/post_images/9d4/ede/bb8/9d4edebb8a0253cb1b973bd5df46a9a9.jpg" data-src="https://habrastorage.org/getpro/habr/post_images/9d4/ede/bb8/9d4edebb8a0253cb1b973bd5df46a9a9.jpg" data-blurred="true"/><br/>
+<br/>
+Hi! In this article, I want to explain, in layman’s terms, how <i>steal</i> appears in VMs and tell you about some of the less-than-obvious artifacts that we found during research on the topic that I was involved in as CTO of the <a href="https://mcs.mail.ru/en/">Mail.ru Cloud Solutions</a> platform. The platform runs KVM.<br/>
+<a name="habracut"></a><br/>
+CPU steal time is the time during which a VM doesn’t receive the necessary resources to operate. This time can only be calculated in a guest OS in virtualization environments. It is extremely unclear where the allocated resources are lost, just like in real life situations. However, we decided to figure it out, and we even performed a series of tests to do so. That is not to say that we know everything about <i>steal,</i> but there are some fascinating things that we would like to share with you.<br/>
+<br/>
+<h2>1. What is <i>steal</i>?</h2><br/>
+<i>Steal</i> is a metric that indicates a lack of CPU time for VM processes. As described in the <a href="https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git/patch/?id=c9aaa8957f203bd6df83b002fb40b98390bed078">KVM kernel patch</a>, <i>steal</i> is the time that a hypervisor spends running other processes in a host OS, while VM process is in a run queue. In other words, <i>steal </i>is calculated as the difference between the moment when a process is ready to run and the moment when CPU time is allocated to the process.<br/>
+<br/>
+The VM kernel gets the <i>steal </i>metric from the hypervisor. The hypervisor doesn’t specify which processes it is running. It just says: «I’m busy, and can’t allocate any time to you.» In a KVM, <i>steal</i> calculation is supported in <a href="https://lwn.net/Articles/449657/">patches</a>. There are two main points regarding this: <br/>
+<br/>
+<ul>
+<li>A VM learns about <i>steal</i> from the hypervisor. This means that in terms of losses, <i>steal</i> is an indirect measurement that can be distorted in several ways.<br/>
+</li>
+<li>The hypervisor doesn’t share with the VM information regarding what it is occupied with. The most crucial point is that it doesn’t allocate time to it. The VM itself, therefore, cannot detect distortions in the <i>steal </i>metric<i>,</i> which could be estimated by the nature of the competing processes.<br/>
+</li>
+</ul><br/>
+<h2>2. What affects <i>steal</i>?</h2><br/>
+<h4>2.1. Calculating <i>steal</i></h4><br/>
+Essentially, <i>steal </i>is calculated in more or less the same way as CPU utilization time. There isn’t a great deal of information regarding how utilization is calculated. That’s probably because most professionals think it’s obvious. However, there are some pitfalls. The process is described in <a href="http://www.brendangregg.com/blog/2017-05-09/cpu-utilization-is-wrong.html">an article by Brendann Gregg</a>. He discusses a whole host of nuances regarding how to calculate utilization and scenarios in which the calculation will be wrong:<br/>
+<br/>
+<ul>
+<li>CPU overheating and throttling.<br/>
+</li>
+<li>Turning Turbo Boost on/off, resulting in a change in CPU clock rate.</li>
+<li>The time slice change that occurs when CPU power-saving technologies, e.g. SpeedStep, are used.<br/>
+</li>
+<li>Problems related to calculating averages: measuring utilization for one minute at 80% power could hide a short-term 100 % boost.<br/>
+</li>
+<li>A spinlock that results in a scenario whereby the processor is utilized, but the user process doesn’t progress. As a result, the calculated CPU utilization will be 100%, but the process will not actually consume CPU time.<br/>
+</li>
+</ul><br/>
+I haven’t come across any articles describing such calculations of <i>steal</i> (if you know of any, please share them in the comments section). As you can see from the source code, the calculation mechanism is the same as for utilization. The only difference is that another counter is added specifically for the KVM process (VM process), which calculates how long the KVM process has been waiting for CPU time. The counter takes data on the CPU from its specification and checks if all its ticks are being utilized by the VM process. If all the ticks are being used, then the CPU was only busy with the VM process. Otherwise, we know that the CPU was doing something else and <i>steal</i> appears. <br/>
+<br/>
+The process by which <i>steal </i>is calculated is subject to the same issues as the regular calculation of utilization. These issues are not that common, but they can appear rather confusing.<br/>
+<br/>
+<h4>2.2. Types of KVM virtualization</h4><br/>
+In general, there are three types of virtualization, and they are all supported by a KVM. The mechanism by which <i>steal</i> occurs may depend on the type of virtualization.<br/>
+<br/>
+Translation. In this case, the VM OS will work with physical hypervisor devices in the following way:<br/>
+<br/>
+<ol>
+<li>The guest OS sends a command to its guest device.<br/>
+</li>
+<li>The guest device driver accepts the command, creates a BIOS device request, and sends the command to the hypervisor.<br/>
+</li>
+<li>The hypervisor process translates the command into a physical device command, making it more secure, among other things.<br/>
+</li>
+<li>The physical device driver accepts the modified command and forwards it to the physical device itself.<br/>
+</li>
+<li>The execution results of the command return following the same path. <br/>
+</li>
+</ol><br/>
+The advantage of translation is that it allows us to emulate any device and requires no special preparation of the OS kernel. But this comes at the expense of performance. <br/>
+<br/>
+Hardware virtualization. In this case, a device receives commands from the OS on the hardware level. This is the fastest and overall best method. Unfortunately, not all physical devices, hypervisors, and guest OSs support it. For now, the main devices that support hardware virtualization are CPUs.<br/>
+<br/>
+Paravirtualization. The most common option for device virtualization on a KVM and the most widespread type of virtualization for guest OSs. Its main feature is that it works with some hypervisor subsystems (e.g. network or drive stack) and allocates memory pages using a hypervisor API without translating low-level commands. The disadvantage of this virtualization method is the need to modify the guest OS’s kernel to allow for interaction with the hypervisor using the same API. The most common solution to this issue is to install special drivers into the guest OS. In a KVM this API is called a <a href="https://www.ibm.com/developerworks/library/l-virtio/index.html">virtio API</a>.<br/>
+<br/>
+When paravirtualization is used, the path to the physical device is much shorter than in cases when translation is used, because commands are sent directly from the VM to the hypervisor process in the host. This accelerates the execution of all instructions within the VM. In a KVM, a virtio API is responsible for this. It only works for some devices like network and drive adapters. This is why virtio drivers are installed to VMs. <br/>
+<br/>
+The flip side of such acceleration is that not all processes executed in a VM stay within the VM. This result in a number of effects, which might cause <i>steal</i>. If you would like to learn more, start with <a href="https://lwn.net/Articles/239238/">An API for virtual I/O: virtio</a>.<br/>
+<br/>
+<h4>2.3. Fair scheduling</h4><br/>
+A VM on a hypervisor is, in fact, a regular process, which is subject to scheduling laws (resource distribution between processes) in a Linux kernel. Let’s take a closer look at this. <br/>
+<br/>
+Linux uses so-called CFS, Completely Fair Scheduler, which became the default with kernel 2.6.23. To get a handle on this algorithm, read Linux Kernel Architecture or the source code. The essence of CFS lies in the distribution of CPU time between processes, depending on their run time. The more CPU time a process requires, the less CPU time it gets. This guarantees the «fair» execution of all processes and helps to avoid one process taking up all of the processors, all of the time and allows other processes to run too. <br/>
+<br/>
+Sometimes this paradigm results in interesting artifacts. Long-standing Linux users will no doubt remember how a regular text editor on the desktop would freeze when running resource-intensive applications like a compiler. This happened because resource-light tasks, such as desktop applications, were competing with tasks that used many resources, like a compiler. CFS considers this to be unfair, and so it stops the text editor from time to time and lets the CPU process the compiler tasks. This was fixed using the <a href="https://marc.info/?l=linux-kernel&amp;m=128978361700898">sched_autogroup</a> mechanism; there are, however, many other peculiarities of CPU time distribution. This article is not really about how bad CFS is. It is rather an attempt to draw attention to the fact that «fair» distribution of CPU time is not the most trivial task.<br/>
+<br/>
+Another important aspect of a scheduler is preemption. This is necessary to rid the CPU of any over-indulged processes and allow others to work too. This is called <i>context switching</i>. The entire task context is retained: stack status, registers, and so on, after which the process is left to wait and is replaced by another process. This is an expensive operation for an OS. It’s rarely used, but it’s actually not bad at all. Frequent context switching might be an indicator of an OS issue but it usually occurs continuously and is not a sign of any issue in particular.<br/>
+<br/>
+This long discourse was necessary to explain one fact: in a fair Linux scheduler, the more CPU resources the process consumes, the faster it will be stopped to allow other processes to work. Whether this is right or not is a complex question, and the solution is different depending on the load. Until recently, Windows scheduler prioritized desktop applications, which resulted in slower background processes. In Sun Solaris there were five different scheduler classes. When virtualization was introduced, they added another one, <a href="https://www.opennet.ru/man.shtml?topic=FSS&amp;category=7&amp;russian=4">Fair share scheduler</a>, because the others were not running properly with Solaris Zones virtualization. To dig deeper into this, I recommend starting with <a href="https://www.amazon.com/Solaris-Internals-OpenSolaris-Kernel-Architecture/dp/0131482092/">Solaris Internals: Solaris 10 and OpenSolaris Kernel Architecture</a> or <a href="https://www.amazon.com/Understanding-Linux-Kernel-Third-Daniel/dp/0596005652/">Understanding the Linux Kernel</a>.<br/>
+<br/>
+<h4>2.4. How can we monitor <i>steal</i>?</h4><br/>
+Just like any other CPU metric, it’s easy to monitor <i>steal</i> inside a VM. You can use any CPU metric measurement tool. The main thing is that the VM must be on Linux. For some reason, Windows doesn’t provide such information to the user. :(<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/getpro/habr/post_images/fff/9f8/5b1/fff9f85b10523ddaecfc176f1fa18f33.png"/><br/>
+<i>top output: specification of CPU load with steal in the right column</i><br/>
+<br/>
+Things become complicated when trying to get this information from a hypervisor. You can try to forecast <i>steal</i> on a host machine, using Load Average (LA), for example. This is the average value of the number of processes in the run queue. The calculation method for this parameter is not a simple one, but in general, if an LA that has been standardized according to the number of CPU threads is greater than 1, it means that the Linux server is overloaded. <br/>
+<br/>
+So, what are all these processes waiting for? Obviously, the CPU. This answer is not quite accurate, however, because sometimes the CPU is free and the LA is way too high. Remember <a href="https://serverfault.com/questions/911976/redhat-nfs-cluster-high-load-average-suddenly">that NFS falls and LA rises at the same time</a>. A similar situation might occur with the drive and other input/output devices. In fact, the processes might be waiting for the end of a lock: physical (related to input/output devices) or logical (a mutex object, for example). The same is true for hardware-level locks (for example, disk response) or logic-level locks (so-called «locking primitives», which include a number of entities, mutex adaptive and spin, semaphores, condition variables, rw locks, ipc locks...).<br/>
+<br/>
+Another feature of LA is that it is calculated as an average value within the OS. For example, if 100 processes compete for one file, the LA is 50. This large number might make it seem like this is bad for the OS. However, for poorly written code this can be normal. Only that specific code would be bad, and the rest of OS might be fine. <br/>
+<br/>
+Because of this averaging (for less than a minute), determining anything using an LA is not the best idea, as it can yield extremely ambiguous results in some instances. If you try to find out more about this, you’ll find that Wikipedia and other available resources only describe the simplest of cases, and the process is not described in detail. If you are interested in this, again, visit <a href="http://www.brendangregg.com/blog/2017-08-08/linux-load-averages.html">Brendann Gregg</a> and follow the links. <br/>
+<br/>
+<h2>3. Special effects</h2><br/>
+Now let’s get to the main cases of <i>steal </i>that we encountered. Allow me to explain how they result from the above and how they correlate with hypervisor metrics.<br/>
+<br/>
+Overutilization. The simplest and most common case: the hypervisor is being overutilized. Indeed, with a lot of VMs running and consuming a lot of CPU resources, competition is high, and utilization according to the LA is greater than 1 (standardized according to CPU threads). Everything lags within all VMs. <i>Steal</i> sent from the hypervisor grows as well. You have to redistribute the load or turn something off. On the whole, this is all logical and straightforward.<br/>
+<br/>
+Paravirtualization vs single instances. There’s only one VM on a hypervisor. The VM consumes a small part of it, but provides high input/output load, for example, for a drive. Unexpectedly, a small <i>steal</i> of less than 10 % appears (as some of the tests we conducted show).<br/>
+<br/>
+This is a curious case. Here, <i>steal </i>appears because of locks on the level of the paravirtualized devices. Inside the VM, a breakpoint is created. This is processed by the driver and goes to the hypervisor. Due to the breakpoint processing on the hypervisor, the VM sees this as a sent request. It is ready to run and waits for the CPU, but receives no CPU time. The VM thinks that the time has been stolen. <br/>
+<br/>
+This happens when the buffer is sent. It goes to the hypervisor’s kernel space and we wait for it. From the point of view of the VM, it should return immediately. Therefore, according to our <i>steal</i> calculation algorithm, this time is considered stolen. It is likely that other mechanisms may be involved in this (e.g. the processing of other <i>sys calls</i>), but they should not differ to any significant degree.<br/>
+<br/>
+Scheduler vs highly loaded VMs. When one VM suffers from <i>steal </i>more than the others, this is connected directly with the scheduler. The greater the load that a process puts on a CPU, the faster a scheduler will throw it out, so as to allow other processes to work. If the VM is consuming little, it will experience almost no <i>steal.</i> Its process has just been sitting and waiting, and it needs to be given more time. If the VM puts a maximum load on all cores, the process is thrown away more often and the VM is afforded less time. <br/>
+<br/>
+It’s even worse when processes within the VM try to get more CPU, because they can’t process the data. Then the OS on the hypervisor will provide less CPU time because of the fair optimization. This process snowballs, and <i>steal</i> surges sky-high, while other VMs may not even notice it. The more cores there are, the worse is it for the unfortunate VM. In short, highly loaded VMs with many cores suffer the most.<br/>
+<br/>
+Low LA but <i>steal</i> is present. If the LA is about 0.7 (meaning that the hypervisor seems underloaded), but there’s <i>steal</i> in some VMs:<br/>
+<br/>
+<ul>
+<li>The aforementioned paravirtualization example applies. The VM might be receiving metrics that indicate <i>steal</i>, while the hypervisor has no issues. According to the results of our tests, such <i>steal</i> does not tend to exceed 10 % and doesn’t have a significant impact on application performance within the VM.<br/>
+</li>
+<li>The LA parameter has been calculated incorrectly. More precisely, it has been calculated correctly at a specific moment, but when averaging, it is lower than it should be for one minute. For example, if one VM (one-third of the hypervisor) consumes all CPUs for 30 seconds, then the LA for a minute will be 0.15. Four such VMs, working at the same time, will result in a value of 0.6. Based on the LA, you wouldn’t be able to deduce that for 30 seconds for each of them, the <i>steal </i>was almost 25 %.<br/>
+</li>
+<li>Again, this happened because of the scheduler, which decided that someone was «eating» too much and made them wait. Meanwhile, it will switch context, process breakpoints, and attend to other important system matters. As a result, some VMs experience no issues, and others suffer from significant performance losses.<br/>
+</li>
+</ul><br/>
+<h2>4. Other distortions</h2><br/>
+There are a million possible reasons for distortion of fair CPU time allocation on a VM. For example, hyperthreading and NUMA add complexity to the calculations. They complicate the choice of the core used to run a process because a scheduler uses coefficients; that is to say weights, which complicate the calculations even more than this when switching contexts.<br/>
+<br/>
+There are distortions that arise from technologies like Turbo Boost or its opposite, power saving mode, which might artificially increase or decrease CPU core speed and even time slice. Turning Turbo Boost on decreases the productivity of one CPU thread due to a performance increase in another one. At that moment, information regarding the current CPU clock speed is not sent to the VM, which thinks that someone is stealing its time (e.g. it requested 2 GHz and got half as much). <br/>
+<br/>
+In fact, there can be many reasons for distortion. You may find something else entirely in any given system. I recommend starting with the books linked above and obtaining statistics from the hypervisor using tools such as perf, sysdig, systemtap, and <a href="https://jvns.ca/blog/2017/07/05/linux-tracing-systems/">dozens of others</a>.<br/>
+<br/>
+<h2>5. Conclusions</h2><br/>
+ <ol>
+<li>Some <i>steal </i>may appear due to paravirtualization and this can be considered normal. Online sources say that this value can be 5-10 %. It depends on the application within a VM, and the load the VM puts on its physical devices. It is important to pay attention to how applications feel inside a VM.<br/>
+</li>
+<li>The correlation between the load on the hypervisor and <i>steal </i>within a VM is not always certain. Both <i>steal </i>calculations can be wrong in some cases and with different loads.<br/>
+</li>
+<li>Scheduler does not favor processes that request a lot of resources. It tries to give less to those that ask for more. Big instances are mean.<br/>
+</li>
+<li>A little <i>steal</i> can be normal without paravirtualization as well (taking into consideration the load within the VM, the particularities of neighbors’ loads, the distribution of the load between threads, and other factors).<br/>
+</li>
+<li>If you would like to calculate <i>steal</i> in a particular system, research the various possibilities, gather metrics, analyze them thoroughly, and think about how to distribute the load fairly. Regardless, there can be deviations, which must be verified using tests or view these in a kernel debugger.<br/>
+</li>
+</ol></div></div> <!----> <!----></div> <div class="tm-article-presenter__meta"><div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Теги:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bkvm%5D" class="tm-tags-list__link">kvm</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bvirtualization%5D" class="tm-tags-list__link">virtualization</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bsteal%5D" class="tm-tags-list__link">steal</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bcpu%5D" class="tm-tags-list__link">cpu</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bmail.ru%20cloud%20solutions%5D" class="tm-tags-list__link">mail.ru cloud solutions</a></li></ul></div> <div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Хабы:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/company/vk/blog/" class="tm-hubs-list__link router-link-active">
+    Блог компании VK
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/linux/" class="tm-hubs-list__link">
+    Настройка Linux
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/sys_admin/" class="tm-hubs-list__link">
+    Системное администрирование
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/virtualization/" class="tm-hubs-list__link">
+    Виртуализация
+  </a></li></ul></div></div></article></div> <!----></div> <div class="tm-article-sticky-panel"><div class="tm-data-icons tm-article-sticky-panel__icons"><div class="tm-article-rating tm-data-icons__item"><div class="tm-votes-meter tm-article-rating__votes-switcher"><svg height="16" width="16" class="tm-svg-img tm-votes-meter__icon tm-votes-meter__icon_medium"><title>Всего голосов 34: ↑33 и ↓1</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-rating"></use></svg> <span title="Всего голосов 34: ↑33 и ↓1" class="tm-votes-meter__value tm-votes-meter__value_positive tm-votes-meter__value_medium">+32</span></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----> <span title="Количество просмотров" class="tm-icon-counter tm-data-icons__item"><svg height="16" width="16" class="tm-svg-img tm-icon-counter__icon"><title>Просмотры</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-views"></use></svg> <span class="tm-icon-counter__value">7.8K</span></span> <button title="Добавить в закладки" type="button" class="bookmarks-button tm-data-icons__item"><span title="Добавить в закладки" class="tm-svg-icon__wrapper bookmarks-button__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Добавить в закладки</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-favorite"></use></svg></span> <span title="Количество пользователей, добавивших публикацию в закладки" class="bookmarks-button__counter">
+    4
+  </span></button> <!----> <div title="Поделиться" class="tm-sharing tm-data-icons__item"><button type="button" class="tm-sharing__button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="tm-sharing__icon"><path fill="currentColor" d="M10.33.275l9.047 7.572a.2.2 0 010 .306l-9.048 7.572a.2.2 0 01-.328-.153V11c-8 0-9.94 6-9.94 6S-1 5 10 5V.428a.2.2 0 01.328-.153z"></path></svg></button> <!----></div> <DIV class="v-portal" style="display:none;"></DIV></div> </div></div> <!----> <!----> <div class="tm-article-presenter__footer"><div class="tm-article-blocks"><!----> <section class="tm-block tm-block_spacing-bottom"><!----> <div class="tm-block__body tm-block__body_variant-balanced"><div class="tm-article-author"><div class="tm-article-author__company"><div class="tm-article-author__company-card"><div class="tm-company-snippet"><a href="/ru/company/vk/profile/" class="tm-company-snippet__logo-link"><div class="tm-entity-image"><img alt="" height="40" src="//habrastorage.org/getpro/habr/company/9ed/c74/6b4/9edc746b484c805ecad1f941b5f7068a.png" width="40" class="tm-entity-image__pic"></div></a> <div class="tm-company-snippet__info"><a href="/ru/company/vk/profile/" class="tm-company-snippet__title">VK</a> <div class="tm-company-snippet__description">Технологии, которые объединяют</div></div></div> <div class="tm-article-author__buttons"><!----> <!----></div></div> <div class="tm-article-author__company-contacts"><a href="https://facebook.com/insidevk" rel="noopener" target="_blank" class="tm-article-author__contact">
+      Facebook
+    </a><a href="https://twitter.com/inside_vk" rel="noopener" target="_blank" class="tm-article-author__contact">
+      Twitter
+    </a><a href="https://vk.com/insidevk" rel="noopener" target="_blank" class="tm-article-author__contact">
+      ВКонтакте
+    </a><a href="https://instagram.com/inside.vk" rel="noopener" target="_blank" class="tm-article-author__contact">
+      Instagram
+    </a><a href="https://telegram.me/inside_vk" rel="noopener" target="_blank" class="tm-article-author__contact">
+      Telegram
+    </a></div> <div class="tm-article-author__separator"></div></div> <div class="tm-user-card tm-article-author__user-card tm-user-card_variant-article"><div class="tm-user-card__info-container"><div class="tm-user-card__header"><div class="tm-user-card__header-data"><a href="/ru/users/gmorfy/" class="tm-user-card__userpic tm-user-card__userpic_size-40"><div class="tm-entity-image"><svg class="tm-svg-img tm-image-placeholder tm-image-placeholder_blue"><!----> <use xlink:href="/img/megazord-v24.ce74655c.svg#placeholder-user"></use></svg></div></a> <div class="tm-user-card__meta"><div title=" 30 голосов " class="tm-karma tm-user-card__karma"><div class="tm-karma__votes tm-karma__votes_positive">
+    30
+  </div> <div class="tm-karma__text">
+    Карма
+  </div></div> <div title="Рейтинг пользователя" class="tm-rating tm-user-card__rating"><div class="tm-rating__header"> <div class="tm-rating__counter">0</div></div> <div class="tm-rating__text">
+    Рейтинг
+  </div></div></div></div></div> <div class="tm-user-card__info tm-user-card__info_variant-article"><div class="tm-user-card__title tm-user-card__title_variant-article"><span class="tm-user-card__name tm-user-card__name_variant-article">Dmitry Kudyukin</span> <a href="/ru/users/gmorfy/" class="tm-user-card__nickname tm-user-card__nickname_variant-article">
+          @gmorfy
+        </a> <!----></div> <p class="tm-user-card__short-info tm-user-card__short-info_variant-article">Пользователь</p></div></div> <div class="tm-user-card__buttons tm-user-card__buttons_variant-article"><!----> <!----> <!----> <!----> <!----></div></div> <!----></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----></section> <div class="tm-article-blocks__comments"><div class="tm-article-page-comments"><div class="tm-article-comments-counter-link tm-article-comments-counter-button"><a href="/ru/company/vk/blog/453140/comments/" class="tm-article-comments-counter-link__link tm-article-comments-counter-link__link_button-style"><svg height="16" width="16" class="tm-svg-img tm-article-comments-counter-link__icon tm-article-comments-counter-link__icon_contrasted"><title>Комментарии</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-comments"></use></svg> <span class="tm-article-comments-counter-link__value tm-article-comments-counter-link__value_contrasted">
+       Комментарии 2 
+    </span></a> <!----></div></div></div>  <!---->  <!----> <!----></div></div></div></div></div> <div class="tm-page__sidebar"><div class="tm-layout-sidebar"><div class="tm-layout-sidebar__placeholder_initial"></div> <div class="tm-sexy-sidebar tm-sexy-sidebar_initial" style="margin-top:0px;"><!----> <section class="tm-block tm-block_spacing-bottom"><header class="tm-block__header"><h2 class="tm-block__title">Информация</h2> <!----></header> <div class="tm-block__body"><div class="tm-company-basic-info"><dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Дата основания</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><time datetime="1998-10-14T20:00:00.000Z" title="1998-10-15, 00:00">15  октября  1998</time></dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Местоположение</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap">
+    Россия
+  </dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Сайт</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><a href="https://vk.com/vkteam" target="_blank" class="tm-company-basic-info__link">
+      vk.com
+    </a></dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Численность</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap">
+    5 001–10 000 человек
+  </dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Дата регистрации</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><time datetime="2008-08-09T07:42:32.000Z" title="2008-08-09, 11:42">9  августа  2008</time></dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Представитель</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><a href="/ru/users/somuchmich/" class="tm-company-basic-info__link">
+      Миша Буданов
+    </a></dd></dl></div></div> <!----></section> <div class="tm-company-widgets"></div> <!----></div></div></div></div></div></div></main> <!----></div> <div class="tm-footer-menu"><div class="tm-page-width"><div class="tm-footer-menu__container"><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Ваш аккаунт
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr/?back=/ru/company/vk/blog/453140/&amp;hl=ru" rel="nofollow" target="_self">
+                Войти
+              </a></li><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr-register/?back=/ru/company/vk/blog/453140/&amp;hl=ru" rel="nofollow" target="_self">
+                Регистрация
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Разделы
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/" class="footer-menu__item-link router-link-active">
+                Публикации
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/news/" class="footer-menu__item-link">
+                Новости
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/hubs/" class="footer-menu__item-link">
+                Хабы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/companies/" class="footer-menu__item-link">
+                Компании
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/users/" class="footer-menu__item-link">
+                Авторы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/sandbox/" class="footer-menu__item-link">
+                Песочница
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Информация
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/docs/help/" class="footer-menu__item-link">
+                Устройство сайта
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/authors/codex/" class="footer-menu__item-link">
+                Для авторов
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/companies/corpblogs/" class="footer-menu__item-link">
+                Для компаний
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/docs/transparency/" class="footer-menu__item-link">
+                Документы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/agreement" target="_blank">
+                Соглашение
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/confidential/" target="_blank">
+                Конфиденциальность
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Услуги
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQLwRfQmXibiUlWaRg-BAc38s7oM3lJiaPju7qmdJsp8ysIvZ_G-Npem0njJLMozE2bPHMpDqiI5hhy/pub?start=false&amp;loop=false&amp;delayms=60000&amp;slide=id.g91a03369cd_4_297" target="_blank">
+                Реклама
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://habrastorage.org/storage/stuff/habr/service_price.pdf" target="_blank">
+                Тарифы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQJJds8-Di7BQSP_guHxICN7woVYoN5NP_22ra-BIo4bqnTT9FR6fB-Ku2P0AoRpX0Ds-LRkDeAoD8F/pub?start=false&amp;loop=false&amp;delayms=60000" target="_blank">
+                Контент
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://tmtm.timepad.ru/" target="_blank">
+                Семинары
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/megaprojects/" class="footer-menu__item-link">
+                Мегапроекты
+              </a></li></ul></div></div></div></div></div> <div class="tm-footer"><div class="tm-page-width"><div class="tm-footer__container"><!----> <div class="tm-footer__social"><a href="https://www.facebook.com/habrahabr.ru" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Facebook</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-facebook"></use></svg></a><a href="https://twitter.com/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Twitter</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-twitter"></use></svg></a><a href="https://vk.com/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>VK</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-vkontakte"></use></svg></a><a href="https://telegram.me/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Telegram</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-telegram"></use></svg></a><a href="https://www.youtube.com/channel/UCd_sTwKqVrweTt4oAKY5y4w" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Youtube</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-youtube"></use></svg></a><a href="https://zen.yandex.ru/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Яндекс Дзен</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-zen"></use></svg></a></div> <DIV class="v-portal" style="display:none;"></DIV> <button class="tm-footer__link"><!---->
+        Настройка языка
+      </button> <a href="/ru/about" class="tm-footer__link">
+        О сайте
+      </a> <a href="/ru/feedback/" class="tm-footer__link">
+        Техническая поддержка
+      </a> <!----> <a href="/berserk-mode-nope" class="tm-footer__link">
+        Вернуться на старую версию
+      </a> <div class="tm-footer-copyright"><span class="tm-copyright"><span class="tm-copyright__years">© 2006–2021 </span> <span class="tm-copyright__name">«<a href="https://company.habr.com/" rel="noopener" target="_blank" class="tm-copyright__link">Habr</a>»</span></span></div></div></div></div> <!----> <!----></div> <div class="vue-portal-target"></div></div>
+<script>window.__INITIAL_STATE__={"adblock":{"hasAcceptableAdsFilter":false,"hasAdblock":false},"articlesList":{"articlesList":{"453140":{"id":"453140","timePublished":"2019-05-23T13:26:36+00:00","isCorporative":true,"lang":"en","titleHtml":"Who is stealing virtual CPU time?","leadData":{"textHtml":"\u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fpost_images\u002F9d4\u002Fede\u002Fbb8\u002F9d4edebb8a0253cb1b973bd5df46a9a9.jpg\"\u003E\u003Cbr\u003E\r\n\u003Cbr\u003E\r\nHi! In this article, I want to explain, in layman’s terms, how \u003Ci\u003Esteal\u003C\u002Fi\u003E appears in VMs and tell you about some of the less-than-obvious artifacts that we found during research on the topic that I was involved in as CTO of the \u003Ca href=\"https:\u002F\u002Fmcs.mail.ru\u002Fen\u002F\"\u003EMail.ru Cloud Solutions\u003C\u002Fa\u003E platform. The platform runs KVM.\u003Cbr\u003E","imageUrl":null,"buttonTextHtml":"Read more →","image":null},"editorVersion":"1.0","postType":"article","postLabels":[],"author":{"scoreStats":{"score":30,"votesCount":30},"rating":0,"relatedData":null,"contacts":[],"authorContacts":[],"paymentDetails":{"paymentYandexMoney":null,"paymentPayPalMe":null,"paymentWebmoney":null},"id":"2029743","alias":"gmorfy","fullname":"Dmitry Kudyukin","avatarUrl":null,"speciality":"Пользователь"},"statistics":{"commentsCount":2,"favoritesCount":4,"readingCount":7832,"score":32,"votesCount":34},"hubs":[{"relatedData":null,"id":"4992","alias":"vk","type":"corporative","title":"Блог компании VK","titleHtml":"Блог компании VK","isProfiled":false},{"relatedData":null,"id":"36","alias":"linux","type":"collective","title":"Настройка Linux","titleHtml":"Настройка Linux","isProfiled":true},{"relatedData":null,"id":"221","alias":"sys_admin","type":"collective","title":"Системное администрирование","titleHtml":"Системное администрирование","isProfiled":true},{"relatedData":null,"id":"7312","alias":"virtualization","type":"collective","title":"Виртуализация","titleHtml":"Виртуализация","isProfiled":true}],"flows":[{"id":"6","alias":"admin","title":"Администрирование"}],"relatedData":null,"textHtml":"\u003Cdiv xmlns=\"http:\u002F\u002Fwww.w3.org\u002F1999\u002Fxhtml\"\u003E\u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fr\u002Fw780q1\u002Fgetpro\u002Fhabr\u002Fpost_images\u002F9d4\u002Fede\u002Fbb8\u002F9d4edebb8a0253cb1b973bd5df46a9a9.jpg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fpost_images\u002F9d4\u002Fede\u002Fbb8\u002F9d4edebb8a0253cb1b973bd5df46a9a9.jpg\" data-blurred=\"true\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nHi! In this article, I want to explain, in layman’s terms, how \u003Ci\u003Esteal\u003C\u002Fi\u003E appears in VMs and tell you about some of the less-than-obvious artifacts that we found during research on the topic that I was involved in as CTO of the \u003Ca href=\"https:\u002F\u002Fmcs.mail.ru\u002Fen\u002F\"\u003EMail.ru Cloud Solutions\u003C\u002Fa\u003E platform. The platform runs KVM.\u003Cbr\u002F\u003E\r\n\u003Ca name=\"habracut\"\u003E\u003C\u002Fa\u003E\u003Cbr\u002F\u003E\r\nCPU steal time is the time during which a VM doesn’t receive the necessary resources to operate. This time can only be calculated in a guest OS in virtualization environments. It is extremely unclear where the allocated resources are lost, just like in real life situations. However, we decided to figure it out, and we even performed a series of tests to do so. That is not to say that we know everything about \u003Ci\u003Esteal,\u003C\u002Fi\u003E but there are some fascinating things that we would like to share with you.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003E1. What is \u003Ci\u003Esteal\u003C\u002Fi\u003E?\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\n\u003Ci\u003ESteal\u003C\u002Fi\u003E is a metric that indicates a lack of CPU time for VM processes. As described in the \u003Ca href=\"https:\u002F\u002Fgit.kernel.org\u002Fpub\u002Fscm\u002Flinux\u002Fkernel\u002Fgit\u002Fstable\u002Flinux.git\u002Fpatch\u002F?id=c9aaa8957f203bd6df83b002fb40b98390bed078\"\u003EKVM kernel patch\u003C\u002Fa\u003E, \u003Ci\u003Esteal\u003C\u002Fi\u003E is the time that a hypervisor spends running other processes in a host OS, while VM process is in a run queue. In other words, \u003Ci\u003Esteal \u003C\u002Fi\u003Eis calculated as the difference between the moment when a process is ready to run and the moment when CPU time is allocated to the process.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nThe VM kernel gets the \u003Ci\u003Esteal \u003C\u002Fi\u003Emetric from the hypervisor. The hypervisor doesn’t specify which processes it is running. It just says: «I’m busy, and can’t allocate any time to you.» In a KVM, \u003Ci\u003Esteal\u003C\u002Fi\u003E calculation is supported in \u003Ca href=\"https:\u002F\u002Flwn.net\u002FArticles\u002F449657\u002F\"\u003Epatches\u003C\u002Fa\u003E. There are two main points regarding this: \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003EA VM learns about \u003Ci\u003Esteal\u003C\u002Fi\u003E from the hypervisor. This means that in terms of losses, \u003Ci\u003Esteal\u003C\u002Fi\u003E is an indirect measurement that can be distorted in several ways.\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003Cli\u003EThe hypervisor doesn’t share with the VM information regarding what it is occupied with. The most crucial point is that it doesn’t allocate time to it. The VM itself, therefore, cannot detect distortions in the \u003Ci\u003Esteal \u003C\u002Fi\u003Emetric\u003Ci\u003E,\u003C\u002Fi\u003E which could be estimated by the nature of the competing processes.\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\n\u003Ch2\u003E2. What affects \u003Ci\u003Esteal\u003C\u002Fi\u003E?\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\n\u003Ch4\u003E2.1. Calculating \u003Ci\u003Esteal\u003C\u002Fi\u003E\u003C\u002Fh4\u003E\u003Cbr\u002F\u003E\r\nEssentially, \u003Ci\u003Esteal \u003C\u002Fi\u003Eis calculated in more or less the same way as CPU utilization time. There isn’t a great deal of information regarding how utilization is calculated. That’s probably because most professionals think it’s obvious. However, there are some pitfalls. The process is described in \u003Ca href=\"http:\u002F\u002Fwww.brendangregg.com\u002Fblog\u002F2017-05-09\u002Fcpu-utilization-is-wrong.html\"\u003Ean article by Brendann Gregg\u003C\u002Fa\u003E. He discusses a whole host of nuances regarding how to calculate utilization and scenarios in which the calculation will be wrong:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003ECPU overheating and throttling.\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003Cli\u003ETurning Turbo Boost on\u002Foff, resulting in a change in CPU clock rate.\u003C\u002Fli\u003E\r\n\u003Cli\u003EThe time slice change that occurs when CPU power-saving technologies, e.g. SpeedStep, are used.\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003Cli\u003EProblems related to calculating averages: measuring utilization for one minute at 80% power could hide a short-term 100 % boost.\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003Cli\u003EA spinlock that results in a scenario whereby the processor is utilized, but the user process doesn’t progress. As a result, the calculated CPU utilization will be 100%, but the process will not actually consume CPU time.\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\nI haven’t come across any articles describing such calculations of \u003Ci\u003Esteal\u003C\u002Fi\u003E (if you know of any, please share them in the comments section). As you can see from the source code, the calculation mechanism is the same as for utilization. The only difference is that another counter is added specifically for the KVM process (VM process), which calculates how long the KVM process has been waiting for CPU time. The counter takes data on the CPU from its specification and checks if all its ticks are being utilized by the VM process. If all the ticks are being used, then the CPU was only busy with the VM process. Otherwise, we know that the CPU was doing something else and \u003Ci\u003Esteal\u003C\u002Fi\u003E appears. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nThe process by which \u003Ci\u003Esteal \u003C\u002Fi\u003Eis calculated is subject to the same issues as the regular calculation of utilization. These issues are not that common, but they can appear rather confusing.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch4\u003E2.2. Types of KVM virtualization\u003C\u002Fh4\u003E\u003Cbr\u002F\u003E\r\nIn general, there are three types of virtualization, and they are all supported by a KVM. The mechanism by which \u003Ci\u003Esteal\u003C\u002Fi\u003E occurs may depend on the type of virtualization.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nTranslation. In this case, the VM OS will work with physical hypervisor devices in the following way:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Col\u003E\r\n\u003Cli\u003EThe guest OS sends a command to its guest device.\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003Cli\u003EThe guest device driver accepts the command, creates a BIOS device request, and sends the command to the hypervisor.\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003Cli\u003EThe hypervisor process translates the command into a physical device command, making it more secure, among other things.\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003Cli\u003EThe physical device driver accepts the modified command and forwards it to the physical device itself.\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003Cli\u003EThe execution results of the command return following the same path. \u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003C\u002Fol\u003E\u003Cbr\u002F\u003E\r\nThe advantage of translation is that it allows us to emulate any device and requires no special preparation of the OS kernel. But this comes at the expense of performance. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nHardware virtualization. In this case, a device receives commands from the OS on the hardware level. This is the fastest and overall best method. Unfortunately, not all physical devices, hypervisors, and guest OSs support it. For now, the main devices that support hardware virtualization are CPUs.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nParavirtualization. The most common option for device virtualization on a KVM and the most widespread type of virtualization for guest OSs. Its main feature is that it works with some hypervisor subsystems (e.g. network or drive stack) and allocates memory pages using a hypervisor API without translating low-level commands. The disadvantage of this virtualization method is the need to modify the guest OS’s kernel to allow for interaction with the hypervisor using the same API. The most common solution to this issue is to install special drivers into the guest OS. In a KVM this API is called a \u003Ca href=\"https:\u002F\u002Fwww.ibm.com\u002Fdeveloperworks\u002Flibrary\u002Fl-virtio\u002Findex.html\"\u003Evirtio API\u003C\u002Fa\u003E.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nWhen paravirtualization is used, the path to the physical device is much shorter than in cases when translation is used, because commands are sent directly from the VM to the hypervisor process in the host. This accelerates the execution of all instructions within the VM. In a KVM, a virtio API is responsible for this. It only works for some devices like network and drive adapters. This is why virtio drivers are installed to VMs. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nThe flip side of such acceleration is that not all processes executed in a VM stay within the VM. This result in a number of effects, which might cause \u003Ci\u003Esteal\u003C\u002Fi\u003E. If you would like to learn more, start with \u003Ca href=\"https:\u002F\u002Flwn.net\u002FArticles\u002F239238\u002F\"\u003EAn API for virtual I\u002FO: virtio\u003C\u002Fa\u003E.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch4\u003E2.3. Fair scheduling\u003C\u002Fh4\u003E\u003Cbr\u002F\u003E\r\nA VM on a hypervisor is, in fact, a regular process, which is subject to scheduling laws (resource distribution between processes) in a Linux kernel. Let’s take a closer look at this. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nLinux uses so-called CFS, Completely Fair Scheduler, which became the default with kernel 2.6.23. To get a handle on this algorithm, read Linux Kernel Architecture or the source code. The essence of CFS lies in the distribution of CPU time between processes, depending on their run time. The more CPU time a process requires, the less CPU time it gets. This guarantees the «fair» execution of all processes and helps to avoid one process taking up all of the processors, all of the time and allows other processes to run too. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nSometimes this paradigm results in interesting artifacts. Long-standing Linux users will no doubt remember how a regular text editor on the desktop would freeze when running resource-intensive applications like a compiler. This happened because resource-light tasks, such as desktop applications, were competing with tasks that used many resources, like a compiler. CFS considers this to be unfair, and so it stops the text editor from time to time and lets the CPU process the compiler tasks. This was fixed using the \u003Ca href=\"https:\u002F\u002Fmarc.info\u002F?l=linux-kernel&amp;m=128978361700898\"\u003Esched_autogroup\u003C\u002Fa\u003E mechanism; there are, however, many other peculiarities of CPU time distribution. This article is not really about how bad CFS is. It is rather an attempt to draw attention to the fact that «fair» distribution of CPU time is not the most trivial task.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nAnother important aspect of a scheduler is preemption. This is necessary to rid the CPU of any over-indulged processes and allow others to work too. This is called \u003Ci\u003Econtext switching\u003C\u002Fi\u003E. The entire task context is retained: stack status, registers, and so on, after which the process is left to wait and is replaced by another process. This is an expensive operation for an OS. It’s rarely used, but it’s actually not bad at all. Frequent context switching might be an indicator of an OS issue but it usually occurs continuously and is not a sign of any issue in particular.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nThis long discourse was necessary to explain one fact: in a fair Linux scheduler, the more CPU resources the process consumes, the faster it will be stopped to allow other processes to work. Whether this is right or not is a complex question, and the solution is different depending on the load. Until recently, Windows scheduler prioritized desktop applications, which resulted in slower background processes. In Sun Solaris there were five different scheduler classes. When virtualization was introduced, they added another one, \u003Ca href=\"https:\u002F\u002Fwww.opennet.ru\u002Fman.shtml?topic=FSS&amp;category=7&amp;russian=4\"\u003EFair share scheduler\u003C\u002Fa\u003E, because the others were not running properly with Solaris Zones virtualization. To dig deeper into this, I recommend starting with \u003Ca href=\"https:\u002F\u002Fwww.amazon.com\u002FSolaris-Internals-OpenSolaris-Kernel-Architecture\u002Fdp\u002F0131482092\u002F\"\u003ESolaris Internals: Solaris 10 and OpenSolaris Kernel Architecture\u003C\u002Fa\u003E or \u003Ca href=\"https:\u002F\u002Fwww.amazon.com\u002FUnderstanding-Linux-Kernel-Third-Daniel\u002Fdp\u002F0596005652\u002F\"\u003EUnderstanding the Linux Kernel\u003C\u002Fa\u003E.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch4\u003E2.4. How can we monitor \u003Ci\u003Esteal\u003C\u002Fi\u003E?\u003C\u002Fh4\u003E\u003Cbr\u002F\u003E\r\nJust like any other CPU metric, it’s easy to monitor \u003Ci\u003Esteal\u003C\u002Fi\u003E inside a VM. You can use any CPU metric measurement tool. The main thing is that the VM must be on Linux. For some reason, Windows doesn’t provide such information to the user. :(\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fpost_images\u002Ffff\u002F9f8\u002F5b1\u002Ffff9f85b10523ddaecfc176f1fa18f33.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Ci\u003Etop output: specification of CPU load with steal in the right column\u003C\u002Fi\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nThings become complicated when trying to get this information from a hypervisor. You can try to forecast \u003Ci\u003Esteal\u003C\u002Fi\u003E on a host machine, using Load Average (LA), for example. This is the average value of the number of processes in the run queue. The calculation method for this parameter is not a simple one, but in general, if an LA that has been standardized according to the number of CPU threads is greater than 1, it means that the Linux server is overloaded. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nSo, what are all these processes waiting for? Obviously, the CPU. This answer is not quite accurate, however, because sometimes the CPU is free and the LA is way too high. Remember \u003Ca href=\"https:\u002F\u002Fserverfault.com\u002Fquestions\u002F911976\u002Fredhat-nfs-cluster-high-load-average-suddenly\"\u003Ethat NFS falls and LA rises at the same time\u003C\u002Fa\u003E. A similar situation might occur with the drive and other input\u002Foutput devices. In fact, the processes might be waiting for the end of a lock: physical (related to input\u002Foutput devices) or logical (a mutex object, for example). The same is true for hardware-level locks (for example, disk response) or logic-level locks (so-called «locking primitives», which include a number of entities, mutex adaptive and spin, semaphores, condition variables, rw locks, ipc locks...).\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nAnother feature of LA is that it is calculated as an average value within the OS. For example, if 100 processes compete for one file, the LA is 50. This large number might make it seem like this is bad for the OS. However, for poorly written code this can be normal. Only that specific code would be bad, and the rest of OS might be fine. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nBecause of this averaging (for less than a minute), determining anything using an LA is not the best idea, as it can yield extremely ambiguous results in some instances. If you try to find out more about this, you’ll find that Wikipedia and other available resources only describe the simplest of cases, and the process is not described in detail. If you are interested in this, again, visit \u003Ca href=\"http:\u002F\u002Fwww.brendangregg.com\u002Fblog\u002F2017-08-08\u002Flinux-load-averages.html\"\u003EBrendann Gregg\u003C\u002Fa\u003E and follow the links. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003E3. Special effects\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nNow let’s get to the main cases of \u003Ci\u003Esteal \u003C\u002Fi\u003Ethat we encountered. Allow me to explain how they result from the above and how they correlate with hypervisor metrics.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nOverutilization. The simplest and most common case: the hypervisor is being overutilized. Indeed, with a lot of VMs running and consuming a lot of CPU resources, competition is high, and utilization according to the LA is greater than 1 (standardized according to CPU threads). Everything lags within all VMs. \u003Ci\u003ESteal\u003C\u002Fi\u003E sent from the hypervisor grows as well. You have to redistribute the load or turn something off. On the whole, this is all logical and straightforward.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nParavirtualization vs single instances. There’s only one VM on a hypervisor. The VM consumes a small part of it, but provides high input\u002Foutput load, for example, for a drive. Unexpectedly, a small \u003Ci\u003Esteal\u003C\u002Fi\u003E of less than 10 % appears (as some of the tests we conducted show).\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nThis is a curious case. Here, \u003Ci\u003Esteal \u003C\u002Fi\u003Eappears because of locks on the level of the paravirtualized devices. Inside the VM, a breakpoint is created. This is processed by the driver and goes to the hypervisor. Due to the breakpoint processing on the hypervisor, the VM sees this as a sent request. It is ready to run and waits for the CPU, but receives no CPU time. The VM thinks that the time has been stolen. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nThis happens when the buffer is sent. It goes to the hypervisor’s kernel space and we wait for it. From the point of view of the VM, it should return immediately. Therefore, according to our \u003Ci\u003Esteal\u003C\u002Fi\u003E calculation algorithm, this time is considered stolen. It is likely that other mechanisms may be involved in this (e.g. the processing of other \u003Ci\u003Esys calls\u003C\u002Fi\u003E), but they should not differ to any significant degree.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nScheduler vs highly loaded VMs. When one VM suffers from \u003Ci\u003Esteal \u003C\u002Fi\u003Emore than the others, this is connected directly with the scheduler. The greater the load that a process puts on a CPU, the faster a scheduler will throw it out, so as to allow other processes to work. If the VM is consuming little, it will experience almost no \u003Ci\u003Esteal.\u003C\u002Fi\u003E Its process has just been sitting and waiting, and it needs to be given more time. If the VM puts a maximum load on all cores, the process is thrown away more often and the VM is afforded less time. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nIt’s even worse when processes within the VM try to get more CPU, because they can’t process the data. Then the OS on the hypervisor will provide less CPU time because of the fair optimization. This process snowballs, and \u003Ci\u003Esteal\u003C\u002Fi\u003E surges sky-high, while other VMs may not even notice it. The more cores there are, the worse is it for the unfortunate VM. In short, highly loaded VMs with many cores suffer the most.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nLow LA but \u003Ci\u003Esteal\u003C\u002Fi\u003E is present. If the LA is about 0.7 (meaning that the hypervisor seems underloaded), but there’s \u003Ci\u003Esteal\u003C\u002Fi\u003E in some VMs:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003EThe aforementioned paravirtualization example applies. The VM might be receiving metrics that indicate \u003Ci\u003Esteal\u003C\u002Fi\u003E, while the hypervisor has no issues. According to the results of our tests, such \u003Ci\u003Esteal\u003C\u002Fi\u003E does not tend to exceed 10 % and doesn’t have a significant impact on application performance within the VM.\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003Cli\u003EThe LA parameter has been calculated incorrectly. More precisely, it has been calculated correctly at a specific moment, but when averaging, it is lower than it should be for one minute. For example, if one VM (one-third of the hypervisor) consumes all CPUs for 30 seconds, then the LA for a minute will be 0.15. Four such VMs, working at the same time, will result in a value of 0.6. Based on the LA, you wouldn’t be able to deduce that for 30 seconds for each of them, the \u003Ci\u003Esteal \u003C\u002Fi\u003Ewas almost 25 %.\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003Cli\u003EAgain, this happened because of the scheduler, which decided that someone was «eating» too much and made them wait. Meanwhile, it will switch context, process breakpoints, and attend to other important system matters. As a result, some VMs experience no issues, and others suffer from significant performance losses.\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\n\u003Ch2\u003E4. Other distortions\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nThere are a million possible reasons for distortion of fair CPU time allocation on a VM. For example, hyperthreading and NUMA add complexity to the calculations. They complicate the choice of the core used to run a process because a scheduler uses coefficients; that is to say weights, which complicate the calculations even more than this when switching contexts.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nThere are distortions that arise from technologies like Turbo Boost or its opposite, power saving mode, which might artificially increase or decrease CPU core speed and even time slice. Turning Turbo Boost on decreases the productivity of one CPU thread due to a performance increase in another one. At that moment, information regarding the current CPU clock speed is not sent to the VM, which thinks that someone is stealing its time (e.g. it requested 2 GHz and got half as much). \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nIn fact, there can be many reasons for distortion. You may find something else entirely in any given system. I recommend starting with the books linked above and obtaining statistics from the hypervisor using tools such as perf, sysdig, systemtap, and \u003Ca href=\"https:\u002F\u002Fjvns.ca\u002Fblog\u002F2017\u002F07\u002F05\u002Flinux-tracing-systems\u002F\"\u003Edozens of others\u003C\u002Fa\u003E.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003E5. Conclusions\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\n \u003Col\u003E\r\n\u003Cli\u003ESome \u003Ci\u003Esteal \u003C\u002Fi\u003Emay appear due to paravirtualization and this can be considered normal. Online sources say that this value can be 5-10 %. It depends on the application within a VM, and the load the VM puts on its physical devices. It is important to pay attention to how applications feel inside a VM.\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003Cli\u003EThe correlation between the load on the hypervisor and \u003Ci\u003Esteal \u003C\u002Fi\u003Ewithin a VM is not always certain. Both \u003Ci\u003Esteal \u003C\u002Fi\u003Ecalculations can be wrong in some cases and with different loads.\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003Cli\u003EScheduler does not favor processes that request a lot of resources. It tries to give less to those that ask for more. Big instances are mean.\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003Cli\u003EA little \u003Ci\u003Esteal\u003C\u002Fi\u003E can be normal without paravirtualization as well (taking into consideration the load within the VM, the particularities of neighbors’ loads, the distribution of the load between threads, and other factors).\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003Cli\u003EIf you would like to calculate \u003Ci\u003Esteal\u003C\u002Fi\u003E in a particular system, research the various possibilities, gather metrics, analyze them thoroughly, and think about how to distribute the load fairly. Regardless, there can be deviations, which must be verified using tests or view these in a kernel debugger.\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003C\u002Fol\u003E\u003C\u002Fdiv\u003E","tags":[{"titleHtml":"kvm"},{"titleHtml":"virtualization"},{"titleHtml":"steal"},{"titleHtml":"cpu"},{"titleHtml":"mail.ru cloud solutions"}],"metadata":{"stylesUrls":[],"scriptUrls":[],"shareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F453140\u002F0483951f6f6ffa5a391e260c6c8a5b7c\u002F","shareImageWidth":1200,"shareImageHeight":630,"vkShareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F453140\u002F0483951f6f6ffa5a391e260c6c8a5b7c\u002F?format=vk","schemaJsonLd":"{\"@context\":\"http:\\\u002F\\\u002Fschema.org\",\"@type\":\"Article\",\"mainEntityOfPage\":{\"@type\":\"WebPage\",\"@id\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fen\\\u002Fcompany\\\u002Fvk\\\u002Fblog\\\u002F453140\\\u002F\"},\"headline\":\"Who is stealing virtual CPU time?\",\"datePublished\":\"2019-05-23T16:26:36+03:00\",\"dateModified\":\"2019-06-05T12:43:31+03:00\",\"author\":{\"@type\":\"Person\",\"name\":\"Dmitry Kudyukin\"},\"publisher\":{\"@type\":\"Organization\",\"name\":\"Habr\",\"logo\":{\"@type\":\"ImageObject\",\"url\":\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fa_\\\u002Flk\\\u002F9m\\\u002Fa_lk9mjkccjox-zccjrpfolmkmq.png\"}},\"description\":\"Hi! In this article, I want to explain, in layman&rsquo;s terms, how steal appears in VMs and tell you about some of the less-than-obvious artifacts that we found d...\",\"url\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fen\\\u002Fcompany\\\u002Fvk\\\u002Fblog\\\u002F453140\\\u002F#post-content-body\",\"about\":[\"c_vk\",\"h_linux\",\"h_sys_admin\",\"h_virtualization\",\"f_admin\"],\"image\":[\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fgetpro\\\u002Fhabr\\\u002Fpost_images\\\u002F9d4\\\u002Fede\\\u002Fbb8\\\u002F9d4edebb8a0253cb1b973bd5df46a9a9.jpg\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fgetpro\\\u002Fhabr\\\u002Fpost_images\\\u002Ffff\\\u002F9f8\\\u002F5b1\\\u002Ffff9f85b10523ddaecfc176f1fa18f33.png\"]}","metaDescription":"Hi! In this article, I want to explain, in layman’s terms, how steal appears in VMs and tell you about some of the less-than-obvious artifacts that we found during research on the topic that I was...","mainImageUrl":null,"amp":true},"polls":[],"commentsEnabled":true,"rulesRemindEnabled":false,"votesEnabled":true,"status":"published","plannedPublishTime":null,"checked":null,"isEditorial":false}},"articlesIds":{},"isLoading":false,"pagesCount":{},"route":{},"reasonsList":null,"view":"cards","lastVisitedRoute":{},"ssrCommentsArticleIds":[""],"karma":{}},"authorContribution":{"authors":{}},"betaTest":{"currentAnnouncement":null,"announcements":{},"announcementCards":null,"announcementComments":{},"announcementCommentThreads":{},"announcementCommentingStatuses":{},"archivedList":[]},"authorStatistics":{"articleRefs":{},"articleIds":{},"pagesCount":{},"route":{},"viewsCount":[],"maxStatsCount":{}},"career":{"seoLandings":[],"hubs":""},"comments":{"articleComments":{},"searchCommentsResults":null,"previewComment":null,"pagesCount":null,"commentAccess":{},"scrollParents":{},"pageArticleComments":{"lastViewedComment":0,"postId":null,"lastCommentTimestamp":"","moderated":[],"moderatedIds":[],"commentRoute":""}},"companies":{"companyRefs":{"vk":{"alias":"vk","imageUrl":"\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fcompany\u002F9ed\u002Fc74\u002F6b4\u002F9edc746b484c805ecad1f941b5f7068a.png","titleHtml":"VK","descriptionHtml":"Технологии, которые объединяют","relatedData":null,"statistics":{"postsCount":2250,"newsCount":142,"vacanciesCount":24,"employeesCount":693,"careerRating":4.37,"subscribersCount":124428,"rating":331.84,"invest":null},"foundationDate":{"year":"1998","month":"10","day":"15"},"location":{"city":{"id":"447159","title":"Москва"},"region":{"id":"1885","title":"Москва и Московская обл."},"country":{"id":"168","title":"Россия"}},"siteUrl":"https:\u002F\u002Fvk.com\u002Fvkteam","staffNumber":"5 001–10 000 человек","registrationDate":"2008-08-09T07:42:32+00:00","representativeUser":{"alias":"somuchmich","fullname":"Миша Буданов"},"contacts":[{"title":"Facebook","url":"https:\u002F\u002Ffacebook.com\u002Finsidevk"},{"title":"Twitter","url":"https:\u002F\u002Ftwitter.com\u002Finside_vk"},{"title":"ВКонтакте","url":"https:\u002F\u002Fvk.com\u002Finsidevk"},{"title":"Instagram","url":"https:\u002F\u002Finstagram.com\u002Finside.vk"},{"title":"Telegram","url":"https:\u002F\u002Ftelegram.me\u002Finside_vk"}],"settings":{"analyticsSettings":[{"type":"ga","trackingId":"UA-16546458-6"}],"branding":{"imageUrl":"\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fbranding\u002F174\u002F2c4\u002F3a5\u002F1742c43a5b504987a0fadf577a0bd4de.png","linkUrl":"https:\u002F\u002Fvk.com\u002Fvkteam","pixelUrl":""},"status":"active"},"metadata":{"titleHtml":"VK, Москва - Технологии, которые объединяют с 15 октября 1998 г.","title":"VK, Москва - Технологии, которые объединяют с 15 октября 1998 г.","keywords":["Программирование","DevOps","Kubernetes","Облачные вычисления","Tarantool"],"descriptionHtml":"2 250 статей от авторов компании VK","description":"2 250 статей от авторов компании VK"},"aDeskSettings":null,"careerAlias":"vk","maxCustomTrackerLinks":3}},"companyIds":{},"companyTopIds":{},"pagesCount":{},"companyProfiles":{},"companiesCategories":[],"companiesCategoriesTotalCount":0,"companiesWidgets":{},"companiesWorkers":{},"companiesFans":{},"route":{},"isLoading":false,"companyWorkersLoading":false,"companyFansLoading":false,"vacancies":{}},"companiesContribution":{"hubs":{},"flows":{},"companyRefs":{}},"companyHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"conversation":{"messages":[],"respondent":null,"isLoadMore":false},"conversations":{"conversations":[],"unreadCount":0,"pagesCount":0,"isLoadMore":false},"desktopState":{"desktopFl":null,"desktopHl":null,"isChecked":false,"isLoginDemanded":false},"dfp":{"slotsDict":{}},"docs":{"menu":{},"articles":{},"mainMenu":[],"loading":{"main":false,"dropdown":false,"article":false}},"feature":{"isProbablyVisible":"true"},"flows":{"flows":[{"alias":"develop","id":1,"route":{"name":"FLOW_PAGE","params":{"flowName":"develop"}}},{"alias":"admin","id":6,"route":{"name":"FLOW_PAGE","params":{"flowName":"admin"}}},{"alias":"design","id":2,"route":{"name":"FLOW_PAGE","params":{"flowName":"design"}}},{"alias":"management","id":3,"route":{"name":"FLOW_PAGE","params":{"flowName":"management"}}},{"alias":"marketing","id":4,"route":{"name":"FLOW_PAGE","params":{"flowName":"marketing"}}},{"alias":"popsci","id":7,"route":{"name":"FLOW_PAGE","params":{"flowName":"popsci"}}}]},"global":{"isPwa":false,"device":"desktop","isHabrCom":true},"hubs":{"hubRefs":{},"hubIds":{},"pagesCount":{},"isLoading":false,"route":{}},"hubsBlock":{"hubRefs":{},"hubIds":{}},"i18n":{"fl":"ru","hl":"ru"},"info":{"infoPage":{},"isLoading":true},"location":{"urlStruct":{"protocol":null,"slashes":null,"auth":null,"host":null,"port":null,"hostname":null,"hash":null,"search":null,"query":{},"pathname":null,"path":null,"href":""},"searchQuery":null},"me":{"user":null,"ppgDemanded":false,"karmaResetInfo":{"canReincarnate":null,"wasReincarnated":null,"currentScore":null},"notes":null},"mostReadingList":{"mostReadingListIds":[],"mostReadingListRefs":null,"promoPost":null},"pinnedPost":{"pinnedPost":null},"ppa":{"articles":{},"card":null,"transactions":null,"totalTransactions":null,"isAccessible":null},"projectsBlocks":{"activeBlocks":{}},"pullRefresh":{"shouldRefresh":false},"sandbox":{"articleIds":[],"articleRefs":{},"pagesCount":null,"route":{},"lastVisitedRoute":{},"isLoading":false},"settingsOther":{"inputs":{"uiLang":{"errors":[],"ref":null,"value":""},"articlesLangEnglish":{"errors":[],"ref":null,"value":false},"articlesLangRussian":{"errors":[],"ref":null,"value":false},"agreement":{"errors":[],"ref":null,"value":false},"email":{"errors":[],"ref":null,"value":true},"digest":{"errors":[],"ref":null,"value":true}}},"similarList":{"similarListIds":[],"similarListRefs":null},"ssr":{"error":null,"isDataLoaded":false,"isDataLoading":false,"isHydrationFailed":false,"isServer":false},"userHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"userInvites":{"availableInvites":0,"usedInvitesIds":[],"usedInvitesRefs":{},"usedInvitesPagesCount":0,"unusedInvitesIds":[],"unusedInvitesRefs":{},"unusedInvitesPagesCount":0},"users":{"authorRefs":{},"authorIds":{},"pagesCount":{},"authorProfiles":{},"userHubs":{},"userInvitations":{},"authorFollowers":{},"authorFollowed":{},"karmaStats":[],"statistics":null,"isLoading":false,"authorFollowersLoading":false,"authorFollowedLoading":false,"userHubsLoading":false,"userInvitationsLoading":false,"route":{}},"viewport":{"prevScrollY":{},"scrollY":0,"width":0},"tracker":{"items":{},"pagesCache":{},"markedViewedSilently":{},"markedRead":{},"unreadCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null},"unviewedCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null}}};(function(){var s;(s=document.currentScript||document.scripts[document.scripts.length-1]).parentNode.removeChild(s);}());</script>
+<script src="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" defer></script><script src="https://assets.habr.com/habr-web/js/app.c0af73e7.js" defer></script>
+
+
+
+    <script>
+      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+        (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+        m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+      })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+    </script>
+  
+  <script type="text/javascript" >
+    (function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+    m[i].l=1*new Date();k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})
+    (window, document, "script", "https://mc.yandex.ru/metrika/tag.js", "ym");
+
+    ym(24049213, "init", {
+      defer:true,
+      trackLinks:true,
+      accurateTrackBounce:true,
+      webvisor:false,
+    });
+  </script>
+  <noscript>
+    <div>
+      <img src="https://mc.yandex.ru/watch/24049213" style="position:absolute; left:-9999px;" alt="" />
+    </div>
+  </noscript>
+  
+    <script type="text/javascript">
+      window.addEventListener('load', function () {
+        setTimeout(() => {
+          const img = new Image();
+          img.src = 'https://vk.com/rtrg?p=VK-RTRG-421343-57vKE';
+        }, 0);
+      });
+    </script>
+  
+</body>
+</html>

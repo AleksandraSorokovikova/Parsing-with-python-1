@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="ru" data-vue-meta="%7B%22lang%22:%7B%22ssr%22:%22ru%22%7D%7D">
+<head >
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
+  <title>MVCC-6. Очистка / Хабр</title>
+  <style>
+    /* cyrillic-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSxf6TF0.woff2) format('woff2');
+      unicode-range: U+0460-052F, U+1C80-1C88, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+    }
+
+    /* cyrillic */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveQhf6TF0.woff2) format('woff2');
+      unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+    }
+
+    /* latin-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSBf6TF0.woff2) format('woff2');
+      unicode-range: U+0100-024F, U+0259, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20CF, U+2113, U+2C60-2C7F, U+A720-A7FF;
+    }
+
+    /* latin */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveRhf6.woff2) format('woff2');
+      unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+    }
+  </style>
+  <link rel="preload" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" as="script"><link rel="preload" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/app.c0af73e7.js" as="script">
+  <link rel="stylesheet" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css"><link rel="stylesheet" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css">
+  <script>window.i18nFetch = new Promise((res, rej) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open('GET', '/js/i18n/ru-compiled.85eb77f0b17c8235e7b64b9f81ea5ec2.json');
+          xhr.responseType = 'json';
+          xhr.onload = function(e) {
+            if (this.status === 200) {
+              res({ru: xhr.response});
+            } else {
+              rej(e);
+            }
+          };
+          xhr.send();
+        });</script>
+  
+  <script data-vue-meta="ssr" src="/js/ads.js" onload="window['zhY4i4nJ9K'] = true" data-vmid="checkad"></script><script data-vue-meta="ssr" type="application/ld+json" data-vmid="ldjson-schema">{"@context":"http:\/\/schema.org","@type":"Article","mainEntityOfPage":{"@type":"WebPage","@id":"https:\/\/habr.com\/ru\/company\/postgrespro\/blog\/452320\/"},"headline":"MVCC-6. Очистка","datePublished":"2019-05-27T10:38:01+03:00","dateModified":"2019-06-06T13:42:44+03:00","author":{"@type":"Person","name":"Егор Рогов"},"publisher":{"@type":"Organization","name":"Habr","logo":{"@type":"ImageObject","url":"https:\/\/habrastorage.org\/webt\/a_\/lk\/9m\/a_lk9mjkccjox-zccjrpfolmkmq.png"}},"description":"Мы начали с вопросов, связанных с изоляцией, сделали отступление про организацию данных на низком уровне, затем подробно поговорили о версиях строк и о том, как...","url":"https:\/\/habr.com\/ru\/company\/postgrespro\/blog\/452320\/#post-content-body","about":["c_postgrespro","h_postgresql","h_sql","f_develop"],"image":["https:\/\/habr.com\/share\/publication\/452320\/ebee81643a60f49be8130e501c5918e8\/"]}</script>
+  <script src="//www.googletagservices.com/tag/js/gpt.js" async></script>
+  <style>.grecaptcha-badge{visibility: hidden;}</style>
+  <meta name="habr-version" content="2.49.0">
+  
+  <meta data-vue-meta="ssr" property="fb:app_id" content="444736788986613"><meta data-vue-meta="ssr" property="fb:pages" content="472597926099084"><meta data-vue-meta="ssr" name="twitter:card" content="summary_large_image"><meta data-vue-meta="ssr" name="twitter:site" content="@habr_eng"><meta data-vue-meta="ssr" property="og:title" content="MVCC-6. Очистка" data-vmid="og:title"><meta data-vue-meta="ssr" name="twitter:title" content="MVCC-6. Очистка" data-vmid="twitter:title"><meta data-vue-meta="ssr" name="aiturec:title" content="MVCC-6. Очистка" data-vmid="aiturec:title"><meta data-vue-meta="ssr" name="description" content="Мы начали с вопросов, связанных с изоляцией, сделали отступление про организацию данных на низком уровне, затем подробно поговорили о версиях строк и о том, как из версий получаются снимки..." data-vmid="description"><meta data-vue-meta="ssr" itemprop="description" content="Мы начали с вопросов, связанных с изоляцией, сделали отступление про организацию данных на низком уровне, затем подробно поговорили о версиях строк и о том, как из версий получаются снимки..." data-vmid="description:itemprop"><meta data-vue-meta="ssr" property="og:description" content="Мы начали с вопросов, связанных с изоляцией, сделали отступление про организацию данных на низком уровне, затем подробно поговорили о версиях строк и о том, как из версий получаются снимки..." data-vmid="og:description"><meta data-vue-meta="ssr" name="twitter:description" content="Мы начали с вопросов, связанных с изоляцией, сделали отступление про организацию данных на низком уровне, затем подробно поговорили о версиях строк и о том, как из версий получаются снимки..." data-vmid="twitter:description"><meta data-vue-meta="ssr" property="aiturec:description" content="Мы начали с вопросов, связанных с изоляцией, сделали отступление про организацию данных на низком уровне, затем подробно поговорили о версиях строк и о том, как из версий получаются снимки..." data-vmid="aiturec:description"><meta data-vue-meta="ssr" itemprop="image" content="https://habr.com/share/publication/452320/ebee81643a60f49be8130e501c5918e8/" data-vmid="image:itemprop"><meta data-vue-meta="ssr" property="og:image" content="https://habr.com/share/publication/452320/ebee81643a60f49be8130e501c5918e8/" data-vmid="og:image"><meta data-vue-meta="ssr" property="aiturec:image" content="https://habr.com/share/publication/452320/ebee81643a60f49be8130e501c5918e8/" data-vmid="aiturec:image"><meta data-vue-meta="ssr" name="twitter:image" content="https://habr.com/share/publication/452320/ebee81643a60f49be8130e501c5918e8/" data-vmid="twitter:image"><meta data-vue-meta="ssr" property="vk:image" content="https://habr.com/share/publication/452320/ebee81643a60f49be8130e501c5918e8/" data-vmid="vk:image"><meta data-vue-meta="ssr" property="aiturec:item_id" content="452320" data-vmid="aiturec:item_id"><meta data-vue-meta="ssr" property="aiturec:datetime" content="2019-05-27T07:38:01.000Z" data-vmid="aiturec:datetime"><meta data-vue-meta="ssr" property="og:type" content="article" data-vmid="og:type"><meta data-vue-meta="ssr" property="og:locale" content="ru_RU" data-vmid="og:locale"><meta data-vue-meta="ssr" property="og:image:width" content="1200" data-vmid="og:image:width"><meta data-vue-meta="ssr" property="og:image:height" content="630" data-vmid="og:image:height">
+  <link data-vue-meta="ssr" href="https://habr.com/ru/rss/post/452320/?fl=ru" type="application/rss+xml" title="" rel="alternate" name="rss"><link data-vue-meta="ssr" href="https://habr.com/ru/company/postgrespro/blog/452320/" rel="canonical" data-vmid="canonical"><link data-vue-meta="ssr" data-vmid="hreflang"><link data-vue-meta="ssr" image_src="image" href="https://habr.com/share/publication/452320/ebee81643a60f49be8130e501c5918e8/" data-vmid="image:href">
+  <meta name="apple-mobile-web-app-status-bar-style" content="#303b44">
+  <meta name="msapplication-TileColor" content="#629FBC">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="16x16"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-16.png"
+  >
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="32x32"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-32.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="76x76"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-76.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="120x120"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="152x152"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-152.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="180x180"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-180.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="256x256"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-256.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1136x640.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2436x1125.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1792x828.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_828x1792.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1334x750.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2208x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1125x2436.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2208.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2732x2048.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2688x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2224x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_750x1334.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x2732.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2388x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2224.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_640x1136.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2388.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x1536.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1536x2048.png"
+  >
+  <link
+    rel="mask-icon"
+    color="#77a2b6"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.svg"
+  >
+  <link
+    crossorigin="use-credentials"
+    href="/manifest.webmanifest"
+    rel="manifest"
+  >
+</head>
+<body>
+
+
+<div id="app" data-server-rendered="true" data-async-called="true"><div class="tm-layout__wrapper"><!----> <div></div> <!----> <header class="tm-header"><div class="tm-page-width"><div class="tm-header__container"><!----> <span class="tm-header__logo-wrap"><a href="/ru/" class="tm-header__logo tm-header__logo_ru"><svg height="16" width="16" class="tm-svg-img tm-header__icon"><title>Хабр</title> <use xlink:href="/img/habr-logo-ru.svg#logo"></use></svg></a> <span class="tm-header__beta-sign" style="display:none;">β</span></span> <div class="tm-dropdown tm-header__projects"><div class="tm-dropdown__head"><button class="tm-header__dropdown-toggle"><svg height="16" width="16" class="tm-svg-img tm-header__icon tm-header__icon_dropdown"><title>Открыть список</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#arrow-down"></use></svg></button></div> <!----></div> <a href="/ru/sandbox/start/" class="tm-header__become-author-btn">
+            Как стать автором
+          </a> <div class="tm-feature tm-header__feature tm-feature_variant-inline"><!----></div> <!----> <!----></div></div></header> <div class="tm-layout"><div class="tm-page-progress-bar"></div> <div data-menu-sticky="true" class="tm-base-layout__header tm-base-layout__header_is-sticky"><div class="tm-page-width"><div class="tm-base-layout__header-wrapper"><div class="tm-main-menu"><div class="tm-main-menu__section"><nav class="tm-main-menu__section-content"><!----> <a href="/ru/all/" class="tm-main-menu__item">
+        Все потоки
+      </a> <a href="/ru/flows/develop/" class="tm-main-menu__item">
+          Разработка
+        </a><a href="/ru/flows/admin/" class="tm-main-menu__item">
+          Администрирование
+        </a><a href="/ru/flows/design/" class="tm-main-menu__item">
+          Дизайн
+        </a><a href="/ru/flows/management/" class="tm-main-menu__item">
+          Менеджмент
+        </a><a href="/ru/flows/marketing/" class="tm-main-menu__item">
+          Маркетинг
+        </a><a href="/ru/flows/popsci/" class="tm-main-menu__item">
+          Научпоп
+        </a></nav></div></div> <div class="tm-header-user-menu tm-base-layout__user-menu"><a href="/ru/search/" class="tm-header-user-menu__item tm-header-user-menu__search"><svg height="24" width="24" class="tm-svg-img tm-header-user-menu__icon tm-header-user-menu__icon_search tm-header-user-menu__icon_dark"><title>Поиск</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#search"></use></svg></a> <!----> <!----> <!----> <div class="tm-header-user-menu__item tm-header-user-menu__user_desktop"><div class="tm-dropdown"><div class="tm-dropdown__head"><svg height="24" width="24" data-test-id="menu-toggle-guest" class="tm-svg-img tm-header-user-menu__icon"><title>Профиль</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#header-user"></use></svg> <!----></div> <!----></div> <!----></div> <!----></div></div></div></div> <!----> <div class="tm-page-width"></div> <main class="tm-layout__container"><div hl="ru" companyName="postgrespro" data-async-called="true" class="tm-page"><div class="tm-page-width"><div class="tm-page__header"><!----></div> <div class="tm-page__wrapper"><div class="tm-page__main tm-page__main_has-sidebar"><div class="pull-down"><div class="pull-down__header" style="height:0px;"><div class="pull-down__content" style="bottom:10px;"><svg height="24" width="24" class="tm-svg-img pull-down__arrow"><title>Обновить</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#pull-arrow"></use></svg></div></div> <div class="tm-article-presenter"><div class="tm-company-card tm-company-article__company-card"><div class="tm-company-card__info"><div class="tm-company-card__header"><a href="/ru/company/postgrespro/profile/" class="tm-company-card__avatar"><div class="tm-entity-image"><img alt="" height="48" src="//habrastorage.org/getpro/habr/company/4e0/339/621/4e0339621abc865fefb88f9e9f44748f.jpg" width="48" class="tm-entity-image__pic"></div></a> <!----> <div class="tm-rating tm-company-card__rating"><div class="tm-rating__header"> <div class="tm-rating__counter">218.7</div></div> <div class="tm-rating__text">
+    Рейтинг
+  </div></div></div> <div class="tm-company-card__info"><a href="/ru/company/postgrespro/profile/" class="tm-company-card__name">
+        Postgres Professional
+      </a> <div class="tm-company-card__description">Разработчик СУБД Postgres Pro</div></div></div> <div class="tm-company-card__buttons"><!----> <!----></div></div> <div class="tm-article-presenter__body"><div class="tm-misprint-area"><div class="tm-misprint-area__wrapper"><article class="tm-article-presenter__content tm-article-presenter__content_narrow"><div class="tm-article-presenter__header"> <div class="tm-article-snippet tm-article-presenter__snippet"><div class="tm-article-snippet__meta-container"><div class="tm-article-snippet__meta"><span class="tm-user-info tm-article-snippet__author"><a href="/ru/users/erogov/" title="erogov" class="tm-user-info__userpic"><div class="tm-entity-image"><img alt="" height="24" loading="lazy" src="//habrastorage.org/r/w32/getpro/habr/avatars/d16/573/7e4/d165737e421383f77f007015ebd01fb1.jpg" width="24" class="tm-entity-image__pic"></div></a> <span class="tm-user-info__user"><a href="/ru/users/erogov/" class="tm-user-info__username">
+      erogov
+    </a> </span></span> <span class="tm-article-snippet__datetime-published"><time datetime="2019-05-27T07:38:01.000Z" title="2019-05-27, 10:38">27  мая  2019 в 10:38</time></span></div> <!----></div> <h1 lang="ru" class="tm-article-snippet__title tm-article-snippet__title_h1"><span>MVCC-6. Очистка</span></h1> <div class="tm-article-snippet__hubs"><span class="tm-article-snippet__hubs-item"><a href="/ru/company/postgrespro/blog/" class="tm-article-snippet__hubs-item-link router-link-active"><span>Блог компании Postgres Professional</span> <!----></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/postgresql/" class="tm-article-snippet__hubs-item-link"><span>PostgreSQL</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/sql/" class="tm-article-snippet__hubs-item-link"><span>SQL</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span></div> <!----> <!----> <!----></div></div> <!----> <div data-gallery-root="" lang="ru" class="tm-article-body"><div id="post-content-body" class="article-formatted-body article-formatted-body_version-1"><div xmlns="http://www.w3.org/1999/xhtml">Мы начали с вопросов, связанных с <a href="https://habr.com/ru/company/postgrespro/blog/442804/">изоляцией</a>, сделали отступление про <a href="https://habr.com/ru/company/postgrespro/blog/444536/">организацию данных на низком уровне</a>, затем подробно поговорили <a href="https://habr.com/ru/company/postgrespro/blog/445820/">о версиях строк</a> и о том, как из версий получаются <a href="https://habr.com/ru/company/postgrespro/blog/446652/">снимки данных</a>.<br/>
+<br/>
+<a href="https://habr.com/ru/company/postgrespro/blog/449704/">В прошлый раз</a> мы поговорили о HOT-обновлениях и внутристраничной очистке, а сегодня займемся всем известной обычной очисткой, <em>vacuum vulgaris</em>. Да, про нее написано уже столько всего, что вряд ли я скажу что-то новое, но полнота картины требует жертв. Терпите.<br/>
+<br/>
+<h1>Обычная очистка (vacuum)</h1><br/>
+<h2>Что делает очистка</h2><br/>
+Внутристраничная очистка выполняется быстро, но освобождает только часть места. Она работает в пределах одной табличной страницы и не затрагивает индексы.<br/>
+<br/>
+Основная, «обычная» очистка выполняется командой VACUUM и ее мы будем называть просто очисткой (а про автоочистку мы будем говорить отдельно).<br/>
+<br/>
+Итак, очистка обрабатывает таблицу полностью. Она вычищает не только ненужные версии строк, но и ссылки на них из всех индексов.<br/>
+<br/>
+Обработка происходит параллельно с другой активностью в системе. Таблица и индексы при этом могут использоваться обычным образом и для чтения, и для изменения (однако одновременное выполнение таких команд, как CREATE INDEX, ALTER TABLE и некоторых других будет невозможно).<br/>
+<br/>
+В таблице просматриваются только те страницы, в которых происходила какая-то активность. Для этого используется карта видимости (напомню, что в ней отмечены страницы, содержащие только достаточно старые версии строк, которые гарантированно видимы во всех снимках данных). Обрабатываются только страницы, не отмеченные в карте, а сама карта при этом обновляется.<br/>
+<br/>
+В процессе работы обновляется и карта свободного пространства, чтобы отразить появившееся свободное места в страницах.<br/>
+<a name="habracut"></a><br/>
+Как водится, создадим таблицу:<br/>
+<br/>
+<pre><code class="pgsql">=> CREATE TABLE vac(
+  id serial,
+  s char(100)
+) WITH (autovacuum_enabled = off);
+=> CREATE INDEX vac_s ON vac(s);
+=> INSERT INTO vac(s) VALUES ('A');
+=> UPDATE vac SET s = 'B';
+=> UPDATE vac SET s = 'C';
+</code></pre><br/>
+С помощью параметра <em>autovacuum_enabled</em> мы отключаем автоматическую очистку. Про нее мы будем говорить в следующий раз, а пока — для экспериментов — нам важно управлять очисткой вручную.<br/>
+<br/>
+Сейчас в таблице три версии строки, и на каждую ведет ссылка из индекса:<br/>
+<br/>
+<pre><code class="pgsql">=> SELECT * FROM heap_page('vac',0);
+</code></pre><pre><code class="plaintext"> ctid  | state  |   xmin   |   xmax   | hhu | hot | t_ctid 
+-------+--------+----------+----------+-----+-----+--------
+ (0,1) | normal | 4000 (c) | 4001 (c) |     |     | (0,2)
+ (0,2) | normal | 4001 (c) | 4002     |     |     | (0,3)
+ (0,3) | normal | 4002     | 0 (a)    |     |     | (0,3)
+(3 rows)
+</code></pre><br/>
+<pre><code class="pgsql">=> SELECT * FROM index_page('vac_s',1);
+</code></pre><pre><code class="plaintext"> itemoffset | ctid  
+------------+-------
+          1 | (0,1)
+          2 | (0,2)
+          3 | (0,3)
+(3 rows)
+</code></pre><br/>
+После очистки «мертвые» версии пропадают и остается только одна, актуальная. И в индексе тоже остается одна ссылка:<br/>
+<br/>
+<pre><code class="pgsql">=> VACUUM vac;
+=> SELECT * FROM heap_page('vac',0);
+</code></pre><pre><code class="plaintext"> ctid  | state  |   xmin   | xmax  | hhu | hot | t_ctid 
+-------+--------+----------+-------+-----+-----+--------
+ (0,1) | unused |          |       |     |     | 
+ (0,2) | unused |          |       |     |     | 
+ (0,3) | normal | 4002 (c) | 0 (a) |     |     | (0,3)
+(3 rows)
+</code></pre><pre><code class="pgsql">=> SELECT * FROM index_page('vac_s',1);
+</code></pre><pre><code class="plaintext"> itemoffset | ctid  
+------------+-------
+          1 | (0,3)
+(1 row)
+</code></pre><br/>
+Обратите внимание, что два первых указателя получили статус unused, а не dead, как было бы при внутристраничной очистке.<br/>
+<br/>
+<h2>И еще раз о горизонте транзакций</h2><br/>
+Как PostgreSQL определяет, какие версии строк можно считать «мертвыми»? Мы уже рассматривали понятие горизонта транзакций, когда говорили <a href="https://habr.com/ru/company/postgrespro/blog/446652/">о снимках данных</a>, но это настолько важная тема, что не грех и повторить.<br/>
+<br/>
+Снова начнем предыдущий опыт.<br/>
+<br/>
+<pre><code class="pgsql">=> TRUNCATE vac;
+=> INSERT INTO vac(s) VALUES ('A');
+=> UPDATE vac SET s = 'B';
+</code></pre><br/>
+Но перед тем, как обновлять строку еще раз, пусть начнется (но не закончится) еще одна транзакция. В нашем примере она будет работать на уровне Read Committed, но должна получить настоящий (не виртуальный) номер транзакции. Например, она может изменить или даже просто заблокировать какие-то строки в любой таблице, не обязательно в vac:<br/>
+<br/>
+<pre><code class="pgsql">|  => BEGIN;
+|  => SELECT s FROM t FOR UPDATE;
+</code></pre><pre><code class="plaintext">|    s  
+|  -----
+|   FOO
+|   BAR
+|  (2 rows)
+</code></pre><br/>
+<pre><code class="pgsql">=> UPDATE vac SET s = 'C';
+</code></pre><br/>
+Сейчас в таблице три строки, а в индексе — три ссылки. Что произойдет после очистки?<br/>
+<br/>
+<pre><code class="pgsql">=> VACUUM vac;
+=> SELECT * FROM heap_page('vac',0);
+</code></pre><pre><code class="plaintext"> ctid  | state  |   xmin   |   xmax   | hhu | hot | t_ctid 
+-------+--------+----------+----------+-----+-----+--------
+ (0,1) | unused |          |          |     |     | 
+ (0,2) | normal | 4005 (c) | 4007 (c) |     |     | (0,3)
+ (0,3) | normal | 4007 (c) | 0 (a)    |     |     | (0,3)
+(3 rows)
+</code></pre><pre><code class="pgsql">=> SELECT * FROM index_page('vac_s',1);
+</code></pre><pre><code class="plaintext"> itemoffset | ctid  
+------------+-------
+          1 | (0,2)
+          2 | (0,3)
+(2 rows)
+</code></pre><br/>
+В таблице осталось две версии строки: очистка решила, что версия (0,2) еще не может быть удалена. Причина, конечно, в горизонте транзакций базы данных, который в нашем примере определяется незавершенной транзакцией:<br/>
+<br/>
+<pre><code class="pgsql">|  => SELECT backend_xmin FROM pg_stat_activity WHERE pid = pg_backend_pid();
+</code></pre><pre><code class="plaintext">|   backend_xmin 
+|  --------------
+|           4006
+|  (1 row)
+</code></pre><br/>
+Можно попросить очистку рассказать о том, что происходит:<br/>
+<br/>
+<pre><code class="pgsql">=> VACUUM VERBOSE vac;
+</code></pre><pre><code class="plaintext">INFO:  vacuuming "public.vac"
+INFO:  index "vac_s" now contains 2 row versions in 2 pages
+DETAIL:  0 index row versions were removed.
+0 index pages have been deleted, 0 are currently reusable.
+CPU: user: 0.00 s, system: 0.00 s, elapsed: 0.00 s.
+INFO:  "vac": found 0 removable, 2 nonremovable row versions in 1 out of 1 pages
+DETAIL:  1 dead row versions cannot be removed yet, oldest xmin: 4006
+There were 1 unused item pointers.
+Skipped 0 pages due to buffer pins, 0 frozen pages.
+0 pages are entirely empty.
+CPU: user: 0.00 s, system: 0.00 s, elapsed: 0.00 s.
+VACUUM
+</code></pre><br/>
+Обратите внимание:<br/>
+<br/>
+<ul>
+<li>2 nonremovable row versions — в таблице найдено 2 версии, которые нельзя удалить,</li>
+<li>1 dead row versions cannot be removed yet — из них 1 «мертвая»,</li>
+<li>oldest xmin показывает текущий горизонт.</li>
+</ul><br/>
+Еще раз повторим вывод: наличие в базе данных долгоживущих транзакций (не завершенных или действительно долго выполняющихся) может приводить к разрастанию (bloat) таблиц, независимо от того, как часто выполняется очистка. Поэтому в PostgreSQL плохо сочетаются OLTP- и OLAP-нагрузка в одной базе: отчеты, выполняющиеся часами, не дадут часто обновляемым таблицам вовремя очищаться. Возможным решением может быть создание отдельной «отчетной» реплики.<br/>
+<br/>
+После завершения открытой транзакции горизонт сдвигается и ситуация исправляется:<br/>
+<br/>
+<pre><code class="pgsql">|  => COMMIT;
+</code></pre><br/>
+<pre><code class="pgsql">=> VACUUM VERBOSE vac;
+</code></pre><pre><code class="plaintext">INFO:  vacuuming "public.vac"
+INFO:  scanned index "vac_s" to remove 1 row versions
+DETAIL:  CPU: user: 0.00 s, system: 0.00 s, elapsed: 0.00 s
+INFO:  "vac": removed 1 row versions in 1 pages
+DETAIL:  CPU: user: 0.00 s, system: 0.00 s, elapsed: 0.00 s
+INFO:  index "vac_s" now contains 1 row versions in 2 pages
+DETAIL:  1 index row versions were removed.
+0 index pages have been deleted, 0 are currently reusable.
+CPU: user: 0.00 s, system: 0.00 s, elapsed: 0.00 s.
+INFO:  "vac": found 1 removable, 1 nonremovable row versions in 1 out of 1 pages
+DETAIL:  0 dead row versions cannot be removed yet, oldest xmin: 4008
+There were 1 unused item pointers.
+Skipped 0 pages due to buffer pins, 0 frozen pages.
+0 pages are entirely empty.
+CPU: user: 0.00 s, system: 0.00 s, elapsed: 0.00 s.
+VACUUM
+</code></pre><br/>
+Теперь в странице осталась только последняя актуальная версия строки:<br/>
+<br/>
+<pre><code class="pgsql">=> SELECT * FROM heap_page('vac',0);
+</code></pre><pre><code class="plaintext"> ctid  | state  |   xmin   | xmax  | hhu | hot | t_ctid 
+-------+--------+----------+-------+-----+-----+--------
+ (0,1) | unused |          |       |     |     | 
+ (0,2) | unused |          |       |     |     | 
+ (0,3) | normal | 4007 (c) | 0 (a) |     |     | (0,3)
+(3 rows)
+</code></pre><br/>
+В индексе также только одна запись:<br/>
+<br/>
+<pre><code class="pgsql">=> SELECT * FROM index_page('vac_s',1);
+</code></pre><pre><code class="plaintext"> itemoffset | ctid  
+------------+-------
+          1 | (0,3)
+(1 row)
+</code></pre><br/>
+<h2>Что происходит внутри</h2><br/>
+Очистка должна обрабатывать и таблицу, и индексы одновременно, и делать это так, чтобы не блокировать работу остальных процессов. Как ей это удается?<br/>
+<br/>
+Все начинается со <strong>сканирования таблицы</strong> (с учетом карты видимости, как уже отмечалось). В прочитанных страницах определяются ненужные версии строк и их идентификаторы (tid) записываются в специальный массив. Массив располагается в локальной памяти процесса очистки; для него выделяется фрагмент размером <em>maintenance_work_mem</em>. Значение этого параметра по умолчанию — 64 МБ. Отметим, что это память выделяется сразу в полном объеме, а не по мере необходимости. Правда, если таблица небольшая, то и фрагмент выделяется поменьше.<br/>
+<br/>
+Дальше одно из двух: либо мы дойдем до конца таблицы, либо выделенная под массив память заканчится. В любом из двух случаев начинается <strong>фаза очистки индексов</strong>. Для этого <em>каждый</em> из индексов, созданных на таблице, <em>полностью сканируется</em> в поисках записей, которые ссылаются на запомненные версии строк. Найденные записи вычищаются из индексных страниц.<br/>
+<br/>
+В этом месте мы получаем такую картину: в индексах уже нет ссылок на ненужные версии строк, а в таблице они еще есть. Это ничему не противоречит: выполняя запрос мы либо вообще не попадем на мертвые версии строк (при индексном доступе), либо отметем их при проверке видимости (при сканировании таблицы).<br/>
+<br/>
+После этого начинается <strong>фаза очистки таблицы</strong>. Таблица снова сканируется, чтобы прочитать нужные страницы, вычистить из них запомненные версии строк и освободить указатели. Мы можем это сделать, поскольку ссылок из индексов уже нет.<br/>
+<br/>
+Если на первом проходе таблица не была прочитана полностью, то массив очищается и все повторяется с того места, на котором мы остановились.<br/>
+<br/>
+Таким образом:<br/>
+<br/>
+<ul>
+<li>таблица всегда сканируется два раза;</li>
+<li>если при очистке удаляется так много версий строк, что все они не помещаются в память размером <em>maintenance_work_mem</em>, то все индексы будут полностью сканироваться столько раз, сколько потребуется.</li>
+</ul><br/>
+На больших таблицах это может занимать существенное время и создавать значительную нагрузку на систему. Конечно, запросы не будут блокироваться, но «лишний» ввод-вывод тоже неприятен.<br/>
+<br/>
+Чтобы ускорить процесс, имеет смысл либо вызывать очистку чаще (чтобы за каждый раз очищалось не очень большое количество версий строк), либо выделить больше памяти.<br/>
+<br/>
+Замечу в скобках, что, начиная с версии 11, PostgreSQL <a href="https://git.postgresql.org/gitweb/?p=postgresql.git;a=commit;h=857f9c36cda520030381bd8c2af20adf0ce0e1d4">может пропускать сканирование индексов</a>, если в этом нет насущной необходимости. Это должно облегчить жизнь владельцев больших таблиц, в которые строки только добавляются (но не изменяются).<br/>
+<br/>
+<h2>Мониторинг</h2><br/>
+Как понять, что очистка не справляется с работой за один проход?<br/>
+<br/>
+Первый способ мы уже видели: можно вызывать команду VACUUM с указанием VERBOSE. Тогда на консоль будет выводиться и информация о фазах выполнения работы.<br/>
+<br/>
+Во-вторых, начиная с версии 9.6 имеется представление pg_stat_progress_vacuum, которое также содержит всю необходимую информацию.<br/>
+<br/>
+(Есть еще третий путь — выводить информацию в журнал сообщений, но это работает только для автоочистки, о которой пойдет речь в следующий раз.)<br/>
+<br/>
+Вставим в таблицу побольше строк, чтобы очистка выполнялась ощутимое время, и все их обновим, чтобы очистке было чем заняться.<br/>
+<br/>
+<pre><code class="pgsql">=> TRUNCATE vac;
+=> INSERT INTO vac(s) SELECT 'A' FROM generate_series(1,500000);
+=> UPDATE vac SET s  = 'B';
+</code></pre><br/>
+Уменьшим размер памяти, выделенной под массив идентификаторов:<br/>
+<br/>
+<pre><code class="pgsql">=> ALTER SYSTEM SET maintenance_work_mem = '1MB';
+=> SELECT pg_reload_conf();
+</code></pre><br/>
+Запускаем очистку и, пока она работает, обратимся несколько раз к представлению pg_stat_progress_vacuum:<br/>
+<br/>
+<pre><code class="pgsql">=> VACUUM VERBOSE vac;
+</code></pre><br/>
+<pre><code class="pgsql">|  => SELECT * FROM pg_stat_progress_vacuum \gx
+</code></pre><pre><code class="plaintext">|  -[ RECORD 1 ]------+------------------
+|  pid                | 6715
+|  datid              | 41493
+|  datname            | test
+|  relid              | 57383
+|  phase              | vacuuming indexes
+|  heap_blks_total    | 16667
+|  heap_blks_scanned  | 2908
+|  heap_blks_vacuumed | 0
+|  index_vacuum_count | 0
+|  max_dead_tuples    | 174762
+|  num_dead_tuples    | 174480
+</code></pre><br/>
+<pre><code class="pgsql">|  => SELECT * FROM pg_stat_progress_vacuum \gx
+</code></pre><pre><code class="plaintext">|  -[ RECORD 1 ]------+------------------
+|  pid                | 6715
+|  datid              | 41493
+|  datname            | test
+|  relid              | 57383
+|  phase              | vacuuming indexes
+|  heap_blks_total    | 16667
+|  heap_blks_scanned  | 5816
+|  heap_blks_vacuumed | 2907
+|  index_vacuum_count | 1
+|  max_dead_tuples    | 174762
+|  num_dead_tuples    | 174480
+</code></pre><br/>
+Тут мы в частности видим:<br/>
+<br/>
+<ul>
+<li>название текущей фазы (phase) — мы говорили о трех основных фазах, но вообще их <a href="https://postgrespro.ru/docs/postgresql/11/progress-reporting#VACUUM-PHASES">больше</a>;</li>
+<li>общее число страниц таблицы (heap_blks_total);</li>
+<li>число просканированных страниц (heap_blks_scanned);</li>
+<li>число уже очищенных страниц (heap_blks_vacuumed);</li>
+<li>количество проходов по индексам (index_vacuum_count).</li>
+</ul><br/>
+Общий прогресс определяется отношением heap_blks_vacuumed к heap_blks_total, но нужно учитывать, что это значение изменяется не плавно, а “рывками” из-за сканирования индексов. Впрочем, основное внимание надо обратить на количество циклов очистки — значение больше 1 означает, что выделенной памяти не хватило для того, чтобы завершить очистку за один проход.<br/>
+<br/>
+Вывод завершившейся к этому времени команды VACUUM VERBOSE покажет общую картину:<br/>
+<br/>
+<pre><code class="plaintext">INFO:  vacuuming "public.vac"
+</code></pre><pre><code class="plaintext">INFO:  scanned index "vac_s" to remove 174480 row versions
+DETAIL:  CPU: user: 0.50 s, system: 0.07 s, elapsed: 1.36 s
+INFO:  "vac": removed 174480 row versions in 2908 pages
+DETAIL:  CPU: user: 0.02 s, system: 0.02 s, elapsed: 0.13 s
+</code></pre><pre><code class="plaintext">INFO:  scanned index "vac_s" to remove 174480 row versions
+DETAIL:  CPU: user: 0.26 s, system: 0.07 s, elapsed: 0.81 s
+INFO:  "vac": removed 174480 row versions in 2908 pages
+DETAIL:  CPU: user: 0.01 s, system: 0.02 s, elapsed: 0.10 s
+</code></pre><pre><code class="plaintext">INFO:  scanned index "vac_s" to remove 151040 row versions
+DETAIL:  CPU: user: 0.13 s, system: 0.04 s, elapsed: 0.47 s
+INFO:  "vac": removed 151040 row versions in 2518 pages
+DETAIL:  CPU: user: 0.01 s, system: 0.02 s, elapsed: 0.08 s
+</code></pre><pre><code class="plaintext">INFO:  index "vac_s" now contains 500000 row versions in 17821 pages
+DETAIL:  500000 index row versions were removed.
+8778 index pages have been deleted, 0 are currently reusable.
+CPU: user: 0.00 s, system: 0.00 s, elapsed: 0.00 s.
+INFO:  "vac": found 500000 removable, 500000 nonremovable row versions in 16667 out of 16667 pages
+DETAIL:  0 dead row versions cannot be removed yet, oldest xmin: 4011
+There were 0 unused item pointers.
+0 pages are entirely empty.
+CPU: user: 1.10 s, system: 0.37 s, elapsed: 3.71 s.
+VACUUM
+</code></pre><br/>
+Здесь видно, что всего было выполнено три прохода по индексам, на каждом из которых очищалось 174480 указателей на мертвые версии строк. Откуда такое число? Одна ссылка (tid) занимает 6 байтов, а 1024*1024/6 = 174762 — это число, которое мы видим в pg_stat_progress_vacuum.max_dead_tuples. Реально может использоваться чуть меньше: так гарантируется, что при чтении очередной страницы все указатели на «мертвые» версии точно поместятся в память.<br/>
+<br/>
+<h2>Анализ</h2><br/>
+Анализ, или, иными словами, сбор статистической информации для планировщика запросов, формально никак с очисткой не связан. Тем не менее мы можем выполнять анализ не только командой ANALYZE, но и совмещать очистку с анализом: VACUUM ANALYZE. При этом сначала выполняется очистка, а затем анализ — никакой экономии не происходит.<br/>
+<br/>
+Но, как мы увидим позже, автоматическая очистка и автоматический анализ выполняются одним процессом и управляются схожим образом.<br/>
+<br/>
+<h1>Полная очистка (vacuum full)</h1><br/>
+Как мы видели, обычная очистка освобождает больше места, чем внутристраничная, но и она не всегда решает задачу полностью.<br/>
+<br/>
+Если таблица или индекс по каким-то причинам сильно выросли в размерах, то обычная очистка освободит место внутри существующих страниц: в них появятся «дыры», которые затем будут использованы для вставки новых версий строк. Но число страниц не изменится, и, следовательно, с точки зрения операционной системы файлы будут занимать ровно столько же места, сколько занимали и до очистки. А это плохо, потому что:<br/>
+<br/>
+<ul>
+<li>замедляется полное сканирование таблицы (или индекса);</li>
+<li>может потребоваться больший буферный кэш (ведь хранятся страницы, а плотность полезной информации падает);</li>
+<li>в дереве индекса может появиться “лишний” уровень, который будет замедлять индексный доступ;</li>
+<li>файлы занимают лишнее место на диске и в резервных копиях.</li>
+</ul><br/>
+(Единственно исключение составляют полностью очищенные страницы, находящиеся в конце файла — такие страницы «откусываются» от файла и возвращаются операционной системе.)<br/>
+<br/>
+Если доля полезной информации в файлах опустилась ниже некоторого разумного предела, администратор может выполнить полную очистку таблицы. При этом таблица и все ее индексы перестраиваются полностью с нуля, а данные упаковываются максимально компактно (разумеется, с учетом параметра fillfactor). При перестройке PostgreSQL последовательно перестраивает сначала таблицу, а затем и каждый из ее индексов. Для каждого объекта создаются новые файлы, а в конце перестройки старые файлы удаляются. Следует учитывать, что в процессе работы на диске потребуется дополнительное место.<br/>
+<br/>
+Для иллюстрации снова вставим в таблицу некоторое количество строк:<br/>
+<br/>
+<pre><code class="pgsql">=> TRUNCATE vac;
+=> INSERT INTO vac(s) SELECT 'A' FROM generate_series(1,500000);
+</code></pre><br/>
+Как оценить плотность информации? Для этого удобно воспользоваться специальным расширением:<br/>
+<br/>
+<pre><code class="pgsql">=> CREATE EXTENSION pgstattuple;
+=> SELECT * FROM pgstattuple('vac') \gx
+</code></pre><pre><code class="plaintext">-[ RECORD 1 ]------+---------
+table_len          | 68272128
+tuple_count        | 500000
+tuple_len          | 64500000
+tuple_percent      | 94.47
+dead_tuple_count   | 0
+dead_tuple_len     | 0
+dead_tuple_percent | 0
+free_space         | 38776
+free_percent       | 0.06
+</code></pre><br/>
+Функция читает полность всю таблицу и показывает статистику по тому, сколько места какими данными занято в файлах. Основная информация, которая нам сейчас интересна — поле tuple_percent: процент, занятый полезными данными. Он меньше 100 из-за неизбежных накладных расходов на служебную информацию внутри страницы, но тем не менее довольно высок.<br/>
+<br/>
+Для индекса выводится другая информация, но поле avg_leaf_density имеет тот же смысл: процент полезной информации (в листовых страницах).<br/>
+<br/>
+<pre><code class="pgsql">=> SELECT * FROM pgstatindex('vac_s') \gx
+</code></pre><pre><code class="plaintext">-[ RECORD 1 ]------+---------
+version            | 3
+tree_level         | 3
+index_size         | 72802304
+root_block_no      | 2722
+internal_pages     | 241
+leaf_pages         | 8645
+empty_pages        | 0
+deleted_pages      | 0
+avg_leaf_density   | 83.77
+leaf_fragmentation | 64.25
+</code></pre><br/>
+А вот какой размер занимают таблица и индекс:<br/>
+<br/>
+<pre><code class="pgsql">=> SELECT pg_size_pretty(pg_table_size('vac')) table_size,
+  pg_size_pretty(pg_indexes_size('vac')) index_size;
+</code></pre><pre><code class="plaintext"> table_size | index_size 
+------------+------------
+ 65 MB      | 69 MB
+(1 row)
+</code></pre><br/>
+Теперь удалим 90% всех строк. Строки для удаления выбираем случайно, чтобы в каждой странице с большой вероятностью хоть одна строка, да осталась:<br/>
+<br/>
+<pre><code class="pgsql">=> DELETE FROM vac WHERE random() &lt; 0.9;
+</code></pre><pre><code class="plaintext">DELETE 450189
+</code></pre><br/>
+Какой размер будут иметь объекты после обычной очистки?<br/>
+<br/>
+<pre><code class="pgsql">=> VACUUM vac;
+=> SELECT pg_size_pretty(pg_table_size('vac')) table_size,
+  pg_size_pretty(pg_indexes_size('vac')) index_size;
+</code></pre><pre><code class="plaintext"> table_size | index_size 
+------------+------------
+ 65 MB      | 69 MB
+(1 row)
+</code></pre><br/>
+Мы видим, что размер не изменился: обычная очистка никак не может уменьшить размер файлов. Хотя плотность информации, очевидно, уменьшилась примерно в 10 раз:<br/>
+<br/>
+<pre><code class="pgsql">=> SELECT vac.tuple_percent, vac_s.avg_leaf_density
+FROM pgstattuple('vac') vac, pgstatindex('vac_s') vac_s;
+</code></pre><pre><code class="plaintext"> tuple_percent | avg_leaf_density 
+---------------+------------------
+          9.41 |             9.73
+(1 row)
+</code></pre><br/>
+Теперь проверим, что получится после полной очистки. Вот какие файлы используются сейчас таблицей и индексами:<br/>
+<br/>
+<pre><code class="pgsql">=> SELECT pg_relation_filepath('vac'), pg_relation_filepath('vac_s');
+</code></pre><pre><code class="plaintext"> pg_relation_filepath | pg_relation_filepath 
+----------------------+----------------------
+ base/41493/57392     | base/41493/57393
+(1 row)
+</code></pre><br/>
+<pre><code class="pgsql">=> VACUUM FULL vac;
+=> SELECT pg_relation_filepath('vac'), pg_relation_filepath('vac_s');
+</code></pre><pre><code class="plaintext"> pg_relation_filepath | pg_relation_filepath 
+----------------------+----------------------
+ base/41493/57404     | base/41493/57407
+(1 row)
+</code></pre><br/>
+Теперь файлы заменены на новые. Размер таблицы и индекса существенно уменьшился, а плотность информации, соответственно, увеличилась:<br/>
+<br/>
+<pre><code class="pgsql">=> SELECT pg_size_pretty(pg_table_size('vac')) table_size,
+  pg_size_pretty(pg_indexes_size('vac')) index_size;
+</code></pre><pre><code class="plaintext"> table_size | index_size 
+------------+------------
+ 6648 kB    | 6480 kB
+(1 row)
+</code></pre><pre><code class="pgsql">=> SELECT vac.tuple_percent, vac_s.avg_leaf_density
+FROM pgstattuple('vac') vac, pgstatindex('vac_s') vac_s;
+</code></pre><pre><code class="plaintext"> tuple_percent | avg_leaf_density 
+---------------+------------------
+         94.39 |            91.08
+(1 row)
+</code></pre><br/>
+Обратите внимание, что плотность информации в индексе даже увеличилась по сравнению с первоначальной. Заново создать индекс (B-дерево) по имеющимся данным выгоднее, чем вставлять данные в уже имеющийся индекс строка за строкой.<br/>
+<br/>
+Функции расширения <a href="https://postgrespro.ru/docs/postgresql/11/pgstattuple">pgstattuple</a>, которые мы использовали, читают полностью всю таблицу. Если таблица большая, то это неудобно, и поэтому там же есть функция pgstattuple_approx, которая пропускает страницы, отмеченные в карте видимости, и показывает примерные цифры.<br/>
+<br/>
+Еще более быстрый, но и еще менее точный способ — прикинуть отношение объема данных к размеру файла по системному каталогу. Варианты таких запросов можно найти <a href="https://wiki.postgresql.org/wiki/Show_database_bloat">в вики</a>.<br/>
+<br/>
+Полная очистка не предполагает регулярного использования, так как полностью блокирует всякую работу с таблицей (включая и выполнение запросов к ней) на все время своей работы. Понятно, что на активно используемой системе это может оказаться неприемлемым. Блокировки будут рассмотрены отдельно, а пока ограничимся упоминанием расширения <a href="https://github.com/reorg/pg_repack">pg_repack</a>, которое блокирует таблицу только на короткое время в конце работы.<br/>
+<br/>
+<h2>Похожие команды</h2><br/>
+Есть несколько команд, которые тоже перестраивают таблицы и индексы полностью, и этим похожи на полную очистку. Все они полностью блокируют работу с таблицей, все они удаляют старые файлы данных и создают новые.<br/>
+<br/>
+Команда CLUSTER во всем аналогична VACUUM FULL, но дополнительно физически упорядочивает версии строк в соответствии с одним из имеющихся индексов. Это дает планировщику возможность более эффективно использовать индексный доступ в некоторых случаях. Однако надо понимать, что кластеризация не поддерживается: при последующих изменениях таблицы физический порядок версий строк будет нарушаться.<br/>
+<br/>
+Команда REINDEX перестраивает отдельный индекс на таблице. Фактически, VACUUM FULL и CLUSTER используют эту команду для того, чтобы перестроить индексы.<br/>
+<br/>
+Команда TRUNCATE логически работает так же, как и DELETE — удаляет все табличные строки. Но DELETE, как уже было рассмотрено, только помечает версии строк как удаленные, что требует дальнейшей очистки. TRUNCATE же просто создает новый, чистый файл. Как правило, это работает быстрее, но надо учитывать, что TRUNCATE полностью заблокирует работу с таблицей на все время до конца транзакции.<br/>
+<br/>
+<a href="https://habr.com/ru/company/postgrespro/blog/452762/">Продолжение</a>.</div></div> <!----> <!----></div> <div class="tm-article-presenter__meta"><div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Теги:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bpostgresql%5D" class="tm-tags-list__link">postgresql</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Btuples%5D" class="tm-tags-list__link">tuples</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bvacuum%5D" class="tm-tags-list__link">vacuum</a></li></ul></div> <div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Хабы:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/company/postgrespro/blog/" class="tm-hubs-list__link router-link-active">
+    Блог компании Postgres Professional
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/postgresql/" class="tm-hubs-list__link">
+    PostgreSQL
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/sql/" class="tm-hubs-list__link">
+    SQL
+  </a></li></ul></div></div></article></div> <!----></div> <div class="tm-article-sticky-panel"><div class="tm-data-icons tm-article-sticky-panel__icons"><div class="tm-article-rating tm-data-icons__item"><div class="tm-votes-meter tm-article-rating__votes-switcher"><svg height="16" width="16" class="tm-svg-img tm-votes-meter__icon tm-votes-meter__icon_medium"><title>Всего голосов 23: ↑23 и ↓0</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-rating"></use></svg> <span title="Всего голосов 23: ↑23 и ↓0" class="tm-votes-meter__value tm-votes-meter__value_positive tm-votes-meter__value_medium">+23</span></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----> <span title="Количество просмотров" class="tm-icon-counter tm-data-icons__item"><svg height="16" width="16" class="tm-svg-img tm-icon-counter__icon"><title>Просмотры</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-views"></use></svg> <span class="tm-icon-counter__value">15K</span></span> <button title="Добавить в закладки" type="button" class="bookmarks-button tm-data-icons__item"><span title="Добавить в закладки" class="tm-svg-icon__wrapper bookmarks-button__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Добавить в закладки</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-favorite"></use></svg></span> <span title="Количество пользователей, добавивших публикацию в закладки" class="bookmarks-button__counter">
+    38
+  </span></button> <!----> <div title="Поделиться" class="tm-sharing tm-data-icons__item"><button type="button" class="tm-sharing__button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="tm-sharing__icon"><path fill="currentColor" d="M10.33.275l9.047 7.572a.2.2 0 010 .306l-9.048 7.572a.2.2 0 01-.328-.153V11c-8 0-9.94 6-9.94 6S-1 5 10 5V.428a.2.2 0 01.328-.153z"></path></svg></button> <!----></div> <DIV class="v-portal" style="display:none;"></DIV></div> </div></div> <!----> <!----> <div class="tm-article-presenter__footer"><div class="tm-article-blocks"><!----> <section class="tm-block tm-block_spacing-bottom"><!----> <div class="tm-block__body tm-block__body_variant-balanced"><div class="tm-article-author"><div class="tm-article-author__company"><div class="tm-article-author__company-card"><div class="tm-company-snippet"><a href="/ru/company/postgrespro/profile/" class="tm-company-snippet__logo-link"><div class="tm-entity-image"><img alt="" height="40" src="//habrastorage.org/getpro/habr/company/4e0/339/621/4e0339621abc865fefb88f9e9f44748f.jpg" width="40" class="tm-entity-image__pic"></div></a> <div class="tm-company-snippet__info"><a href="/ru/company/postgrespro/profile/" class="tm-company-snippet__title">Postgres Professional</a> <div class="tm-company-snippet__description">Разработчик СУБД Postgres Pro</div></div></div> <div class="tm-article-author__buttons"><!----> <!----></div></div> <div class="tm-article-author__company-contacts"><a href="https://facebook.com/PostgresProfessional" rel="noopener" target="_blank" class="tm-article-author__contact">
+      Facebook
+    </a><a href="https://twitter.com/PostgresPro" rel="noopener" target="_blank" class="tm-article-author__contact">
+      Twitter
+    </a><a href="https://vk.com/public101507899" rel="noopener" target="_blank" class="tm-article-author__contact">
+      ВКонтакте
+    </a><a href="https://plus.google.com/+PostgresproRuCompany" rel="noopener" target="_blank" class="tm-article-author__contact">
+      Google+
+    </a><a href="https://postgrespro.livejournal.com/" rel="noopener" target="_blank" class="tm-article-author__contact">
+      LiveJournal
+    </a></div> <div class="tm-article-author__separator"></div></div> <div class="tm-user-card tm-article-author__user-card tm-user-card_variant-article"><div class="tm-user-card__info-container"><div class="tm-user-card__header"><div class="tm-user-card__header-data"><a href="/ru/users/erogov/" class="tm-user-card__userpic tm-user-card__userpic_size-40"><div class="tm-entity-image"><img alt="" src="//habrastorage.org/getpro/habr/avatars/d16/573/7e4/d165737e421383f77f007015ebd01fb1.jpg" class="tm-entity-image__pic"></div></a> <div class="tm-user-card__meta"><div title=" 170 голосов " class="tm-karma tm-user-card__karma"><div class="tm-karma__votes tm-karma__votes_positive">
+    163.5
+  </div> <div class="tm-karma__text">
+    Карма
+  </div></div> <div title="Рейтинг пользователя" class="tm-rating tm-user-card__rating"><div class="tm-rating__header"> <div class="tm-rating__counter">55</div></div> <div class="tm-rating__text">
+    Рейтинг
+  </div></div></div></div></div> <div class="tm-user-card__info tm-user-card__info_variant-article"><div class="tm-user-card__title tm-user-card__title_variant-article"><span class="tm-user-card__name tm-user-card__name_variant-article">Егор Рогов</span> <a href="/ru/users/erogov/" class="tm-user-card__nickname tm-user-card__nickname_variant-article">
+          @erogov
+        </a> <!----></div> <p class="tm-user-card__short-info tm-user-card__short-info_variant-article">Пользователь</p></div></div> <div class="tm-user-card__buttons tm-user-card__buttons_variant-article"><!----> <!----> <!----> <!----> <!----></div></div> <div class="tm-article-author__user-contacts"><a href="http://egorius.dreamwidth.org/" rel="noopener" target="_blank" class="tm-article-author__contact">
+      Сайт
+    </a></div></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----></section> <div class="tm-article-blocks__comments"><div class="tm-article-page-comments"><div class="tm-article-comments-counter-link tm-article-comments-counter-button"><a href="/ru/company/postgrespro/blog/452320/comments/" class="tm-article-comments-counter-link__link tm-article-comments-counter-link__link_button-style"><svg height="16" width="16" class="tm-svg-img tm-article-comments-counter-link__icon tm-article-comments-counter-link__icon_contrasted"><title>Комментарии</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-comments"></use></svg> <span class="tm-article-comments-counter-link__value tm-article-comments-counter-link__value_contrasted">
+       Комментарии 17 
+    </span></a> <!----></div></div></div>  <!---->  <!----> <!----></div></div></div></div></div> <div class="tm-page__sidebar"><div class="tm-layout-sidebar"><div class="tm-layout-sidebar__placeholder_initial"></div> <div class="tm-sexy-sidebar tm-sexy-sidebar_initial" style="margin-top:0px;"><!----> <section class="tm-block tm-block_spacing-bottom"><header class="tm-block__header"><h2 class="tm-block__title">Информация</h2> <!----></header> <div class="tm-block__body"><div class="tm-company-basic-info"><dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Дата основания</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><time datetime="2015-01-26T21:00:00.000Z" title="2015-01-27, 00:00">27  января  2015</time></dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Местоположение</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap">
+    Россия
+  </dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Сайт</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><a href="http://www.postgrespro.ru/" target="_blank" class="tm-company-basic-info__link">
+      www.postgrespro.ru
+    </a></dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Численность</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap">
+    51–100 человек
+  </dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Дата регистрации</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><time datetime="2015-09-30T07:41:09.000Z" title="2015-09-30, 10:41">30  сентября  2015</time></dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Представитель</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><a href="/ru/users/x-wao/" class="tm-company-basic-info__link">
+      Иван Панченко
+    </a></dd></dl></div></div> <!----></section> <div class="tm-company-widgets"></div> <!----></div></div></div></div></div></div></main> <!----></div> <div class="tm-footer-menu"><div class="tm-page-width"><div class="tm-footer-menu__container"><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Ваш аккаунт
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr/?back=/ru/company/postgrespro/blog/452320/&amp;hl=ru" rel="nofollow" target="_self">
+                Войти
+              </a></li><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr-register/?back=/ru/company/postgrespro/blog/452320/&amp;hl=ru" rel="nofollow" target="_self">
+                Регистрация
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Разделы
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/" class="footer-menu__item-link router-link-active">
+                Публикации
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/news/" class="footer-menu__item-link">
+                Новости
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/hubs/" class="footer-menu__item-link">
+                Хабы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/companies/" class="footer-menu__item-link">
+                Компании
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/users/" class="footer-menu__item-link">
+                Авторы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/sandbox/" class="footer-menu__item-link">
+                Песочница
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Информация
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/docs/help/" class="footer-menu__item-link">
+                Устройство сайта
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/authors/codex/" class="footer-menu__item-link">
+                Для авторов
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/companies/corpblogs/" class="footer-menu__item-link">
+                Для компаний
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/docs/transparency/" class="footer-menu__item-link">
+                Документы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/agreement" target="_blank">
+                Соглашение
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/confidential/" target="_blank">
+                Конфиденциальность
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Услуги
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQLwRfQmXibiUlWaRg-BAc38s7oM3lJiaPju7qmdJsp8ysIvZ_G-Npem0njJLMozE2bPHMpDqiI5hhy/pub?start=false&amp;loop=false&amp;delayms=60000&amp;slide=id.g91a03369cd_4_297" target="_blank">
+                Реклама
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://habrastorage.org/storage/stuff/habr/service_price.pdf" target="_blank">
+                Тарифы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQJJds8-Di7BQSP_guHxICN7woVYoN5NP_22ra-BIo4bqnTT9FR6fB-Ku2P0AoRpX0Ds-LRkDeAoD8F/pub?start=false&amp;loop=false&amp;delayms=60000" target="_blank">
+                Контент
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://tmtm.timepad.ru/" target="_blank">
+                Семинары
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/megaprojects/" class="footer-menu__item-link">
+                Мегапроекты
+              </a></li></ul></div></div></div></div></div> <div class="tm-footer"><div class="tm-page-width"><div class="tm-footer__container"><!----> <div class="tm-footer__social"><a href="https://www.facebook.com/habrahabr.ru" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Facebook</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-facebook"></use></svg></a><a href="https://twitter.com/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Twitter</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-twitter"></use></svg></a><a href="https://vk.com/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>VK</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-vkontakte"></use></svg></a><a href="https://telegram.me/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Telegram</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-telegram"></use></svg></a><a href="https://www.youtube.com/channel/UCd_sTwKqVrweTt4oAKY5y4w" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Youtube</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-youtube"></use></svg></a><a href="https://zen.yandex.ru/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Яндекс Дзен</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-zen"></use></svg></a></div> <DIV class="v-portal" style="display:none;"></DIV> <button class="tm-footer__link"><!---->
+        Настройка языка
+      </button> <a href="/ru/about" class="tm-footer__link">
+        О сайте
+      </a> <a href="/ru/feedback/" class="tm-footer__link">
+        Техническая поддержка
+      </a> <!----> <a href="/berserk-mode-nope" class="tm-footer__link">
+        Вернуться на старую версию
+      </a> <div class="tm-footer-copyright"><span class="tm-copyright"><span class="tm-copyright__years">© 2006–2021 </span> <span class="tm-copyright__name">«<a href="https://company.habr.com/" rel="noopener" target="_blank" class="tm-copyright__link">Habr</a>»</span></span></div></div></div></div> <!----> <!----></div> <div class="vue-portal-target"></div></div>
+<script>window.__INITIAL_STATE__={"adblock":{"hasAcceptableAdsFilter":false,"hasAdblock":false},"articlesList":{"articlesList":{"452320":{"id":"452320","timePublished":"2019-05-27T07:38:01+00:00","isCorporative":true,"lang":"ru","titleHtml":"MVCC-6. Очистка","leadData":{"textHtml":"Мы начали с вопросов, связанных с \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fpostgrespro\u002Fblog\u002F442804\u002F\"\u003Eизоляцией\u003C\u002Fa\u003E, сделали отступление про \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fpostgrespro\u002Fblog\u002F444536\u002F\"\u003Eорганизацию данных на низком уровне\u003C\u002Fa\u003E, затем подробно поговорили \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fpostgrespro\u002Fblog\u002F445820\u002F\"\u003Eо версиях строк\u003C\u002Fa\u003E и о том, как из версий получаются \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fpostgrespro\u002Fblog\u002F446652\u002F\"\u003Eснимки данных\u003C\u002Fa\u003E.\u003Cbr\u003E\r\n\u003Cbr\u003E\r\n\u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fpostgrespro\u002Fblog\u002F449704\u002F\"\u003EВ прошлый раз\u003C\u002Fa\u003E мы поговорили о HOT-обновлениях и внутристраничной очистке, а сегодня займемся всем известной обычной очисткой, \u003Cem\u003Evacuum vulgaris\u003C\u002Fem\u003E. Да, про нее написано уже столько всего, что вряд ли я скажу что-то новое, но полнота картины требует жертв. Терпите.\u003Cbr\u003E\r\n\u003Cbr\u003E\r\n\u003Ch1\u003EОбычная очистка (vacuum)\u003C\u002Fh1\u003E\u003Cbr\u003E\r\n\u003Ch2\u003EЧто делает очистка\u003C\u002Fh2\u003E\u003Cbr\u003E\r\nВнутристраничная очистка выполняется быстро, но освобождает только часть места. Она работает в пределах одной табличной страницы и не затрагивает индексы.\u003Cbr\u003E\r\n\u003Cbr\u003E\r\nОсновная, «обычная» очистка выполняется командой VACUUM и ее мы будем называть просто очисткой (а про автоочистку мы будем говорить отдельно).\u003Cbr\u003E\r\n\u003Cbr\u003E\r\nИтак, очистка обрабатывает таблицу полностью. Она вычищает не только ненужные версии строк, но и ссылки на них из всех индексов.\u003Cbr\u003E\r\n\u003Cbr\u003E\r\nОбработка происходит параллельно с другой активностью в системе. Таблица и индексы при этом могут использоваться обычным образом и для чтения, и для изменения (однако одновременное выполнение таких команд, как CREATE INDEX, ALTER TABLE и некоторых других будет невозможно).\u003Cbr\u003E\r\n\u003Cbr\u003E\r\nВ таблице просматриваются только те страницы, в которых происходила какая-то активность. Для этого используется карта видимости (напомню, что в ней отмечены страницы, содержащие только достаточно старые версии строк, которые гарантированно видимы во всех снимках данных). Обрабатываются только страницы, не отмеченные в карте, а сама карта при этом обновляется.\u003Cbr\u003E\r\n\u003Cbr\u003E\r\nВ процессе работы обновляется и карта свободного пространства, чтобы отразить появившееся свободное места в страницах.\u003Cbr\u003E","imageUrl":null,"buttonTextHtml":"Читать дальше →","image":null},"editorVersion":"1.0","postType":"article","postLabels":[],"author":{"scoreStats":{"score":163.5,"votesCount":170},"rating":55,"relatedData":null,"contacts":[{"title":"Сайт","url":"http:\u002F\u002Fegorius.dreamwidth.org\u002F","value":"http:\u002F\u002Fegorius.dreamwidth.org\u002F"}],"authorContacts":[{"title":"Сайт","url":"http:\u002F\u002Fegorius.dreamwidth.org\u002F","value":"http:\u002F\u002Fegorius.dreamwidth.org\u002F"}],"paymentDetails":{"paymentYandexMoney":null,"paymentPayPalMe":null,"paymentWebmoney":null},"id":"594155","alias":"erogov","fullname":"Егор Рогов","avatarUrl":"\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Favatars\u002Fd16\u002F573\u002F7e4\u002Fd165737e421383f77f007015ebd01fb1.jpg","speciality":"Пользователь"},"statistics":{"commentsCount":17,"favoritesCount":38,"readingCount":14900,"score":23,"votesCount":23},"hubs":[{"relatedData":null,"id":"19663","alias":"postgrespro","type":"corporative","title":"Блог компании Postgres Professional","titleHtml":"Блог компании Postgres Professional","isProfiled":false},{"relatedData":null,"id":"358","alias":"postgresql","type":"collective","title":"PostgreSQL","titleHtml":"PostgreSQL","isProfiled":true},{"relatedData":null,"id":"594","alias":"sql","type":"collective","title":"SQL","titleHtml":"SQL","isProfiled":true}],"flows":[{"id":"1","alias":"develop","title":"Разработка"}],"relatedData":null,"textHtml":"\u003Cdiv xmlns=\"http:\u002F\u002Fwww.w3.org\u002F1999\u002Fxhtml\"\u003EМы начали с вопросов, связанных с \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fpostgrespro\u002Fblog\u002F442804\u002F\"\u003Eизоляцией\u003C\u002Fa\u003E, сделали отступление про \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fpostgrespro\u002Fblog\u002F444536\u002F\"\u003Eорганизацию данных на низком уровне\u003C\u002Fa\u003E, затем подробно поговорили \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fpostgrespro\u002Fblog\u002F445820\u002F\"\u003Eо версиях строк\u003C\u002Fa\u003E и о том, как из версий получаются \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fpostgrespro\u002Fblog\u002F446652\u002F\"\u003Eснимки данных\u003C\u002Fa\u003E.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fpostgrespro\u002Fblog\u002F449704\u002F\"\u003EВ прошлый раз\u003C\u002Fa\u003E мы поговорили о HOT-обновлениях и внутристраничной очистке, а сегодня займемся всем известной обычной очисткой, \u003Cem\u003Evacuum vulgaris\u003C\u002Fem\u003E. Да, про нее написано уже столько всего, что вряд ли я скажу что-то новое, но полнота картины требует жертв. Терпите.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch1\u003EОбычная очистка (vacuum)\u003C\u002Fh1\u003E\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EЧто делает очистка\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nВнутристраничная очистка выполняется быстро, но освобождает только часть места. Она работает в пределах одной табличной страницы и не затрагивает индексы.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nОсновная, «обычная» очистка выполняется командой VACUUM и ее мы будем называть просто очисткой (а про автоочистку мы будем говорить отдельно).\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nИтак, очистка обрабатывает таблицу полностью. Она вычищает не только ненужные версии строк, но и ссылки на них из всех индексов.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nОбработка происходит параллельно с другой активностью в системе. Таблица и индексы при этом могут использоваться обычным образом и для чтения, и для изменения (однако одновременное выполнение таких команд, как CREATE INDEX, ALTER TABLE и некоторых других будет невозможно).\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВ таблице просматриваются только те страницы, в которых происходила какая-то активность. Для этого используется карта видимости (напомню, что в ней отмечены страницы, содержащие только достаточно старые версии строк, которые гарантированно видимы во всех снимках данных). Обрабатываются только страницы, не отмеченные в карте, а сама карта при этом обновляется.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВ процессе работы обновляется и карта свободного пространства, чтобы отразить появившееся свободное места в страницах.\u003Cbr\u002F\u003E\r\n\u003Ca name=\"habracut\"\u003E\u003C\u002Fa\u003E\u003Cbr\u002F\u003E\r\nКак водится, создадим таблицу:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003E=\u003E CREATE TABLE vac(\n  id serial,\n  s char(100)\n) WITH (autovacuum_enabled = off);\n=\u003E CREATE INDEX vac_s ON vac(s);\n=\u003E INSERT INTO vac(s) VALUES ('A');\n=\u003E UPDATE vac SET s = 'B';\n=\u003E UPDATE vac SET s = 'C';\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nС помощью параметра \u003Cem\u003Eautovacuum_enabled\u003C\u002Fem\u003E мы отключаем автоматическую очистку. Про нее мы будем говорить в следующий раз, а пока — для экспериментов — нам важно управлять очисткой вручную.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nСейчас в таблице три версии строки, и на каждую ведет ссылка из индекса:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003E=\u003E SELECT * FROM heap_page('vac',0);\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E ctid  | state  |   xmin   |   xmax   | hhu | hot | t_ctid \n-------+--------+----------+----------+-----+-----+--------\n (0,1) | normal | 4000 (c) | 4001 (c) |     |     | (0,2)\n (0,2) | normal | 4001 (c) | 4002     |     |     | (0,3)\n (0,3) | normal | 4002     | 0 (a)    |     |     | (0,3)\n(3 rows)\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003E=\u003E SELECT * FROM index_page('vac_s',1);\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E itemoffset | ctid  \n------------+-------\n          1 | (0,1)\n          2 | (0,2)\n          3 | (0,3)\n(3 rows)\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nПосле очистки «мертвые» версии пропадают и остается только одна, актуальная. И в индексе тоже остается одна ссылка:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003E=\u003E VACUUM vac;\n=\u003E SELECT * FROM heap_page('vac',0);\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E ctid  | state  |   xmin   | xmax  | hhu | hot | t_ctid \n-------+--------+----------+-------+-----+-----+--------\n (0,1) | unused |          |       |     |     | \n (0,2) | unused |          |       |     |     | \n (0,3) | normal | 4002 (c) | 0 (a) |     |     | (0,3)\n(3 rows)\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003E=\u003E SELECT * FROM index_page('vac_s',1);\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E itemoffset | ctid  \n------------+-------\n          1 | (0,3)\n(1 row)\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nОбратите внимание, что два первых указателя получили статус unused, а не dead, как было бы при внутристраничной очистке.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EИ еще раз о горизонте транзакций\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nКак PostgreSQL определяет, какие версии строк можно считать «мертвыми»? Мы уже рассматривали понятие горизонта транзакций, когда говорили \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fpostgrespro\u002Fblog\u002F446652\u002F\"\u003Eо снимках данных\u003C\u002Fa\u003E, но это настолько важная тема, что не грех и повторить.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nСнова начнем предыдущий опыт.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003E=\u003E TRUNCATE vac;\n=\u003E INSERT INTO vac(s) VALUES ('A');\n=\u003E UPDATE vac SET s = 'B';\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nНо перед тем, как обновлять строку еще раз, пусть начнется (но не закончится) еще одна транзакция. В нашем примере она будет работать на уровне Read Committed, но должна получить настоящий (не виртуальный) номер транзакции. Например, она может изменить или даже просто заблокировать какие-то строки в любой таблице, не обязательно в vac:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003E|  =\u003E BEGIN;\n|  =\u003E SELECT s FROM t FOR UPDATE;\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E|    s  \n|  -----\n|   FOO\n|   BAR\n|  (2 rows)\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003E=\u003E UPDATE vac SET s = 'C';\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nСейчас в таблице три строки, а в индексе — три ссылки. Что произойдет после очистки?\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003E=\u003E VACUUM vac;\n=\u003E SELECT * FROM heap_page('vac',0);\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E ctid  | state  |   xmin   |   xmax   | hhu | hot | t_ctid \n-------+--------+----------+----------+-----+-----+--------\n (0,1) | unused |          |          |     |     | \n (0,2) | normal | 4005 (c) | 4007 (c) |     |     | (0,3)\n (0,3) | normal | 4007 (c) | 0 (a)    |     |     | (0,3)\n(3 rows)\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003E=\u003E SELECT * FROM index_page('vac_s',1);\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E itemoffset | ctid  \n------------+-------\n          1 | (0,2)\n          2 | (0,3)\n(2 rows)\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nВ таблице осталось две версии строки: очистка решила, что версия (0,2) еще не может быть удалена. Причина, конечно, в горизонте транзакций базы данных, который в нашем примере определяется незавершенной транзакцией:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003E|  =\u003E SELECT backend_xmin FROM pg_stat_activity WHERE pid = pg_backend_pid();\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E|   backend_xmin \n|  --------------\n|           4006\n|  (1 row)\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nМожно попросить очистку рассказать о том, что происходит:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003E=\u003E VACUUM VERBOSE vac;\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003EINFO:  vacuuming \"public.vac\"\nINFO:  index \"vac_s\" now contains 2 row versions in 2 pages\nDETAIL:  0 index row versions were removed.\n0 index pages have been deleted, 0 are currently reusable.\nCPU: user: 0.00 s, system: 0.00 s, elapsed: 0.00 s.\nINFO:  \"vac\": found 0 removable, 2 nonremovable row versions in 1 out of 1 pages\nDETAIL:  1 dead row versions cannot be removed yet, oldest xmin: 4006\nThere were 1 unused item pointers.\nSkipped 0 pages due to buffer pins, 0 frozen pages.\n0 pages are entirely empty.\nCPU: user: 0.00 s, system: 0.00 s, elapsed: 0.00 s.\nVACUUM\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nОбратите внимание:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003E2 nonremovable row versions — в таблице найдено 2 версии, которые нельзя удалить,\u003C\u002Fli\u003E\r\n\u003Cli\u003E1 dead row versions cannot be removed yet — из них 1 «мертвая»,\u003C\u002Fli\u003E\r\n\u003Cli\u003Eoldest xmin показывает текущий горизонт.\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\nЕще раз повторим вывод: наличие в базе данных долгоживущих транзакций (не завершенных или действительно долго выполняющихся) может приводить к разрастанию (bloat) таблиц, независимо от того, как часто выполняется очистка. Поэтому в PostgreSQL плохо сочетаются OLTP- и OLAP-нагрузка в одной базе: отчеты, выполняющиеся часами, не дадут часто обновляемым таблицам вовремя очищаться. Возможным решением может быть создание отдельной «отчетной» реплики.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПосле завершения открытой транзакции горизонт сдвигается и ситуация исправляется:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003E|  =\u003E COMMIT;\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003E=\u003E VACUUM VERBOSE vac;\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003EINFO:  vacuuming \"public.vac\"\nINFO:  scanned index \"vac_s\" to remove 1 row versions\nDETAIL:  CPU: user: 0.00 s, system: 0.00 s, elapsed: 0.00 s\nINFO:  \"vac\": removed 1 row versions in 1 pages\nDETAIL:  CPU: user: 0.00 s, system: 0.00 s, elapsed: 0.00 s\nINFO:  index \"vac_s\" now contains 1 row versions in 2 pages\nDETAIL:  1 index row versions were removed.\n0 index pages have been deleted, 0 are currently reusable.\nCPU: user: 0.00 s, system: 0.00 s, elapsed: 0.00 s.\nINFO:  \"vac\": found 1 removable, 1 nonremovable row versions in 1 out of 1 pages\nDETAIL:  0 dead row versions cannot be removed yet, oldest xmin: 4008\nThere were 1 unused item pointers.\nSkipped 0 pages due to buffer pins, 0 frozen pages.\n0 pages are entirely empty.\nCPU: user: 0.00 s, system: 0.00 s, elapsed: 0.00 s.\nVACUUM\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nТеперь в странице осталась только последняя актуальная версия строки:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003E=\u003E SELECT * FROM heap_page('vac',0);\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E ctid  | state  |   xmin   | xmax  | hhu | hot | t_ctid \n-------+--------+----------+-------+-----+-----+--------\n (0,1) | unused |          |       |     |     | \n (0,2) | unused |          |       |     |     | \n (0,3) | normal | 4007 (c) | 0 (a) |     |     | (0,3)\n(3 rows)\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nВ индексе также только одна запись:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003E=\u003E SELECT * FROM index_page('vac_s',1);\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E itemoffset | ctid  \n------------+-------\n          1 | (0,3)\n(1 row)\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EЧто происходит внутри\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nОчистка должна обрабатывать и таблицу, и индексы одновременно, и делать это так, чтобы не блокировать работу остальных процессов. Как ей это удается?\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВсе начинается со \u003Cstrong\u003Eсканирования таблицы\u003C\u002Fstrong\u003E (с учетом карты видимости, как уже отмечалось). В прочитанных страницах определяются ненужные версии строк и их идентификаторы (tid) записываются в специальный массив. Массив располагается в локальной памяти процесса очистки; для него выделяется фрагмент размером \u003Cem\u003Emaintenance_work_mem\u003C\u002Fem\u003E. Значение этого параметра по умолчанию — 64 МБ. Отметим, что это память выделяется сразу в полном объеме, а не по мере необходимости. Правда, если таблица небольшая, то и фрагмент выделяется поменьше.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nДальше одно из двух: либо мы дойдем до конца таблицы, либо выделенная под массив память заканчится. В любом из двух случаев начинается \u003Cstrong\u003Eфаза очистки индексов\u003C\u002Fstrong\u003E. Для этого \u003Cem\u003Eкаждый\u003C\u002Fem\u003E из индексов, созданных на таблице, \u003Cem\u003Eполностью сканируется\u003C\u002Fem\u003E в поисках записей, которые ссылаются на запомненные версии строк. Найденные записи вычищаются из индексных страниц.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВ этом месте мы получаем такую картину: в индексах уже нет ссылок на ненужные версии строк, а в таблице они еще есть. Это ничему не противоречит: выполняя запрос мы либо вообще не попадем на мертвые версии строк (при индексном доступе), либо отметем их при проверке видимости (при сканировании таблицы).\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПосле этого начинается \u003Cstrong\u003Eфаза очистки таблицы\u003C\u002Fstrong\u003E. Таблица снова сканируется, чтобы прочитать нужные страницы, вычистить из них запомненные версии строк и освободить указатели. Мы можем это сделать, поскольку ссылок из индексов уже нет.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЕсли на первом проходе таблица не была прочитана полностью, то массив очищается и все повторяется с того места, на котором мы остановились.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nТаким образом:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003Eтаблица всегда сканируется два раза;\u003C\u002Fli\u003E\r\n\u003Cli\u003Eесли при очистке удаляется так много версий строк, что все они не помещаются в память размером \u003Cem\u003Emaintenance_work_mem\u003C\u002Fem\u003E, то все индексы будут полностью сканироваться столько раз, сколько потребуется.\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\nНа больших таблицах это может занимать существенное время и создавать значительную нагрузку на систему. Конечно, запросы не будут блокироваться, но «лишний» ввод-вывод тоже неприятен.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЧтобы ускорить процесс, имеет смысл либо вызывать очистку чаще (чтобы за каждый раз очищалось не очень большое количество версий строк), либо выделить больше памяти.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЗамечу в скобках, что, начиная с версии 11, PostgreSQL \u003Ca href=\"https:\u002F\u002Fgit.postgresql.org\u002Fgitweb\u002F?p=postgresql.git;a=commit;h=857f9c36cda520030381bd8c2af20adf0ce0e1d4\"\u003Eможет пропускать сканирование индексов\u003C\u002Fa\u003E, если в этом нет насущной необходимости. Это должно облегчить жизнь владельцев больших таблиц, в которые строки только добавляются (но не изменяются).\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EМониторинг\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nКак понять, что очистка не справляется с работой за один проход?\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПервый способ мы уже видели: можно вызывать команду VACUUM с указанием VERBOSE. Тогда на консоль будет выводиться и информация о фазах выполнения работы.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВо-вторых, начиная с версии 9.6 имеется представление pg_stat_progress_vacuum, которое также содержит всю необходимую информацию.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n(Есть еще третий путь — выводить информацию в журнал сообщений, но это работает только для автоочистки, о которой пойдет речь в следующий раз.)\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВставим в таблицу побольше строк, чтобы очистка выполнялась ощутимое время, и все их обновим, чтобы очистке было чем заняться.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003E=\u003E TRUNCATE vac;\n=\u003E INSERT INTO vac(s) SELECT 'A' FROM generate_series(1,500000);\n=\u003E UPDATE vac SET s  = 'B';\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nУменьшим размер памяти, выделенной под массив идентификаторов:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003E=\u003E ALTER SYSTEM SET maintenance_work_mem = '1MB';\n=\u003E SELECT pg_reload_conf();\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nЗапускаем очистку и, пока она работает, обратимся несколько раз к представлению pg_stat_progress_vacuum:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003E=\u003E VACUUM VERBOSE vac;\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003E|  =\u003E SELECT * FROM pg_stat_progress_vacuum \\gx\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E|  -[ RECORD 1 ]------+------------------\n|  pid                | 6715\n|  datid              | 41493\n|  datname            | test\n|  relid              | 57383\n|  phase              | vacuuming indexes\n|  heap_blks_total    | 16667\n|  heap_blks_scanned  | 2908\n|  heap_blks_vacuumed | 0\n|  index_vacuum_count | 0\n|  max_dead_tuples    | 174762\n|  num_dead_tuples    | 174480\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003E|  =\u003E SELECT * FROM pg_stat_progress_vacuum \\gx\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E|  -[ RECORD 1 ]------+------------------\n|  pid                | 6715\n|  datid              | 41493\n|  datname            | test\n|  relid              | 57383\n|  phase              | vacuuming indexes\n|  heap_blks_total    | 16667\n|  heap_blks_scanned  | 5816\n|  heap_blks_vacuumed | 2907\n|  index_vacuum_count | 1\n|  max_dead_tuples    | 174762\n|  num_dead_tuples    | 174480\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nТут мы в частности видим:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003Eназвание текущей фазы (phase) — мы говорили о трех основных фазах, но вообще их \u003Ca href=\"https:\u002F\u002Fpostgrespro.ru\u002Fdocs\u002Fpostgresql\u002F11\u002Fprogress-reporting#VACUUM-PHASES\"\u003Eбольше\u003C\u002Fa\u003E;\u003C\u002Fli\u003E\r\n\u003Cli\u003Eобщее число страниц таблицы (heap_blks_total);\u003C\u002Fli\u003E\r\n\u003Cli\u003Eчисло просканированных страниц (heap_blks_scanned);\u003C\u002Fli\u003E\r\n\u003Cli\u003Eчисло уже очищенных страниц (heap_blks_vacuumed);\u003C\u002Fli\u003E\r\n\u003Cli\u003Eколичество проходов по индексам (index_vacuum_count).\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\nОбщий прогресс определяется отношением heap_blks_vacuumed к heap_blks_total, но нужно учитывать, что это значение изменяется не плавно, а “рывками” из-за сканирования индексов. Впрочем, основное внимание надо обратить на количество циклов очистки — значение больше 1 означает, что выделенной памяти не хватило для того, чтобы завершить очистку за один проход.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВывод завершившейся к этому времени команды VACUUM VERBOSE покажет общую картину:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003EINFO:  vacuuming \"public.vac\"\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003EINFO:  scanned index \"vac_s\" to remove 174480 row versions\nDETAIL:  CPU: user: 0.50 s, system: 0.07 s, elapsed: 1.36 s\nINFO:  \"vac\": removed 174480 row versions in 2908 pages\nDETAIL:  CPU: user: 0.02 s, system: 0.02 s, elapsed: 0.13 s\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003EINFO:  scanned index \"vac_s\" to remove 174480 row versions\nDETAIL:  CPU: user: 0.26 s, system: 0.07 s, elapsed: 0.81 s\nINFO:  \"vac\": removed 174480 row versions in 2908 pages\nDETAIL:  CPU: user: 0.01 s, system: 0.02 s, elapsed: 0.10 s\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003EINFO:  scanned index \"vac_s\" to remove 151040 row versions\nDETAIL:  CPU: user: 0.13 s, system: 0.04 s, elapsed: 0.47 s\nINFO:  \"vac\": removed 151040 row versions in 2518 pages\nDETAIL:  CPU: user: 0.01 s, system: 0.02 s, elapsed: 0.08 s\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003EINFO:  index \"vac_s\" now contains 500000 row versions in 17821 pages\nDETAIL:  500000 index row versions were removed.\n8778 index pages have been deleted, 0 are currently reusable.\nCPU: user: 0.00 s, system: 0.00 s, elapsed: 0.00 s.\nINFO:  \"vac\": found 500000 removable, 500000 nonremovable row versions in 16667 out of 16667 pages\nDETAIL:  0 dead row versions cannot be removed yet, oldest xmin: 4011\nThere were 0 unused item pointers.\n0 pages are entirely empty.\nCPU: user: 1.10 s, system: 0.37 s, elapsed: 3.71 s.\nVACUUM\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nЗдесь видно, что всего было выполнено три прохода по индексам, на каждом из которых очищалось 174480 указателей на мертвые версии строк. Откуда такое число? Одна ссылка (tid) занимает 6 байтов, а 1024*1024\u002F6 = 174762 — это число, которое мы видим в pg_stat_progress_vacuum.max_dead_tuples. Реально может использоваться чуть меньше: так гарантируется, что при чтении очередной страницы все указатели на «мертвые» версии точно поместятся в память.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EАнализ\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nАнализ, или, иными словами, сбор статистической информации для планировщика запросов, формально никак с очисткой не связан. Тем не менее мы можем выполнять анализ не только командой ANALYZE, но и совмещать очистку с анализом: VACUUM ANALYZE. При этом сначала выполняется очистка, а затем анализ — никакой экономии не происходит.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nНо, как мы увидим позже, автоматическая очистка и автоматический анализ выполняются одним процессом и управляются схожим образом.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch1\u003EПолная очистка (vacuum full)\u003C\u002Fh1\u003E\u003Cbr\u002F\u003E\r\nКак мы видели, обычная очистка освобождает больше места, чем внутристраничная, но и она не всегда решает задачу полностью.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЕсли таблица или индекс по каким-то причинам сильно выросли в размерах, то обычная очистка освободит место внутри существующих страниц: в них появятся «дыры», которые затем будут использованы для вставки новых версий строк. Но число страниц не изменится, и, следовательно, с точки зрения операционной системы файлы будут занимать ровно столько же места, сколько занимали и до очистки. А это плохо, потому что:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003Eзамедляется полное сканирование таблицы (или индекса);\u003C\u002Fli\u003E\r\n\u003Cli\u003Eможет потребоваться больший буферный кэш (ведь хранятся страницы, а плотность полезной информации падает);\u003C\u002Fli\u003E\r\n\u003Cli\u003Eв дереве индекса может появиться “лишний” уровень, который будет замедлять индексный доступ;\u003C\u002Fli\u003E\r\n\u003Cli\u003Eфайлы занимают лишнее место на диске и в резервных копиях.\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\n(Единственно исключение составляют полностью очищенные страницы, находящиеся в конце файла — такие страницы «откусываются» от файла и возвращаются операционной системе.)\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЕсли доля полезной информации в файлах опустилась ниже некоторого разумного предела, администратор может выполнить полную очистку таблицы. При этом таблица и все ее индексы перестраиваются полностью с нуля, а данные упаковываются максимально компактно (разумеется, с учетом параметра fillfactor). При перестройке PostgreSQL последовательно перестраивает сначала таблицу, а затем и каждый из ее индексов. Для каждого объекта создаются новые файлы, а в конце перестройки старые файлы удаляются. Следует учитывать, что в процессе работы на диске потребуется дополнительное место.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nДля иллюстрации снова вставим в таблицу некоторое количество строк:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003E=\u003E TRUNCATE vac;\n=\u003E INSERT INTO vac(s) SELECT 'A' FROM generate_series(1,500000);\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nКак оценить плотность информации? Для этого удобно воспользоваться специальным расширением:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003E=\u003E CREATE EXTENSION pgstattuple;\n=\u003E SELECT * FROM pgstattuple('vac') \\gx\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E-[ RECORD 1 ]------+---------\ntable_len          | 68272128\ntuple_count        | 500000\ntuple_len          | 64500000\ntuple_percent      | 94.47\ndead_tuple_count   | 0\ndead_tuple_len     | 0\ndead_tuple_percent | 0\nfree_space         | 38776\nfree_percent       | 0.06\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nФункция читает полность всю таблицу и показывает статистику по тому, сколько места какими данными занято в файлах. Основная информация, которая нам сейчас интересна — поле tuple_percent: процент, занятый полезными данными. Он меньше 100 из-за неизбежных накладных расходов на служебную информацию внутри страницы, но тем не менее довольно высок.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nДля индекса выводится другая информация, но поле avg_leaf_density имеет тот же смысл: процент полезной информации (в листовых страницах).\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003E=\u003E SELECT * FROM pgstatindex('vac_s') \\gx\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E-[ RECORD 1 ]------+---------\nversion            | 3\ntree_level         | 3\nindex_size         | 72802304\nroot_block_no      | 2722\ninternal_pages     | 241\nleaf_pages         | 8645\nempty_pages        | 0\ndeleted_pages      | 0\navg_leaf_density   | 83.77\nleaf_fragmentation | 64.25\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nА вот какой размер занимают таблица и индекс:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003E=\u003E SELECT pg_size_pretty(pg_table_size('vac')) table_size,\n  pg_size_pretty(pg_indexes_size('vac')) index_size;\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E table_size | index_size \n------------+------------\n 65 MB      | 69 MB\n(1 row)\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nТеперь удалим 90% всех строк. Строки для удаления выбираем случайно, чтобы в каждой странице с большой вероятностью хоть одна строка, да осталась:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003E=\u003E DELETE FROM vac WHERE random() &lt; 0.9;\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003EDELETE 450189\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nКакой размер будут иметь объекты после обычной очистки?\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003E=\u003E VACUUM vac;\n=\u003E SELECT pg_size_pretty(pg_table_size('vac')) table_size,\n  pg_size_pretty(pg_indexes_size('vac')) index_size;\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E table_size | index_size \n------------+------------\n 65 MB      | 69 MB\n(1 row)\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nМы видим, что размер не изменился: обычная очистка никак не может уменьшить размер файлов. Хотя плотность информации, очевидно, уменьшилась примерно в 10 раз:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003E=\u003E SELECT vac.tuple_percent, vac_s.avg_leaf_density\nFROM pgstattuple('vac') vac, pgstatindex('vac_s') vac_s;\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E tuple_percent | avg_leaf_density \n---------------+------------------\n          9.41 |             9.73\n(1 row)\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nТеперь проверим, что получится после полной очистки. Вот какие файлы используются сейчас таблицей и индексами:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003E=\u003E SELECT pg_relation_filepath('vac'), pg_relation_filepath('vac_s');\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E pg_relation_filepath | pg_relation_filepath \n----------------------+----------------------\n base\u002F41493\u002F57392     | base\u002F41493\u002F57393\n(1 row)\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003E=\u003E VACUUM FULL vac;\n=\u003E SELECT pg_relation_filepath('vac'), pg_relation_filepath('vac_s');\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E pg_relation_filepath | pg_relation_filepath \n----------------------+----------------------\n base\u002F41493\u002F57404     | base\u002F41493\u002F57407\n(1 row)\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nТеперь файлы заменены на новые. Размер таблицы и индекса существенно уменьшился, а плотность информации, соответственно, увеличилась:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003E=\u003E SELECT pg_size_pretty(pg_table_size('vac')) table_size,\n  pg_size_pretty(pg_indexes_size('vac')) index_size;\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E table_size | index_size \n------------+------------\n 6648 kB    | 6480 kB\n(1 row)\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cpre\u003E\u003Ccode class=\"pgsql\"\u003E=\u003E SELECT vac.tuple_percent, vac_s.avg_leaf_density\nFROM pgstattuple('vac') vac, pgstatindex('vac_s') vac_s;\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E tuple_percent | avg_leaf_density \n---------------+------------------\n         94.39 |            91.08\n(1 row)\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nОбратите внимание, что плотность информации в индексе даже увеличилась по сравнению с первоначальной. Заново создать индекс (B-дерево) по имеющимся данным выгоднее, чем вставлять данные в уже имеющийся индекс строка за строкой.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nФункции расширения \u003Ca href=\"https:\u002F\u002Fpostgrespro.ru\u002Fdocs\u002Fpostgresql\u002F11\u002Fpgstattuple\"\u003Epgstattuple\u003C\u002Fa\u003E, которые мы использовали, читают полностью всю таблицу. Если таблица большая, то это неудобно, и поэтому там же есть функция pgstattuple_approx, которая пропускает страницы, отмеченные в карте видимости, и показывает примерные цифры.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЕще более быстрый, но и еще менее точный способ — прикинуть отношение объема данных к размеру файла по системному каталогу. Варианты таких запросов можно найти \u003Ca href=\"https:\u002F\u002Fwiki.postgresql.org\u002Fwiki\u002FShow_database_bloat\"\u003Eв вики\u003C\u002Fa\u003E.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПолная очистка не предполагает регулярного использования, так как полностью блокирует всякую работу с таблицей (включая и выполнение запросов к ней) на все время своей работы. Понятно, что на активно используемой системе это может оказаться неприемлемым. Блокировки будут рассмотрены отдельно, а пока ограничимся упоминанием расширения \u003Ca href=\"https:\u002F\u002Fgithub.com\u002Freorg\u002Fpg_repack\"\u003Epg_repack\u003C\u002Fa\u003E, которое блокирует таблицу только на короткое время в конце работы.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EПохожие команды\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nЕсть несколько команд, которые тоже перестраивают таблицы и индексы полностью, и этим похожи на полную очистку. Все они полностью блокируют работу с таблицей, все они удаляют старые файлы данных и создают новые.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nКоманда CLUSTER во всем аналогична VACUUM FULL, но дополнительно физически упорядочивает версии строк в соответствии с одним из имеющихся индексов. Это дает планировщику возможность более эффективно использовать индексный доступ в некоторых случаях. Однако надо понимать, что кластеризация не поддерживается: при последующих изменениях таблицы физический порядок версий строк будет нарушаться.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nКоманда REINDEX перестраивает отдельный индекс на таблице. Фактически, VACUUM FULL и CLUSTER используют эту команду для того, чтобы перестроить индексы.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nКоманда TRUNCATE логически работает так же, как и DELETE — удаляет все табличные строки. Но DELETE, как уже было рассмотрено, только помечает версии строк как удаленные, что требует дальнейшей очистки. TRUNCATE же просто создает новый, чистый файл. Как правило, это работает быстрее, но надо учитывать, что TRUNCATE полностью заблокирует работу с таблицей на все время до конца транзакции.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fpostgrespro\u002Fblog\u002F452762\u002F\"\u003EПродолжение\u003C\u002Fa\u003E.\u003C\u002Fdiv\u003E","tags":[{"titleHtml":"postgresql"},{"titleHtml":"tuples"},{"titleHtml":"vacuum"}],"metadata":{"stylesUrls":[],"scriptUrls":[],"shareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F452320\u002Febee81643a60f49be8130e501c5918e8\u002F","shareImageWidth":1200,"shareImageHeight":630,"vkShareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F452320\u002Febee81643a60f49be8130e501c5918e8\u002F?format=vk","schemaJsonLd":"{\"@context\":\"http:\\\u002F\\\u002Fschema.org\",\"@type\":\"Article\",\"mainEntityOfPage\":{\"@type\":\"WebPage\",\"@id\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fru\\\u002Fcompany\\\u002Fpostgrespro\\\u002Fblog\\\u002F452320\\\u002F\"},\"headline\":\"MVCC-6. Очистка\",\"datePublished\":\"2019-05-27T10:38:01+03:00\",\"dateModified\":\"2019-06-06T13:42:44+03:00\",\"author\":{\"@type\":\"Person\",\"name\":\"Егор Рогов\"},\"publisher\":{\"@type\":\"Organization\",\"name\":\"Habr\",\"logo\":{\"@type\":\"ImageObject\",\"url\":\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fa_\\\u002Flk\\\u002F9m\\\u002Fa_lk9mjkccjox-zccjrpfolmkmq.png\"}},\"description\":\"Мы начали с вопросов, связанных с изоляцией, сделали отступление про организацию данных на низком уровне, затем подробно поговорили о версиях строк и о том, как...\",\"url\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fru\\\u002Fcompany\\\u002Fpostgrespro\\\u002Fblog\\\u002F452320\\\u002F#post-content-body\",\"about\":[\"c_postgrespro\",\"h_postgresql\",\"h_sql\",\"f_develop\"],\"image\":[\"https:\\\u002F\\\u002Fhabr.com\\\u002Fshare\\\u002Fpublication\\\u002F452320\\\u002Febee81643a60f49be8130e501c5918e8\\\u002F\"]}","metaDescription":"Мы начали с вопросов, связанных с изоляцией, сделали отступление про организацию данных на низком уровне, затем подробно поговорили о версиях строк и о том, как из версий получаются снимки...","mainImageUrl":null,"amp":false},"polls":[],"commentsEnabled":true,"rulesRemindEnabled":false,"votesEnabled":true,"status":"published","plannedPublishTime":null,"checked":null,"isEditorial":false}},"articlesIds":{},"isLoading":false,"pagesCount":{},"route":{},"reasonsList":null,"view":"cards","lastVisitedRoute":{},"ssrCommentsArticleIds":[""],"karma":{}},"authorContribution":{"authors":{}},"betaTest":{"currentAnnouncement":null,"announcements":{},"announcementCards":null,"announcementComments":{},"announcementCommentThreads":{},"announcementCommentingStatuses":{},"archivedList":[]},"authorStatistics":{"articleRefs":{},"articleIds":{},"pagesCount":{},"route":{},"viewsCount":[],"maxStatsCount":{}},"career":{"seoLandings":[],"hubs":""},"comments":{"articleComments":{},"searchCommentsResults":null,"previewComment":null,"pagesCount":null,"commentAccess":{},"scrollParents":{},"pageArticleComments":{"lastViewedComment":0,"postId":null,"lastCommentTimestamp":"","moderated":[],"moderatedIds":[],"commentRoute":""}},"companies":{"companyRefs":{"postgrespro":{"alias":"postgrespro","imageUrl":"\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fcompany\u002F4e0\u002F339\u002F621\u002F4e0339621abc865fefb88f9e9f44748f.jpg","titleHtml":"Postgres Professional","descriptionHtml":"Разработчик СУБД Postgres Pro","relatedData":null,"statistics":{"postsCount":151,"newsCount":0,"vacanciesCount":0,"employeesCount":22,"careerRating":null,"subscribersCount":41642,"rating":218.7,"invest":null},"foundationDate":{"year":"2015","month":"01","day":"27"},"location":{"city":{"id":"447159","title":"Москва"},"region":{"id":"1885","title":"Москва и Московская обл."},"country":{"id":"168","title":"Россия"}},"siteUrl":"http:\u002F\u002Fwww.postgrespro.ru\u002F","staffNumber":"51–100 человек","registrationDate":"2015-09-30T07:41:09+00:00","representativeUser":{"alias":"x-wao","fullname":"Иван Панченко"},"contacts":[{"title":"Facebook","url":"https:\u002F\u002Ffacebook.com\u002FPostgresProfessional"},{"title":"Twitter","url":"https:\u002F\u002Ftwitter.com\u002FPostgresPro"},{"title":"ВКонтакте","url":"https:\u002F\u002Fvk.com\u002Fpublic101507899"},{"title":"Google+","url":"https:\u002F\u002Fplus.google.com\u002F+PostgresproRuCompany"},{"title":"LiveJournal","url":"https:\u002F\u002Fpostgrespro.livejournal.com\u002F"}],"settings":{"analyticsSettings":[{"type":"ga","trackingId":"UA-55152600-4"}],"branding":null,"status":"active"},"metadata":{"titleHtml":"Postgres Professional, Москва - Разработчик СУБД Postgres Pro с 27 января 2015 г.","title":"Postgres Professional, Москва - Разработчик СУБД Postgres Pro с 27 января 2015 г.","keywords":["PostgreSQL","SQL","Занимательные задачки","Конференции","Администрирование баз данных"],"descriptionHtml":"151 статья от авторов компании Postgres Professional","description":"151 статья от авторов компании Postgres Professional"},"aDeskSettings":null,"careerAlias":"postgrespro","maxCustomTrackerLinks":0}},"companyIds":{},"companyTopIds":{},"pagesCount":{},"companyProfiles":{},"companiesCategories":[],"companiesCategoriesTotalCount":0,"companiesWidgets":{},"companiesWorkers":{},"companiesFans":{},"route":{},"isLoading":false,"companyWorkersLoading":false,"companyFansLoading":false,"vacancies":{}},"companiesContribution":{"hubs":{},"flows":{},"companyRefs":{}},"companyHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"conversation":{"messages":[],"respondent":null,"isLoadMore":false},"conversations":{"conversations":[],"unreadCount":0,"pagesCount":0,"isLoadMore":false},"desktopState":{"desktopFl":null,"desktopHl":null,"isChecked":false,"isLoginDemanded":false},"dfp":{"slotsDict":{}},"docs":{"menu":{},"articles":{},"mainMenu":[],"loading":{"main":false,"dropdown":false,"article":false}},"feature":{"isProbablyVisible":"true"},"flows":{"flows":[{"alias":"develop","id":1,"route":{"name":"FLOW_PAGE","params":{"flowName":"develop"}}},{"alias":"admin","id":6,"route":{"name":"FLOW_PAGE","params":{"flowName":"admin"}}},{"alias":"design","id":2,"route":{"name":"FLOW_PAGE","params":{"flowName":"design"}}},{"alias":"management","id":3,"route":{"name":"FLOW_PAGE","params":{"flowName":"management"}}},{"alias":"marketing","id":4,"route":{"name":"FLOW_PAGE","params":{"flowName":"marketing"}}},{"alias":"popsci","id":7,"route":{"name":"FLOW_PAGE","params":{"flowName":"popsci"}}}]},"global":{"isPwa":false,"device":"desktop","isHabrCom":true},"hubs":{"hubRefs":{},"hubIds":{},"pagesCount":{},"isLoading":false,"route":{}},"hubsBlock":{"hubRefs":{},"hubIds":{}},"i18n":{"fl":"ru","hl":"ru"},"info":{"infoPage":{},"isLoading":true},"location":{"urlStruct":{"protocol":null,"slashes":null,"auth":null,"host":null,"port":null,"hostname":null,"hash":null,"search":null,"query":{},"pathname":null,"path":null,"href":""},"searchQuery":null},"me":{"user":null,"ppgDemanded":false,"karmaResetInfo":{"canReincarnate":null,"wasReincarnated":null,"currentScore":null},"notes":null},"mostReadingList":{"mostReadingListIds":[],"mostReadingListRefs":null,"promoPost":null},"pinnedPost":{"pinnedPost":null},"ppa":{"articles":{},"card":null,"transactions":null,"totalTransactions":null,"isAccessible":null},"projectsBlocks":{"activeBlocks":{}},"pullRefresh":{"shouldRefresh":false},"sandbox":{"articleIds":[],"articleRefs":{},"pagesCount":null,"route":{},"lastVisitedRoute":{},"isLoading":false},"settingsOther":{"inputs":{"uiLang":{"errors":[],"ref":null,"value":""},"articlesLangEnglish":{"errors":[],"ref":null,"value":false},"articlesLangRussian":{"errors":[],"ref":null,"value":false},"agreement":{"errors":[],"ref":null,"value":false},"email":{"errors":[],"ref":null,"value":true},"digest":{"errors":[],"ref":null,"value":true}}},"similarList":{"similarListIds":[],"similarListRefs":null},"ssr":{"error":null,"isDataLoaded":false,"isDataLoading":false,"isHydrationFailed":false,"isServer":false},"userHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"userInvites":{"availableInvites":0,"usedInvitesIds":[],"usedInvitesRefs":{},"usedInvitesPagesCount":0,"unusedInvitesIds":[],"unusedInvitesRefs":{},"unusedInvitesPagesCount":0},"users":{"authorRefs":{},"authorIds":{},"pagesCount":{},"authorProfiles":{},"userHubs":{},"userInvitations":{},"authorFollowers":{},"authorFollowed":{},"karmaStats":[],"statistics":null,"isLoading":false,"authorFollowersLoading":false,"authorFollowedLoading":false,"userHubsLoading":false,"userInvitationsLoading":false,"route":{}},"viewport":{"prevScrollY":{},"scrollY":0,"width":0},"tracker":{"items":{},"pagesCache":{},"markedViewedSilently":{},"markedRead":{},"unreadCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null},"unviewedCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null}}};(function(){var s;(s=document.currentScript||document.scripts[document.scripts.length-1]).parentNode.removeChild(s);}());</script>
+<script src="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" defer></script><script src="https://assets.habr.com/habr-web/js/app.c0af73e7.js" defer></script>
+
+
+
+    <script>
+      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+        (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+        m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+      })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+    </script>
+  
+  <script type="text/javascript" >
+    (function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+    m[i].l=1*new Date();k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})
+    (window, document, "script", "https://mc.yandex.ru/metrika/tag.js", "ym");
+
+    ym(24049213, "init", {
+      defer:true,
+      trackLinks:true,
+      accurateTrackBounce:true,
+      webvisor:false,
+    });
+  </script>
+  <noscript>
+    <div>
+      <img src="https://mc.yandex.ru/watch/24049213" style="position:absolute; left:-9999px;" alt="" />
+    </div>
+  </noscript>
+  
+    <script type="text/javascript">
+      window.addEventListener('load', function () {
+        setTimeout(() => {
+          const img = new Image();
+          img.src = 'https://vk.com/rtrg?p=VK-RTRG-421343-57vKE';
+        }, 0);
+      });
+    </script>
+  
+</body>
+</html>

@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="ru" data-vue-meta="%7B%22lang%22:%7B%22ssr%22:%22ru%22%7D%7D">
+<head >
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
+  <title>Основы проектирования баз данных – сравнение PostgreSQL, Cassandra и MongoDB / Хабр</title>
+  <style>
+    /* cyrillic-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSxf6TF0.woff2) format('woff2');
+      unicode-range: U+0460-052F, U+1C80-1C88, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+    }
+
+    /* cyrillic */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveQhf6TF0.woff2) format('woff2');
+      unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+    }
+
+    /* latin-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSBf6TF0.woff2) format('woff2');
+      unicode-range: U+0100-024F, U+0259, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20CF, U+2113, U+2C60-2C7F, U+A720-A7FF;
+    }
+
+    /* latin */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveRhf6.woff2) format('woff2');
+      unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+    }
+  </style>
+  <link rel="preload" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" as="script"><link rel="preload" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/app.c0af73e7.js" as="script">
+  <link rel="stylesheet" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css"><link rel="stylesheet" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css">
+  <script>window.i18nFetch = new Promise((res, rej) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open('GET', '/js/i18n/ru-compiled.85eb77f0b17c8235e7b64b9f81ea5ec2.json');
+          xhr.responseType = 'json';
+          xhr.onload = function(e) {
+            if (this.status === 200) {
+              res({ru: xhr.response});
+            } else {
+              rej(e);
+            }
+          };
+          xhr.send();
+        });</script>
+  
+  <script data-vue-meta="ssr" src="/js/ads.js" onload="window['zhY4i4nJ9K'] = true" data-vmid="checkad"></script><script data-vue-meta="ssr" type="application/ld+json" data-vmid="ldjson-schema">{"@context":"http:\/\/schema.org","@type":"Article","mainEntityOfPage":{"@type":"WebPage","@id":"https:\/\/habr.com\/ru\/company\/otus\/blog\/451042\/"},"headline":"Основы проектирования баз данных – сравнение PostgreSQL, Cassandra и MongoDB","datePublished":"2019-05-08T17:43:56+03:00","dateModified":"2019-05-13T10:52:21+03:00","author":{"@type":"Person","name":"OTUS"},"publisher":{"@type":"Organization","name":"Habr","logo":{"@type":"ImageObject","url":"https:\/\/habrastorage.org\/webt\/a_\/lk\/9m\/a_lk9mjkccjox-zccjrpfolmkmq.png"}},"description":"Здравствуйте, друзья. Перед уходом на вторую часть майских праздников делимся с вами материалом, который мы перевели в преддверии запуска нового потока по курсу...","url":"https:\/\/habr.com\/ru\/company\/otus\/blog\/451042\/#post-content-body","about":["c_otus","h_programming","h_sql","h_db_admins","f_develop","f_admin"],"image":["https:\/\/habrastorage.org\/webt\/tg\/jk\/pk\/tgjkpk23xr333l_ee0lddnylafa.png","https:\/\/habrastorage.org\/webt\/sv\/6k\/or\/sv6kor2fwminli9ywljf1hf5h34.png","https:\/\/habrastorage.org\/webt\/ln\/1a\/_9\/ln1a_9ouduu15ccxhvud1nssmme.png"]}</script>
+  <script src="//www.googletagservices.com/tag/js/gpt.js" async></script>
+  <style>.grecaptcha-badge{visibility: hidden;}</style>
+  <meta name="habr-version" content="2.49.0">
+  
+  <meta data-vue-meta="ssr" property="fb:app_id" content="444736788986613"><meta data-vue-meta="ssr" property="fb:pages" content="472597926099084"><meta data-vue-meta="ssr" name="twitter:card" content="summary_large_image"><meta data-vue-meta="ssr" name="twitter:site" content="@habr_eng"><meta data-vue-meta="ssr" property="og:title" content="Основы проектирования баз данных – сравнение PostgreSQL, Cassandra и MongoDB" data-vmid="og:title"><meta data-vue-meta="ssr" name="twitter:title" content="Основы проектирования баз данных – сравнение PostgreSQL, Cassandra и MongoDB" data-vmid="twitter:title"><meta data-vue-meta="ssr" name="aiturec:title" content="Основы проектирования баз данных – сравнение PostgreSQL, Cassandra и MongoDB" data-vmid="aiturec:title"><meta data-vue-meta="ssr" name="description" content="Здравствуйте, друзья. Перед уходом на вторую часть майских праздников делимся с вами материалом, который мы перевели в преддверии запуска нового потока по курсу «Реляционные СУБД»...." data-vmid="description"><meta data-vue-meta="ssr" itemprop="description" content="Здравствуйте, друзья. Перед уходом на вторую часть майских праздников делимся с вами материалом, который мы перевели в преддверии запуска нового потока по курсу «Реляционные СУБД»...." data-vmid="description:itemprop"><meta data-vue-meta="ssr" property="og:description" content="Здравствуйте, друзья. Перед уходом на вторую часть майских праздников делимся с вами материалом, который мы перевели в преддверии запуска нового потока по курсу «Реляционные СУБД»...." data-vmid="og:description"><meta data-vue-meta="ssr" name="twitter:description" content="Здравствуйте, друзья. Перед уходом на вторую часть майских праздников делимся с вами материалом, который мы перевели в преддверии запуска нового потока по курсу «Реляционные СУБД»...." data-vmid="twitter:description"><meta data-vue-meta="ssr" property="aiturec:description" content="Здравствуйте, друзья. Перед уходом на вторую часть майских праздников делимся с вами материалом, который мы перевели в преддверии запуска нового потока по курсу «Реляционные СУБД»...." data-vmid="aiturec:description"><meta data-vue-meta="ssr" itemprop="image" content="https://habr.com/share/publication/451042/4660ed1aa40454b487d081d48d61329e/" data-vmid="image:itemprop"><meta data-vue-meta="ssr" property="og:image" content="https://habr.com/share/publication/451042/4660ed1aa40454b487d081d48d61329e/" data-vmid="og:image"><meta data-vue-meta="ssr" property="aiturec:image" content="https://habr.com/share/publication/451042/4660ed1aa40454b487d081d48d61329e/" data-vmid="aiturec:image"><meta data-vue-meta="ssr" name="twitter:image" content="https://habr.com/share/publication/451042/4660ed1aa40454b487d081d48d61329e/" data-vmid="twitter:image"><meta data-vue-meta="ssr" property="vk:image" content="https://habr.com/share/publication/451042/4660ed1aa40454b487d081d48d61329e/" data-vmid="vk:image"><meta data-vue-meta="ssr" property="aiturec:item_id" content="451042" data-vmid="aiturec:item_id"><meta data-vue-meta="ssr" property="aiturec:datetime" content="2019-05-08T14:43:56.000Z" data-vmid="aiturec:datetime"><meta data-vue-meta="ssr" property="og:type" content="article" data-vmid="og:type"><meta data-vue-meta="ssr" property="og:locale" content="ru_RU" data-vmid="og:locale"><meta data-vue-meta="ssr" property="og:image:width" content="1200" data-vmid="og:image:width"><meta data-vue-meta="ssr" property="og:image:height" content="630" data-vmid="og:image:height">
+  <link data-vue-meta="ssr" href="https://habr.com/ru/rss/post/451042/?fl=ru" type="application/rss+xml" title="" rel="alternate" name="rss"><link data-vue-meta="ssr" href="https://habr.com/ru/company/otus/blog/451042/" rel="canonical" data-vmid="canonical"><link data-vue-meta="ssr" data-vmid="hreflang"><link data-vue-meta="ssr" image_src="image" href="https://habr.com/share/publication/451042/4660ed1aa40454b487d081d48d61329e/" data-vmid="image:href">
+  <meta name="apple-mobile-web-app-status-bar-style" content="#303b44">
+  <meta name="msapplication-TileColor" content="#629FBC">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="16x16"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-16.png"
+  >
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="32x32"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-32.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="76x76"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-76.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="120x120"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="152x152"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-152.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="180x180"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-180.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="256x256"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-256.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1136x640.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2436x1125.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1792x828.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_828x1792.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1334x750.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2208x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1125x2436.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2208.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2732x2048.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2688x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2224x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_750x1334.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x2732.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2388x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2224.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_640x1136.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2388.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x1536.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1536x2048.png"
+  >
+  <link
+    rel="mask-icon"
+    color="#77a2b6"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.svg"
+  >
+  <link
+    crossorigin="use-credentials"
+    href="/manifest.webmanifest"
+    rel="manifest"
+  >
+</head>
+<body>
+
+
+<div id="app" data-server-rendered="true" data-async-called="true"><div class="tm-layout__wrapper"><!----> <div></div> <!----> <header class="tm-header"><div class="tm-page-width"><div class="tm-header__container"><!----> <span class="tm-header__logo-wrap"><a href="/ru/" class="tm-header__logo tm-header__logo_ru"><svg height="16" width="16" class="tm-svg-img tm-header__icon"><title>Хабр</title> <use xlink:href="/img/habr-logo-ru.svg#logo"></use></svg></a> <span class="tm-header__beta-sign" style="display:none;">β</span></span> <div class="tm-dropdown tm-header__projects"><div class="tm-dropdown__head"><button class="tm-header__dropdown-toggle"><svg height="16" width="16" class="tm-svg-img tm-header__icon tm-header__icon_dropdown"><title>Открыть список</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#arrow-down"></use></svg></button></div> <!----></div> <a href="/ru/sandbox/start/" class="tm-header__become-author-btn">
+            Как стать автором
+          </a> <div class="tm-feature tm-header__feature tm-feature_variant-inline"><!----></div> <!----> <!----></div></div></header> <div class="tm-layout"><div class="tm-page-progress-bar"></div> <div data-menu-sticky="true" class="tm-base-layout__header tm-base-layout__header_is-sticky"><div class="tm-page-width"><div class="tm-base-layout__header-wrapper"><div class="tm-main-menu"><div class="tm-main-menu__section"><nav class="tm-main-menu__section-content"><!----> <a href="/ru/all/" class="tm-main-menu__item">
+        Все потоки
+      </a> <a href="/ru/flows/develop/" class="tm-main-menu__item">
+          Разработка
+        </a><a href="/ru/flows/admin/" class="tm-main-menu__item">
+          Администрирование
+        </a><a href="/ru/flows/design/" class="tm-main-menu__item">
+          Дизайн
+        </a><a href="/ru/flows/management/" class="tm-main-menu__item">
+          Менеджмент
+        </a><a href="/ru/flows/marketing/" class="tm-main-menu__item">
+          Маркетинг
+        </a><a href="/ru/flows/popsci/" class="tm-main-menu__item">
+          Научпоп
+        </a></nav></div></div> <div class="tm-header-user-menu tm-base-layout__user-menu"><a href="/ru/search/" class="tm-header-user-menu__item tm-header-user-menu__search"><svg height="24" width="24" class="tm-svg-img tm-header-user-menu__icon tm-header-user-menu__icon_search tm-header-user-menu__icon_dark"><title>Поиск</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#search"></use></svg></a> <!----> <!----> <!----> <div class="tm-header-user-menu__item tm-header-user-menu__user_desktop"><div class="tm-dropdown"><div class="tm-dropdown__head"><svg height="24" width="24" data-test-id="menu-toggle-guest" class="tm-svg-img tm-header-user-menu__icon"><title>Профиль</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#header-user"></use></svg> <!----></div> <!----></div> <!----></div> <!----></div></div></div></div> <!----> <div class="tm-page-width"></div> <main class="tm-layout__container"><div hl="ru" companyName="otus" data-async-called="true" class="tm-page"><div class="tm-page-width"><div class="tm-page__header"><!----></div> <div class="tm-page__wrapper"><div class="tm-page__main tm-page__main_has-sidebar"><div class="pull-down"><div class="pull-down__header" style="height:0px;"><div class="pull-down__content" style="bottom:10px;"><svg height="24" width="24" class="tm-svg-img pull-down__arrow"><title>Обновить</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#pull-arrow"></use></svg></div></div> <div class="tm-article-presenter"><div class="tm-company-card tm-company-article__company-card"><div class="tm-company-card__info"><div class="tm-company-card__header"><a href="/ru/company/otus/profile/" class="tm-company-card__avatar"><div class="tm-entity-image"><img alt="" height="48" src="//habrastorage.org/getpro/habr/company/968/422/761/968422761136a38a89fc391fd927f903.jpg" width="48" class="tm-entity-image__pic"></div></a> <!----> <div class="tm-rating tm-company-card__rating"><div class="tm-rating__header"> <div class="tm-rating__counter">418.61</div></div> <div class="tm-rating__text">
+    Рейтинг
+  </div></div></div> <div class="tm-company-card__info"><a href="/ru/company/otus/profile/" class="tm-company-card__name">
+        OTUS
+      </a> <div class="tm-company-card__description">Цифровые навыки от ведущих экспертов</div></div></div> <div class="tm-company-card__buttons"><!----> <!----></div></div> <div class="tm-article-presenter__body"><div class="tm-misprint-area"><div class="tm-misprint-area__wrapper"><article class="tm-article-presenter__content tm-article-presenter__content_narrow"><div class="tm-article-presenter__header"> <div class="tm-article-snippet tm-article-presenter__snippet"><div class="tm-article-snippet__meta-container"><div class="tm-article-snippet__meta"><span class="tm-user-info tm-article-snippet__author"><a href="/ru/users/MaxRokatansky/" title="MaxRokatansky" class="tm-user-info__userpic"><div class="tm-entity-image"><img alt="" height="24" loading="lazy" src="//habrastorage.org/r/w32/getpro/habr/avatars/b9f/baf/5f9/b9fbaf5f96ae52973706a0716bd9216e.jpg" width="24" class="tm-entity-image__pic"></div></a> <span class="tm-user-info__user"><a href="/ru/users/MaxRokatansky/" class="tm-user-info__username">
+      MaxRokatansky
+    </a> </span></span> <span class="tm-article-snippet__datetime-published"><time datetime="2019-05-08T14:43:56.000Z" title="2019-05-08, 17:43">8  мая  2019 в 17:43</time></span></div> <!----></div> <h1 lang="ru" class="tm-article-snippet__title tm-article-snippet__title_h1"><span>Основы проектирования баз данных – сравнение PostgreSQL, Cassandra и MongoDB</span></h1> <div class="tm-article-snippet__hubs"><span class="tm-article-snippet__hubs-item"><a href="/ru/company/otus/blog/" class="tm-article-snippet__hubs-item-link router-link-active"><span>Блог компании OTUS</span> <!----></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/programming/" class="tm-article-snippet__hubs-item-link"><span>Программирование</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/sql/" class="tm-article-snippet__hubs-item-link"><span>SQL</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/db_admins/" class="tm-article-snippet__hubs-item-link"><span>Администрирование баз данных</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span></div> <div class="tm-article-snippet__labels"><div class="tm-article-snippet__label"><span>
+        Перевод
+      </span></div></div> <!----> <!----></div></div> <div class="tm-article-presenter__origin"><a href="https://medium.com/yugabyte/data-modeling-basics-postgresql-vs-cassandra-vs-mongodb-208a5fa2dd22" target="_blank" class="tm-article-presenter__origin-link">
+                Автор оригинала:
+                <span>
+                  https://medium.com/@sid_7889
+                </span></a></div> <div data-gallery-root="" lang="ru" class="tm-article-body"><div id="post-content-body" class="article-formatted-body article-formatted-body_version-1"><div xmlns="http://www.w3.org/1999/xhtml">Здравствуйте, друзья. Перед уходом на вторую часть майских праздников делимся с вами материалом, который мы перевели в преддверии запуска нового потока по курсу <a href="https://otus.pw/zZdO/">«Реляционные СУБД»</a>. <br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/tg/jk/pk/tgjkpk23xr333l_ee0lddnylafa.png"/><br/>
+<br/>
+Разработчики приложений тратят много времени на сравнение нескольких операционных баз данных, чтобы выбрать ту, которая лучше всего подойдет для предполагаемой рабочей нагрузки. Потребности могут включать в себя упрощенное моделирование данных, транзакционные гарантии, производительность чтения/записи, горизонтальное масштабирование и отказоустойчивость. По традиции выбор начинается с категории базы данных, SQL или NoSQL, поскольку каждая категория предоставляет четкий набор компромиссов. Высокая производительность с точки зрения низкой задержки и высокой пропускной способности обычно рассматривается как требование не допускающее компромиссов, и поэтому является необходимым для любой базы данных из выборки. <a name="habracut"></a><br/>
+<br/>
+Цель этой статьи – помочь разработчикам приложений сделать правильный выбор между SQL и NoSQL в контексте моделирования данных приложения. Мы рассмотрим одну SQL базу данных, а именно PostgreSQL и две NoSQL базы данных – Cassandra и MongoDB, чтобы рассказать про основы проектирования баз данных, такие как создание таблиц, их заполнение, чтение данных из таблицы и их удаление. В следующей статье мы обязательно рассмотрим индексы, транзакции, JOIN’ы, директивы TTL и проектирование баз данных на основе JSON.<br/>
+<br/>
+<b>В чем отличие SQL от NoSQL?</b><br/>
+<br/>
+<blockquote>SQL базы данных повышают гибкость приложения благодаря транзакционным гарантиям ACID, а также благодаря своей способности запрашивать данные с помощью JOIN неожиданными способами поверх существующих нормализованных моделей реляционных баз данных. </blockquote><br/>
+ Учитывая их монолитную/одноузловую архитектуру и использование модели репликации master-slave для избыточности, традиционные SQL базы данных не имеют двух важных особенностей – линейной масштабируемости записи (т.е. автоматического разделения на несколько узлов) и автоматической/нулевой потери данных. Это значит, что объем получаемых данных не может превышать максимальную пропускную записи одного узла. Помимо этого, некоторая временная потеря данных должна быть учтена при отказоустойчивости (в архитектуре без разделения ресурсов). Здесь нужно иметь в виду, что недавние коммиты еще не отразились в подчиненной (slave) копии. Обновления без простоя также труднодостижимы в SQL базах данных. <br/>
+<br/>
+NoSQL базы данных по своей натуре обычно распределенные, т.е. в них данные разбиваются на секции и распределяются по нескольким узлам. Они требуют денормализации. Это означает, что внесенные данные также должны быть скопированы несколько раз для ответа на конкретные запросы, которые вы посылаете. Общая цель состоит в том, чтобы получить высокую производительность путем уменьшения количества шардов, доступных во время чтения. Отсюда следует утверждение, что NoSQL требует от вас моделировать ваши запросы, а то время как SQL требует моделировать ваши данные. <br/>
+<br/>
+<blockquote>NoSQL акцентируется на достижении высокой производительности в распределенном кластере и это является основным обоснованием множества компромиссов проектирования баз данных, которые включают в себя потерю транзакций ACID, JOIN’ы и согласованные глобальные вторичные индексы.</blockquote><br/>
+ Существует мнение, что, хотя NoSQL базы данных и обеспечивают линейную масштабируемость записи и высокую отказоустойчивость, потеря транзакционных гарантий делает их непригодными для критически важных данных.<br/>
+<br/>
+Следующая таблица показывает, как моделирование данных в NoSQL отличается от SQL.<br/>
+ <br/>
+ <img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/sv/6k/or/sv6kor2fwminli9ywljf1hf5h34.png"/><br/>
+<br/>
+<b>SQL и NoSQL: Почему нужны обе?</b><br/>
+<br/>
+На реальных приложениях с большим количеством пользователей, таких как Amazon.com, Netflix, Uber и Airbnb лежит выполнение сложных разносортных задач. Например, приложению для электронной торговли подобному Amazon.com нужно хранить легковесные, высоко-критичные данные, такие как информация о пользователях, продуктах, заказах, счетах-фактурах, наряду с тяжелыми, но менее чувствительными данными, такими как обзоры продуктов, сообщения службы поддержки, активность пользователей, отзывы и рекомендации пользователей. Естественно, эти приложения полагаются по крайней мере на одну SQL базу данных наряду с как минимум одной NoSQL базой данных. В межрегиональных и глобальных системах, NoSQL база данных работает в качестве геораспределенного кэша для данных, хранящихся в доверенном источнике, SQL базе данных, работающей в каком-то одном регионе. <br/>
+ <br/>
+<b>Как YugaByte DB объединяет в себе SQL и NoSQL? </b><br/>
+<br/>
+Построенная на лог-ориентированном смешанном движке для хранения, авто-шардинге, шардинговой распределенной консенсусной репликации и распределенных транзакциях ACID (вдохновленных Google Spanner), YugaByte DB является первой в мире базой данных с открытым исходным кодом, которая одновременно совместима с NoSQL (Cassandra &amp; Redis) и SQL (PostgreSQL). Как показано в таблице ниже, YSQL, API YugaByte DB совместимое с Cassandra, добавляет понятия одно- и многоключевые ACID транзакции и глобальные вторичные индексы в API NoSQL, тем самым открывая эру транзакционных NoSQL баз данных. Кроме того, YSQL, API YugaByte DB совместимое с PostgreSQL, добавляет понятия линейного масштабирования записи и автоматической отказоустойчивости к SQL API, являя миру распределенные SQL базы данных. Поскольку база данных YugaByte DB является по своей сути транзакционной, то API NoSQL теперь можно использовать в контексте критически важных данных. <br/>
+ <br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/ln/1a/_9/ln1a_9ouduu15ccxhvud1nssmme.png"/><br/>
+<br/>
+Как ранее было сказано в статье <a href="https://blog.yugabyte.com/introducing-ysql-a-postgresql-compatible-distributed-sql-api-for-yugabyte-db/">«Introducing YSQL: A PostgreSQL Compatible Distributed SQL API for YugaByte DB»</a>, выбор между SQL или NoSQL в YugaByte DB полностью зависит от характеристик основной рабочей нагрузки:<br/>
+<br/>
+<ul>
+<li>Если основная рабочая нагрузка – это многоключевые операции с JOIN’ами, то при выборе YSQL, понимайте, что ваши ключи могут быть распределены по нескольким узлам, что приведет к более высокой задержке и/или понижению пропускной способности, чем в NoSQL.</li>
+<li> В противном случае, выберите любой из двух NoSQL API, помня о том, что вы получите более высокую производительность в результате запросов, обслуживаемых с одного узла за раз. YugaByte DB может служить единой операционной базой данных для реальных сложных приложений, в которых необходимо управлять несколькими рабочими нагрузками одновременно.</li>
+</ul><br/>
+В основе лаборатории моделирования данных (Data modeling lab) в следующем разделе лежат совместимые с PostgreSQL и Cassandra API базы данных YugaByte DB в отличие от исходных баз данных. Этот подход подчеркивает простоту взаимодействия с двумя различными API (на двух разных портах) одного и того же кластера баз данных в отличие от использования полностью независимых кластеров двух разных баз данных. <br/>
+<br/>
+В следующих разделах мы познакомимся с лабораторией моделирования данных, чтобы проиллюстрировать различие и некоторые общие черты рассматриваемых баз данных. <br/>
+<br/>
+<b>Лаборатория моделирования данных</b><br/>
+<br/>
+<b>Установка баз данных</b><br/>
+<br/>
+Учитывая акцент на проектировании модели данных (а не на сложных архитектурах развертывания), мы установим базы данных в Docker контейнеры на локальном компьютере, а затем будем взаимодействовать с ними, используя соответствующие им оболочки командной строки. <br/>
+<br/>
+<b>Совместимая с PostgreSQL &amp; Cassandra, база данных YugaByte DB</b><br/>
+<br/>
+<pre><code class="sql">mkdir ~/yugabyte &amp;&amp; cd ~/yugabyte
+wget https://downloads.yugabyte.com/yb-docker-ctl &amp;&amp; chmod +x yb-docker-ctl
+docker pull yugabytedb/yugabyte
+./yb-docker-ctl create --enable_postgres</code></pre><br/>
+ <b>MongoDB</b><br/>
+ <br/>
+<pre><code class="sql">docker run --name my-mongo -d mongo:latest</code></pre><br/>
+ <b>Доступ через командную строку</b><br/>
+<br/>
+Давайте подключимся к базам данных, при помощи оболочки командной строки для соответствующих API. <br/>
+<br/>
+<b>PostgreSQL </b><br/>
+<br/>
+<a href="https://www.postgresql.org/docs/9.3/static/app-psql.html">psql</a> — это оболочка командной строки для взаимодействия с PostgreSQL. Для простоты использования YugaByte DB поставляется с psql прямо в папке bin.<br/>
+<br/>
+<pre><code class="sql">docker exec -it yb-postgres-n1 /home/yugabyte/postgres/bin/psql -p 5433 -U postgres</code></pre><br/>
+ <b>Cassandra</b><br/>
+<br/>
+<a href="http://cassandra.apache.org/doc/latest/tools/cqlsh.html">сqlsh</a> — это оболочка командной строки для взаимодействия с Cassandra и ее совместимыми базами данных через CQL (язык запросов Cassandra). Для удобства использования YugaByte DB поставляется с <code>cqlsh</code> в каталоге <code>bin</code>.<br/>
+<br/>
+Обратите внимание, что CQL был вдохновлен SQL и имеет аналогичные понятия таблиц, строк, столбцов и индексов. Однако, как язык NoSQL, он добавляет определенный набор ограничений, большинство из которых мы также рассмотрим в других статьях.<br/>
+ <br/>
+<pre><code class="sql">docker exec -it yb-tserver-n1 /home/yugabyte/bin/cqlsh</code></pre><br/>
+ <b>MongoDB</b><br/>
+<br/>
+<a href="https://docs.mongodb.com/manual/mongo/">mongo</a> – это оболочка командной строки для взаимодействия с MongoDB. Ее можно найти в каталоге bin инсталляции MongoDB.<br/>
+ <br/>
+<pre><code class="sql">docker exec -it my-mongo bash 
+cd bin
+mongo</code></pre> <br/>
+ <b>Создание таблицы</b><br/>
+<br/>
+Сейчас мы можем взаимодействовать с базой данных для выполнения различных операций с помощью командной строки. Давайте начнем с создания таблицы, которая хранит информацию о песнях написанных разными исполнителями. Эти песни могут быть частью альбома. Также опциональные атрибуты для песни – год выпуска, цена, жанр и рейтинг. Нам нужно учитывать дополнительные атрибуты, которые могут понадобиться в будущем, через поле «теги». Оно может хранить полуструктурированные данные в виде пар ключ-значение. <br/>
+ <br/>
+<b>PostgreSQL</b><br/>
+ <br/>
+<pre><code class="sql">CREATE TABLE Music (
+    Artist VARCHAR(20) NOT NULL, 
+    SongTitle VARCHAR(30) NOT NULL,
+    AlbumTitle VARCHAR(25),
+    Year INT,
+    Price FLOAT,
+    Genre VARCHAR(10),
+    CriticRating FLOAT,
+    Tags TEXT,
+    PRIMARY KEY(Artist, SongTitle)
+);	</code></pre><br/>
+<b>Cassandra</b><br/>
+<br/>
+Создание таблицы в Cassandra очень похоже на PostgreSQL. <b>Одним из основных различий является отсутствие ограничений целостности (например, NOT NULL), но это входит в зону ответственности приложения, а не NoSQL базы данных</b>. Первичный ключ состоит из ключа раздела (столбец Artist в примере ниже) и набора столбцов кластеризации (столбец SongTitle в приведенном ниже примере). Ключ раздела определяет в какой раздел/шард помесить строку, а столбцы кластеризации указывают, как должны быть организованы данные внутри текущего шарда.<br/>
+<br/>
+<pre><code class="sql">CREATE KEYSPACE myapp;
+USE myapp;
+CREATE TABLE Music (
+    Artist TEXT, 
+    SongTitle TEXT,
+    AlbumTitle TEXT,
+    Year INT,
+    Price FLOAT,
+    Genre TEXT,
+    CriticRating FLOAT,
+    Tags TEXT,
+    PRIMARY KEY(Artist, SongTitle)
+);</code></pre><br/>
+<b>MongoDB</b><br/>
+<br/>
+MongoDB организует данные в базы данных (Database) (аналогично Keyspace в Cassandra), где есть коллекции (Collections) (аналогично таблицам), в которых лежат документы (Documents) (аналогично строкам в таблице). В MongoDB в принципе не требуется определение изначальной схемы. Команда <i>«use database»</i>, показанная ниже, создает экземпляр базы данных при первом вызове и изменяет контекст для вновь созданной базы данных. Даже коллекции не нужно создавать явно, они создаются автоматически, просто при добавлении первого документа в новую коллекцию. Обратите внимание, что MongoDB по умолчанию использует тестовую базу данных, поэтому любая операция уровня коллекций без указания конкретной базы, будет выполняться в ней по умолчанию. <br/>
+<br/>
+<pre><code class="sql">use myNewDatabase;</code></pre><br/>
+<b>Получение информации о таблице PostgreSQL</b><br/>
+<br/>
+<pre><code class="sql">\d Music
+Table "public.music"
+    Column    |         Type          | Collation | Nullable | Default 
+--------------+-----------------------+-----------+----------+--------
+ artist       | character varying(20) |           | not null | 
+ songtitle    | character varying(30) |           | not null | 
+ albumtitle   | character varying(25) |           |          | 
+ year         | integer               |           |          | 
+ price        | double precision      |           |          | 
+ genre        | character varying(10) |           |          | 
+ criticrating | double precision      |           |          | 
+ tags         | text                  |           |          | 
+Indexes:
+    "music_pkey" PRIMARY KEY, btree (artist, songtitle)</code></pre><br/>
+<b>Cassandra </b><br/>
+<br/>
+<pre><code class="sql">DESCRIBE TABLE MUSIC;
+CREATE TABLE myapp.music (
+    artist text,
+    songtitle text,
+    albumtitle text,
+    year int,
+    price float,
+    genre text,
+    tags text,
+    PRIMARY KEY (artist, songtitle)
+) WITH CLUSTERING ORDER BY (songtitle ASC)
+    AND default_time_to_live = 0
+    AND transactions = {'enabled': 'false'};</code></pre><br/>
+<b>MongoDB</b><br/>
+<br/>
+<pre><code class="sql">use myNewDatabase;
+show collections;</code></pre><br/>
+<b>Внесение данных в таблицуPostgreSQL</b><br/>
+<br/>
+<pre><code class="sql">INSERT INTO Music 
+    (Artist, SongTitle, AlbumTitle, 
+    Year, Price, Genre, CriticRating, 
+    Tags)
+VALUES(
+    'No One You Know', 'Call Me Today', 'Somewhat Famous',
+    2015, 2.14, 'Country', 7.8,
+    '{"Composers": ["Smith", "Jones", "Davis"],"LengthInSeconds": 214}'
+);
+INSERT INTO Music 
+    (Artist, SongTitle, AlbumTitle, 
+    Price, Genre, CriticRating)
+VALUES(
+    'No One You Know', 'My Dog Spot', 'Hey Now',
+    1.98, 'Country', 8.4
+);
+INSERT INTO Music 
+    (Artist, SongTitle, AlbumTitle, 
+    Price, Genre)
+VALUES(
+    'The Acme Band', 'Look Out, World', 'The Buck Starts Here',
+    0.99, 'Rock'
+);
+INSERT INTO Music 
+    (Artist, SongTitle, AlbumTitle, 
+    Price, Genre, 
+    Tags)
+VALUES(
+    'The Acme Band', 'Still In Love', 'The Buck Starts Here',
+    2.47, 'Rock', 
+    '{"radioStationsPlaying": ["KHCR", "KBQX", "WTNR", "WJJH"], "tourDates": { "Seattle": "20150625", "Cleveland": "20150630"}, "rotation": Heavy}'
+);</code></pre><br/>
+<b>Cassandra</b><br/>
+<br/>
+В целом выражение <code>INSERT</code> в Cassandra выглядит очень похоже на аналогичное в PostgreSQL. Однако имеется одно большое различие в семантике. В Cassandra <code>INSERT</code> фактически является операцией <code>UPSERT</code>, где в строку добавляются последние значения, в случае, если строка уже существует. <br/>
+<blockquote>Ввод данных происходит аналогично PostgreSQL <code>INSERT</code> выше</blockquote><br/>
+<b>MongoDB</b><br/>
+<br/>
+Несмотря на то, что MongoDB является NoSQL базой данных, подобно Cassandra, ее операция внесения данных не имеет ничего общего с семантическим поведением в Cassandra. В MongoDB <a href="https://docs.mongodb.com/manual/reference/method/db.collection.insert/">insert()</a> не имеет возможностей <code>UPSERT</code>, что делает его похожим на PostgreSQL. Добавление данных по умолчанию без <code>_idspecified</code> приведет к добавлению нового документа в коллекцию.<br/>
+<br/>
+<code>db.music.insert( {<br/>
+artist: "No One You Know", <br/>
+ songTitle: "Call Me Today", <br/>
+ albumTitle: "Somewhat Famous", <br/>
+ year: 2015,<br/>
+ price: 2.14,<br/>
+ genre: "Country",<br/>
+ tags: { <br/>
+Composers: ["Smith", "Jones", "Davis"],<br/>
+LengthInSeconds: 214<br/>
+} <br/>
+ }<br/>
+);<br/>
+db.music.insert( { <br/>
+ artist: "No One You Know",<br/>
+ songTitle: "My Dog Spot",<br/>
+ albumTitle: "Hey Now",<br/>
+ price: 1.98,<br/>
+ genre: "Country",<br/>
+ criticRating: 8.4<br/>
+ }<br/>
+);<br/>
+db.music.insert( { <br/>
+ artist: "The Acme Band",<br/>
+ songTitle: "Look Out, World",<br/>
+ albumTitle:"The Buck Starts Here",<br/>
+ price: 0.99,<br/>
+ genre: "Rock"<br/>
+ }<br/>
+);<br/>
+db.music.insert( { <br/>
+ artist: "The Acme Band",<br/>
+ songTitle: "Still In Love",<br/>
+ albumTitle:"The Buck Starts Here",<br/>
+ price: 2.47,<br/>
+ genre: "Rock",<br/>
+ tags: {<br/>
+ radioStationsPlaying:["KHCR", "KBQX", "WTNR", "WJJH"],<br/>
+ tourDates: {<br/>
+ Seattle: "20150625",<br/>
+ Cleveland: "20150630"<br/>
+ },<br/>
+ rotation: "Heavy" <br/>
+}<br/>
+ }<br/>
+);</code><br/>
+ <br/>
+<b>Запрос таблицы</b><br/>
+<br/>
+Возможно, наиболее существенная разница между SQL и NoSQL с точки зрения составления запросов заключается в использовании формулировок <code>FROM</code> и <code>WHERE</code>. SQL позволяет после выражения <code>FROM</code> выбирать несколько таблиц, а выражение с <code>WHERE</code> может быть какой угодно сложности (включая операции <code>JOIN</code> между таблицами). Однако NoSQL имеет тенденцию накладывать жесткое ограничение на <code>FROM</code>, и работать только с одной указанной таблицей, а в <code>WHERE</code>, всегда должен быть указан первичный ключ. Это связано со стремлением к повышению производительности NoSQL, о котором мы говорили ранее. Это стремление приводит к всяческому уменьшению любого кросс-табличного и кросс-ключевого взаимодействия. Оно может привести к большой задержке в межузловой связи при ответе на запрос и, следовательно, его лучше всего избегать в принципе. Например, Cassandra требует, чтобы запросы были ограничены определенными операторами (разрешены только <code>=, IN, &lt;, >, =>, &lt;=</code>) на ключах разделов, за исключением случаев запроса вторичного индекса (здесь разрешен только оператор =).<br/>
+<br/>
+<b>PostgreSQL</b><br/>
+<br/>
+Далее будут приведены три примера запросов, которые с лёгкостью могут быть выполнены SQL базой данных.<br/>
+<br/>
+<ul>
+<li>Вывести все песни исполнителя;</li>
+<li>Вывести все песни исполнителя, совпадающие с первой частью названия;</li>
+<li>Вывести все песни исполнителя, имеющие определенное слово в названии и имеющие цену меньше 1.00. </li>
+</ul><br/>
+<pre><code class="sql">SELECT * FROM Music
+WHERE Artist='No One You Know';
+SELECT * FROM Music
+WHERE Artist='No One You Know' AND SongTitle LIKE 'Call%';
+SELECT * FROM Music
+WHERE Artist='No One You Know' AND SongTitle LIKE '%Today%'
+AND Price > 1.00;</code></pre><br/>
+<b>Cassandra</b><br/>
+<br/>
+Из перечисленных выше запросов PostgreSQL только первый будет работать в Cassandra без изменений, поскольку оператор <code>LIKE</code> нельзя применять к столбцам кластеризации, таких как <code>SongTitle</code>. В этом случае допускаются только операторы <code>=</code> и <code>IN</code>.<br/>
+<br/>
+<pre><code class="sql">SELECT * FROM Music
+WHERE Artist='No One You Know';
+SELECT * FROM Music
+WHERE Artist='No One You Know' AND SongTitle IN ('Call Me Today', 'My Dog Spot')
+AND Price > 1.00;</code></pre><br/>
+<b>MongoDB</b><br/>
+<br/>
+Как показано в предыдущих примерах, основным методом создания запросов в MongoDB является <a href="https://docs.mongodb.com/manual/reference/method/db.collection.find/#db.collection.find">db.collection.find()</a>. Этот метод явно содержит в себе имя коллекции (<code>music</code> в примере ниже), поэтому запрос по нескольким коллекциям запрещен.<br/>
+<br/>
+<pre><code class="sql">db.music.find( {
+  artist: "No One You Know"
+ } 
+);
+db.music.find( {
+  artist: "No One You Know",
+  songTitle: /Call/
+ } 
+);</code></pre><br/>
+<b>Считывание всех строк таблицы</b><br/>
+<br/>
+Чтение всех строк — это просто частный случай того шаблона запроса, который мы рассматривали ранее.<br/>
+<br/>
+<b>PostgreSQL</b><br/>
+<br/>
+<pre><code class="sql">SELECT * 
+FROM Music;</code></pre><br/>
+<br/>
+<b>Cassandra</b><br/>
+<br/>
+<blockquote>Аналогично примеру в PostgreSQL выше.</blockquote><br/>
+<br/>
+MongoDB<br/>
+<br/>
+<pre><code class="sql">db.music.find( {} );</code></pre><br/>
+<b>Редактирование данных в таблице</b><br/>
+<br/>
+<b>PostgreSQL</b><br/>
+<br/>
+PostgreSQL предоставляет инструкцию <code>UPDATE</code> для изменения данных. Она не имеет возможностей <code>UPSERT</code>, поэтому выполнение этой инструкции завершится ошибкой, в случае если строки больше нет в базе данных.<br/>
+<br/>
+<pre><code class="sql">UPDATE Music
+SET Genre = 'Disco'
+WHERE Artist = 'The Acme Band' AND SongTitle = 'Still In Love';</code></pre><br/>
+<b>Cassandra</b><br/>
+<br/>
+В Cassandra есть <code>UPDATE</code> аналогичный PostgreSQL. <code>UPDATE</code> имеет ту же семантику <code>UPSERT</code>, подобно <code>INSERT</code>.<br/>
+<br/>
+<blockquote>Аналогично примеру в PostgreSQL выше.</blockquote><br/>
+<b>MongoDB</b><br/>
+ Операция <a href="https://docs.mongodb.com/manual/reference/method/db.collection.update/">update()</a> в MongoDB может полностью обновить существующий документ или обновить только определенные поля. По умолчанию она обновляет только один документ с отключенной семантикой <code>UPSERT</code>. Обновление нескольких документов и поведение аналогичное <code>UPSERT</code> можно применить, установив для операции дополнительные флаги. Как например в приведенном ниже примере происходит обновление жанра конкретного исполнителя по его песне.<br/>
+<br/>
+<pre><code class="sql">db.music.update(
+  {"artist": "The Acme Band"},
+  { 
+    $set: {
+      "genre": "Disco"
+    }
+  },
+  {"multi": true, "upsert": true}
+);</code></pre><br/>
+<b> Удаление данных из таблицы</b><br/>
+<br/>
+<b>PostgreSQL</b><br/>
+<br/>
+<pre><code class="sql">DELETE FROM Music
+WHERE Artist = 'The Acme Band' AND SongTitle = 'Look Out, World';</code></pre><br/>
+<b>Cassandra</b><br/>
+<br/>
+<blockquote>Аналогично примеру в PostgreSQL выше.</blockquote><br/>
+<b>MongoDB</b><br/>
+<br/>
+В MongoDB есть два типа операций для удаления документов — <a href="https://docs.mongodb.com/manual/reference/method/db.collection.deleteOne/">deleteOne()</a> <a href="https://docs.mongodb.com/manual/reference/method/db.collection.deleteMany/">/deleteMany()</a> и <a href="https://docs.mongodb.com/manual/reference/method/db.collection.remove/">remove()</a>. Оба типа удаляют документы, но возвращают разные результаты. <br/>
+<br/>
+<pre><code class="sql">db.music.deleteMany( {
+        artist: "The Acme Band"
+    }
+);
+</code></pre><br/>
+<b>Удаление таблицы</b><br/>
+<br/>
+<b>PostgreSQL</b><br/>
+<br/>
+<pre><code class="sql">DROP TABLE Music;</code></pre><br/>
+<b>Cassandra</b><br/>
+<br/>
+<blockquote>Аналогично примеру в PostgreSQL выше.</blockquote><br/>
+<b>MongoDB</b><br/>
+<br/>
+<pre><code class="sql">db.music.drop();</code></pre><br/>
+<b>Заключение</b><br/>
+<br/>
+Споры о выборе между SQL и NoSQL бушуют уже более 10 лет. Есть два основных аспекта этого спора: архитектура ядра базы данных (монолитный, транзакционный SQL против распределенного, нетранзакционного NoSQL) и подход к проектированию базы данных (моделирование данных в SQL против моделирования ваших запросов в NoSQL).<br/>
+<br/>
+С распределенной транзакционной базой данных, такой как YugaByte DB, дебаты насчет архитектуры базы данных могут быть легко развеяны. По мере того как объемы данных становятся больше, чем то, что может быть записано в один узел, полностью распределенная архитектура, которая поддерживает линейную масштабируемость записи с автоматическим шардингом/ребалансировкой, становится необходимой.<br/>
+<br/>
+Помимо того, как сказано в одной из статей <a href="https://cloud.google.com/blog/products/gcp/why-you-should-pick-strong-consistency-whenever-possible">Google Cloud</a>, транзакционные, строго согласованные архитектуры теперь шире применяются для обеспечения лучшей гибкости в разработке, чем нетранзакционные, в конечном итоге согласованные архитектуры.<br/>
+<br/>
+Возвращаясь к обсуждению проектирования баз данных, справедливо сказать, что оба подхода к проектированию (SQL и NoSQL) необходимы для любого сложного реального приложения. Подход SQL «моделирование данных» позволяет разработчикам легче удовлетворять меняющиеся бизнес-требования, в то время как подход NoSQL «моделирование запросов» позволяет тем же разработчикам оперировать большими объемами данных имея маленькую задержку и высокую пропускную способность. Именно по этой причине YugaByte DB предоставляет SQL и NoSQL API в общем ядре, а не пропагандирует какой-то один из подходов. Кроме того, обеспечивая совместимость с популярными языками баз данных, включая PostgreSQL и Cassandra, YugaByte DB гарантирует, что разработчикам не придется изучать другой язык, чтобы работать с распределенным строго согласованным ядром базы данных.<br/>
+<br/>
+В этой статье мы разобрались, как основы проектирования баз данных различаются в PostgreSQL, Cassandra и MongoDB. В следующих статьях мы погрузимся в передовые концепции проектирования, такие как индексы, транзакции, JOIN’ы, директивы TTL и JSON-документы.<br/>
+<br/>
+Желаем вам отлично провести оставшиеся выходные и приглашаем на <a href="https://otus.pw/3vwc/">бесплатный вебинар</a>, который пройдет уже 14 мая.</div></div> <!----> <!----></div> <div class="tm-article-presenter__meta"><div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Теги:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bsql%5D" class="tm-tags-list__link">sql</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5B%D1%81%D1%83%D0%B1%D0%B4%5D" class="tm-tags-list__link">субд</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bcassandra%5D" class="tm-tags-list__link">cassandra</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bmongodb%5D" class="tm-tags-list__link">mongodb</a></li></ul></div> <div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Хабы:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/company/otus/blog/" class="tm-hubs-list__link router-link-active">
+    Блог компании OTUS
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/programming/" class="tm-hubs-list__link">
+    Программирование
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/sql/" class="tm-hubs-list__link">
+    SQL
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/db_admins/" class="tm-hubs-list__link">
+    Администрирование баз данных
+  </a></li></ul></div></div></article></div> <!----></div> <div class="tm-article-sticky-panel"><div class="tm-data-icons tm-article-sticky-panel__icons"><div class="tm-article-rating tm-data-icons__item"><div class="tm-votes-meter tm-article-rating__votes-switcher"><svg height="16" width="16" class="tm-svg-img tm-votes-meter__icon tm-votes-meter__icon_medium"><title>Всего голосов 11: ↑6 и ↓5</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-rating"></use></svg> <span title="Всего голосов 11: ↑6 и ↓5" class="tm-votes-meter__value tm-votes-meter__value_positive tm-votes-meter__value_medium">+1</span></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----> <span title="Количество просмотров" class="tm-icon-counter tm-data-icons__item"><svg height="16" width="16" class="tm-svg-img tm-icon-counter__icon"><title>Просмотры</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-views"></use></svg> <span class="tm-icon-counter__value">20K</span></span> <button title="Добавить в закладки" type="button" class="bookmarks-button tm-data-icons__item"><span title="Добавить в закладки" class="tm-svg-icon__wrapper bookmarks-button__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Добавить в закладки</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-favorite"></use></svg></span> <span title="Количество пользователей, добавивших публикацию в закладки" class="bookmarks-button__counter">
+    114
+  </span></button> <!----> <div title="Поделиться" class="tm-sharing tm-data-icons__item"><button type="button" class="tm-sharing__button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="tm-sharing__icon"><path fill="currentColor" d="M10.33.275l9.047 7.572a.2.2 0 010 .306l-9.048 7.572a.2.2 0 01-.328-.153V11c-8 0-9.94 6-9.94 6S-1 5 10 5V.428a.2.2 0 01.328-.153z"></path></svg></button> <!----></div> <DIV class="v-portal" style="display:none;"></DIV></div> </div></div> <!----> <!----> <div class="tm-article-presenter__footer"><div class="tm-article-blocks"><!----> <section class="tm-block tm-block_spacing-bottom"><!----> <div class="tm-block__body tm-block__body_variant-balanced"><div class="tm-article-author"><div class="tm-article-author__company"><div class="tm-article-author__company-card"><div class="tm-company-snippet"><a href="/ru/company/otus/profile/" class="tm-company-snippet__logo-link"><div class="tm-entity-image"><img alt="" height="40" src="//habrastorage.org/getpro/habr/company/968/422/761/968422761136a38a89fc391fd927f903.jpg" width="40" class="tm-entity-image__pic"></div></a> <div class="tm-company-snippet__info"><a href="/ru/company/otus/profile/" class="tm-company-snippet__title">OTUS</a> <div class="tm-company-snippet__description">Цифровые навыки от ведущих экспертов</div></div></div> <div class="tm-article-author__buttons"><!----> <!----></div></div> <div class="tm-article-author__company-contacts"><a href="https://otus.ru" rel="noopener" target="_blank" class="tm-article-author__contact">
+      Сайт
+    </a><a href="https://facebook.com/otus.ru" rel="noopener" target="_blank" class="tm-article-author__contact">
+      Facebook
+    </a><a href="https://vk.com/club145052891" rel="noopener" target="_blank" class="tm-article-author__contact">
+      ВКонтакте
+    </a><a href="https://telegram.me/Otusjava" rel="noopener" target="_blank" class="tm-article-author__contact">
+      Telegram
+    </a></div> <div class="tm-article-author__separator"></div></div> <div class="tm-user-card tm-article-author__user-card tm-user-card_variant-article"><div class="tm-user-card__info-container"><div class="tm-user-card__header"><div class="tm-user-card__header-data"><a href="/ru/users/MaxRokatansky/" class="tm-user-card__userpic tm-user-card__userpic_size-40"><div class="tm-entity-image"><img alt="" src="//habrastorage.org/getpro/habr/avatars/b9f/baf/5f9/b9fbaf5f96ae52973706a0716bd9216e.jpg" class="tm-entity-image__pic"></div></a> <div class="tm-user-card__meta"><div title=" 659 голосов " class="tm-karma tm-user-card__karma"><div class="tm-karma__votes tm-karma__votes_positive">
+    26.7
+  </div> <div class="tm-karma__text">
+    Карма
+  </div></div> <div title="Рейтинг пользователя" class="tm-rating tm-user-card__rating"><div class="tm-rating__header"> <div class="tm-rating__counter">-29.4</div></div> <div class="tm-rating__text">
+    Рейтинг
+  </div></div></div></div></div> <div class="tm-user-card__info tm-user-card__info_variant-article"><div class="tm-user-card__title tm-user-card__title_variant-article"><span class="tm-user-card__name tm-user-card__name_variant-article">OTUS</span> <a href="/ru/users/MaxRokatansky/" class="tm-user-card__nickname tm-user-card__nickname_variant-article">
+          @MaxRokatansky
+        </a> <!----></div> <p class="tm-user-card__short-info tm-user-card__short-info_variant-article">Редактор</p></div></div> <div class="tm-user-card__buttons tm-user-card__buttons_variant-article"><!----> <!----> <!----> <!----> <!----></div></div> <!----></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----></section> <div class="tm-article-blocks__comments"><div class="tm-article-page-comments"><div class="tm-article-comments-counter-link tm-article-comments-counter-button"><a href="/ru/company/otus/blog/451042/comments/" class="tm-article-comments-counter-link__link tm-article-comments-counter-link__link_button-style"><svg height="16" width="16" class="tm-svg-img tm-article-comments-counter-link__icon tm-article-comments-counter-link__icon_contrasted"><title>Комментарии</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-comments"></use></svg> <span class="tm-article-comments-counter-link__value tm-article-comments-counter-link__value_contrasted">
+       Комментарии 5 
+    </span></a> <!----></div></div></div>  <!---->  <!----> <!----></div></div></div></div></div> <div class="tm-page__sidebar"><div class="tm-layout-sidebar"><div class="tm-layout-sidebar__placeholder_initial"></div> <div class="tm-sexy-sidebar tm-sexy-sidebar_initial" style="margin-top:0px;"><!----> <section class="tm-block tm-block_spacing-bottom"><header class="tm-block__header"><h2 class="tm-block__title">Информация</h2> <!----></header> <div class="tm-block__body"><div class="tm-company-basic-info"><dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Дата основания</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><time datetime="2017-03-31T21:00:00.000Z" title="2017-04-01, 00:00">1  апреля  2017</time></dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Местоположение</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap">
+    Россия
+  </dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Сайт</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><a href="https://otus.ru" target="_blank" class="tm-company-basic-info__link">
+      otus.ru
+    </a></dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Численность</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap">
+    51–100 человек
+  </dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Дата регистрации</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><time datetime="2017-03-22T08:17:26.000Z" title="2017-03-22, 11:17">22  марта  2017</time></dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Представитель</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><a href="/ru/users/MaxRokatansky/" class="tm-company-basic-info__link">
+      OTUS
+    </a></dd></dl></div></div> <!----></section> <div class="tm-company-widgets"></div> <!----></div></div></div></div></div></div></main> <!----></div> <div class="tm-footer-menu"><div class="tm-page-width"><div class="tm-footer-menu__container"><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Ваш аккаунт
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr/?back=/ru/company/otus/blog/451042/&amp;hl=ru" rel="nofollow" target="_self">
+                Войти
+              </a></li><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr-register/?back=/ru/company/otus/blog/451042/&amp;hl=ru" rel="nofollow" target="_self">
+                Регистрация
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Разделы
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/" class="footer-menu__item-link router-link-active">
+                Публикации
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/news/" class="footer-menu__item-link">
+                Новости
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/hubs/" class="footer-menu__item-link">
+                Хабы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/companies/" class="footer-menu__item-link">
+                Компании
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/users/" class="footer-menu__item-link">
+                Авторы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/sandbox/" class="footer-menu__item-link">
+                Песочница
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Информация
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/docs/help/" class="footer-menu__item-link">
+                Устройство сайта
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/authors/codex/" class="footer-menu__item-link">
+                Для авторов
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/companies/corpblogs/" class="footer-menu__item-link">
+                Для компаний
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/docs/transparency/" class="footer-menu__item-link">
+                Документы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/agreement" target="_blank">
+                Соглашение
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/confidential/" target="_blank">
+                Конфиденциальность
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Услуги
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQLwRfQmXibiUlWaRg-BAc38s7oM3lJiaPju7qmdJsp8ysIvZ_G-Npem0njJLMozE2bPHMpDqiI5hhy/pub?start=false&amp;loop=false&amp;delayms=60000&amp;slide=id.g91a03369cd_4_297" target="_blank">
+                Реклама
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://habrastorage.org/storage/stuff/habr/service_price.pdf" target="_blank">
+                Тарифы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQJJds8-Di7BQSP_guHxICN7woVYoN5NP_22ra-BIo4bqnTT9FR6fB-Ku2P0AoRpX0Ds-LRkDeAoD8F/pub?start=false&amp;loop=false&amp;delayms=60000" target="_blank">
+                Контент
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://tmtm.timepad.ru/" target="_blank">
+                Семинары
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/megaprojects/" class="footer-menu__item-link">
+                Мегапроекты
+              </a></li></ul></div></div></div></div></div> <div class="tm-footer"><div class="tm-page-width"><div class="tm-footer__container"><!----> <div class="tm-footer__social"><a href="https://www.facebook.com/habrahabr.ru" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Facebook</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-facebook"></use></svg></a><a href="https://twitter.com/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Twitter</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-twitter"></use></svg></a><a href="https://vk.com/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>VK</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-vkontakte"></use></svg></a><a href="https://telegram.me/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Telegram</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-telegram"></use></svg></a><a href="https://www.youtube.com/channel/UCd_sTwKqVrweTt4oAKY5y4w" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Youtube</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-youtube"></use></svg></a><a href="https://zen.yandex.ru/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Яндекс Дзен</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-zen"></use></svg></a></div> <DIV class="v-portal" style="display:none;"></DIV> <button class="tm-footer__link"><!---->
+        Настройка языка
+      </button> <a href="/ru/about" class="tm-footer__link">
+        О сайте
+      </a> <a href="/ru/feedback/" class="tm-footer__link">
+        Техническая поддержка
+      </a> <!----> <a href="/berserk-mode-nope" class="tm-footer__link">
+        Вернуться на старую версию
+      </a> <div class="tm-footer-copyright"><span class="tm-copyright"><span class="tm-copyright__years">© 2006–2021 </span> <span class="tm-copyright__name">«<a href="https://company.habr.com/" rel="noopener" target="_blank" class="tm-copyright__link">Habr</a>»</span></span></div></div></div></div> <!----> <!----></div> <div class="vue-portal-target"></div></div>
+<script>window.__INITIAL_STATE__={"adblock":{"hasAcceptableAdsFilter":false,"hasAdblock":false},"articlesList":{"articlesList":{"451042":{"id":"451042","timePublished":"2019-05-08T14:43:56+00:00","isCorporative":true,"lang":"ru","titleHtml":"Основы проектирования баз данных – сравнение PostgreSQL, Cassandra и MongoDB","leadData":{"textHtml":"Здравствуйте, друзья. Перед уходом на вторую часть майских праздников делимся с вами материалом, который мы перевели в преддверии запуска нового потока по курсу \u003Ca href=\"https:\u002F\u002Fotus.pw\u002FzZdO\u002F\"\u003E«Реляционные СУБД»\u003C\u002Fa\u003E. \u003Cbr\u003E\r\n\u003Cbr\u003E\r\n\u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Ftg\u002Fjk\u002Fpk\u002Ftgjkpk23xr333l_ee0lddnylafa.png\"\u003E\u003Cbr\u003E\r\n\u003Cbr\u003E\r\nРазработчики приложений тратят много времени на сравнение нескольких операционных баз данных, чтобы выбрать ту, которая лучше всего подойдет для предполагаемой рабочей нагрузки. Потребности могут включать в себя упрощенное моделирование данных, транзакционные гарантии, производительность чтения\u002Fзаписи, горизонтальное масштабирование и отказоустойчивость. По традиции выбор начинается с категории базы данных, SQL или NoSQL, поскольку каждая категория предоставляет четкий набор компромиссов. Высокая производительность с точки зрения низкой задержки и высокой пропускной способности обычно рассматривается как требование не допускающее компромиссов, и поэтому является необходимым для любой базы данных из выборки.","imageUrl":null,"buttonTextHtml":"Читать дальше →","image":null},"editorVersion":"1.0","postType":"article","postLabels":[{"type":"translation","data":{"originalAuthorName":"https:\u002F\u002Fmedium.com\u002F@sid_7889","originalUrl":"https:\u002F\u002Fmedium.com\u002Fyugabyte\u002Fdata-modeling-basics-postgresql-vs-cassandra-vs-mongodb-208a5fa2dd22"}}],"author":{"scoreStats":{"score":26.7,"votesCount":659},"rating":-29.4,"relatedData":null,"contacts":[],"authorContacts":[],"paymentDetails":{"paymentYandexMoney":null,"paymentPayPalMe":null,"paymentWebmoney":null},"id":"1547287","alias":"MaxRokatansky","fullname":"OTUS","avatarUrl":"\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Favatars\u002Fb9f\u002Fbaf\u002F5f9\u002Fb9fbaf5f96ae52973706a0716bd9216e.jpg","speciality":"Редактор"},"statistics":{"commentsCount":5,"favoritesCount":114,"readingCount":19666,"score":1,"votesCount":11},"hubs":[{"relatedData":null,"id":"21052","alias":"otus","type":"corporative","title":"Блог компании OTUS","titleHtml":"Блог компании OTUS","isProfiled":false},{"relatedData":null,"id":"359","alias":"programming","type":"collective","title":"Программирование","titleHtml":"Программирование","isProfiled":true},{"relatedData":null,"id":"594","alias":"sql","type":"collective","title":"SQL","titleHtml":"SQL","isProfiled":true},{"relatedData":null,"id":"17681","alias":"db_admins","type":"collective","title":"Администрирование баз данных","titleHtml":"Администрирование баз данных","isProfiled":true}],"flows":[{"id":"1","alias":"develop","title":"Разработка"},{"id":"6","alias":"admin","title":"Администрирование"}],"relatedData":null,"textHtml":"\u003Cdiv xmlns=\"http:\u002F\u002Fwww.w3.org\u002F1999\u002Fxhtml\"\u003EЗдравствуйте, друзья. Перед уходом на вторую часть майских праздников делимся с вами материалом, который мы перевели в преддверии запуска нового потока по курсу \u003Ca href=\"https:\u002F\u002Fotus.pw\u002FzZdO\u002F\"\u003E«Реляционные СУБД»\u003C\u002Fa\u003E. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Ftg\u002Fjk\u002Fpk\u002Ftgjkpk23xr333l_ee0lddnylafa.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nРазработчики приложений тратят много времени на сравнение нескольких операционных баз данных, чтобы выбрать ту, которая лучше всего подойдет для предполагаемой рабочей нагрузки. Потребности могут включать в себя упрощенное моделирование данных, транзакционные гарантии, производительность чтения\u002Fзаписи, горизонтальное масштабирование и отказоустойчивость. По традиции выбор начинается с категории базы данных, SQL или NoSQL, поскольку каждая категория предоставляет четкий набор компромиссов. Высокая производительность с точки зрения низкой задержки и высокой пропускной способности обычно рассматривается как требование не допускающее компромиссов, и поэтому является необходимым для любой базы данных из выборки. \u003Ca name=\"habracut\"\u003E\u003C\u002Fa\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЦель этой статьи – помочь разработчикам приложений сделать правильный выбор между SQL и NoSQL в контексте моделирования данных приложения. Мы рассмотрим одну SQL базу данных, а именно PostgreSQL и две NoSQL базы данных – Cassandra и MongoDB, чтобы рассказать про основы проектирования баз данных, такие как создание таблиц, их заполнение, чтение данных из таблицы и их удаление. В следующей статье мы обязательно рассмотрим индексы, транзакции, JOIN’ы, директивы TTL и проектирование баз данных на основе JSON.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cb\u003EВ чем отличие SQL от NoSQL?\u003C\u002Fb\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cblockquote\u003ESQL базы данных повышают гибкость приложения благодаря транзакционным гарантиям ACID, а также благодаря своей способности запрашивать данные с помощью JOIN неожиданными способами поверх существующих нормализованных моделей реляционных баз данных. \u003C\u002Fblockquote\u003E\u003Cbr\u002F\u003E\r\n Учитывая их монолитную\u002Fодноузловую архитектуру и использование модели репликации master-slave для избыточности, традиционные SQL базы данных не имеют двух важных особенностей – линейной масштабируемости записи (т.е. автоматического разделения на несколько узлов) и автоматической\u002Fнулевой потери данных. Это значит, что объем получаемых данных не может превышать максимальную пропускную записи одного узла. Помимо этого, некоторая временная потеря данных должна быть учтена при отказоустойчивости (в архитектуре без разделения ресурсов). Здесь нужно иметь в виду, что недавние коммиты еще не отразились в подчиненной (slave) копии. Обновления без простоя также труднодостижимы в SQL базах данных. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nNoSQL базы данных по своей натуре обычно распределенные, т.е. в них данные разбиваются на секции и распределяются по нескольким узлам. Они требуют денормализации. Это означает, что внесенные данные также должны быть скопированы несколько раз для ответа на конкретные запросы, которые вы посылаете. Общая цель состоит в том, чтобы получить высокую производительность путем уменьшения количества шардов, доступных во время чтения. Отсюда следует утверждение, что NoSQL требует от вас моделировать ваши запросы, а то время как SQL требует моделировать ваши данные. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cblockquote\u003ENoSQL акцентируется на достижении высокой производительности в распределенном кластере и это является основным обоснованием множества компромиссов проектирования баз данных, которые включают в себя потерю транзакций ACID, JOIN’ы и согласованные глобальные вторичные индексы.\u003C\u002Fblockquote\u003E\u003Cbr\u002F\u003E\r\n Существует мнение, что, хотя NoSQL базы данных и обеспечивают линейную масштабируемость записи и высокую отказоустойчивость, потеря транзакционных гарантий делает их непригодными для критически важных данных.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nСледующая таблица показывает, как моделирование данных в NoSQL отличается от SQL.\u003Cbr\u002F\u003E\r\n \u003Cbr\u002F\u003E\r\n \u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fsv\u002F6k\u002For\u002Fsv6kor2fwminli9ywljf1hf5h34.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cb\u003ESQL и NoSQL: Почему нужны обе?\u003C\u002Fb\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nНа реальных приложениях с большим количеством пользователей, таких как Amazon.com, Netflix, Uber и Airbnb лежит выполнение сложных разносортных задач. Например, приложению для электронной торговли подобному Amazon.com нужно хранить легковесные, высоко-критичные данные, такие как информация о пользователях, продуктах, заказах, счетах-фактурах, наряду с тяжелыми, но менее чувствительными данными, такими как обзоры продуктов, сообщения службы поддержки, активность пользователей, отзывы и рекомендации пользователей. Естественно, эти приложения полагаются по крайней мере на одну SQL базу данных наряду с как минимум одной NoSQL базой данных. В межрегиональных и глобальных системах, NoSQL база данных работает в качестве геораспределенного кэша для данных, хранящихся в доверенном источнике, SQL базе данных, работающей в каком-то одном регионе. \u003Cbr\u002F\u003E\r\n \u003Cbr\u002F\u003E\r\n\u003Cb\u003EКак YugaByte DB объединяет в себе SQL и NoSQL? \u003C\u002Fb\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПостроенная на лог-ориентированном смешанном движке для хранения, авто-шардинге, шардинговой распределенной консенсусной репликации и распределенных транзакциях ACID (вдохновленных Google Spanner), YugaByte DB является первой в мире базой данных с открытым исходным кодом, которая одновременно совместима с NoSQL (Cassandra &amp; Redis) и SQL (PostgreSQL). Как показано в таблице ниже, YSQL, API YugaByte DB совместимое с Cassandra, добавляет понятия одно- и многоключевые ACID транзакции и глобальные вторичные индексы в API NoSQL, тем самым открывая эру транзакционных NoSQL баз данных. Кроме того, YSQL, API YugaByte DB совместимое с PostgreSQL, добавляет понятия линейного масштабирования записи и автоматической отказоустойчивости к SQL API, являя миру распределенные SQL базы данных. Поскольку база данных YugaByte DB является по своей сути транзакционной, то API NoSQL теперь можно использовать в контексте критически важных данных. \u003Cbr\u002F\u003E\r\n \u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fln\u002F1a\u002F_9\u002Fln1a_9ouduu15ccxhvud1nssmme.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nКак ранее было сказано в статье \u003Ca href=\"https:\u002F\u002Fblog.yugabyte.com\u002Fintroducing-ysql-a-postgresql-compatible-distributed-sql-api-for-yugabyte-db\u002F\"\u003E«Introducing YSQL: A PostgreSQL Compatible Distributed SQL API for YugaByte DB»\u003C\u002Fa\u003E, выбор между SQL или NoSQL в YugaByte DB полностью зависит от характеристик основной рабочей нагрузки:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003EЕсли основная рабочая нагрузка – это многоключевые операции с JOIN’ами, то при выборе YSQL, понимайте, что ваши ключи могут быть распределены по нескольким узлам, что приведет к более высокой задержке и\u002Fили понижению пропускной способности, чем в NoSQL.\u003C\u002Fli\u003E\r\n\u003Cli\u003E В противном случае, выберите любой из двух NoSQL API, помня о том, что вы получите более высокую производительность в результате запросов, обслуживаемых с одного узла за раз. YugaByte DB может служить единой операционной базой данных для реальных сложных приложений, в которых необходимо управлять несколькими рабочими нагрузками одновременно.\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\nВ основе лаборатории моделирования данных (Data modeling lab) в следующем разделе лежат совместимые с PostgreSQL и Cassandra API базы данных YugaByte DB в отличие от исходных баз данных. Этот подход подчеркивает простоту взаимодействия с двумя различными API (на двух разных портах) одного и того же кластера баз данных в отличие от использования полностью независимых кластеров двух разных баз данных. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВ следующих разделах мы познакомимся с лабораторией моделирования данных, чтобы проиллюстрировать различие и некоторые общие черты рассматриваемых баз данных. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cb\u003EЛаборатория моделирования данных\u003C\u002Fb\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cb\u003EУстановка баз данных\u003C\u002Fb\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nУчитывая акцент на проектировании модели данных (а не на сложных архитектурах развертывания), мы установим базы данных в Docker контейнеры на локальном компьютере, а затем будем взаимодействовать с ними, используя соответствующие им оболочки командной строки. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cb\u003EСовместимая с PostgreSQL &amp; Cassandra, база данных YugaByte DB\u003C\u002Fb\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"sql\"\u003Emkdir ~\u002Fyugabyte &amp;&amp; cd ~\u002Fyugabyte\nwget https:\u002F\u002Fdownloads.yugabyte.com\u002Fyb-docker-ctl &amp;&amp; chmod +x yb-docker-ctl\ndocker pull yugabytedb\u002Fyugabyte\n.\u002Fyb-docker-ctl create --enable_postgres\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n \u003Cb\u003EMongoDB\u003C\u002Fb\u003E\u003Cbr\u002F\u003E\r\n \u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"sql\"\u003Edocker run --name my-mongo -d mongo:latest\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n \u003Cb\u003EДоступ через командную строку\u003C\u002Fb\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nДавайте подключимся к базам данных, при помощи оболочки командной строки для соответствующих API. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cb\u003EPostgreSQL \u003C\u002Fb\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ca href=\"https:\u002F\u002Fwww.postgresql.org\u002Fdocs\u002F9.3\u002Fstatic\u002Fapp-psql.html\"\u003Epsql\u003C\u002Fa\u003E — это оболочка командной строки для взаимодействия с PostgreSQL. Для простоты использования YugaByte DB поставляется с psql прямо в папке bin.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"sql\"\u003Edocker exec -it yb-postgres-n1 \u002Fhome\u002Fyugabyte\u002Fpostgres\u002Fbin\u002Fpsql -p 5433 -U postgres\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n \u003Cb\u003ECassandra\u003C\u002Fb\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ca href=\"http:\u002F\u002Fcassandra.apache.org\u002Fdoc\u002Flatest\u002Ftools\u002Fcqlsh.html\"\u003Eсqlsh\u003C\u002Fa\u003E — это оболочка командной строки для взаимодействия с Cassandra и ее совместимыми базами данных через CQL (язык запросов Cassandra). Для удобства использования YugaByte DB поставляется с \u003Ccode\u003Ecqlsh\u003C\u002Fcode\u003E в каталоге \u003Ccode\u003Ebin\u003C\u002Fcode\u003E.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nОбратите внимание, что CQL был вдохновлен SQL и имеет аналогичные понятия таблиц, строк, столбцов и индексов. Однако, как язык NoSQL, он добавляет определенный набор ограничений, большинство из которых мы также рассмотрим в других статьях.\u003Cbr\u002F\u003E\r\n \u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"sql\"\u003Edocker exec -it yb-tserver-n1 \u002Fhome\u002Fyugabyte\u002Fbin\u002Fcqlsh\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n \u003Cb\u003EMongoDB\u003C\u002Fb\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ca href=\"https:\u002F\u002Fdocs.mongodb.com\u002Fmanual\u002Fmongo\u002F\"\u003Emongo\u003C\u002Fa\u003E – это оболочка командной строки для взаимодействия с MongoDB. Ее можно найти в каталоге bin инсталляции MongoDB.\u003Cbr\u002F\u003E\r\n \u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"sql\"\u003Edocker exec -it my-mongo bash \ncd bin\nmongo\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E \u003Cbr\u002F\u003E\r\n \u003Cb\u003EСоздание таблицы\u003C\u002Fb\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nСейчас мы можем взаимодействовать с базой данных для выполнения различных операций с помощью командной строки. Давайте начнем с создания таблицы, которая хранит информацию о песнях написанных разными исполнителями. Эти песни могут быть частью альбома. Также опциональные атрибуты для песни – год выпуска, цена, жанр и рейтинг. Нам нужно учитывать дополнительные атрибуты, которые могут понадобиться в будущем, через поле «теги». Оно может хранить полуструктурированные данные в виде пар ключ-значение. \u003Cbr\u002F\u003E\r\n \u003Cbr\u002F\u003E\r\n\u003Cb\u003EPostgreSQL\u003C\u002Fb\u003E\u003Cbr\u002F\u003E\r\n \u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"sql\"\u003ECREATE TABLE Music (\n    Artist VARCHAR(20) NOT NULL, \n    SongTitle VARCHAR(30) NOT NULL,\n    AlbumTitle VARCHAR(25),\n    Year INT,\n    Price FLOAT,\n    Genre VARCHAR(10),\n    CriticRating FLOAT,\n    Tags TEXT,\n    PRIMARY KEY(Artist, SongTitle)\n);\t\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cb\u003ECassandra\u003C\u002Fb\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nСоздание таблицы в Cassandra очень похоже на PostgreSQL. \u003Cb\u003EОдним из основных различий является отсутствие ограничений целостности (например, NOT NULL), но это входит в зону ответственности приложения, а не NoSQL базы данных\u003C\u002Fb\u003E. Первичный ключ состоит из ключа раздела (столбец Artist в примере ниже) и набора столбцов кластеризации (столбец SongTitle в приведенном ниже примере). Ключ раздела определяет в какой раздел\u002Fшард помесить строку, а столбцы кластеризации указывают, как должны быть организованы данные внутри текущего шарда.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"sql\"\u003ECREATE KEYSPACE myapp;\nUSE myapp;\nCREATE TABLE Music (\n    Artist TEXT, \n    SongTitle TEXT,\n    AlbumTitle TEXT,\n    Year INT,\n    Price FLOAT,\n    Genre TEXT,\n    CriticRating FLOAT,\n    Tags TEXT,\n    PRIMARY KEY(Artist, SongTitle)\n);\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cb\u003EMongoDB\u003C\u002Fb\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nMongoDB организует данные в базы данных (Database) (аналогично Keyspace в Cassandra), где есть коллекции (Collections) (аналогично таблицам), в которых лежат документы (Documents) (аналогично строкам в таблице). В MongoDB в принципе не требуется определение изначальной схемы. Команда \u003Ci\u003E«use database»\u003C\u002Fi\u003E, показанная ниже, создает экземпляр базы данных при первом вызове и изменяет контекст для вновь созданной базы данных. Даже коллекции не нужно создавать явно, они создаются автоматически, просто при добавлении первого документа в новую коллекцию. Обратите внимание, что MongoDB по умолчанию использует тестовую базу данных, поэтому любая операция уровня коллекций без указания конкретной базы, будет выполняться в ней по умолчанию. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"sql\"\u003Euse myNewDatabase;\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cb\u003EПолучение информации о таблице PostgreSQL\u003C\u002Fb\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"sql\"\u003E\\d Music\nTable \"public.music\"\n    Column    |         Type          | Collation | Nullable | Default \n--------------+-----------------------+-----------+----------+--------\n artist       | character varying(20) |           | not null | \n songtitle    | character varying(30) |           | not null | \n albumtitle   | character varying(25) |           |          | \n year         | integer               |           |          | \n price        | double precision      |           |          | \n genre        | character varying(10) |           |          | \n criticrating | double precision      |           |          | \n tags         | text                  |           |          | \nIndexes:\n    \"music_pkey\" PRIMARY KEY, btree (artist, songtitle)\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cb\u003ECassandra \u003C\u002Fb\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"sql\"\u003EDESCRIBE TABLE MUSIC;\nCREATE TABLE myapp.music (\n    artist text,\n    songtitle text,\n    albumtitle text,\n    year int,\n    price float,\n    genre text,\n    tags text,\n    PRIMARY KEY (artist, songtitle)\n) WITH CLUSTERING ORDER BY (songtitle ASC)\n    AND default_time_to_live = 0\n    AND transactions = {'enabled': 'false'};\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cb\u003EMongoDB\u003C\u002Fb\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"sql\"\u003Euse myNewDatabase;\nshow collections;\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cb\u003EВнесение данных в таблицуPostgreSQL\u003C\u002Fb\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"sql\"\u003EINSERT INTO Music \n    (Artist, SongTitle, AlbumTitle, \n    Year, Price, Genre, CriticRating, \n    Tags)\nVALUES(\n    'No One You Know', 'Call Me Today', 'Somewhat Famous',\n    2015, 2.14, 'Country', 7.8,\n    '{\"Composers\": [\"Smith\", \"Jones\", \"Davis\"],\"LengthInSeconds\": 214}'\n);\nINSERT INTO Music \n    (Artist, SongTitle, AlbumTitle, \n    Price, Genre, CriticRating)\nVALUES(\n    'No One You Know', 'My Dog Spot', 'Hey Now',\n    1.98, 'Country', 8.4\n);\nINSERT INTO Music \n    (Artist, SongTitle, AlbumTitle, \n    Price, Genre)\nVALUES(\n    'The Acme Band', 'Look Out, World', 'The Buck Starts Here',\n    0.99, 'Rock'\n);\nINSERT INTO Music \n    (Artist, SongTitle, AlbumTitle, \n    Price, Genre, \n    Tags)\nVALUES(\n    'The Acme Band', 'Still In Love', 'The Buck Starts Here',\n    2.47, 'Rock', \n    '{\"radioStationsPlaying\": [\"KHCR\", \"KBQX\", \"WTNR\", \"WJJH\"], \"tourDates\": { \"Seattle\": \"20150625\", \"Cleveland\": \"20150630\"}, \"rotation\": Heavy}'\n);\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cb\u003ECassandra\u003C\u002Fb\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВ целом выражение \u003Ccode\u003EINSERT\u003C\u002Fcode\u003E в Cassandra выглядит очень похоже на аналогичное в PostgreSQL. Однако имеется одно большое различие в семантике. В Cassandra \u003Ccode\u003EINSERT\u003C\u002Fcode\u003E фактически является операцией \u003Ccode\u003EUPSERT\u003C\u002Fcode\u003E, где в строку добавляются последние значения, в случае, если строка уже существует. \u003Cbr\u002F\u003E\r\n\u003Cblockquote\u003EВвод данных происходит аналогично PostgreSQL \u003Ccode\u003EINSERT\u003C\u002Fcode\u003E выше\u003C\u002Fblockquote\u003E\u003Cbr\u002F\u003E\r\n\u003Cb\u003EMongoDB\u003C\u002Fb\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nНесмотря на то, что MongoDB является NoSQL базой данных, подобно Cassandra, ее операция внесения данных не имеет ничего общего с семантическим поведением в Cassandra. В MongoDB \u003Ca href=\"https:\u002F\u002Fdocs.mongodb.com\u002Fmanual\u002Freference\u002Fmethod\u002Fdb.collection.insert\u002F\"\u003Einsert()\u003C\u002Fa\u003E не имеет возможностей \u003Ccode\u003EUPSERT\u003C\u002Fcode\u003E, что делает его похожим на PostgreSQL. Добавление данных по умолчанию без \u003Ccode\u003E_idspecified\u003C\u002Fcode\u003E приведет к добавлению нового документа в коллекцию.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ccode\u003Edb.music.insert( {\u003Cbr\u002F\u003E\r\nartist: \"No One You Know\", \u003Cbr\u002F\u003E\r\n songTitle: \"Call Me Today\", \u003Cbr\u002F\u003E\r\n albumTitle: \"Somewhat Famous\", \u003Cbr\u002F\u003E\r\n year: 2015,\u003Cbr\u002F\u003E\r\n price: 2.14,\u003Cbr\u002F\u003E\r\n genre: \"Country\",\u003Cbr\u002F\u003E\r\n tags: { \u003Cbr\u002F\u003E\r\nComposers: [\"Smith\", \"Jones\", \"Davis\"],\u003Cbr\u002F\u003E\r\nLengthInSeconds: 214\u003Cbr\u002F\u003E\r\n} \u003Cbr\u002F\u003E\r\n }\u003Cbr\u002F\u003E\r\n);\u003Cbr\u002F\u003E\r\ndb.music.insert( { \u003Cbr\u002F\u003E\r\n artist: \"No One You Know\",\u003Cbr\u002F\u003E\r\n songTitle: \"My Dog Spot\",\u003Cbr\u002F\u003E\r\n albumTitle: \"Hey Now\",\u003Cbr\u002F\u003E\r\n price: 1.98,\u003Cbr\u002F\u003E\r\n genre: \"Country\",\u003Cbr\u002F\u003E\r\n criticRating: 8.4\u003Cbr\u002F\u003E\r\n }\u003Cbr\u002F\u003E\r\n);\u003Cbr\u002F\u003E\r\ndb.music.insert( { \u003Cbr\u002F\u003E\r\n artist: \"The Acme Band\",\u003Cbr\u002F\u003E\r\n songTitle: \"Look Out, World\",\u003Cbr\u002F\u003E\r\n albumTitle:\"The Buck Starts Here\",\u003Cbr\u002F\u003E\r\n price: 0.99,\u003Cbr\u002F\u003E\r\n genre: \"Rock\"\u003Cbr\u002F\u003E\r\n }\u003Cbr\u002F\u003E\r\n);\u003Cbr\u002F\u003E\r\ndb.music.insert( { \u003Cbr\u002F\u003E\r\n artist: \"The Acme Band\",\u003Cbr\u002F\u003E\r\n songTitle: \"Still In Love\",\u003Cbr\u002F\u003E\r\n albumTitle:\"The Buck Starts Here\",\u003Cbr\u002F\u003E\r\n price: 2.47,\u003Cbr\u002F\u003E\r\n genre: \"Rock\",\u003Cbr\u002F\u003E\r\n tags: {\u003Cbr\u002F\u003E\r\n radioStationsPlaying:[\"KHCR\", \"KBQX\", \"WTNR\", \"WJJH\"],\u003Cbr\u002F\u003E\r\n tourDates: {\u003Cbr\u002F\u003E\r\n Seattle: \"20150625\",\u003Cbr\u002F\u003E\r\n Cleveland: \"20150630\"\u003Cbr\u002F\u003E\r\n },\u003Cbr\u002F\u003E\r\n rotation: \"Heavy\" \u003Cbr\u002F\u003E\r\n}\u003Cbr\u002F\u003E\r\n }\u003Cbr\u002F\u003E\r\n);\u003C\u002Fcode\u003E\u003Cbr\u002F\u003E\r\n \u003Cbr\u002F\u003E\r\n\u003Cb\u003EЗапрос таблицы\u003C\u002Fb\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВозможно, наиболее существенная разница между SQL и NoSQL с точки зрения составления запросов заключается в использовании формулировок \u003Ccode\u003EFROM\u003C\u002Fcode\u003E и \u003Ccode\u003EWHERE\u003C\u002Fcode\u003E. SQL позволяет после выражения \u003Ccode\u003EFROM\u003C\u002Fcode\u003E выбирать несколько таблиц, а выражение с \u003Ccode\u003EWHERE\u003C\u002Fcode\u003E может быть какой угодно сложности (включая операции \u003Ccode\u003EJOIN\u003C\u002Fcode\u003E между таблицами). Однако NoSQL имеет тенденцию накладывать жесткое ограничение на \u003Ccode\u003EFROM\u003C\u002Fcode\u003E, и работать только с одной указанной таблицей, а в \u003Ccode\u003EWHERE\u003C\u002Fcode\u003E, всегда должен быть указан первичный ключ. Это связано со стремлением к повышению производительности NoSQL, о котором мы говорили ранее. Это стремление приводит к всяческому уменьшению любого кросс-табличного и кросс-ключевого взаимодействия. Оно может привести к большой задержке в межузловой связи при ответе на запрос и, следовательно, его лучше всего избегать в принципе. Например, Cassandra требует, чтобы запросы были ограничены определенными операторами (разрешены только \u003Ccode\u003E=, IN, &lt;, \u003E, =\u003E, &lt;=\u003C\u002Fcode\u003E) на ключах разделов, за исключением случаев запроса вторичного индекса (здесь разрешен только оператор =).\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cb\u003EPostgreSQL\u003C\u002Fb\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nДалее будут приведены три примера запросов, которые с лёгкостью могут быть выполнены SQL базой данных.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003EВывести все песни исполнителя;\u003C\u002Fli\u003E\r\n\u003Cli\u003EВывести все песни исполнителя, совпадающие с первой частью названия;\u003C\u002Fli\u003E\r\n\u003Cli\u003EВывести все песни исполнителя, имеющие определенное слово в названии и имеющие цену меньше 1.00. \u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"sql\"\u003ESELECT * FROM Music\nWHERE Artist='No One You Know';\nSELECT * FROM Music\nWHERE Artist='No One You Know' AND SongTitle LIKE 'Call%';\nSELECT * FROM Music\nWHERE Artist='No One You Know' AND SongTitle LIKE '%Today%'\nAND Price \u003E 1.00;\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cb\u003ECassandra\u003C\u002Fb\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nИз перечисленных выше запросов PostgreSQL только первый будет работать в Cassandra без изменений, поскольку оператор \u003Ccode\u003ELIKE\u003C\u002Fcode\u003E нельзя применять к столбцам кластеризации, таких как \u003Ccode\u003ESongTitle\u003C\u002Fcode\u003E. В этом случае допускаются только операторы \u003Ccode\u003E=\u003C\u002Fcode\u003E и \u003Ccode\u003EIN\u003C\u002Fcode\u003E.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"sql\"\u003ESELECT * FROM Music\nWHERE Artist='No One You Know';\nSELECT * FROM Music\nWHERE Artist='No One You Know' AND SongTitle IN ('Call Me Today', 'My Dog Spot')\nAND Price \u003E 1.00;\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cb\u003EMongoDB\u003C\u002Fb\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nКак показано в предыдущих примерах, основным методом создания запросов в MongoDB является \u003Ca href=\"https:\u002F\u002Fdocs.mongodb.com\u002Fmanual\u002Freference\u002Fmethod\u002Fdb.collection.find\u002F#db.collection.find\"\u003Edb.collection.find()\u003C\u002Fa\u003E. Этот метод явно содержит в себе имя коллекции (\u003Ccode\u003Emusic\u003C\u002Fcode\u003E в примере ниже), поэтому запрос по нескольким коллекциям запрещен.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"sql\"\u003Edb.music.find( {\n  artist: \"No One You Know\"\n } \n);\ndb.music.find( {\n  artist: \"No One You Know\",\n  songTitle: \u002FCall\u002F\n } \n);\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cb\u003EСчитывание всех строк таблицы\u003C\u002Fb\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЧтение всех строк — это просто частный случай того шаблона запроса, который мы рассматривали ранее.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cb\u003EPostgreSQL\u003C\u002Fb\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"sql\"\u003ESELECT * \nFROM Music;\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cb\u003ECassandra\u003C\u002Fb\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cblockquote\u003EАналогично примеру в PostgreSQL выше.\u003C\u002Fblockquote\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nMongoDB\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"sql\"\u003Edb.music.find( {} );\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cb\u003EРедактирование данных в таблице\u003C\u002Fb\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cb\u003EPostgreSQL\u003C\u002Fb\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nPostgreSQL предоставляет инструкцию \u003Ccode\u003EUPDATE\u003C\u002Fcode\u003E для изменения данных. Она не имеет возможностей \u003Ccode\u003EUPSERT\u003C\u002Fcode\u003E, поэтому выполнение этой инструкции завершится ошибкой, в случае если строки больше нет в базе данных.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"sql\"\u003EUPDATE Music\nSET Genre = 'Disco'\nWHERE Artist = 'The Acme Band' AND SongTitle = 'Still In Love';\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cb\u003ECassandra\u003C\u002Fb\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВ Cassandra есть \u003Ccode\u003EUPDATE\u003C\u002Fcode\u003E аналогичный PostgreSQL. \u003Ccode\u003EUPDATE\u003C\u002Fcode\u003E имеет ту же семантику \u003Ccode\u003EUPSERT\u003C\u002Fcode\u003E, подобно \u003Ccode\u003EINSERT\u003C\u002Fcode\u003E.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cblockquote\u003EАналогично примеру в PostgreSQL выше.\u003C\u002Fblockquote\u003E\u003Cbr\u002F\u003E\r\n\u003Cb\u003EMongoDB\u003C\u002Fb\u003E\u003Cbr\u002F\u003E\r\n Операция \u003Ca href=\"https:\u002F\u002Fdocs.mongodb.com\u002Fmanual\u002Freference\u002Fmethod\u002Fdb.collection.update\u002F\"\u003Eupdate()\u003C\u002Fa\u003E в MongoDB может полностью обновить существующий документ или обновить только определенные поля. По умолчанию она обновляет только один документ с отключенной семантикой \u003Ccode\u003EUPSERT\u003C\u002Fcode\u003E. Обновление нескольких документов и поведение аналогичное \u003Ccode\u003EUPSERT\u003C\u002Fcode\u003E можно применить, установив для операции дополнительные флаги. Как например в приведенном ниже примере происходит обновление жанра конкретного исполнителя по его песне.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"sql\"\u003Edb.music.update(\n  {\"artist\": \"The Acme Band\"},\n  { \n    $set: {\n      \"genre\": \"Disco\"\n    }\n  },\n  {\"multi\": true, \"upsert\": true}\n);\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cb\u003E Удаление данных из таблицы\u003C\u002Fb\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cb\u003EPostgreSQL\u003C\u002Fb\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"sql\"\u003EDELETE FROM Music\nWHERE Artist = 'The Acme Band' AND SongTitle = 'Look Out, World';\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cb\u003ECassandra\u003C\u002Fb\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cblockquote\u003EАналогично примеру в PostgreSQL выше.\u003C\u002Fblockquote\u003E\u003Cbr\u002F\u003E\r\n\u003Cb\u003EMongoDB\u003C\u002Fb\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВ MongoDB есть два типа операций для удаления документов — \u003Ca href=\"https:\u002F\u002Fdocs.mongodb.com\u002Fmanual\u002Freference\u002Fmethod\u002Fdb.collection.deleteOne\u002F\"\u003EdeleteOne()\u003C\u002Fa\u003E \u003Ca href=\"https:\u002F\u002Fdocs.mongodb.com\u002Fmanual\u002Freference\u002Fmethod\u002Fdb.collection.deleteMany\u002F\"\u003E\u002FdeleteMany()\u003C\u002Fa\u003E и \u003Ca href=\"https:\u002F\u002Fdocs.mongodb.com\u002Fmanual\u002Freference\u002Fmethod\u002Fdb.collection.remove\u002F\"\u003Eremove()\u003C\u002Fa\u003E. Оба типа удаляют документы, но возвращают разные результаты. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"sql\"\u003Edb.music.deleteMany( {\n        artist: \"The Acme Band\"\n    }\n);\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cb\u003EУдаление таблицы\u003C\u002Fb\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cb\u003EPostgreSQL\u003C\u002Fb\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"sql\"\u003EDROP TABLE Music;\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cb\u003ECassandra\u003C\u002Fb\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cblockquote\u003EАналогично примеру в PostgreSQL выше.\u003C\u002Fblockquote\u003E\u003Cbr\u002F\u003E\r\n\u003Cb\u003EMongoDB\u003C\u002Fb\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"sql\"\u003Edb.music.drop();\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cb\u003EЗаключение\u003C\u002Fb\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nСпоры о выборе между SQL и NoSQL бушуют уже более 10 лет. Есть два основных аспекта этого спора: архитектура ядра базы данных (монолитный, транзакционный SQL против распределенного, нетранзакционного NoSQL) и подход к проектированию базы данных (моделирование данных в SQL против моделирования ваших запросов в NoSQL).\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nС распределенной транзакционной базой данных, такой как YugaByte DB, дебаты насчет архитектуры базы данных могут быть легко развеяны. По мере того как объемы данных становятся больше, чем то, что может быть записано в один узел, полностью распределенная архитектура, которая поддерживает линейную масштабируемость записи с автоматическим шардингом\u002Fребалансировкой, становится необходимой.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПомимо того, как сказано в одной из статей \u003Ca href=\"https:\u002F\u002Fcloud.google.com\u002Fblog\u002Fproducts\u002Fgcp\u002Fwhy-you-should-pick-strong-consistency-whenever-possible\"\u003EGoogle Cloud\u003C\u002Fa\u003E, транзакционные, строго согласованные архитектуры теперь шире применяются для обеспечения лучшей гибкости в разработке, чем нетранзакционные, в конечном итоге согласованные архитектуры.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВозвращаясь к обсуждению проектирования баз данных, справедливо сказать, что оба подхода к проектированию (SQL и NoSQL) необходимы для любого сложного реального приложения. Подход SQL «моделирование данных» позволяет разработчикам легче удовлетворять меняющиеся бизнес-требования, в то время как подход NoSQL «моделирование запросов» позволяет тем же разработчикам оперировать большими объемами данных имея маленькую задержку и высокую пропускную способность. Именно по этой причине YugaByte DB предоставляет SQL и NoSQL API в общем ядре, а не пропагандирует какой-то один из подходов. Кроме того, обеспечивая совместимость с популярными языками баз данных, включая PostgreSQL и Cassandra, YugaByte DB гарантирует, что разработчикам не придется изучать другой язык, чтобы работать с распределенным строго согласованным ядром базы данных.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВ этой статье мы разобрались, как основы проектирования баз данных различаются в PostgreSQL, Cassandra и MongoDB. В следующих статьях мы погрузимся в передовые концепции проектирования, такие как индексы, транзакции, JOIN’ы, директивы TTL и JSON-документы.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЖелаем вам отлично провести оставшиеся выходные и приглашаем на \u003Ca href=\"https:\u002F\u002Fotus.pw\u002F3vwc\u002F\"\u003Eбесплатный вебинар\u003C\u002Fa\u003E, который пройдет уже 14 мая.\u003C\u002Fdiv\u003E","tags":[{"titleHtml":"sql"},{"titleHtml":"субд"},{"titleHtml":"cassandra"},{"titleHtml":"mongodb"}],"metadata":{"stylesUrls":[],"scriptUrls":[],"shareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F451042\u002F4660ed1aa40454b487d081d48d61329e\u002F","shareImageWidth":1200,"shareImageHeight":630,"vkShareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F451042\u002F4660ed1aa40454b487d081d48d61329e\u002F?format=vk","schemaJsonLd":"{\"@context\":\"http:\\\u002F\\\u002Fschema.org\",\"@type\":\"Article\",\"mainEntityOfPage\":{\"@type\":\"WebPage\",\"@id\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fru\\\u002Fcompany\\\u002Fotus\\\u002Fblog\\\u002F451042\\\u002F\"},\"headline\":\"Основы проектирования баз данных – сравнение PostgreSQL, Cassandra и MongoDB\",\"datePublished\":\"2019-05-08T17:43:56+03:00\",\"dateModified\":\"2019-05-13T10:52:21+03:00\",\"author\":{\"@type\":\"Person\",\"name\":\"OTUS\"},\"publisher\":{\"@type\":\"Organization\",\"name\":\"Habr\",\"logo\":{\"@type\":\"ImageObject\",\"url\":\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fa_\\\u002Flk\\\u002F9m\\\u002Fa_lk9mjkccjox-zccjrpfolmkmq.png\"}},\"description\":\"Здравствуйте, друзья. Перед уходом на вторую часть майских праздников делимся с вами материалом, который мы перевели в преддверии запуска нового потока по курсу...\",\"url\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fru\\\u002Fcompany\\\u002Fotus\\\u002Fblog\\\u002F451042\\\u002F#post-content-body\",\"about\":[\"c_otus\",\"h_programming\",\"h_sql\",\"h_db_admins\",\"f_develop\",\"f_admin\"],\"image\":[\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Ftg\\\u002Fjk\\\u002Fpk\\\u002Ftgjkpk23xr333l_ee0lddnylafa.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fsv\\\u002F6k\\\u002For\\\u002Fsv6kor2fwminli9ywljf1hf5h34.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fln\\\u002F1a\\\u002F_9\\\u002Fln1a_9ouduu15ccxhvud1nssmme.png\"]}","metaDescription":"Здравствуйте, друзья. Перед уходом на вторую часть майских праздников делимся с вами материалом, который мы перевели в преддверии запуска нового потока по курсу «Реляционные СУБД»....","mainImageUrl":null,"amp":false},"polls":[],"commentsEnabled":true,"rulesRemindEnabled":false,"votesEnabled":true,"status":"published","plannedPublishTime":null,"checked":null,"isEditorial":false}},"articlesIds":{},"isLoading":false,"pagesCount":{},"route":{},"reasonsList":null,"view":"cards","lastVisitedRoute":{},"ssrCommentsArticleIds":[""],"karma":{}},"authorContribution":{"authors":{}},"betaTest":{"currentAnnouncement":null,"announcements":{},"announcementCards":null,"announcementComments":{},"announcementCommentThreads":{},"announcementCommentingStatuses":{},"archivedList":[]},"authorStatistics":{"articleRefs":{},"articleIds":{},"pagesCount":{},"route":{},"viewsCount":[],"maxStatsCount":{}},"career":{"seoLandings":[],"hubs":""},"comments":{"articleComments":{},"searchCommentsResults":null,"previewComment":null,"pagesCount":null,"commentAccess":{},"scrollParents":{},"pageArticleComments":{"lastViewedComment":0,"postId":null,"lastCommentTimestamp":"","moderated":[],"moderatedIds":[],"commentRoute":""}},"companies":{"companyRefs":{"otus":{"alias":"otus","imageUrl":"\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fcompany\u002F968\u002F422\u002F761\u002F968422761136a38a89fc391fd927f903.jpg","titleHtml":"OTUS","descriptionHtml":"Цифровые навыки от ведущих экспертов","relatedData":null,"statistics":{"postsCount":1478,"newsCount":2,"vacanciesCount":1,"employeesCount":46,"careerRating":null,"subscribersCount":66496,"rating":418.61,"invest":null},"foundationDate":{"year":"2017","month":"04","day":"01"},"location":{"city":{"id":"447159","title":"Москва"},"region":{"id":"1885","title":"Москва и Московская обл."},"country":{"id":"168","title":"Россия"}},"siteUrl":"https:\u002F\u002Fotus.ru","staffNumber":"51–100 человек","registrationDate":"2017-03-22T08:17:26+00:00","representativeUser":{"alias":"MaxRokatansky","fullname":"OTUS"},"contacts":[{"title":"Сайт","url":"https:\u002F\u002Fotus.ru"},{"title":"Facebook","url":"https:\u002F\u002Ffacebook.com\u002Fotus.ru"},{"title":"ВКонтакте","url":"https:\u002F\u002Fvk.com\u002Fclub145052891"},{"title":"Telegram","url":"https:\u002F\u002Ftelegram.me\u002FOtusjava"}],"settings":{"analyticsSettings":[],"branding":null,"status":"active"},"metadata":{"titleHtml":"OTUS, Москва - Цифровые навыки от ведущих экспертов с 1 апреля 2017 г.","title":"OTUS, Москва - Цифровые навыки от ведущих экспертов с 1 апреля 2017 г.","keywords":["Программирование","Python","Java","Информационная безопасность","JavaScript"],"descriptionHtml":"1 478 статей от авторов компании OTUS","description":"1 478 статей от авторов компании OTUS"},"aDeskSettings":null,"careerAlias":"otus","maxCustomTrackerLinks":0}},"companyIds":{},"companyTopIds":{},"pagesCount":{},"companyProfiles":{},"companiesCategories":[],"companiesCategoriesTotalCount":0,"companiesWidgets":{},"companiesWorkers":{},"companiesFans":{},"route":{},"isLoading":false,"companyWorkersLoading":false,"companyFansLoading":false,"vacancies":{}},"companiesContribution":{"hubs":{},"flows":{},"companyRefs":{}},"companyHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"conversation":{"messages":[],"respondent":null,"isLoadMore":false},"conversations":{"conversations":[],"unreadCount":0,"pagesCount":0,"isLoadMore":false},"desktopState":{"desktopFl":null,"desktopHl":null,"isChecked":false,"isLoginDemanded":false},"dfp":{"slotsDict":{}},"docs":{"menu":{},"articles":{},"mainMenu":[],"loading":{"main":false,"dropdown":false,"article":false}},"feature":{"isProbablyVisible":"true"},"flows":{"flows":[{"alias":"develop","id":1,"route":{"name":"FLOW_PAGE","params":{"flowName":"develop"}}},{"alias":"admin","id":6,"route":{"name":"FLOW_PAGE","params":{"flowName":"admin"}}},{"alias":"design","id":2,"route":{"name":"FLOW_PAGE","params":{"flowName":"design"}}},{"alias":"management","id":3,"route":{"name":"FLOW_PAGE","params":{"flowName":"management"}}},{"alias":"marketing","id":4,"route":{"name":"FLOW_PAGE","params":{"flowName":"marketing"}}},{"alias":"popsci","id":7,"route":{"name":"FLOW_PAGE","params":{"flowName":"popsci"}}}]},"global":{"isPwa":false,"device":"desktop","isHabrCom":true},"hubs":{"hubRefs":{},"hubIds":{},"pagesCount":{},"isLoading":false,"route":{}},"hubsBlock":{"hubRefs":{},"hubIds":{}},"i18n":{"fl":"ru","hl":"ru"},"info":{"infoPage":{},"isLoading":true},"location":{"urlStruct":{"protocol":null,"slashes":null,"auth":null,"host":null,"port":null,"hostname":null,"hash":null,"search":null,"query":{},"pathname":null,"path":null,"href":""},"searchQuery":null},"me":{"user":null,"ppgDemanded":false,"karmaResetInfo":{"canReincarnate":null,"wasReincarnated":null,"currentScore":null},"notes":null},"mostReadingList":{"mostReadingListIds":[],"mostReadingListRefs":null,"promoPost":null},"pinnedPost":{"pinnedPost":null},"ppa":{"articles":{},"card":null,"transactions":null,"totalTransactions":null,"isAccessible":null},"projectsBlocks":{"activeBlocks":{}},"pullRefresh":{"shouldRefresh":false},"sandbox":{"articleIds":[],"articleRefs":{},"pagesCount":null,"route":{},"lastVisitedRoute":{},"isLoading":false},"settingsOther":{"inputs":{"uiLang":{"errors":[],"ref":null,"value":""},"articlesLangEnglish":{"errors":[],"ref":null,"value":false},"articlesLangRussian":{"errors":[],"ref":null,"value":false},"agreement":{"errors":[],"ref":null,"value":false},"email":{"errors":[],"ref":null,"value":true},"digest":{"errors":[],"ref":null,"value":true}}},"similarList":{"similarListIds":[],"similarListRefs":null},"ssr":{"error":null,"isDataLoaded":false,"isDataLoading":false,"isHydrationFailed":false,"isServer":false},"userHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"userInvites":{"availableInvites":0,"usedInvitesIds":[],"usedInvitesRefs":{},"usedInvitesPagesCount":0,"unusedInvitesIds":[],"unusedInvitesRefs":{},"unusedInvitesPagesCount":0},"users":{"authorRefs":{},"authorIds":{},"pagesCount":{},"authorProfiles":{},"userHubs":{},"userInvitations":{},"authorFollowers":{},"authorFollowed":{},"karmaStats":[],"statistics":null,"isLoading":false,"authorFollowersLoading":false,"authorFollowedLoading":false,"userHubsLoading":false,"userInvitationsLoading":false,"route":{}},"viewport":{"prevScrollY":{},"scrollY":0,"width":0},"tracker":{"items":{},"pagesCache":{},"markedViewedSilently":{},"markedRead":{},"unreadCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null},"unviewedCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null}}};(function(){var s;(s=document.currentScript||document.scripts[document.scripts.length-1]).parentNode.removeChild(s);}());</script>
+<script src="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" defer></script><script src="https://assets.habr.com/habr-web/js/app.c0af73e7.js" defer></script>
+
+
+
+    <script>
+      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+        (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+        m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+      })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+    </script>
+  
+  <script type="text/javascript" >
+    (function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+    m[i].l=1*new Date();k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})
+    (window, document, "script", "https://mc.yandex.ru/metrika/tag.js", "ym");
+
+    ym(24049213, "init", {
+      defer:true,
+      trackLinks:true,
+      accurateTrackBounce:true,
+      webvisor:false,
+    });
+  </script>
+  <noscript>
+    <div>
+      <img src="https://mc.yandex.ru/watch/24049213" style="position:absolute; left:-9999px;" alt="" />
+    </div>
+  </noscript>
+  
+    <script type="text/javascript">
+      window.addEventListener('load', function () {
+        setTimeout(() => {
+          const img = new Image();
+          img.src = 'https://vk.com/rtrg?p=VK-RTRG-421343-57vKE';
+        }, 0);
+      });
+    </script>
+  
+</body>
+</html>

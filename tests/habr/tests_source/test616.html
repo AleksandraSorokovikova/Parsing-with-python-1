@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="ru" data-vue-meta="%7B%22lang%22:%7B%22ssr%22:%22ru%22%7D%7D">
+<head >
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
+  <title>Как КиноПоиск делает своё медиа / Хабр</title>
+  <style>
+    /* cyrillic-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSxf6TF0.woff2) format('woff2');
+      unicode-range: U+0460-052F, U+1C80-1C88, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+    }
+
+    /* cyrillic */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveQhf6TF0.woff2) format('woff2');
+      unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+    }
+
+    /* latin-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSBf6TF0.woff2) format('woff2');
+      unicode-range: U+0100-024F, U+0259, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20CF, U+2113, U+2C60-2C7F, U+A720-A7FF;
+    }
+
+    /* latin */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveRhf6.woff2) format('woff2');
+      unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+    }
+  </style>
+  <link rel="preload" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" as="script"><link rel="preload" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/app.c0af73e7.js" as="script">
+  <link rel="stylesheet" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css"><link rel="stylesheet" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css">
+  <script>window.i18nFetch = new Promise((res, rej) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open('GET', '/js/i18n/ru-compiled.85eb77f0b17c8235e7b64b9f81ea5ec2.json');
+          xhr.responseType = 'json';
+          xhr.onload = function(e) {
+            if (this.status === 200) {
+              res({ru: xhr.response});
+            } else {
+              rej(e);
+            }
+          };
+          xhr.send();
+        });</script>
+  
+  <script data-vue-meta="ssr" src="/js/ads.js" onload="window['zhY4i4nJ9K'] = true" data-vmid="checkad"></script><script data-vue-meta="ssr" type="application/ld+json" data-vmid="ldjson-schema">{"@context":"http:\/\/schema.org","@type":"Article","mainEntityOfPage":{"@type":"WebPage","@id":"https:\/\/habr.com\/ru\/company\/vsce\/blog\/451404\/"},"headline":"Как КиноПоиск делает своё медиа","datePublished":"2019-05-12T19:47:43+03:00","dateModified":"2019-05-13T15:59:27+03:00","author":{"@type":"Person","name":"Glyph media"},"publisher":{"@type":"Organization","name":"Habr","logo":{"@type":"ImageObject","url":"https:\/\/habrastorage.org\/webt\/a_\/lk\/9m\/a_lk9mjkccjox-zccjrpfolmkmq.png"}},"description":"Это &mdash; подкаст с контент-мейкерами и руководителями в сфере контент-маркетинга. Гость 15-го выпуска &mdash; Лиза Сурганова, главный редактор КиноПоиска и ведущая подкас...","url":"https:\/\/habr.com\/ru\/company\/vsce\/blog\/451404\/#post-content-body","about":["c_vsce","h_pm","h_contentmarketing","h_media_management","h_business_models","f_management","f_marketing"],"image":["https:\/\/habrastorage.org\/webt\/ky\/cb\/3p\/kycb3pjxmlocifvatfwh8qs0ywg.png","https:\/\/habrastorage.org\/webt\/xq\/5o\/_r\/xq5o_rmc8w8juvbckkxdgn5adaw.png","https:\/\/habrastorage.org\/webt\/kq\/b6\/ow\/kqb6owq1kjxgthtvzfv1gfms9lk.png"]}</script>
+  <script src="//www.googletagservices.com/tag/js/gpt.js" async></script>
+  <style>.grecaptcha-badge{visibility: hidden;}</style>
+  <meta name="habr-version" content="2.49.0">
+  
+  <meta data-vue-meta="ssr" property="fb:app_id" content="444736788986613"><meta data-vue-meta="ssr" property="fb:pages" content="472597926099084"><meta data-vue-meta="ssr" name="twitter:card" content="summary_large_image"><meta data-vue-meta="ssr" name="twitter:site" content="@habr_eng"><meta data-vue-meta="ssr" property="og:title" content="Как КиноПоиск делает своё медиа" data-vmid="og:title"><meta data-vue-meta="ssr" name="twitter:title" content="Как КиноПоиск делает своё медиа" data-vmid="twitter:title"><meta data-vue-meta="ssr" name="aiturec:title" content="Как КиноПоиск делает своё медиа" data-vmid="aiturec:title"><meta data-vue-meta="ssr" name="description" content="Это — подкаст с контент-мейкерами и руководителями в сфере контент-маркетинга. Гость 15-го выпуска — Лиза Сурганова, главный редактор КиноПоиска и ведущая подкаста «В предыдущих сериях», рассказывает..." data-vmid="description"><meta data-vue-meta="ssr" itemprop="description" content="Это — подкаст с контент-мейкерами и руководителями в сфере контент-маркетинга. Гость 15-го выпуска — Лиза Сурганова, главный редактор КиноПоиска и ведущая подкаста «В предыдущих сериях», рассказывает..." data-vmid="description:itemprop"><meta data-vue-meta="ssr" property="og:description" content="Это — подкаст с контент-мейкерами и руководителями в сфере контент-маркетинга. Гость 15-го выпуска — Лиза Сурганова, главный редактор КиноПоиска и ведущая подкаста «В предыдущих сериях», рассказывает..." data-vmid="og:description"><meta data-vue-meta="ssr" name="twitter:description" content="Это — подкаст с контент-мейкерами и руководителями в сфере контент-маркетинга. Гость 15-го выпуска — Лиза Сурганова, главный редактор КиноПоиска и ведущая подкаста «В предыдущих сериях», рассказывает..." data-vmid="twitter:description"><meta data-vue-meta="ssr" property="aiturec:description" content="Это — подкаст с контент-мейкерами и руководителями в сфере контент-маркетинга. Гость 15-го выпуска — Лиза Сурганова, главный редактор КиноПоиска и ведущая подкаста «В предыдущих сериях», рассказывает..." data-vmid="aiturec:description"><meta data-vue-meta="ssr" itemprop="image" content="https://habr.com/share/publication/451404/02daa1c34062823ccaa88e879e107cba/" data-vmid="image:itemprop"><meta data-vue-meta="ssr" property="og:image" content="https://habr.com/share/publication/451404/02daa1c34062823ccaa88e879e107cba/" data-vmid="og:image"><meta data-vue-meta="ssr" property="aiturec:image" content="https://habr.com/share/publication/451404/02daa1c34062823ccaa88e879e107cba/" data-vmid="aiturec:image"><meta data-vue-meta="ssr" name="twitter:image" content="https://habr.com/share/publication/451404/02daa1c34062823ccaa88e879e107cba/" data-vmid="twitter:image"><meta data-vue-meta="ssr" property="vk:image" content="https://habr.com/share/publication/451404/02daa1c34062823ccaa88e879e107cba/" data-vmid="vk:image"><meta data-vue-meta="ssr" property="aiturec:item_id" content="451404" data-vmid="aiturec:item_id"><meta data-vue-meta="ssr" property="aiturec:datetime" content="2019-05-12T16:47:43.000Z" data-vmid="aiturec:datetime"><meta data-vue-meta="ssr" property="og:type" content="article" data-vmid="og:type"><meta data-vue-meta="ssr" property="og:locale" content="ru_RU" data-vmid="og:locale"><meta data-vue-meta="ssr" property="og:image:width" content="1200" data-vmid="og:image:width"><meta data-vue-meta="ssr" property="og:image:height" content="630" data-vmid="og:image:height">
+  <link data-vue-meta="ssr" href="https://habr.com/ru/rss/post/451404/?fl=ru" type="application/rss+xml" title="" rel="alternate" name="rss"><link data-vue-meta="ssr" href="https://habr.com/ru/company/vsce/blog/451404/" rel="canonical" data-vmid="canonical"><link data-vue-meta="ssr" data-vmid="hreflang"><link data-vue-meta="ssr" image_src="image" href="https://habr.com/share/publication/451404/02daa1c34062823ccaa88e879e107cba/" data-vmid="image:href">
+  <meta name="apple-mobile-web-app-status-bar-style" content="#303b44">
+  <meta name="msapplication-TileColor" content="#629FBC">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="16x16"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-16.png"
+  >
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="32x32"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-32.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="76x76"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-76.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="120x120"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="152x152"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-152.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="180x180"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-180.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="256x256"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-256.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1136x640.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2436x1125.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1792x828.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_828x1792.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1334x750.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2208x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1125x2436.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2208.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2732x2048.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2688x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2224x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_750x1334.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x2732.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2388x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2224.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_640x1136.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2388.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x1536.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1536x2048.png"
+  >
+  <link
+    rel="mask-icon"
+    color="#77a2b6"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.svg"
+  >
+  <link
+    crossorigin="use-credentials"
+    href="/manifest.webmanifest"
+    rel="manifest"
+  >
+</head>
+<body>
+
+
+<div id="app" data-server-rendered="true" data-async-called="true"><div class="tm-layout__wrapper"><!----> <div></div> <!----> <header class="tm-header"><div class="tm-page-width"><div class="tm-header__container"><!----> <span class="tm-header__logo-wrap"><a href="/ru/" class="tm-header__logo tm-header__logo_ru"><svg height="16" width="16" class="tm-svg-img tm-header__icon"><title>Хабр</title> <use xlink:href="/img/habr-logo-ru.svg#logo"></use></svg></a> <span class="tm-header__beta-sign" style="display:none;">β</span></span> <div class="tm-dropdown tm-header__projects"><div class="tm-dropdown__head"><button class="tm-header__dropdown-toggle"><svg height="16" width="16" class="tm-svg-img tm-header__icon tm-header__icon_dropdown"><title>Открыть список</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#arrow-down"></use></svg></button></div> <!----></div> <a href="/ru/sandbox/start/" class="tm-header__become-author-btn">
+            Как стать автором
+          </a> <div class="tm-feature tm-header__feature tm-feature_variant-inline"><!----></div> <!----> <!----></div></div></header> <div class="tm-layout"><div class="tm-page-progress-bar"></div> <div data-menu-sticky="true" class="tm-base-layout__header tm-base-layout__header_is-sticky"><div class="tm-page-width"><div class="tm-base-layout__header-wrapper"><div class="tm-main-menu"><div class="tm-main-menu__section"><nav class="tm-main-menu__section-content"><!----> <a href="/ru/all/" class="tm-main-menu__item">
+        Все потоки
+      </a> <a href="/ru/flows/develop/" class="tm-main-menu__item">
+          Разработка
+        </a><a href="/ru/flows/admin/" class="tm-main-menu__item">
+          Администрирование
+        </a><a href="/ru/flows/design/" class="tm-main-menu__item">
+          Дизайн
+        </a><a href="/ru/flows/management/" class="tm-main-menu__item">
+          Менеджмент
+        </a><a href="/ru/flows/marketing/" class="tm-main-menu__item">
+          Маркетинг
+        </a><a href="/ru/flows/popsci/" class="tm-main-menu__item">
+          Научпоп
+        </a></nav></div></div> <div class="tm-header-user-menu tm-base-layout__user-menu"><a href="/ru/search/" class="tm-header-user-menu__item tm-header-user-menu__search"><svg height="24" width="24" class="tm-svg-img tm-header-user-menu__icon tm-header-user-menu__icon_search tm-header-user-menu__icon_dark"><title>Поиск</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#search"></use></svg></a> <!----> <!----> <!----> <div class="tm-header-user-menu__item tm-header-user-menu__user_desktop"><div class="tm-dropdown"><div class="tm-dropdown__head"><svg height="24" width="24" data-test-id="menu-toggle-guest" class="tm-svg-img tm-header-user-menu__icon"><title>Профиль</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#header-user"></use></svg> <!----></div> <!----></div> <!----></div> <!----></div></div></div></div> <!----> <div class="tm-page-width"></div> <main class="tm-layout__container"><div hl="ru" companyName="vsce" data-async-called="true" class="tm-page"><div class="tm-page-width"><div class="tm-page__header"><!----></div> <div class="tm-page__wrapper"><div class="tm-page__main tm-page__main_has-sidebar"><div class="pull-down"><div class="pull-down__header" style="height:0px;"><div class="pull-down__content" style="bottom:10px;"><svg height="24" width="24" class="tm-svg-img pull-down__arrow"><title>Обновить</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#pull-arrow"></use></svg></div></div> <div class="tm-article-presenter"><div class="tm-company-card tm-company-article__company-card"><div class="tm-company-card__info"><div class="tm-company-card__header"><a href="/ru/company/vsce/profile/" class="tm-company-card__avatar"><div class="tm-entity-image"><img alt="" height="48" src="//habrastorage.org/getpro/habr/company/d9a/faf/129/d9afaf1298b5134c3827dafd6b58ec5f.png" width="48" class="tm-entity-image__pic"></div></a> <!----> <div class="tm-rating tm-company-card__rating"><div class="tm-rating__header"> <div class="tm-rating__counter">0</div></div> <div class="tm-rating__text">
+    Рейтинг
+  </div></div></div> <div class="tm-company-card__info"><a href="/ru/company/vsce/profile/" class="tm-company-card__name">
+        vscextv
+      </a> <div class="tm-company-card__description">Записываем подкасты и говорим о контент-маркетинге</div></div></div> <div class="tm-company-card__buttons"><!----> <!----></div></div> <div class="tm-article-presenter__body"><div class="tm-misprint-area"><div class="tm-misprint-area__wrapper"><article class="tm-article-presenter__content tm-article-presenter__content_narrow"><div class="tm-article-presenter__header"> <div class="tm-article-snippet tm-article-presenter__snippet"><div class="tm-article-snippet__meta-container"><div class="tm-article-snippet__meta"><span class="tm-user-info tm-article-snippet__author"><a href="/ru/users/glphmedia/" title="glphmedia" class="tm-user-info__userpic"><div class="tm-entity-image"><img alt="" height="24" loading="lazy" src="//habrastorage.org/r/w32/getpro/habr/avatars/75a/0d4/caf/75a0d4caf525df8ca1a233124c36663e.png" width="24" class="tm-entity-image__pic"></div></a> <span class="tm-user-info__user"><a href="/ru/users/glphmedia/" class="tm-user-info__username">
+      glphmedia
+    </a> </span></span> <span class="tm-article-snippet__datetime-published"><time datetime="2019-05-12T16:47:43.000Z" title="2019-05-12, 19:47">12  мая  2019 в 19:47</time></span></div> <!----></div> <h1 lang="ru" class="tm-article-snippet__title tm-article-snippet__title_h1"><span>Как КиноПоиск делает своё медиа</span></h1> <div class="tm-article-snippet__hubs"><span class="tm-article-snippet__hubs-item"><a href="/ru/company/vsce/blog/" class="tm-article-snippet__hubs-item-link router-link-active"><span>Блог компании vscextv</span> <!----></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/pm/" class="tm-article-snippet__hubs-item-link"><span>Управление проектами</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/contentmarketing/" class="tm-article-snippet__hubs-item-link"><span>Контент-маркетинг</span> <!----></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/media_management/" class="tm-article-snippet__hubs-item-link"><span>Управление медиа</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/business_models/" class="tm-article-snippet__hubs-item-link"><span>Бизнес-модели</span> <!----></a></span></div> <!----> <!----> <!----></div></div> <!----> <div data-gallery-root="" lang="ru" class="tm-article-body"><div id="post-content-body" class="article-formatted-body article-formatted-body_version-1"><div xmlns="http://www.w3.org/1999/xhtml">Это — подкаст с контент-мейкерами и руководителями в сфере контент-маркетинга. Гость 15-го выпуска — Лиза Сурганова, главный редактор КиноПоиска и ведущая подкаста «В предыдущих сериях», рассказывает о развитии собственного медиа крупнейшего кинопортала.<br/>
+<br/>
+<ul>
+<li>послушать можно в <a href="https://t.me/glphmedia/53">в Telegram</a> или <a href="http://vigorousspace.co/glph/15">в веб-версии</a></li>
+<li>подкаст <a href="https://itunes.apple.com/ru/podcast/glph-media/id1435713366">в iTunes</a> плюс все выпуски <a href="https://habr.com/ru/users/glphmedia/">на Хабре</a></li>
+</ul><br/>
+<a href="https://habr.com/ru/company/vsce/blog/451404/"><img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/ky/cb/3p/kycb3pjxmlocifvatfwh8qs0ywg.png"/></a><a name="habracut"></a> <sup><font color="#A9A9A9"><i>Лиза Сурганова, главный редактор КиноПоиска и ведущая подкаста «В предыдущих сериях»</i></font></sup><br/>
+<br/>
+<hr/><br/>
+<i><b><a href="https://habr.com/ru/users/alinatestova/" class="user_link">alinatestova</a>: Мы сегодня говорим о том, как запустить большую контент-машину на примере «КиноПоиска», у которого есть огромное количество user-generated content и собственного контента, очень интересного. Но в первую очередь я бы хотела узнать вот что. Все наши слушатели наверняка представляют, что делает главный редактор в <a href="https://habr.com/ru/company/vsce/blog/432568/">медиа</a>. Но что делает главный редактор «КиноПоиска»? Расскажи, пожалуйста.</b></i><br/>
+<br/>
+<hr/><br/>
+<b>Елизавета:</b> Это на самом деле не сильно отличается от любого другого медиа — в смысле моей работы. Я работала до этого в традиционных СМИ — в Lenta.ru, РБК, Forbes. И я пытаюсь строить свою редакцию по похожим правилам. Понятно, что медиа «Кинопоиска» сильно отличается от других, потому что это скорее маленькое медиа при огромном бренде. Наша аудитория — порядка 40 миллионов человек в месяц, а медиа читают примерно 10% от этого числа. Это немного меняет твоё восприятие работы и жизни, потому что нужно осознавать значение медиа внутри этого большого бренда, и у тебя чуть меньше ресурсов, чем обычно.<br/>
+<br/>
+Там, где все редакции работают со своими дизайнерами и со своей разработкой, мы работаем с общими дизайном и разработкой, у которых ещё миллион задач, связанных с продуктом, бизнес-задачами, онлайн-кинотеатром и так далее. Но [так работать] при этом очень интересно. Мы — не обособленное издание при «Кинопоиске», а мы встроены в работу всего сайта.<br/>
+<br/>
+Один из первых шагов, который я сделала, — добавить в нормальном виде редакционные материалы на страницы фильмов и персон на «Кинопоиске». Это — главная точка, с которой к нам приходят люди. Они переходят из поисковиков на страницу конкретного фильма или человека и оттуда уже переходят на наши материалы. Раньше они были представлены там где-то в уголке и очень плохо, а теперь мы за этим следим и специально выводим много хороших материалов. Есть и обратная сторона — как мы приводим трафик в «Кинопоиск». Многие люди приходят из поисковиков и соцсетей, и в наших материалах с обновлением дизайна — оно произошло осенью прошлого года — добавились объектные карточки.<br/>
+<br/>
+<div class="oembed"><div><div style="left: 0; width: 100%; height: 0; position: relative; padding-bottom: 56.2493%;"><div class="tm-iframe_temp" data-src="https://www.youtube.com/embed/4OfaTONhprc?rel=0&amp;showinfo=1&amp;hl=en-US" data-style="border: 0; top: 0; left: 0; width: 100%; height: 100%; position: absolute;" id="" width=""></div></div></div></div><br/>
+Это короткая справка со страницы фильма или персоны, которая встраивается прямо в статью. Никуда не переходя, можно нажать кнопку с целевым действием — добавить фильм в ожидаемые (список «Буду смотреть»), купить билет на этот фильм и посмотреть его онлайн. <br/>
+<br/>
+Тебе не нужно ходить на страницу этого фильма — ты можешь прочитать материал и сразу что-то сделать. Это классно работает, мы видим, что люди этим пользуются, и развиваем это.<br/>
+<br/>
+<hr/><br/>
+<i><b>А: Ты упомянула, что у «КиноПоиска» более широкий спектр задач. Зачем тогда «Кинопоиску» развиваться именно в сторону медиа? Казалось бы, уже появились различные бренды-медиа вроде Т—Ж — это не является чем-то новым. С другой стороны, кажется, что на «КиноПоиске» достаточно много контента, и он постоянно генерируется сам. Для кого-то кажется, что это как если бы Хабр делал ещё одно медиа про Хабр.<br/>
+<br/>
+Зачем «Кинопоиск» решил ввязаться в строительство собственного медиа?</b></i><br/>
+<br/>
+<hr/><br/>
+<b>Е:</b> Тут несколько вопросов, я попробую по порядку ответить.<br/>
+<br/>
+Зачем «КиноПоиску» медиа? Вообще, действительно, очень многие немедийные бренды сейчас в это идут. И это важный знак того, что бренды понимают, что им нужны лицо и голос.<br/>
+<br/>
+Обычно этим голосом становится именно медиа, редакция. Она вырабатывает какую-то редакционную политику и придерживается её. Она решает, о чём писать, о чём не писать, как об этом писать. Она общается с пользователями в комментариях и соцсетях. Для «КиноПоиска» это всё очень важно, потому что иначе он просто сайт-агрегатор пользовательских рецензий, оценок и страниц фильмов. Он таким когда-то и был, но перерос это состояние.<br/>
+<br/>
+Помимо медиа, в « КиноПоиске» есть ещё афиша с продажей билетов и онлайн-кинотеатр. Это всё — постепенное развитие бренда. В целом мы хотим покрывать все интересы людей, связанные с кино. Если тебе нужна конкретная информация про фильм, ты приходишь на страницу фильма. Если тебе интересно почитать чуть подробнее или первым узнать какие-то новости о фильме — для тебя есть медиа. Ты покупаешь там же билеты, добавляешь фильм в ожидания, ставишь оценку, пишешь рецензию. Ты смотришь фильм онлайн там же.<br/>
+<br/>
+В идеале мы хотим стать [сервисом, который охватывает всё]. Мы уже им становимся, но хотим, чтобы все больше людей это осознавало. «КиноПоиск» сегодня — это не столько энциклопедия данных, сколько большой сервис, посвященный кино и всем интересам, связанным с кино.<br/>
+<br/>
+<div class="oembed"><div><div style="left: 0; width: 100%; height: 0; position: relative; padding-bottom: 56.2493%;"><div class="tm-iframe_temp" data-src="https://www.youtube.com/embed/FRarsOGJRtE?rel=0&amp;showinfo=1&amp;hl=en-US" data-style="border: 0; top: 0; left: 0; width: 100%; height: 100%; position: absolute;" id="" width=""></div></div></div></div><br/>
+Дальше ты сказала про UGC. Да, его очень много у нас, но всё-таки я сторонник точки зрения, что журналистика — это ещё не блогерство. Сегодня это отличается от пользовательского контента качественно, иногда в разы. У нас много классных рецензий, и мы ровно поэтому не пишем свои рецензии на фильмы, потому что за нами это всё и так есть.<br/>
+<br/>
+Мы пишем другие статьи, которые людям раскрывают историю кино, помогают понять фильм, разобраться в нём. Мы пишем новости, в конце концов, — пользователи не пишут новости. <br/>
+<br/>
+Третье — мои личные соображения. На мой взгляд, в России сейчас нет большого СМИ о кино, которое бы рассказывало не конкретно об авторских фильмах. Есть «Искусство кино», есть «Сеанс» — такие очень старые, крутые журналы. Но они больше обращены в сторону авторского и фестивального кино. А мы пишем о разном кино — и о «Мстителях», и о Берлинском кинофестивале. И таких СМИ не очень много, а таких больших, как мы, — совсем наперечёт.<br/>
+<br/>
+И мы понимаем, что есть эта ниша и есть интерес.<br/>
+<br/>
+<hr/><br/>
+<i><b>А: Можно ли сделать вывод, — ты начала говорить об этом — что появление собственного медиа — это показатель «взрослости» и развитости определённой ниши и бренда? <br/>
+<br/>
+Когда компания понимает, что ей не просто хочется использовать отзывы и что пишут другие люди на свободной основе. А когда она ещё вокруг этого делает образовательный, развлекательный и в целом полезный контент силами специально обученных людей.</b></i><br/>
+<br/>
+<hr/><br/>
+<b>Е:</b> Да, но я думаю, что не всем брендам это нужно. <br/>
+<br/>
+Совершенно не всем обязательно бежать сразу в медиа. Это сложно, дорого, и очень часто кажется, что это не оправдывает вложений. Это не маркетинг, где ты вложил сто рублей и получил или не получил 1500 переходов. [Медиа] — это имиджевая, важная штука для некоторых брендов. Особенно для тех, которые строят себя на общении с аудиторией и вообще как-то обращены к людям. Поскольку «КиноПоиск» во всём зависит от людей, обращённых к нему, то мы и стараемся с ними общаться на человеческом языке, и это задача медиа.<br/>
+<br/>
+<b>А:</b> То есть, на твой взгляд, [медиа] — это больше история для B2C-брендов? Тех, кто обращены к пользователям, нежели B2B-брендов, которые делают что-то для других компаний.<br/>
+<br/>
+<b>Е:</b> Я вообще всегда за то, чтобы все общались друг с другом человеческим языком. Я ненавижу канцелярит, такой советский стиль, и ненавижу рекламный стиль.<br/>
+<br/>
+Мне кажется, здорово, когда бренды как с компаниями, так и с пользователями и читателями, общаются внятным и хорошим русским языком.<br/>
+<br/>
+<hr/><br/>
+<i><b>А: Если уж мы говорим, что это все-таки не маркетинг и не меряется прямолинейно — вложения, переходы, целевые действия. Как вы определяете для себя успех или неуспех задачи, направления или изменения, которое претерпевает сейчас «КиноПоиск»?</b></i><br/>
+<br/>
+<hr/><br/>
+<b>Е:</b> Понятно, что мы все равно смотрим на традиционные метрики — просмотры, share'ы, комментарии иногда. Ну, комментарии — спорная метрика. Понятно, что мы радуемся, когда статьи собирают много просмотров и уникальных посетителей. И в целом мы видим, что наше медиа растёт по аудитории. Как и в любом другом медиа, [важна] значимость твоих материалов — то, как люди их обсуждают в соцсетях, как их шерят, насколько они расходятся.<br/>
+<br/>
+Ещё одна метрика, которая несвойственна другим медиа — объектные карточки, про которые я говорила. Мы смотрим, как люди на них реагируют, какие действия они совершают.<br/>
+<br/>
+Мы видим, что люди прочитали новость о трейлере нового фильма Тарантино, и будет очень много нажатий на кнопку «Буду смотреть». То есть люди посмотрели трейлер, они поняли, что хотят посмотреть фильм, они нажали кнопку. Для нас это классная механика. Мы им можем потом напомнить, что фильм выходит в прокат, предложить им билеты или фильм онлайн.<br/>
+<br/>
+Мы узнаём об интересе пользователей из того, что они прочли, и можем напрямую это связывать с бизнесом. Когда я связывала это с маркетингом, я имела в виду, что нет прямой связки, как в performance-маркетинге. Совершенно необязательно, что человек прочёл статью и купил билет.<br/>
+<br/>
+<blockquote>Мы это прекрасно понимаем. Но я думаю, что он может прочесть статью, запомнить, что на этих выходных выходит фильм «Королевский корги», и потом он придёт в кинотеатр и купит билет. Это тоже здорово, это тоже наша задача.</blockquote><br/>
+<hr/><br/>
+<i><b>А: Как ты думаешь, насколько популярен будет в будущем этот формат сращивания определенного сервиса с контентом? У вашей аудитории есть возможность посмотреть фильм онлайн, или забронировать билеты, или прочитать об актёре. Грубо говоря, это — сервисная часть. Есть условные СМИ, у которых нет этой сервисной части, они просто дают какую-то информацию. Будет ли, на твой взгляд, какое-то обратное движение? Когда условные полезные карточки, ссылки, call-to-action-кнопки будут появляться и в медиа?</b></i><br/>
+<br/>
+<hr/><br/>
+<b>Е:</b> На этот вопрос гораздо лучше, чем я, ответил Илья Красильщик, бывший издатель «Медузы». Он написал <a href="https://www.facebook.com/tintorero/posts/10158272133168327">большой пост</a> про то, что вообще медиа становятся сервисом, а если медиа не является сервисом для своей аудитории, то оно ей не нужно. Почему? Потому что вокруг нас сегодня огромное количество информации. За внимание читателя борются не только СМИ, но и блогеры, соцсети — всё что угодно. Очень сложно человека поймать и затащить к себе на сайт.<br/>
+<br/>
+Кажется, что ровно в этом месте медиа и должны становиться сервисами, становиться полезными и предлагать какую-то важную информацию. На самом деле тут сложно делить. Практически любое медиа сейчас пишет о кинопремьерах недели. Это в большей степени сервисная штука. Ты человеку предлагаешь выбор. Рассказываешь о своей точке зрения, на что ему больше стоит обратить внимание, но в целом это афиша, расписание фильмов.<br/>
+<br/>
+<b>А:</b> То есть даже отсутствие какой-то непосредственной инфраструктуры или интерфейса сервиса не означает, что это не сервисная история?<br/>
+<br/>
+<b>Е:</b> Конечно. Та же «Медуза» делает карточки в разделе «Разбор». Они не столько про обычную журналистику, сколько про помощь людям. Чтобы им разобраться в сложном законопроекте, какой-то ситуации; понять, как поменять резину на машине. Это тоже важно. Мы иногда забываем про то, что мы такие базовые вещи некоторым людям не объясняем.<br/>
+<br/>
+<b>А:</b> Есть ли у «Кинопоиска» подобные материалы, где вы рассказываете о понятных вещах, которые могут быть неочевидны для пользователя?<br/>
+<br/>
+<b>Е:</b> Не знаю, насколько это базово, но на самом деле в этом большая задача нашего <a href="https://www.youtube.com/user/kinopoisk">YouTube-канала</a> и вообще нашего видеоотдела. Как люди смотрят кино? Для них это какая-то движущаяся картинка, актеры, смешной диалог. Посмотрели, вышли из кинотеатра и забыли.<br/>
+<br/>
+Как мы пытаемся развернуть эту историю? Мы пытаемся людям объяснять, как устроен язык кино и как кино с ними на разных уровнях разговаривает, доносит какие-то смыслы. И это штуки, которые сейчас в русскоязычном YouTube, кажется, никто хорошо не делает. Хотя это очень популярная вещь на Западе. Не буду скрывать, мы это не придумали. Видеоэссе были задолго до нас на западных каналах и очень популярны там. Нам просто кажется, что эта ниша в России не закрыта. Нам хочется ее закрывать. Такой просветительский, объясняющий контент.<br/>
+<br/>
+Когда-то мы пытались делать ролики про всякие киношные термины, но потом поняли, что интерес аудитории к ним не очень большой, и отказались от этого.<br/>
+<br/>
+<div class="oembed"><div><div style="left: 0; width: 100%; height: 0; position: relative; padding-bottom: 56.2493%;"><div class="tm-iframe_temp" data-src="https://www.youtube.com/embed/T1jIEJ7VjUQ?rel=0&amp;showinfo=1&amp;hl=en-US" data-style="border: 0; top: 0; left: 0; width: 100%; height: 100%; position: absolute;" id="" width=""></div></div></div></div><br/>
+<hr/><br/>
+<i><b>А: Как вы определяете (помимо реакции аудитории — много смотрят или мало) и формируете на своём канале политику, о чем говорить? Как выбираете темы?</b></i><br/>
+<br/>
+<hr/><br/>
+<b>Е:</b> Мы так или иначе часто отталкиваемся от повестки. Может быть иногда очень отдаленная связь. Например, выходит новый фильм с Вигго Мортенсеном («Зелёная книга»), мы делаем ролик про его карьеру. Юбилей «Гарри Поттера» — мы делаем фильм про Гарри Поттера.<br/>
+<br/>
+Иногда не привязываемся и к этому. Просто понимаем, что есть какие-то большие и важные темы, режиссёры, фильмы, про которые людям всегда приятно смотреть. Мы понимаем, что эта тема попсовая, она сразу зайдет. Сейчас мы, например, сделали два ролика про Тарантино. Это, очевидно, один из культовых и самых любимых режиссёров в России. Эти два ролика набрали в сумме миллион просмотров. Один скоро наберёт [миллион] самостоятельно.<br/>
+<br/>
+<div class="oembed"><div><div style="left: 0; width: 100%; height: 0; position: relative; padding-bottom: 56.2493%;"><div class="tm-iframe_temp" data-src="https://www.youtube.com/embed/iisnsI1BrWE?rel=0&amp;showinfo=1&amp;hl=en-US" data-style="border: 0; top: 0; left: 0; width: 100%; height: 100%; position: absolute;" id="" width=""></div></div></div></div><br/>
+<b>А:</b> А если говорить про тот же ролик с Тарантино, который у вас один из самых популярных на канале — про диалоги в фильмах Тарантино.<br/>
+<br/>
+Предположим, вы определили, что ситуативно, сейчас интересно рассказать про Тарантино. Как вы выбираете, о чем конкретно рассказывать? Что доставать, какие интересные вещи?<br/>
+<br/>
+<b>Е:</b> Тема каждый раз зависит от фильма и режиссёра.<br/>
+<br/>
+Понятно, что Тарантино — мастер диалогов, все это знают, все его цитируют. Вы наверняка знаете несколько фраз из «Криминального чтива» наизусть. Хотелось рассказать, как он именно в кино это показывает и как он их строит композиционно. Про это был ролик.<br/>
+<br/>
+До этого был ролик про то, как Тарантино цитирует другие фильмы, потому что он большой киноман. Известная история: он работал в видеосалоне, смотрел много фильмов, и поэтому все его фильмы напичканы какими-то цитатами, отсылками, аллюзиями и так далее. Ну это такие очевидные вещи [для тех, кто] немного разбирается в кино.<br/>
+<br/>
+Про Гарри Поттера. Когда мы обсуждали ролик, мы понимали, что люди очень любят эту франшизу. Мы всегда выбираем темы для видеоэссе, связанные с фильмами, про которые визуально интересно рассказывать. Если фильм по какой-то причине культовый, но он скучный с кинематографической точки зрения — ты в видео о нем особо не расскажешь.<br/>
+<br/>
+Можно текст написать и на этом закончить. Поэтому мы выбрали фильм «Гарри Поттер и узник Азкабана», который снимал Куарон и который гораздо более изобретательный и крутой, чем последующие фильмы, которые все ругают. Мы не прогадали.<br/>
+<br/>
+Оказалось, что у него очень много фанатов, для многих людей — это любимый фильм из серии, хотя они даже сами не знают почему. Им просто понравилось, а мы попытались им объяснить, почему его так любят. Потому что он классно снят.<br/>
+<br/>
+<hr/><br/>
+<i><b>А: Есть ли у вас какой-то mind map или «супермегаплан» из серии: вот этот фильм у нас идёт, про этот будем писать текстовую статью, этот фильм — на видеоразбор, этот будем разбирать в подкасте и так далее?</b></i><br/>
+<br/>
+<hr/><br/>
+<b>Е:</b> Конечно. Мы раз в месяц собираемся и обсуждаем план на следующий месяц. В начале марта мы обсуждаем, что делаем в апреле и так далее. С кино все довольно просто. Если не происходит ничего экстраординарного, ты знаешь, какие фильмы выходят в прокат, какие сериалы выходят, какие юбилеи будут у актёров и фильмов. Исходя из этого мы уже строим первоначальный план. Понятно, что-то корректируется, что-то отваливается, что-то придумывается позже или ситуативно появляется. Мы в гораздо меньшей степени зависимы от ситуации, чем обычные СМИ, которые живут ежедневной повесткой.<br/>
+<br/>
+Поэтому да, такой план есть. Иногда, если это фильм большой, мы можем о нём рассказать и текстом, и видео, и подкастом, и в соцсетях как-нибудь пошутить.<br/>
+<br/>
+У нас нет такого жесткого [ограничения]. Дальше мы исходим из формата. Если это видео — фильм должен быть интересным кинематографически, как я говорила. Если это подкаст — [фильм должен быть чем-то], о чем будет классно поболтать, рассказать. Сейчас мы запустили <a href="https://www.kinopoisk.ru/photostory/3337977/">музыкальный подкаст</a>, значит [в нём] должен быть интересный поворот с этой стороны. А текст можно написать какой угодно практически, с любой стороны зайти.<br/>
+<br/>
+<hr/><br/>
+<i><b>А: Вы делаете и видео, и аудио, и тексты — насколько у вас большая редакция?</b></i><br/>
+<br/>
+<hr/><br/>
+<b>Е:</b> Небольшая, у нас 13 человек работает. Наверное, для меня [редакция] небольшая, потому что я работала в Ленте, где было 70 редакторов. В РБК — ещё больше. В Forbes — чуть меньше, но все равно много. Для меня это такое ощущение маленького медиа. Но иногда сравниваешь с коллегами, и они говорят: «У нас пять человек работает».<br/>
+<br/>
+<blockquote>У нас три человека из тринадцати — видеоотдел. Видео — затратная штука, действительно дорогая. В первую очередь, с точки зрения людей.</blockquote><br/>
+<b>А:</b> Получается, что по сути «КиноПоиск» внедрил в себя капсульную модель маленького СМИ. Оно не просто существует автономно, но ещё и постоянно взаимодействует с другими отделами, находится в процессе внедрения дополнительных интерфейсных или сервисных решений. Мне кажется, это очень здорово, и прекрасный пример того, как контент может чрезвычайно помогать даже там, где контента, казалось бы, уже и так довольно много.<br/>
+<br/>
+<b>Е:</b> Спасибо.<br/>
+<br/>
+<hr/><br/>
+<i><b>А: Сейчас у вас сколько подкастов? Если возвращаться к ним.</b></i><br/>
+<br/>
+<hr/><br/>
+<b>Е:</b> У нас уже два подкаста опубликовано, и пока будет два.<br/>
+<br/>
+Тут надо сказать, что мы пытались заходить [на рынок аудио] пару лет назад, когда был хайп, связанный с первыми подкастами — «Медузы», «Арзамаса». Мы как-то решили тоже туда бежать, но у нас не очень получилось. Этому было несколько причин. Во-первых, мы почему-то решили, что подкаст надо делать про старое кино. Про советское кино, пока ещё живы люди, которые имеют к нему хоть какое-то отношение. Нам казалось это очень важным и интересным. <br/>
+<br/>
+Так и есть. Проблема в том, что, к сожалению, это не ложится в подкаст, потому что очень часто эти люди пожилые, и им тяжело разговаривать. Их тяжело слушать, даже если они рассказывают интересные вещи. Получилось, что в текстовом формате это было бы куда круче.<br/>
+<br/>
+У нас были ещё попытки записывать разговорные подкасты, но каждый раз нам не хватало достаточно мотивированных ведущих. В начале этого года я поняла, что стала смотреть очень много сериалов — по работе и нет. Мне очень хочется их с кем-то обсуждать.<br/>
+<br/>
+<b>А:</b> Это круто, когда по работе нужно смотреть сериалы.<br/>
+<br/>
+<b>Е:</b> Да-да. Я поэтому в какой-то момент и выбрала для себя эту работу. Я решила, что в любом случае это смотрю, мне в кайф, почему бы ещё не связать свою карьеру с этим.<br/>
+<br/>
+<div class="oembed"><div><div style="left: 0; width: 100%; height: 0; position: relative; padding-bottom: 56.2493%;"><div class="tm-iframe_temp" data-src="https://www.youtube.com/embed/-kwstY-8fmY?rel=0&amp;showinfo=1&amp;hl=en-US" data-style="border: 0; top: 0; left: 0; width: 100%; height: 100%; position: absolute;" id="" width=""></div></div></div></div><br/>
+Так вот. Я поняла, что смотрю много сериалов, мне очень хочется с кем-то про них говорить, их все обсуждают вокруг. Это круто, и у нас в последние годы сериальный бум.<br/>
+<br/>
+У меня есть друг — Иван Филиппов, тоже журналист, продюсер, пишет для разных изданий, и для нас в том числе. Он в частности ведёт канал «<a href="https://t.me/zapasaemsyapopkornom">Запасаемся попкорном</a>», один из самых популярных в Telegram про сериалы. Я ему предложила, ему тоже понравилась эта идея, и мы начали с конца января писать подкаст про сериалы. Мы обсуждаем новинки, что мы посмотрели, что мы про это думаем, какие-то новости важные.<br/>
+<br/>
+<b>А:</b> Довлеет ли над вами редакционная политика в этот момент? Есть ли у вас ограничения — что можно обсуждать, что не стоит и как?<br/>
+<br/>
+Е: Я главный редактор, и я веду подкаст — довлею ли я сама над собой? Нет. Мы не ругаемся матом в подкасте просто по причинам приличия, но темы у нас никак не ограничены. У нас нет никакой цензуры и нет списка того, что нельзя обсуждать.<br/>
+<br/>
+Второй подкаст придумал мой муж и долго меня убеждал его сделать. Я сначала очень не хотела, потому что вспоминала наш предыдущий опыт с подкастами, боялась, что будет плохо и никто этим не будет гореть. <br/>
+<br/>
+Потом подкаст как-то сам собой сложился. Ведёт его музыкальный критик Лев Ганкин, тоже мой хороший друг и блестящий музыкальный журналист. Он рассказывает про музыку в кино, про композиторов, про саундтреки, про то, почему такую музыку выбирают для кино. <br/>
+<br/>
+<blockquote>Мы буквально на днях запустили [этот] подкаст — «<a href="https://podcasts.apple.com/ru/podcast/%D1%88%D1%83%D0%BC-%D0%B8-%D1%8F%D1%80%D0%BA%D0%BE%D1%81%D1%82%D1%8C/id1456109770">Шум и яркость</a>» (сериальный подкаст называется «<a href="https://podcasts.apple.com/ru/podcast/%D0%B2-%D0%BF%D1%80%D0%B5%D0%B4%D1%8B%D0%B4%D1%83%D1%89%D0%B8%D1%85-%D1%81%D0%B5%D1%80%D0%B8%D1%8F%D1%85/id1451484118">В предыдущих сериях</a>»).<br/>
+<br/>
+В первом выпуске Лев рассказывает про музыку в сериале «Игра престолов» и его композитора Рамина Джавади. Это очень интересно, там такие вещи, которых я не знала. Наверное, о них я не стала бы читать специально, но послушать 20 минут и сразу услышать эту музыку мне приятно. Это идеальный формат для подкаста.</blockquote><br/>
+<b>А:</b> Да, действительно. Подкаст про музыку — как YouTube-канал про видео, где всё более чем комплементарно. Формат способствует лучшему усвоению того, о чем говорится.<br/>
+<br/>
+<b>Е:</b> Да.<br/>
+<br/>
+<div class="oembed"><div><div style="left: 0; width: 100%; height: 0; position: relative; padding-bottom: 56.2493%;"><div class="tm-iframe_temp" data-src="https://www.youtube.com/embed/81uPjvhhzUM?rel=0&amp;showinfo=1&amp;hl=en-US" data-style="border: 0; top: 0; left: 0; width: 100%; height: 100%; position: absolute;" id="" width=""></div></div></div></div><br/>
+<hr/><br/>
+<i><b>А: Насколько вообще идея с подкастами — ваша личная внутренняя инициатива, нежели общая? Например, пришел отдел маркетинга, посидел с вами и сказал: «Нам нужен аудиоконтент, будем развивать это направление». <br/>
+<br/>
+Получается, что это больше ваша собственная выстраданная идея?</b></i><br/>
+<br/>
+<hr/><br/>
+<b>Е:</b> Большая часть того, что мы делаем, — выстраданная нами идея и то, чем мы горим и что мы хотим делать. Отдел маркетинга никогда к нам не приходит и, слава богу, у нас редакция независима. Никто нам не может приказать делать какой-то формат.<br/>
+<br/>
+Какие-то идеи предлагают коллеги, это здорово. Просто в дружеском формате говорят: «Не хотите сделать что-нибудь такое?». Мы делаем, если нам нравится.<br/>
+<br/>
+Подкасты ровно поэтому и получаются, что сейчас ими кто-то горит, в частности я. Мне это стало интересно, мне интересно самой их записывать — поэтому они драйвятся и растут.<br/>
+<br/>
+<b>А:</b> Поэтому мы здесь.<br/>
+<br/>
+<b>Е:</b> Да, и поэтому я здесь. Так всегда и получается.<br/>
+<br/>
+<blockquote>Если даже я как главный редактор придумаю классную идею и предложу её своим ребятам: «Давайте вы сделаете», — а им она не будет нравиться, скорее всего, из этого ничего не выйдет. Это редко когда хорошо получается по указке. А получается, когда это всерьез тебе нравится.</blockquote><br/>
+<hr/><br/>
+<i><b>А: Круто. Я хочу сделать наш суперкрошечный блиц из одного вопроса напоследок. Хороший сериал — ...</b></i><br/>
+<br/>
+<hr/><br/>
+<b>Е:</b> «<a href="https://www.kinopoisk.ru/film/470344/">Хорошая жена</a>». Лучший сериал на свете.<br/>
+<br/>
+<b>А:</b> Супер.<br/>
+<br/>
+<hr/><br/>
+<blockquote>Наш микроформат по теме контент-маркетинга:<br/>
+<br/>
+<sup><img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/xq/5o/_r/xq5o_rmc8w8juvbckkxdgn5adaw.png"/> <a href="https://t.me/glphmedia/40">Что у вас вообще за контора такая?</a><br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/xq/5o/_r/xq5o_rmc8w8juvbckkxdgn5adaw.png"/> <a href="https://t.me/glphmedia/49">Что там на Хабре: теперь «✚» и «–» идут целый месяц</a><br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/xq/5o/_r/xq5o_rmc8w8juvbckkxdgn5adaw.png"/> <a href="https://t.me/glphmedia/43">Подкаст. Как работает аутсорсинг IT-редакции</a><br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/xq/5o/_r/xq5o_rmc8w8juvbckkxdgn5adaw.png"/> <a href="https://t.me/glphmedia/52">Что там на Хабре: читатели репортят опечатки</a><br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/xq/5o/_r/xq5o_rmc8w8juvbckkxdgn5adaw.png"/> <a href="https://t.me/glphmedia/31">Почему компаниям нужен англоязычный блог</a><br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/kq/b6/ow/kqb6owq1kjxgthtvzfv1gfms9lk.png"/> <a href="https://www.facebook.com/glph.media/videos/2359684444094076/">Видео: контент — это не про SEO, клики и переходы</a><br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/kq/b6/ow/kqb6owq1kjxgthtvzfv1gfms9lk.png"/> <a href="https://www.facebook.com/notes/glyph-media/глиф-vs-штатный-сотрудник-/337367687130999/">Глиф vs штатный сотрудник</a><br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/kq/b6/ow/kqb6owq1kjxgthtvzfv1gfms9lk.png"/> <a href="https://www.facebook.com/notes/glyph-media/архетипы-почему-работают-истории/293297008204734/">Архетипы: почему работают истории</a><br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/kq/b6/ow/kqb6owq1kjxgthtvzfv1gfms9lk.png"/> <a href="https://www.facebook.com/notes/glyph-media/writers-block-аутсорсить-контент-это-нечестно-разбираемся-/315056492695452/">​Writer’s block: аутсорсить контент — это нечестно!</a><br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/kq/b6/ow/kqb6owq1kjxgthtvzfv1gfms9lk.png"/> <a href="http://www.facebook.com/glph.media/posts/319871178880650">Когда восьми часов… хватает (на работу)</a><br/>
+<br/>
+P.S. В профиле <a href="https://habr.com/ru/users/glphmedia/" class="user_link">glphmedia</a> — ссылки на все выпуски нашего подкаста.</sup></blockquote></div></div> <!----> <!----></div> <div class="tm-article-presenter__meta"><div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Теги:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5BGlyph%20Media%5D" class="tm-tags-list__link">Glyph Media</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5B%D0%9B%D0%B8%D0%B7%D0%B0%20%D0%A1%D1%83%D1%80%D0%B3%D0%B0%D0%BD%D0%BE%D0%B2%D0%B0%5D" class="tm-tags-list__link">Лиза Сурганова</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5B%D0%9A%D0%B8%D0%BD%D0%BE%D0%9F%D0%BE%D0%B8%D1%81%D0%BA%5D" class="tm-tags-list__link">КиноПоиск</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5B%D0%92%20%D0%BF%D1%80%D0%B5%D0%B4%D1%8B%D0%B4%D1%83%D1%89%D0%B8%D1%85%20%D1%81%D0%B5%D1%80%D0%B8%D1%8F%D1%85%5D" class="tm-tags-list__link">В предыдущих сериях</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5B%D0%BF%D0%BE%D0%B4%D0%BA%D0%B0%D1%81%D1%82%D1%8B%5D" class="tm-tags-list__link">подкасты</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5B%D1%81%D0%B5%D1%80%D0%B8%D0%B0%D0%BB%D1%8B%5D" class="tm-tags-list__link">сериалы</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5B%D0%B8%D0%B3%D1%80%D0%B0%20%D0%BF%D1%80%D0%B5%D1%81%D1%82%D0%BE%D0%BB%D0%BE%D0%B2%5D" class="tm-tags-list__link">игра престолов</a></li></ul></div> <div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Хабы:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/company/vsce/blog/" class="tm-hubs-list__link router-link-active">
+    Блог компании vscextv
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/pm/" class="tm-hubs-list__link">
+    Управление проектами
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/contentmarketing/" class="tm-hubs-list__link">
+    Контент-маркетинг
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/media_management/" class="tm-hubs-list__link">
+    Управление медиа
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/business_models/" class="tm-hubs-list__link">
+    Бизнес-модели
+  </a></li></ul></div></div></article></div> <!----></div> <div class="tm-article-sticky-panel"><div class="tm-data-icons tm-article-sticky-panel__icons"><div class="tm-article-rating tm-data-icons__item"><div class="tm-votes-meter tm-article-rating__votes-switcher"><svg height="16" width="16" class="tm-svg-img tm-votes-meter__icon tm-votes-meter__icon_medium"><title>Всего голосов 20: ↑17 и ↓3</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-rating"></use></svg> <span title="Всего голосов 20: ↑17 и ↓3" class="tm-votes-meter__value tm-votes-meter__value_positive tm-votes-meter__value_medium">+14</span></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----> <span title="Количество просмотров" class="tm-icon-counter tm-data-icons__item"><svg height="16" width="16" class="tm-svg-img tm-icon-counter__icon"><title>Просмотры</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-views"></use></svg> <span class="tm-icon-counter__value">4.6K</span></span> <button title="Добавить в закладки" type="button" class="bookmarks-button tm-data-icons__item"><span title="Добавить в закладки" class="tm-svg-icon__wrapper bookmarks-button__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Добавить в закладки</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-favorite"></use></svg></span> <span title="Количество пользователей, добавивших публикацию в закладки" class="bookmarks-button__counter">
+    15
+  </span></button> <!----> <div title="Поделиться" class="tm-sharing tm-data-icons__item"><button type="button" class="tm-sharing__button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="tm-sharing__icon"><path fill="currentColor" d="M10.33.275l9.047 7.572a.2.2 0 010 .306l-9.048 7.572a.2.2 0 01-.328-.153V11c-8 0-9.94 6-9.94 6S-1 5 10 5V.428a.2.2 0 01.328-.153z"></path></svg></button> <!----></div> <DIV class="v-portal" style="display:none;"></DIV></div> </div></div> <!----> <!----> <div class="tm-article-presenter__footer"><div class="tm-article-blocks"><!----> <section class="tm-block tm-block_spacing-bottom"><!----> <div class="tm-block__body tm-block__body_variant-balanced"><div class="tm-article-author"><div class="tm-article-author__company"><div class="tm-article-author__company-card"><div class="tm-company-snippet"><a href="/ru/company/vsce/profile/" class="tm-company-snippet__logo-link"><div class="tm-entity-image"><img alt="" height="40" src="//habrastorage.org/getpro/habr/company/d9a/faf/129/d9afaf1298b5134c3827dafd6b58ec5f.png" width="40" class="tm-entity-image__pic"></div></a> <div class="tm-company-snippet__info"><a href="/ru/company/vsce/profile/" class="tm-company-snippet__title">vscextv</a> <div class="tm-company-snippet__description">Записываем подкасты и говорим о контент-маркетинге</div></div></div> <div class="tm-article-author__buttons"><!----> <!----></div></div> <div class="tm-article-author__company-contacts"><a href="https://facebook.com/m1try" rel="noopener" target="_blank" class="tm-article-author__contact">
+      Facebook
+    </a><a href="https://instagram.com/m1try" rel="noopener" target="_blank" class="tm-article-author__contact">
+      Instagram
+    </a></div> <div class="tm-article-author__separator"></div></div> <div class="tm-user-card tm-article-author__user-card tm-user-card_variant-article"><div class="tm-user-card__info-container"><div class="tm-user-card__header"><div class="tm-user-card__header-data"><a href="/ru/users/glphmedia/" class="tm-user-card__userpic tm-user-card__userpic_size-40"><div class="tm-entity-image"><img alt="" src="//habrastorage.org/getpro/habr/avatars/75a/0d4/caf/75a0d4caf525df8ca1a233124c36663e.png" class="tm-entity-image__pic"></div></a> <div class="tm-user-card__meta"><div title=" 33 голоса " class="tm-karma tm-user-card__karma"><div class="tm-karma__votes tm-karma__votes_positive">
+    3
+  </div> <div class="tm-karma__text">
+    Карма
+  </div></div> <div title="Рейтинг пользователя" class="tm-rating tm-user-card__rating"><div class="tm-rating__header"> <div class="tm-rating__counter">2</div></div> <div class="tm-rating__text">
+    Рейтинг
+  </div></div></div></div></div> <div class="tm-user-card__info tm-user-card__info_variant-article"><div class="tm-user-card__title tm-user-card__title_variant-article"><span class="tm-user-card__name tm-user-card__name_variant-article">Glyph media</span> <a href="/ru/users/glphmedia/" class="tm-user-card__nickname tm-user-card__nickname_variant-article">
+          @glphmedia
+        </a> <!----></div> <p class="tm-user-card__short-info tm-user-card__short-info_variant-article">Помогаем компаниям и говорим о контент-мейкерах</p></div></div> <div class="tm-user-card__buttons tm-user-card__buttons_variant-article"><!----> <!----> <!----> <!----> <!----></div></div> <div class="tm-article-author__user-contacts"><a href="http://glph.media" rel="noopener" target="_blank" class="tm-article-author__contact">
+      Сайт
+    </a></div></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----></section> <div class="tm-article-blocks__comments"><div class="tm-article-page-comments"><div class="tm-article-comments-counter-link tm-article-comments-counter-button"><a href="/ru/company/vsce/blog/451404/comments/" class="tm-article-comments-counter-link__link tm-article-comments-counter-link__link_button-style"><svg height="16" width="16" class="tm-svg-img tm-article-comments-counter-link__icon tm-article-comments-counter-link__icon_contrasted"><title>Комментарии</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-comments"></use></svg> <span class="tm-article-comments-counter-link__value tm-article-comments-counter-link__value_contrasted">
+       Комментарии 2 
+    </span></a> <!----></div></div></div>  <!---->  <!----> <!----></div></div></div></div></div> <div class="tm-page__sidebar"><div class="tm-layout-sidebar"><div class="tm-layout-sidebar__placeholder_initial"></div> <div class="tm-sexy-sidebar tm-sexy-sidebar_initial" style="margin-top:0px;"><!----> <section class="tm-block tm-block_spacing-bottom"><header class="tm-block__header"><h2 class="tm-block__title">Информация</h2> <!----></header> <div class="tm-block__body"><div class="tm-company-basic-info"><dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Дата основания</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><time datetime="2017-04-22T21:00:00.000Z" title="2017-04-23, 00:00">23  апреля  2017</time></dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Местоположение</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap">
+    Россия
+  </dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Сайт</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><a href="https://www.facebook.com/glph.media/" target="_blank" class="tm-company-basic-info__link">
+      www.facebook.com
+    </a></dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Численность</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap">
+    2–10 человек
+  </dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Дата регистрации</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><time datetime="2018-05-08T08:00:03.000Z" title="2018-05-08, 11:00">8  мая  2018</time></dd></dl> <!----></div></div> <!----></section> <!----> <!----></div></div></div></div></div></div></main> <!----></div> <div class="tm-footer-menu"><div class="tm-page-width"><div class="tm-footer-menu__container"><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Ваш аккаунт
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr/?back=/ru/company/vsce/blog/451404/&amp;hl=ru" rel="nofollow" target="_self">
+                Войти
+              </a></li><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr-register/?back=/ru/company/vsce/blog/451404/&amp;hl=ru" rel="nofollow" target="_self">
+                Регистрация
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Разделы
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/" class="footer-menu__item-link router-link-active">
+                Публикации
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/news/" class="footer-menu__item-link">
+                Новости
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/hubs/" class="footer-menu__item-link">
+                Хабы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/companies/" class="footer-menu__item-link">
+                Компании
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/users/" class="footer-menu__item-link">
+                Авторы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/sandbox/" class="footer-menu__item-link">
+                Песочница
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Информация
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/docs/help/" class="footer-menu__item-link">
+                Устройство сайта
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/authors/codex/" class="footer-menu__item-link">
+                Для авторов
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/companies/corpblogs/" class="footer-menu__item-link">
+                Для компаний
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/docs/transparency/" class="footer-menu__item-link">
+                Документы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/agreement" target="_blank">
+                Соглашение
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/confidential/" target="_blank">
+                Конфиденциальность
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Услуги
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQLwRfQmXibiUlWaRg-BAc38s7oM3lJiaPju7qmdJsp8ysIvZ_G-Npem0njJLMozE2bPHMpDqiI5hhy/pub?start=false&amp;loop=false&amp;delayms=60000&amp;slide=id.g91a03369cd_4_297" target="_blank">
+                Реклама
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://habrastorage.org/storage/stuff/habr/service_price.pdf" target="_blank">
+                Тарифы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQJJds8-Di7BQSP_guHxICN7woVYoN5NP_22ra-BIo4bqnTT9FR6fB-Ku2P0AoRpX0Ds-LRkDeAoD8F/pub?start=false&amp;loop=false&amp;delayms=60000" target="_blank">
+                Контент
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://tmtm.timepad.ru/" target="_blank">
+                Семинары
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/megaprojects/" class="footer-menu__item-link">
+                Мегапроекты
+              </a></li></ul></div></div></div></div></div> <div class="tm-footer"><div class="tm-page-width"><div class="tm-footer__container"><!----> <div class="tm-footer__social"><a href="https://www.facebook.com/habrahabr.ru" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Facebook</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-facebook"></use></svg></a><a href="https://twitter.com/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Twitter</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-twitter"></use></svg></a><a href="https://vk.com/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>VK</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-vkontakte"></use></svg></a><a href="https://telegram.me/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Telegram</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-telegram"></use></svg></a><a href="https://www.youtube.com/channel/UCd_sTwKqVrweTt4oAKY5y4w" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Youtube</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-youtube"></use></svg></a><a href="https://zen.yandex.ru/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Яндекс Дзен</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-zen"></use></svg></a></div> <DIV class="v-portal" style="display:none;"></DIV> <button class="tm-footer__link"><!---->
+        Настройка языка
+      </button> <a href="/ru/about" class="tm-footer__link">
+        О сайте
+      </a> <a href="/ru/feedback/" class="tm-footer__link">
+        Техническая поддержка
+      </a> <!----> <a href="/berserk-mode-nope" class="tm-footer__link">
+        Вернуться на старую версию
+      </a> <div class="tm-footer-copyright"><span class="tm-copyright"><span class="tm-copyright__years">© 2006–2021 </span> <span class="tm-copyright__name">«<a href="https://company.habr.com/" rel="noopener" target="_blank" class="tm-copyright__link">Habr</a>»</span></span></div></div></div></div> <!----> <!----></div> <div class="vue-portal-target"></div></div>
+<script>window.__INITIAL_STATE__={"adblock":{"hasAcceptableAdsFilter":false,"hasAdblock":false},"articlesList":{"articlesList":{"451404":{"id":"451404","timePublished":"2019-05-12T16:47:43+00:00","isCorporative":true,"lang":"ru","titleHtml":"Как КиноПоиск делает своё медиа","leadData":{"textHtml":"Это — подкаст с контент-мейкерами и руководителями в сфере контент-маркетинга. Гость 15-го выпуска — Лиза Сурганова, главный редактор КиноПоиска и ведущая подкаста «В предыдущих сериях», рассказывает о развитии собственного медиа крупнейшего кинопортала.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003Eпослушать можно в \u003Ca href=\"https:\u002F\u002Ft.me\u002Fglphmedia\u002F53\"\u003Eв Telegram\u003C\u002Fa\u003E или \u003Ca href=\"http:\u002F\u002Fvigorousspace.co\u002Fglph\u002F15\"\u003Eв веб-версии\u003C\u002Fa\u003E\u003C\u002Fli\u003E\r\n\u003Cli\u003Eподкаст \u003Ca href=\"https:\u002F\u002Fitunes.apple.com\u002Fru\u002Fpodcast\u002Fglph-media\u002Fid1435713366\"\u003Eв iTunes\u003C\u002Fa\u003E плюс все выпуски \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fusers\u002Fglphmedia\u002F\"\u003Eна Хабре\u003C\u002Fa\u003E\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\n\u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fvsce\u002Fblog\u002F451404\u002F\"\u003E\u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fky\u002Fcb\u002F3p\u002Fkycb3pjxmlocifvatfwh8qs0ywg.png\"\u002F\u003E\u003C\u002Fa\u003E","imageUrl":null,"buttonTextHtml":null,"image":null},"editorVersion":"1.0","postType":"article","postLabels":[],"author":{"scoreStats":{"score":3,"votesCount":33},"rating":2,"relatedData":null,"contacts":[{"title":"Сайт","url":"http:\u002F\u002Fglph.media","value":"http:\u002F\u002Fglph.media"}],"authorContacts":[{"title":"Сайт","url":"http:\u002F\u002Fglph.media","value":"http:\u002F\u002Fglph.media"}],"paymentDetails":{"paymentYandexMoney":null,"paymentPayPalMe":null,"paymentWebmoney":null},"id":"1865435","alias":"glphmedia","fullname":"Glyph media","avatarUrl":"\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Favatars\u002F75a\u002F0d4\u002Fcaf\u002F75a0d4caf525df8ca1a233124c36663e.png","speciality":"Помогаем компаниям и говорим о контент-мейкерах"},"statistics":{"commentsCount":2,"favoritesCount":15,"readingCount":4552,"score":14,"votesCount":20},"hubs":[{"relatedData":null,"id":"21480","alias":"vsce","type":"corporative","title":"Блог компании vscextv","titleHtml":"Блог компании vscextv","isProfiled":false},{"relatedData":null,"id":"20682","alias":"pm","type":"collective","title":"Управление проектами","titleHtml":"Управление проектами","isProfiled":true},{"relatedData":null,"id":"20720","alias":"contentmarketing","type":"collective","title":"Контент-маркетинг","titleHtml":"Контент-маркетинг","isProfiled":false},{"relatedData":null,"id":"20744","alias":"media_management","type":"collective","title":"Управление медиа","titleHtml":"Управление медиа","isProfiled":true},{"relatedData":null,"id":"20752","alias":"business_models","type":"collective","title":"Бизнес-модели","titleHtml":"Бизнес-модели","isProfiled":false}],"flows":[{"id":"3","alias":"management","title":"Менеджмент"},{"id":"4","alias":"marketing","title":"Маркетинг"}],"relatedData":null,"textHtml":"\u003Cdiv xmlns=\"http:\u002F\u002Fwww.w3.org\u002F1999\u002Fxhtml\"\u003EЭто — подкаст с контент-мейкерами и руководителями в сфере контент-маркетинга. Гость 15-го выпуска — Лиза Сурганова, главный редактор КиноПоиска и ведущая подкаста «В предыдущих сериях», рассказывает о развитии собственного медиа крупнейшего кинопортала.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003Eпослушать можно в \u003Ca href=\"https:\u002F\u002Ft.me\u002Fglphmedia\u002F53\"\u003Eв Telegram\u003C\u002Fa\u003E или \u003Ca href=\"http:\u002F\u002Fvigorousspace.co\u002Fglph\u002F15\"\u003Eв веб-версии\u003C\u002Fa\u003E\u003C\u002Fli\u003E\r\n\u003Cli\u003Eподкаст \u003Ca href=\"https:\u002F\u002Fitunes.apple.com\u002Fru\u002Fpodcast\u002Fglph-media\u002Fid1435713366\"\u003Eв iTunes\u003C\u002Fa\u003E плюс все выпуски \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fusers\u002Fglphmedia\u002F\"\u003Eна Хабре\u003C\u002Fa\u003E\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\n\u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fvsce\u002Fblog\u002F451404\u002F\"\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fky\u002Fcb\u002F3p\u002Fkycb3pjxmlocifvatfwh8qs0ywg.png\"\u002F\u003E\u003C\u002Fa\u003E\u003Ca name=\"habracut\"\u003E\u003C\u002Fa\u003E \u003Csup\u003E\u003Cfont color=\"#A9A9A9\"\u003E\u003Ci\u003EЛиза Сурганова, главный редактор КиноПоиска и ведущая подкаста «В предыдущих сериях»\u003C\u002Fi\u003E\u003C\u002Ffont\u003E\u003C\u002Fsup\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Chr\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Ci\u003E\u003Cb\u003E\u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fusers\u002Falinatestova\u002F\" class=\"user_link\"\u003Ealinatestova\u003C\u002Fa\u003E: Мы сегодня говорим о том, как запустить большую контент-машину на примере «КиноПоиска», у которого есть огромное количество user-generated content и собственного контента, очень интересного. Но в первую очередь я бы хотела узнать вот что. Все наши слушатели наверняка представляют, что делает главный редактор в \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fvsce\u002Fblog\u002F432568\u002F\"\u003Eмедиа\u003C\u002Fa\u003E. Но что делает главный редактор «КиноПоиска»? Расскажи, пожалуйста.\u003C\u002Fb\u003E\u003C\u002Fi\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Chr\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cb\u003EЕлизавета:\u003C\u002Fb\u003E Это на самом деле не сильно отличается от любого другого медиа — в смысле моей работы. Я работала до этого в традиционных СМИ — в Lenta.ru, РБК, Forbes. И я пытаюсь строить свою редакцию по похожим правилам. Понятно, что медиа «Кинопоиска» сильно отличается от других, потому что это скорее маленькое медиа при огромном бренде. Наша аудитория — порядка 40 миллионов человек в месяц, а медиа читают примерно 10% от этого числа. Это немного меняет твоё восприятие работы и жизни, потому что нужно осознавать значение медиа внутри этого большого бренда, и у тебя чуть меньше ресурсов, чем обычно.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nТам, где все редакции работают со своими дизайнерами и со своей разработкой, мы работаем с общими дизайном и разработкой, у которых ещё миллион задач, связанных с продуктом, бизнес-задачами, онлайн-кинотеатром и так далее. Но [так работать] при этом очень интересно. Мы — не обособленное издание при «Кинопоиске», а мы встроены в работу всего сайта.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nОдин из первых шагов, который я сделала, — добавить в нормальном виде редакционные материалы на страницы фильмов и персон на «Кинопоиске». Это — главная точка, с которой к нам приходят люди. Они переходят из поисковиков на страницу конкретного фильма или человека и оттуда уже переходят на наши материалы. Раньше они были представлены там где-то в уголке и очень плохо, а теперь мы за этим следим и специально выводим много хороших материалов. Есть и обратная сторона — как мы приводим трафик в «Кинопоиск». Многие люди приходят из поисковиков и соцсетей, и в наших материалах с обновлением дизайна — оно произошло осенью прошлого года — добавились объектные карточки.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cdiv class=\"oembed\"\u003E\u003Cdiv\u003E\u003Cdiv style=\"left: 0; width: 100%; height: 0; position: relative; padding-bottom: 56.2493%;\"\u003E\u003Cdiv class=\"tm-iframe_temp\" data-src=\"https:\u002F\u002Fwww.youtube.com\u002Fembed\u002F4OfaTONhprc?rel=0&amp;showinfo=1&amp;hl=en-US\" data-style=\"border: 0; top: 0; left: 0; width: 100%; height: 100%; position: absolute;\" id=\"\" width=\"\"\u003E\u003C\u002Fdiv\u003E\u003C\u002Fdiv\u003E\u003C\u002Fdiv\u003E\u003C\u002Fdiv\u003E\u003Cbr\u002F\u003E\r\nЭто короткая справка со страницы фильма или персоны, которая встраивается прямо в статью. Никуда не переходя, можно нажать кнопку с целевым действием — добавить фильм в ожидаемые (список «Буду смотреть»), купить билет на этот фильм и посмотреть его онлайн. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nТебе не нужно ходить на страницу этого фильма — ты можешь прочитать материал и сразу что-то сделать. Это классно работает, мы видим, что люди этим пользуются, и развиваем это.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Chr\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Ci\u003E\u003Cb\u003EА: Ты упомянула, что у «КиноПоиска» более широкий спектр задач. Зачем тогда «Кинопоиску» развиваться именно в сторону медиа? Казалось бы, уже появились различные бренды-медиа вроде Т—Ж — это не является чем-то новым. С другой стороны, кажется, что на «КиноПоиске» достаточно много контента, и он постоянно генерируется сам. Для кого-то кажется, что это как если бы Хабр делал ещё одно медиа про Хабр.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЗачем «Кинопоиск» решил ввязаться в строительство собственного медиа?\u003C\u002Fb\u003E\u003C\u002Fi\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Chr\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cb\u003EЕ:\u003C\u002Fb\u003E Тут несколько вопросов, я попробую по порядку ответить.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЗачем «КиноПоиску» медиа? Вообще, действительно, очень многие немедийные бренды сейчас в это идут. И это важный знак того, что бренды понимают, что им нужны лицо и голос.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nОбычно этим голосом становится именно медиа, редакция. Она вырабатывает какую-то редакционную политику и придерживается её. Она решает, о чём писать, о чём не писать, как об этом писать. Она общается с пользователями в комментариях и соцсетях. Для «КиноПоиска» это всё очень важно, потому что иначе он просто сайт-агрегатор пользовательских рецензий, оценок и страниц фильмов. Он таким когда-то и был, но перерос это состояние.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПомимо медиа, в « КиноПоиске» есть ещё афиша с продажей билетов и онлайн-кинотеатр. Это всё — постепенное развитие бренда. В целом мы хотим покрывать все интересы людей, связанные с кино. Если тебе нужна конкретная информация про фильм, ты приходишь на страницу фильма. Если тебе интересно почитать чуть подробнее или первым узнать какие-то новости о фильме — для тебя есть медиа. Ты покупаешь там же билеты, добавляешь фильм в ожидания, ставишь оценку, пишешь рецензию. Ты смотришь фильм онлайн там же.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВ идеале мы хотим стать [сервисом, который охватывает всё]. Мы уже им становимся, но хотим, чтобы все больше людей это осознавало. «КиноПоиск» сегодня — это не столько энциклопедия данных, сколько большой сервис, посвященный кино и всем интересам, связанным с кино.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cdiv class=\"oembed\"\u003E\u003Cdiv\u003E\u003Cdiv style=\"left: 0; width: 100%; height: 0; position: relative; padding-bottom: 56.2493%;\"\u003E\u003Cdiv class=\"tm-iframe_temp\" data-src=\"https:\u002F\u002Fwww.youtube.com\u002Fembed\u002FFRarsOGJRtE?rel=0&amp;showinfo=1&amp;hl=en-US\" data-style=\"border: 0; top: 0; left: 0; width: 100%; height: 100%; position: absolute;\" id=\"\" width=\"\"\u003E\u003C\u002Fdiv\u003E\u003C\u002Fdiv\u003E\u003C\u002Fdiv\u003E\u003C\u002Fdiv\u003E\u003Cbr\u002F\u003E\r\nДальше ты сказала про UGC. Да, его очень много у нас, но всё-таки я сторонник точки зрения, что журналистика — это ещё не блогерство. Сегодня это отличается от пользовательского контента качественно, иногда в разы. У нас много классных рецензий, и мы ровно поэтому не пишем свои рецензии на фильмы, потому что за нами это всё и так есть.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nМы пишем другие статьи, которые людям раскрывают историю кино, помогают понять фильм, разобраться в нём. Мы пишем новости, в конце концов, — пользователи не пишут новости. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nТретье — мои личные соображения. На мой взгляд, в России сейчас нет большого СМИ о кино, которое бы рассказывало не конкретно об авторских фильмах. Есть «Искусство кино», есть «Сеанс» — такие очень старые, крутые журналы. Но они больше обращены в сторону авторского и фестивального кино. А мы пишем о разном кино — и о «Мстителях», и о Берлинском кинофестивале. И таких СМИ не очень много, а таких больших, как мы, — совсем наперечёт.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nИ мы понимаем, что есть эта ниша и есть интерес.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Chr\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Ci\u003E\u003Cb\u003EА: Можно ли сделать вывод, — ты начала говорить об этом — что появление собственного медиа — это показатель «взрослости» и развитости определённой ниши и бренда? \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nКогда компания понимает, что ей не просто хочется использовать отзывы и что пишут другие люди на свободной основе. А когда она ещё вокруг этого делает образовательный, развлекательный и в целом полезный контент силами специально обученных людей.\u003C\u002Fb\u003E\u003C\u002Fi\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Chr\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cb\u003EЕ:\u003C\u002Fb\u003E Да, но я думаю, что не всем брендам это нужно. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nСовершенно не всем обязательно бежать сразу в медиа. Это сложно, дорого, и очень часто кажется, что это не оправдывает вложений. Это не маркетинг, где ты вложил сто рублей и получил или не получил 1500 переходов. [Медиа] — это имиджевая, важная штука для некоторых брендов. Особенно для тех, которые строят себя на общении с аудиторией и вообще как-то обращены к людям. Поскольку «КиноПоиск» во всём зависит от людей, обращённых к нему, то мы и стараемся с ними общаться на человеческом языке, и это задача медиа.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cb\u003EА:\u003C\u002Fb\u003E То есть, на твой взгляд, [медиа] — это больше история для B2C-брендов? Тех, кто обращены к пользователям, нежели B2B-брендов, которые делают что-то для других компаний.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cb\u003EЕ:\u003C\u002Fb\u003E Я вообще всегда за то, чтобы все общались друг с другом человеческим языком. Я ненавижу канцелярит, такой советский стиль, и ненавижу рекламный стиль.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nМне кажется, здорово, когда бренды как с компаниями, так и с пользователями и читателями, общаются внятным и хорошим русским языком.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Chr\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Ci\u003E\u003Cb\u003EА: Если уж мы говорим, что это все-таки не маркетинг и не меряется прямолинейно — вложения, переходы, целевые действия. Как вы определяете для себя успех или неуспех задачи, направления или изменения, которое претерпевает сейчас «КиноПоиск»?\u003C\u002Fb\u003E\u003C\u002Fi\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Chr\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cb\u003EЕ:\u003C\u002Fb\u003E Понятно, что мы все равно смотрим на традиционные метрики — просмотры, share'ы, комментарии иногда. Ну, комментарии — спорная метрика. Понятно, что мы радуемся, когда статьи собирают много просмотров и уникальных посетителей. И в целом мы видим, что наше медиа растёт по аудитории. Как и в любом другом медиа, [важна] значимость твоих материалов — то, как люди их обсуждают в соцсетях, как их шерят, насколько они расходятся.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЕщё одна метрика, которая несвойственна другим медиа — объектные карточки, про которые я говорила. Мы смотрим, как люди на них реагируют, какие действия они совершают.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nМы видим, что люди прочитали новость о трейлере нового фильма Тарантино, и будет очень много нажатий на кнопку «Буду смотреть». То есть люди посмотрели трейлер, они поняли, что хотят посмотреть фильм, они нажали кнопку. Для нас это классная механика. Мы им можем потом напомнить, что фильм выходит в прокат, предложить им билеты или фильм онлайн.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nМы узнаём об интересе пользователей из того, что они прочли, и можем напрямую это связывать с бизнесом. Когда я связывала это с маркетингом, я имела в виду, что нет прямой связки, как в performance-маркетинге. Совершенно необязательно, что человек прочёл статью и купил билет.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cblockquote\u003EМы это прекрасно понимаем. Но я думаю, что он может прочесть статью, запомнить, что на этих выходных выходит фильм «Королевский корги», и потом он придёт в кинотеатр и купит билет. Это тоже здорово, это тоже наша задача.\u003C\u002Fblockquote\u003E\u003Cbr\u002F\u003E\r\n\u003Chr\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Ci\u003E\u003Cb\u003EА: Как ты думаешь, насколько популярен будет в будущем этот формат сращивания определенного сервиса с контентом? У вашей аудитории есть возможность посмотреть фильм онлайн, или забронировать билеты, или прочитать об актёре. Грубо говоря, это — сервисная часть. Есть условные СМИ, у которых нет этой сервисной части, они просто дают какую-то информацию. Будет ли, на твой взгляд, какое-то обратное движение? Когда условные полезные карточки, ссылки, call-to-action-кнопки будут появляться и в медиа?\u003C\u002Fb\u003E\u003C\u002Fi\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Chr\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cb\u003EЕ:\u003C\u002Fb\u003E На этот вопрос гораздо лучше, чем я, ответил Илья Красильщик, бывший издатель «Медузы». Он написал \u003Ca href=\"https:\u002F\u002Fwww.facebook.com\u002Ftintorero\u002Fposts\u002F10158272133168327\"\u003Eбольшой пост\u003C\u002Fa\u003E про то, что вообще медиа становятся сервисом, а если медиа не является сервисом для своей аудитории, то оно ей не нужно. Почему? Потому что вокруг нас сегодня огромное количество информации. За внимание читателя борются не только СМИ, но и блогеры, соцсети — всё что угодно. Очень сложно человека поймать и затащить к себе на сайт.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nКажется, что ровно в этом месте медиа и должны становиться сервисами, становиться полезными и предлагать какую-то важную информацию. На самом деле тут сложно делить. Практически любое медиа сейчас пишет о кинопремьерах недели. Это в большей степени сервисная штука. Ты человеку предлагаешь выбор. Рассказываешь о своей точке зрения, на что ему больше стоит обратить внимание, но в целом это афиша, расписание фильмов.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cb\u003EА:\u003C\u002Fb\u003E То есть даже отсутствие какой-то непосредственной инфраструктуры или интерфейса сервиса не означает, что это не сервисная история?\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cb\u003EЕ:\u003C\u002Fb\u003E Конечно. Та же «Медуза» делает карточки в разделе «Разбор». Они не столько про обычную журналистику, сколько про помощь людям. Чтобы им разобраться в сложном законопроекте, какой-то ситуации; понять, как поменять резину на машине. Это тоже важно. Мы иногда забываем про то, что мы такие базовые вещи некоторым людям не объясняем.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cb\u003EА:\u003C\u002Fb\u003E Есть ли у «Кинопоиска» подобные материалы, где вы рассказываете о понятных вещах, которые могут быть неочевидны для пользователя?\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cb\u003EЕ:\u003C\u002Fb\u003E Не знаю, насколько это базово, но на самом деле в этом большая задача нашего \u003Ca href=\"https:\u002F\u002Fwww.youtube.com\u002Fuser\u002Fkinopoisk\"\u003EYouTube-канала\u003C\u002Fa\u003E и вообще нашего видеоотдела. Как люди смотрят кино? Для них это какая-то движущаяся картинка, актеры, смешной диалог. Посмотрели, вышли из кинотеатра и забыли.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nКак мы пытаемся развернуть эту историю? Мы пытаемся людям объяснять, как устроен язык кино и как кино с ними на разных уровнях разговаривает, доносит какие-то смыслы. И это штуки, которые сейчас в русскоязычном YouTube, кажется, никто хорошо не делает. Хотя это очень популярная вещь на Западе. Не буду скрывать, мы это не придумали. Видеоэссе были задолго до нас на западных каналах и очень популярны там. Нам просто кажется, что эта ниша в России не закрыта. Нам хочется ее закрывать. Такой просветительский, объясняющий контент.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nКогда-то мы пытались делать ролики про всякие киношные термины, но потом поняли, что интерес аудитории к ним не очень большой, и отказались от этого.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cdiv class=\"oembed\"\u003E\u003Cdiv\u003E\u003Cdiv style=\"left: 0; width: 100%; height: 0; position: relative; padding-bottom: 56.2493%;\"\u003E\u003Cdiv class=\"tm-iframe_temp\" data-src=\"https:\u002F\u002Fwww.youtube.com\u002Fembed\u002FT1jIEJ7VjUQ?rel=0&amp;showinfo=1&amp;hl=en-US\" data-style=\"border: 0; top: 0; left: 0; width: 100%; height: 100%; position: absolute;\" id=\"\" width=\"\"\u003E\u003C\u002Fdiv\u003E\u003C\u002Fdiv\u003E\u003C\u002Fdiv\u003E\u003C\u002Fdiv\u003E\u003Cbr\u002F\u003E\r\n\u003Chr\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Ci\u003E\u003Cb\u003EА: Как вы определяете (помимо реакции аудитории — много смотрят или мало) и формируете на своём канале политику, о чем говорить? Как выбираете темы?\u003C\u002Fb\u003E\u003C\u002Fi\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Chr\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cb\u003EЕ:\u003C\u002Fb\u003E Мы так или иначе часто отталкиваемся от повестки. Может быть иногда очень отдаленная связь. Например, выходит новый фильм с Вигго Мортенсеном («Зелёная книга»), мы делаем ролик про его карьеру. Юбилей «Гарри Поттера» — мы делаем фильм про Гарри Поттера.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nИногда не привязываемся и к этому. Просто понимаем, что есть какие-то большие и важные темы, режиссёры, фильмы, про которые людям всегда приятно смотреть. Мы понимаем, что эта тема попсовая, она сразу зайдет. Сейчас мы, например, сделали два ролика про Тарантино. Это, очевидно, один из культовых и самых любимых режиссёров в России. Эти два ролика набрали в сумме миллион просмотров. Один скоро наберёт [миллион] самостоятельно.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cdiv class=\"oembed\"\u003E\u003Cdiv\u003E\u003Cdiv style=\"left: 0; width: 100%; height: 0; position: relative; padding-bottom: 56.2493%;\"\u003E\u003Cdiv class=\"tm-iframe_temp\" data-src=\"https:\u002F\u002Fwww.youtube.com\u002Fembed\u002FiisnsI1BrWE?rel=0&amp;showinfo=1&amp;hl=en-US\" data-style=\"border: 0; top: 0; left: 0; width: 100%; height: 100%; position: absolute;\" id=\"\" width=\"\"\u003E\u003C\u002Fdiv\u003E\u003C\u002Fdiv\u003E\u003C\u002Fdiv\u003E\u003C\u002Fdiv\u003E\u003Cbr\u002F\u003E\r\n\u003Cb\u003EА:\u003C\u002Fb\u003E А если говорить про тот же ролик с Тарантино, который у вас один из самых популярных на канале — про диалоги в фильмах Тарантино.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПредположим, вы определили, что ситуативно, сейчас интересно рассказать про Тарантино. Как вы выбираете, о чем конкретно рассказывать? Что доставать, какие интересные вещи?\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cb\u003EЕ:\u003C\u002Fb\u003E Тема каждый раз зависит от фильма и режиссёра.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПонятно, что Тарантино — мастер диалогов, все это знают, все его цитируют. Вы наверняка знаете несколько фраз из «Криминального чтива» наизусть. Хотелось рассказать, как он именно в кино это показывает и как он их строит композиционно. Про это был ролик.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nДо этого был ролик про то, как Тарантино цитирует другие фильмы, потому что он большой киноман. Известная история: он работал в видеосалоне, смотрел много фильмов, и поэтому все его фильмы напичканы какими-то цитатами, отсылками, аллюзиями и так далее. Ну это такие очевидные вещи [для тех, кто] немного разбирается в кино.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПро Гарри Поттера. Когда мы обсуждали ролик, мы понимали, что люди очень любят эту франшизу. Мы всегда выбираем темы для видеоэссе, связанные с фильмами, про которые визуально интересно рассказывать. Если фильм по какой-то причине культовый, но он скучный с кинематографической точки зрения — ты в видео о нем особо не расскажешь.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nМожно текст написать и на этом закончить. Поэтому мы выбрали фильм «Гарри Поттер и узник Азкабана», который снимал Куарон и который гораздо более изобретательный и крутой, чем последующие фильмы, которые все ругают. Мы не прогадали.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nОказалось, что у него очень много фанатов, для многих людей — это любимый фильм из серии, хотя они даже сами не знают почему. Им просто понравилось, а мы попытались им объяснить, почему его так любят. Потому что он классно снят.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Chr\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Ci\u003E\u003Cb\u003EА: Есть ли у вас какой-то mind map или «супермегаплан» из серии: вот этот фильм у нас идёт, про этот будем писать текстовую статью, этот фильм — на видеоразбор, этот будем разбирать в подкасте и так далее?\u003C\u002Fb\u003E\u003C\u002Fi\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Chr\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cb\u003EЕ:\u003C\u002Fb\u003E Конечно. Мы раз в месяц собираемся и обсуждаем план на следующий месяц. В начале марта мы обсуждаем, что делаем в апреле и так далее. С кино все довольно просто. Если не происходит ничего экстраординарного, ты знаешь, какие фильмы выходят в прокат, какие сериалы выходят, какие юбилеи будут у актёров и фильмов. Исходя из этого мы уже строим первоначальный план. Понятно, что-то корректируется, что-то отваливается, что-то придумывается позже или ситуативно появляется. Мы в гораздо меньшей степени зависимы от ситуации, чем обычные СМИ, которые живут ежедневной повесткой.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПоэтому да, такой план есть. Иногда, если это фильм большой, мы можем о нём рассказать и текстом, и видео, и подкастом, и в соцсетях как-нибудь пошутить.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nУ нас нет такого жесткого [ограничения]. Дальше мы исходим из формата. Если это видео — фильм должен быть интересным кинематографически, как я говорила. Если это подкаст — [фильм должен быть чем-то], о чем будет классно поболтать, рассказать. Сейчас мы запустили \u003Ca href=\"https:\u002F\u002Fwww.kinopoisk.ru\u002Fphotostory\u002F3337977\u002F\"\u003Eмузыкальный подкаст\u003C\u002Fa\u003E, значит [в нём] должен быть интересный поворот с этой стороны. А текст можно написать какой угодно практически, с любой стороны зайти.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Chr\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Ci\u003E\u003Cb\u003EА: Вы делаете и видео, и аудио, и тексты — насколько у вас большая редакция?\u003C\u002Fb\u003E\u003C\u002Fi\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Chr\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cb\u003EЕ:\u003C\u002Fb\u003E Небольшая, у нас 13 человек работает. Наверное, для меня [редакция] небольшая, потому что я работала в Ленте, где было 70 редакторов. В РБК — ещё больше. В Forbes — чуть меньше, но все равно много. Для меня это такое ощущение маленького медиа. Но иногда сравниваешь с коллегами, и они говорят: «У нас пять человек работает».\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cblockquote\u003EУ нас три человека из тринадцати — видеоотдел. Видео — затратная штука, действительно дорогая. В первую очередь, с точки зрения людей.\u003C\u002Fblockquote\u003E\u003Cbr\u002F\u003E\r\n\u003Cb\u003EА:\u003C\u002Fb\u003E Получается, что по сути «КиноПоиск» внедрил в себя капсульную модель маленького СМИ. Оно не просто существует автономно, но ещё и постоянно взаимодействует с другими отделами, находится в процессе внедрения дополнительных интерфейсных или сервисных решений. Мне кажется, это очень здорово, и прекрасный пример того, как контент может чрезвычайно помогать даже там, где контента, казалось бы, уже и так довольно много.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cb\u003EЕ:\u003C\u002Fb\u003E Спасибо.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Chr\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Ci\u003E\u003Cb\u003EА: Сейчас у вас сколько подкастов? Если возвращаться к ним.\u003C\u002Fb\u003E\u003C\u002Fi\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Chr\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cb\u003EЕ:\u003C\u002Fb\u003E У нас уже два подкаста опубликовано, и пока будет два.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nТут надо сказать, что мы пытались заходить [на рынок аудио] пару лет назад, когда был хайп, связанный с первыми подкастами — «Медузы», «Арзамаса». Мы как-то решили тоже туда бежать, но у нас не очень получилось. Этому было несколько причин. Во-первых, мы почему-то решили, что подкаст надо делать про старое кино. Про советское кино, пока ещё живы люди, которые имеют к нему хоть какое-то отношение. Нам казалось это очень важным и интересным. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nТак и есть. Проблема в том, что, к сожалению, это не ложится в подкаст, потому что очень часто эти люди пожилые, и им тяжело разговаривать. Их тяжело слушать, даже если они рассказывают интересные вещи. Получилось, что в текстовом формате это было бы куда круче.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nУ нас были ещё попытки записывать разговорные подкасты, но каждый раз нам не хватало достаточно мотивированных ведущих. В начале этого года я поняла, что стала смотреть очень много сериалов — по работе и нет. Мне очень хочется их с кем-то обсуждать.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cb\u003EА:\u003C\u002Fb\u003E Это круто, когда по работе нужно смотреть сериалы.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cb\u003EЕ:\u003C\u002Fb\u003E Да-да. Я поэтому в какой-то момент и выбрала для себя эту работу. Я решила, что в любом случае это смотрю, мне в кайф, почему бы ещё не связать свою карьеру с этим.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cdiv class=\"oembed\"\u003E\u003Cdiv\u003E\u003Cdiv style=\"left: 0; width: 100%; height: 0; position: relative; padding-bottom: 56.2493%;\"\u003E\u003Cdiv class=\"tm-iframe_temp\" data-src=\"https:\u002F\u002Fwww.youtube.com\u002Fembed\u002F-kwstY-8fmY?rel=0&amp;showinfo=1&amp;hl=en-US\" data-style=\"border: 0; top: 0; left: 0; width: 100%; height: 100%; position: absolute;\" id=\"\" width=\"\"\u003E\u003C\u002Fdiv\u003E\u003C\u002Fdiv\u003E\u003C\u002Fdiv\u003E\u003C\u002Fdiv\u003E\u003Cbr\u002F\u003E\r\nТак вот. Я поняла, что смотрю много сериалов, мне очень хочется с кем-то про них говорить, их все обсуждают вокруг. Это круто, и у нас в последние годы сериальный бум.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nУ меня есть друг — Иван Филиппов, тоже журналист, продюсер, пишет для разных изданий, и для нас в том числе. Он в частности ведёт канал «\u003Ca href=\"https:\u002F\u002Ft.me\u002Fzapasaemsyapopkornom\"\u003EЗапасаемся попкорном\u003C\u002Fa\u003E», один из самых популярных в Telegram про сериалы. Я ему предложила, ему тоже понравилась эта идея, и мы начали с конца января писать подкаст про сериалы. Мы обсуждаем новинки, что мы посмотрели, что мы про это думаем, какие-то новости важные.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cb\u003EА:\u003C\u002Fb\u003E Довлеет ли над вами редакционная политика в этот момент? Есть ли у вас ограничения — что можно обсуждать, что не стоит и как?\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЕ: Я главный редактор, и я веду подкаст — довлею ли я сама над собой? Нет. Мы не ругаемся матом в подкасте просто по причинам приличия, но темы у нас никак не ограничены. У нас нет никакой цензуры и нет списка того, что нельзя обсуждать.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВторой подкаст придумал мой муж и долго меня убеждал его сделать. Я сначала очень не хотела, потому что вспоминала наш предыдущий опыт с подкастами, боялась, что будет плохо и никто этим не будет гореть. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПотом подкаст как-то сам собой сложился. Ведёт его музыкальный критик Лев Ганкин, тоже мой хороший друг и блестящий музыкальный журналист. Он рассказывает про музыку в кино, про композиторов, про саундтреки, про то, почему такую музыку выбирают для кино. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cblockquote\u003EМы буквально на днях запустили [этот] подкаст — «\u003Ca href=\"https:\u002F\u002Fpodcasts.apple.com\u002Fru\u002Fpodcast\u002F%D1%88%D1%83%D0%BC-%D0%B8-%D1%8F%D1%80%D0%BA%D0%BE%D1%81%D1%82%D1%8C\u002Fid1456109770\"\u003EШум и яркость\u003C\u002Fa\u003E» (сериальный подкаст называется «\u003Ca href=\"https:\u002F\u002Fpodcasts.apple.com\u002Fru\u002Fpodcast\u002F%D0%B2-%D0%BF%D1%80%D0%B5%D0%B4%D1%8B%D0%B4%D1%83%D1%89%D0%B8%D1%85-%D1%81%D0%B5%D1%80%D0%B8%D1%8F%D1%85\u002Fid1451484118\"\u003EВ предыдущих сериях\u003C\u002Fa\u003E»).\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВ первом выпуске Лев рассказывает про музыку в сериале «Игра престолов» и его композитора Рамина Джавади. Это очень интересно, там такие вещи, которых я не знала. Наверное, о них я не стала бы читать специально, но послушать 20 минут и сразу услышать эту музыку мне приятно. Это идеальный формат для подкаста.\u003C\u002Fblockquote\u003E\u003Cbr\u002F\u003E\r\n\u003Cb\u003EА:\u003C\u002Fb\u003E Да, действительно. Подкаст про музыку — как YouTube-канал про видео, где всё более чем комплементарно. Формат способствует лучшему усвоению того, о чем говорится.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cb\u003EЕ:\u003C\u002Fb\u003E Да.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cdiv class=\"oembed\"\u003E\u003Cdiv\u003E\u003Cdiv style=\"left: 0; width: 100%; height: 0; position: relative; padding-bottom: 56.2493%;\"\u003E\u003Cdiv class=\"tm-iframe_temp\" data-src=\"https:\u002F\u002Fwww.youtube.com\u002Fembed\u002F81uPjvhhzUM?rel=0&amp;showinfo=1&amp;hl=en-US\" data-style=\"border: 0; top: 0; left: 0; width: 100%; height: 100%; position: absolute;\" id=\"\" width=\"\"\u003E\u003C\u002Fdiv\u003E\u003C\u002Fdiv\u003E\u003C\u002Fdiv\u003E\u003C\u002Fdiv\u003E\u003Cbr\u002F\u003E\r\n\u003Chr\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Ci\u003E\u003Cb\u003EА: Насколько вообще идея с подкастами — ваша личная внутренняя инициатива, нежели общая? Например, пришел отдел маркетинга, посидел с вами и сказал: «Нам нужен аудиоконтент, будем развивать это направление». \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПолучается, что это больше ваша собственная выстраданная идея?\u003C\u002Fb\u003E\u003C\u002Fi\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Chr\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cb\u003EЕ:\u003C\u002Fb\u003E Большая часть того, что мы делаем, — выстраданная нами идея и то, чем мы горим и что мы хотим делать. Отдел маркетинга никогда к нам не приходит и, слава богу, у нас редакция независима. Никто нам не может приказать делать какой-то формат.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nКакие-то идеи предлагают коллеги, это здорово. Просто в дружеском формате говорят: «Не хотите сделать что-нибудь такое?». Мы делаем, если нам нравится.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПодкасты ровно поэтому и получаются, что сейчас ими кто-то горит, в частности я. Мне это стало интересно, мне интересно самой их записывать — поэтому они драйвятся и растут.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cb\u003EА:\u003C\u002Fb\u003E Поэтому мы здесь.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cb\u003EЕ:\u003C\u002Fb\u003E Да, и поэтому я здесь. Так всегда и получается.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cblockquote\u003EЕсли даже я как главный редактор придумаю классную идею и предложу её своим ребятам: «Давайте вы сделаете», — а им она не будет нравиться, скорее всего, из этого ничего не выйдет. Это редко когда хорошо получается по указке. А получается, когда это всерьез тебе нравится.\u003C\u002Fblockquote\u003E\u003Cbr\u002F\u003E\r\n\u003Chr\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Ci\u003E\u003Cb\u003EА: Круто. Я хочу сделать наш суперкрошечный блиц из одного вопроса напоследок. Хороший сериал — ...\u003C\u002Fb\u003E\u003C\u002Fi\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Chr\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cb\u003EЕ:\u003C\u002Fb\u003E «\u003Ca href=\"https:\u002F\u002Fwww.kinopoisk.ru\u002Ffilm\u002F470344\u002F\"\u003EХорошая жена\u003C\u002Fa\u003E». Лучший сериал на свете.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cb\u003EА:\u003C\u002Fb\u003E Супер.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Chr\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cblockquote\u003EНаш микроформат по теме контент-маркетинга:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Csup\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fxq\u002F5o\u002F_r\u002Fxq5o_rmc8w8juvbckkxdgn5adaw.png\"\u002F\u003E \u003Ca href=\"https:\u002F\u002Ft.me\u002Fglphmedia\u002F40\"\u003EЧто у вас вообще за контора такая?\u003C\u002Fa\u003E\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fxq\u002F5o\u002F_r\u002Fxq5o_rmc8w8juvbckkxdgn5adaw.png\"\u002F\u003E \u003Ca href=\"https:\u002F\u002Ft.me\u002Fglphmedia\u002F49\"\u003EЧто там на Хабре: теперь «✚» и «–» идут целый месяц\u003C\u002Fa\u003E\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fxq\u002F5o\u002F_r\u002Fxq5o_rmc8w8juvbckkxdgn5adaw.png\"\u002F\u003E \u003Ca href=\"https:\u002F\u002Ft.me\u002Fglphmedia\u002F43\"\u003EПодкаст. Как работает аутсорсинг IT-редакции\u003C\u002Fa\u003E\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fxq\u002F5o\u002F_r\u002Fxq5o_rmc8w8juvbckkxdgn5adaw.png\"\u002F\u003E \u003Ca href=\"https:\u002F\u002Ft.me\u002Fglphmedia\u002F52\"\u003EЧто там на Хабре: читатели репортят опечатки\u003C\u002Fa\u003E\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fxq\u002F5o\u002F_r\u002Fxq5o_rmc8w8juvbckkxdgn5adaw.png\"\u002F\u003E \u003Ca href=\"https:\u002F\u002Ft.me\u002Fglphmedia\u002F31\"\u003EПочему компаниям нужен англоязычный блог\u003C\u002Fa\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fkq\u002Fb6\u002Fow\u002Fkqb6owq1kjxgthtvzfv1gfms9lk.png\"\u002F\u003E \u003Ca href=\"https:\u002F\u002Fwww.facebook.com\u002Fglph.media\u002Fvideos\u002F2359684444094076\u002F\"\u003EВидео: контент — это не про SEO, клики и переходы\u003C\u002Fa\u003E\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fkq\u002Fb6\u002Fow\u002Fkqb6owq1kjxgthtvzfv1gfms9lk.png\"\u002F\u003E \u003Ca href=\"https:\u002F\u002Fwww.facebook.com\u002Fnotes\u002Fglyph-media\u002Fглиф-vs-штатный-сотрудник-\u002F337367687130999\u002F\"\u003EГлиф vs штатный сотрудник\u003C\u002Fa\u003E\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fkq\u002Fb6\u002Fow\u002Fkqb6owq1kjxgthtvzfv1gfms9lk.png\"\u002F\u003E \u003Ca href=\"https:\u002F\u002Fwww.facebook.com\u002Fnotes\u002Fglyph-media\u002Fархетипы-почему-работают-истории\u002F293297008204734\u002F\"\u003EАрхетипы: почему работают истории\u003C\u002Fa\u003E\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fkq\u002Fb6\u002Fow\u002Fkqb6owq1kjxgthtvzfv1gfms9lk.png\"\u002F\u003E \u003Ca href=\"https:\u002F\u002Fwww.facebook.com\u002Fnotes\u002Fglyph-media\u002Fwriters-block-аутсорсить-контент-это-нечестно-разбираемся-\u002F315056492695452\u002F\"\u003E​Writer’s block: аутсорсить контент — это нечестно!\u003C\u002Fa\u003E\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fkq\u002Fb6\u002Fow\u002Fkqb6owq1kjxgthtvzfv1gfms9lk.png\"\u002F\u003E \u003Ca href=\"http:\u002F\u002Fwww.facebook.com\u002Fglph.media\u002Fposts\u002F319871178880650\"\u003EКогда восьми часов… хватает (на работу)\u003C\u002Fa\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nP.S. В профиле \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fusers\u002Fglphmedia\u002F\" class=\"user_link\"\u003Eglphmedia\u003C\u002Fa\u003E — ссылки на все выпуски нашего подкаста.\u003C\u002Fsup\u003E\u003C\u002Fblockquote\u003E\u003C\u002Fdiv\u003E","tags":[{"titleHtml":"Glyph Media"},{"titleHtml":"Лиза Сурганова"},{"titleHtml":"КиноПоиск"},{"titleHtml":"В предыдущих сериях"},{"titleHtml":"подкасты"},{"titleHtml":"сериалы"},{"titleHtml":"игра престолов"}],"metadata":{"stylesUrls":[],"scriptUrls":[],"shareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F451404\u002F02daa1c34062823ccaa88e879e107cba\u002F","shareImageWidth":1200,"shareImageHeight":630,"vkShareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F451404\u002F02daa1c34062823ccaa88e879e107cba\u002F?format=vk","schemaJsonLd":"{\"@context\":\"http:\\\u002F\\\u002Fschema.org\",\"@type\":\"Article\",\"mainEntityOfPage\":{\"@type\":\"WebPage\",\"@id\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fru\\\u002Fcompany\\\u002Fvsce\\\u002Fblog\\\u002F451404\\\u002F\"},\"headline\":\"Как КиноПоиск делает своё медиа\",\"datePublished\":\"2019-05-12T19:47:43+03:00\",\"dateModified\":\"2019-05-13T15:59:27+03:00\",\"author\":{\"@type\":\"Person\",\"name\":\"Glyph media\"},\"publisher\":{\"@type\":\"Organization\",\"name\":\"Habr\",\"logo\":{\"@type\":\"ImageObject\",\"url\":\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fa_\\\u002Flk\\\u002F9m\\\u002Fa_lk9mjkccjox-zccjrpfolmkmq.png\"}},\"description\":\"Это &mdash; подкаст с контент-мейкерами и руководителями в сфере контент-маркетинга. Гость 15-го выпуска &mdash; Лиза Сурганова, главный редактор КиноПоиска и ведущая подкас...\",\"url\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fru\\\u002Fcompany\\\u002Fvsce\\\u002Fblog\\\u002F451404\\\u002F#post-content-body\",\"about\":[\"c_vsce\",\"h_pm\",\"h_contentmarketing\",\"h_media_management\",\"h_business_models\",\"f_management\",\"f_marketing\"],\"image\":[\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fky\\\u002Fcb\\\u002F3p\\\u002Fkycb3pjxmlocifvatfwh8qs0ywg.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fxq\\\u002F5o\\\u002F_r\\\u002Fxq5o_rmc8w8juvbckkxdgn5adaw.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fkq\\\u002Fb6\\\u002Fow\\\u002Fkqb6owq1kjxgthtvzfv1gfms9lk.png\"]}","metaDescription":"Это — подкаст с контент-мейкерами и руководителями в сфере контент-маркетинга. Гость 15-го выпуска — Лиза Сурганова, главный редактор КиноПоиска и ведущая подкаста «В предыдущих сериях», рассказывает...","mainImageUrl":null,"amp":false},"polls":[],"commentsEnabled":true,"rulesRemindEnabled":false,"votesEnabled":true,"status":"published","plannedPublishTime":null,"checked":null,"isEditorial":false}},"articlesIds":{},"isLoading":false,"pagesCount":{},"route":{},"reasonsList":null,"view":"cards","lastVisitedRoute":{},"ssrCommentsArticleIds":[""],"karma":{}},"authorContribution":{"authors":{}},"betaTest":{"currentAnnouncement":null,"announcements":{},"announcementCards":null,"announcementComments":{},"announcementCommentThreads":{},"announcementCommentingStatuses":{},"archivedList":[]},"authorStatistics":{"articleRefs":{},"articleIds":{},"pagesCount":{},"route":{},"viewsCount":[],"maxStatsCount":{}},"career":{"seoLandings":[],"hubs":""},"comments":{"articleComments":{},"searchCommentsResults":null,"previewComment":null,"pagesCount":null,"commentAccess":{},"scrollParents":{},"pageArticleComments":{"lastViewedComment":0,"postId":null,"lastCommentTimestamp":"","moderated":[],"moderatedIds":[],"commentRoute":""}},"companies":{"companyRefs":{"vsce":{"alias":"vsce","imageUrl":"\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fcompany\u002Fd9a\u002Ffaf\u002F129\u002Fd9afaf1298b5134c3827dafd6b58ec5f.png","titleHtml":"vscextv","descriptionHtml":"Записываем подкасты и говорим о контент-маркетинге","relatedData":null,"statistics":{"postsCount":49,"newsCount":0,"vacanciesCount":0,"employeesCount":7,"careerRating":null,"subscribersCount":20135,"rating":0,"invest":null},"foundationDate":{"year":"2017","month":"04","day":"23"},"location":{"city":{"id":"447159","title":"Москва"},"region":{"id":"1885","title":"Москва и Московская обл."},"country":{"id":"168","title":"Россия"}},"siteUrl":"https:\u002F\u002Fwww.facebook.com\u002Fglph.media\u002F","staffNumber":"2–10 человек","registrationDate":"2018-05-08T08:00:03+00:00","representativeUser":null,"contacts":[{"title":"Facebook","url":"https:\u002F\u002Ffacebook.com\u002Fm1try"},{"title":"Instagram","url":"https:\u002F\u002Finstagram.com\u002Fm1try"}],"settings":{"analyticsSettings":[],"branding":null,"status":"expired"},"metadata":{"titleHtml":"vscextv, Москва - Записываем подкасты и говорим о контент-маркетинге с 23 апреля 2017 г.","title":"vscextv, Москва - Записываем подкасты и говорим о контент-маркетинге с 23 апреля 2017 г.","keywords":[],"descriptionHtml":"49 статей от авторов компании vscextv","description":"49 статей от авторов компании vscextv"},"aDeskSettings":null,"careerAlias":null,"maxCustomTrackerLinks":0}},"companyIds":{},"companyTopIds":{},"pagesCount":{},"companyProfiles":{},"companiesCategories":[],"companiesCategoriesTotalCount":0,"companiesWidgets":{},"companiesWorkers":{},"companiesFans":{},"route":{},"isLoading":false,"companyWorkersLoading":false,"companyFansLoading":false,"vacancies":{}},"companiesContribution":{"hubs":{},"flows":{},"companyRefs":{}},"companyHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"conversation":{"messages":[],"respondent":null,"isLoadMore":false},"conversations":{"conversations":[],"unreadCount":0,"pagesCount":0,"isLoadMore":false},"desktopState":{"desktopFl":null,"desktopHl":null,"isChecked":false,"isLoginDemanded":false},"dfp":{"slotsDict":{}},"docs":{"menu":{},"articles":{},"mainMenu":[],"loading":{"main":false,"dropdown":false,"article":false}},"feature":{"isProbablyVisible":"true"},"flows":{"flows":[{"alias":"develop","id":1,"route":{"name":"FLOW_PAGE","params":{"flowName":"develop"}}},{"alias":"admin","id":6,"route":{"name":"FLOW_PAGE","params":{"flowName":"admin"}}},{"alias":"design","id":2,"route":{"name":"FLOW_PAGE","params":{"flowName":"design"}}},{"alias":"management","id":3,"route":{"name":"FLOW_PAGE","params":{"flowName":"management"}}},{"alias":"marketing","id":4,"route":{"name":"FLOW_PAGE","params":{"flowName":"marketing"}}},{"alias":"popsci","id":7,"route":{"name":"FLOW_PAGE","params":{"flowName":"popsci"}}}]},"global":{"isPwa":false,"device":"desktop","isHabrCom":true},"hubs":{"hubRefs":{},"hubIds":{},"pagesCount":{},"isLoading":false,"route":{}},"hubsBlock":{"hubRefs":{},"hubIds":{}},"i18n":{"fl":"ru","hl":"ru"},"info":{"infoPage":{},"isLoading":true},"location":{"urlStruct":{"protocol":null,"slashes":null,"auth":null,"host":null,"port":null,"hostname":null,"hash":null,"search":null,"query":{},"pathname":null,"path":null,"href":""},"searchQuery":null},"me":{"user":null,"ppgDemanded":false,"karmaResetInfo":{"canReincarnate":null,"wasReincarnated":null,"currentScore":null},"notes":null},"mostReadingList":{"mostReadingListIds":[],"mostReadingListRefs":null,"promoPost":null},"pinnedPost":{"pinnedPost":null},"ppa":{"articles":{},"card":null,"transactions":null,"totalTransactions":null,"isAccessible":null},"projectsBlocks":{"activeBlocks":{}},"pullRefresh":{"shouldRefresh":false},"sandbox":{"articleIds":[],"articleRefs":{},"pagesCount":null,"route":{},"lastVisitedRoute":{},"isLoading":false},"settingsOther":{"inputs":{"uiLang":{"errors":[],"ref":null,"value":""},"articlesLangEnglish":{"errors":[],"ref":null,"value":false},"articlesLangRussian":{"errors":[],"ref":null,"value":false},"agreement":{"errors":[],"ref":null,"value":false},"email":{"errors":[],"ref":null,"value":true},"digest":{"errors":[],"ref":null,"value":true}}},"similarList":{"similarListIds":[],"similarListRefs":null},"ssr":{"error":null,"isDataLoaded":false,"isDataLoading":false,"isHydrationFailed":false,"isServer":false},"userHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"userInvites":{"availableInvites":0,"usedInvitesIds":[],"usedInvitesRefs":{},"usedInvitesPagesCount":0,"unusedInvitesIds":[],"unusedInvitesRefs":{},"unusedInvitesPagesCount":0},"users":{"authorRefs":{},"authorIds":{},"pagesCount":{},"authorProfiles":{},"userHubs":{},"userInvitations":{},"authorFollowers":{},"authorFollowed":{},"karmaStats":[],"statistics":null,"isLoading":false,"authorFollowersLoading":false,"authorFollowedLoading":false,"userHubsLoading":false,"userInvitationsLoading":false,"route":{}},"viewport":{"prevScrollY":{},"scrollY":0,"width":0},"tracker":{"items":{},"pagesCache":{},"markedViewedSilently":{},"markedRead":{},"unreadCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null},"unviewedCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null}}};(function(){var s;(s=document.currentScript||document.scripts[document.scripts.length-1]).parentNode.removeChild(s);}());</script>
+<script src="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" defer></script><script src="https://assets.habr.com/habr-web/js/app.c0af73e7.js" defer></script>
+
+
+
+    <script>
+      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+        (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+        m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+      })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+    </script>
+  
+  <script type="text/javascript" >
+    (function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+    m[i].l=1*new Date();k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})
+    (window, document, "script", "https://mc.yandex.ru/metrika/tag.js", "ym");
+
+    ym(24049213, "init", {
+      defer:true,
+      trackLinks:true,
+      accurateTrackBounce:true,
+      webvisor:false,
+    });
+  </script>
+  <noscript>
+    <div>
+      <img src="https://mc.yandex.ru/watch/24049213" style="position:absolute; left:-9999px;" alt="" />
+    </div>
+  </noscript>
+  
+    <script type="text/javascript">
+      window.addEventListener('load', function () {
+        setTimeout(() => {
+          const img = new Image();
+          img.src = 'https://vk.com/rtrg?p=VK-RTRG-421343-57vKE';
+        }, 0);
+      });
+    </script>
+  
+</body>
+</html>

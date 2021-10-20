@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="ru" data-vue-meta="%7B%22lang%22:%7B%22ssr%22:%22ru%22%7D%7D">
+<head >
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
+  <title>Иногда больше — это меньше. Когда уменьшение нагрузки приводит к увеличению задержки / Хабр</title>
+  <style>
+    /* cyrillic-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSxf6TF0.woff2) format('woff2');
+      unicode-range: U+0460-052F, U+1C80-1C88, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+    }
+
+    /* cyrillic */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveQhf6TF0.woff2) format('woff2');
+      unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+    }
+
+    /* latin-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSBf6TF0.woff2) format('woff2');
+      unicode-range: U+0100-024F, U+0259, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20CF, U+2113, U+2C60-2C7F, U+A720-A7FF;
+    }
+
+    /* latin */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveRhf6.woff2) format('woff2');
+      unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+    }
+  </style>
+  <link rel="preload" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" as="script"><link rel="preload" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/app.c0af73e7.js" as="script">
+  <link rel="stylesheet" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css"><link rel="stylesheet" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css">
+  <script>window.i18nFetch = new Promise((res, rej) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open('GET', '/js/i18n/ru-compiled.85eb77f0b17c8235e7b64b9f81ea5ec2.json');
+          xhr.responseType = 'json';
+          xhr.onload = function(e) {
+            if (this.status === 200) {
+              res({ru: xhr.response});
+            } else {
+              rej(e);
+            }
+          };
+          xhr.send();
+        });</script>
+  
+  <script data-vue-meta="ssr" src="/js/ads.js" onload="window['zhY4i4nJ9K'] = true" data-vmid="checkad"></script><script data-vue-meta="ssr" type="application/ld+json" data-vmid="ldjson-schema">{"@context":"http:\/\/schema.org","@type":"Article","mainEntityOfPage":{"@type":"WebPage","@id":"https:\/\/habr.com\/ru\/post\/451904\/"},"headline":"Иногда больше — это меньше. Когда уменьшение нагрузки приводит к увеличению задержки","datePublished":"2019-05-15T11:30:15+03:00","dateModified":"2019-05-15T12:48:42+03:00","author":{"@type":"Person","name":"Анатолий Ализар"},"publisher":{"@type":"Organization","name":"Habr","logo":{"@type":"ImageObject","url":"https:\/\/habrastorage.org\/webt\/a_\/lk\/9m\/a_lk9mjkccjox-zccjrpfolmkmq.png"}},"description":"Как и в большинстве постов, появилась проблема с распределённой службой, назовём эту службу Элвин. На этот раз я не сам обнаружил проблему, мне сообщили ребята с...","url":"https:\/\/habr.com\/ru\/post\/451904\/#post-content-body","about":["h_hi","h_server_side_optimization","h_network_technologies","h_debug","f_develop","f_admin"],"image":["https:\/\/habrastorage.org\/webt\/xd\/86\/x-\/xd86x-er30ek6tg4hkv4qdevvgq.png","https:\/\/habrastorage.org\/webt\/lh\/is\/s5\/lhiss5mqv9dq2h9moyhlss_chlk.png","https:\/\/habrastorage.org\/webt\/i4\/zs\/9s\/i4zs9saymr5ra4tmry3diqbgdyy.png","https:\/\/habrastorage.org\/webt\/kl\/bk\/fv\/klbkfv7ajppr9uqp_tywvxwgjre.png","https:\/\/habrastorage.org\/webt\/z1\/t8\/tk\/z1t8tkyhrobvurzcdqlmpdtetzc.png","https:\/\/habrastorage.org\/webt\/7o\/it\/sf\/7oitsfp2rzxotix0cf1xhktbrri.png"]}</script>
+  <script src="//www.googletagservices.com/tag/js/gpt.js" async></script>
+  <style>.grecaptcha-badge{visibility: hidden;}</style>
+  <meta name="habr-version" content="2.49.0">
+  
+  <meta data-vue-meta="ssr" property="fb:app_id" content="444736788986613"><meta data-vue-meta="ssr" property="fb:pages" content="472597926099084"><meta data-vue-meta="ssr" name="twitter:card" content="summary_large_image"><meta data-vue-meta="ssr" name="twitter:site" content="@habr_eng"><meta data-vue-meta="ssr" property="og:title" content="Иногда больше — это меньше. Когда уменьшение нагрузки приводит к увеличению задержки" data-vmid="og:title"><meta data-vue-meta="ssr" name="twitter:title" content="Иногда больше — это меньше. Когда уменьшение нагрузки приводит к увеличению задержки" data-vmid="twitter:title"><meta data-vue-meta="ssr" name="aiturec:title" content="Иногда больше — это меньше. Когда уменьшение нагрузки приводит к увеличению задержки" data-vmid="aiturec:title"><meta data-vue-meta="ssr" name="description" content="Как и в большинстве постов, появилась проблема с распределённой службой, назовём эту службу Элвин. На этот раз я не сам обнаружил проблему, мне сообщили ребята с клиентской части.
+
+Однажды я..." data-vmid="description"><meta data-vue-meta="ssr" itemprop="description" content="Как и в большинстве постов, появилась проблема с распределённой службой, назовём эту службу Элвин. На этот раз я не сам обнаружил проблему, мне сообщили ребята с клиентской части.
+
+Однажды я..." data-vmid="description:itemprop"><meta data-vue-meta="ssr" property="og:description" content="Как и в большинстве постов, появилась проблема с распределённой службой, назовём эту службу Элвин. На этот раз я не сам обнаружил проблему, мне сообщили ребята с клиентской части.
+
+Однажды я..." data-vmid="og:description"><meta data-vue-meta="ssr" name="twitter:description" content="Как и в большинстве постов, появилась проблема с распределённой службой, назовём эту службу Элвин. На этот раз я не сам обнаружил проблему, мне сообщили ребята с клиентской части.
+
+Однажды я..." data-vmid="twitter:description"><meta data-vue-meta="ssr" property="aiturec:description" content="Как и в большинстве постов, появилась проблема с распределённой службой, назовём эту службу Элвин. На этот раз я не сам обнаружил проблему, мне сообщили ребята с клиентской части.
+
+Однажды я..." data-vmid="aiturec:description"><meta data-vue-meta="ssr" itemprop="image" content="https://habr.com/share/publication/451904/68c9a129d53b3cba830f2a26403cbec7/" data-vmid="image:itemprop"><meta data-vue-meta="ssr" property="og:image" content="https://habr.com/share/publication/451904/68c9a129d53b3cba830f2a26403cbec7/" data-vmid="og:image"><meta data-vue-meta="ssr" property="aiturec:image" content="https://habr.com/share/publication/451904/68c9a129d53b3cba830f2a26403cbec7/" data-vmid="aiturec:image"><meta data-vue-meta="ssr" name="twitter:image" content="https://habr.com/share/publication/451904/68c9a129d53b3cba830f2a26403cbec7/" data-vmid="twitter:image"><meta data-vue-meta="ssr" property="vk:image" content="https://habr.com/share/publication/451904/68c9a129d53b3cba830f2a26403cbec7/" data-vmid="vk:image"><meta data-vue-meta="ssr" property="aiturec:item_id" content="451904" data-vmid="aiturec:item_id"><meta data-vue-meta="ssr" property="aiturec:datetime" content="2019-05-15T08:30:15.000Z" data-vmid="aiturec:datetime"><meta data-vue-meta="ssr" property="og:type" content="article" data-vmid="og:type"><meta data-vue-meta="ssr" property="og:locale" content="ru_RU" data-vmid="og:locale"><meta data-vue-meta="ssr" property="og:image:width" content="1200" data-vmid="og:image:width"><meta data-vue-meta="ssr" property="og:image:height" content="630" data-vmid="og:image:height">
+  <link data-vue-meta="ssr" href="https://habr.com/ru/rss/post/451904/?fl=ru" type="application/rss+xml" title="" rel="alternate" name="rss"><link data-vue-meta="ssr" href="https://habr.com/ru/post/451904/" rel="canonical" data-vmid="canonical"><link data-vue-meta="ssr" data-vmid="hreflang"><link data-vue-meta="ssr" image_src="image" href="https://habr.com/share/publication/451904/68c9a129d53b3cba830f2a26403cbec7/" data-vmid="image:href">
+  <meta name="apple-mobile-web-app-status-bar-style" content="#303b44">
+  <meta name="msapplication-TileColor" content="#629FBC">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="16x16"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-16.png"
+  >
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="32x32"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-32.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="76x76"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-76.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="120x120"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="152x152"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-152.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="180x180"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-180.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="256x256"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-256.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1136x640.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2436x1125.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1792x828.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_828x1792.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1334x750.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2208x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1125x2436.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2208.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2732x2048.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2688x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2224x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_750x1334.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x2732.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2388x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2224.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_640x1136.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2388.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x1536.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1536x2048.png"
+  >
+  <link
+    rel="mask-icon"
+    color="#77a2b6"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.svg"
+  >
+  <link
+    crossorigin="use-credentials"
+    href="/manifest.webmanifest"
+    rel="manifest"
+  >
+</head>
+<body>
+
+
+<div id="app" data-server-rendered="true" data-async-called="true"><div class="tm-layout__wrapper"><!----> <div></div> <!----> <header class="tm-header"><div class="tm-page-width"><div class="tm-header__container"><!----> <span class="tm-header__logo-wrap"><a href="/ru/" class="tm-header__logo tm-header__logo_ru"><svg height="16" width="16" class="tm-svg-img tm-header__icon"><title>Хабр</title> <use xlink:href="/img/habr-logo-ru.svg#logo"></use></svg></a> <span class="tm-header__beta-sign" style="display:none;">β</span></span> <div class="tm-dropdown tm-header__projects"><div class="tm-dropdown__head"><button class="tm-header__dropdown-toggle"><svg height="16" width="16" class="tm-svg-img tm-header__icon tm-header__icon_dropdown"><title>Открыть список</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#arrow-down"></use></svg></button></div> <!----></div> <a href="/ru/sandbox/start/" class="tm-header__become-author-btn">
+            Как стать автором
+          </a> <div class="tm-feature tm-header__feature tm-feature_variant-inline"><!----></div> <!----> <!----></div></div></header> <div class="tm-layout"><div class="tm-page-progress-bar"></div> <div data-menu-sticky="true" class="tm-base-layout__header tm-base-layout__header_is-sticky"><div class="tm-page-width"><div class="tm-base-layout__header-wrapper"><div class="tm-main-menu"><div class="tm-main-menu__section"><nav class="tm-main-menu__section-content"><!----> <a href="/ru/all/" class="tm-main-menu__item">
+        Все потоки
+      </a> <a href="/ru/flows/develop/" class="tm-main-menu__item">
+          Разработка
+        </a><a href="/ru/flows/admin/" class="tm-main-menu__item">
+          Администрирование
+        </a><a href="/ru/flows/design/" class="tm-main-menu__item">
+          Дизайн
+        </a><a href="/ru/flows/management/" class="tm-main-menu__item">
+          Менеджмент
+        </a><a href="/ru/flows/marketing/" class="tm-main-menu__item">
+          Маркетинг
+        </a><a href="/ru/flows/popsci/" class="tm-main-menu__item">
+          Научпоп
+        </a></nav></div></div> <div class="tm-header-user-menu tm-base-layout__user-menu"><a href="/ru/search/" class="tm-header-user-menu__item tm-header-user-menu__search"><svg height="24" width="24" class="tm-svg-img tm-header-user-menu__icon tm-header-user-menu__icon_search tm-header-user-menu__icon_dark"><title>Поиск</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#search"></use></svg></a> <!----> <!----> <!----> <div class="tm-header-user-menu__item tm-header-user-menu__user_desktop"><div class="tm-dropdown"><div class="tm-dropdown__head"><svg height="24" width="24" data-test-id="menu-toggle-guest" class="tm-svg-img tm-header-user-menu__icon"><title>Профиль</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#header-user"></use></svg> <!----></div> <!----></div> <!----></div> <!----></div></div></div></div> <!----> <div class="tm-page-width"></div> <main class="tm-layout__container"><div hl="ru" data-async-called="true" class="tm-page"><div class="tm-page-width"><!----> <div class="tm-page__wrapper"><div class="tm-page__main tm-page__main_has-sidebar"><div class="pull-down"><div class="pull-down__header" style="height:0px;"><div class="pull-down__content" style="bottom:10px;"><svg height="24" width="24" class="tm-svg-img pull-down__arrow"><title>Обновить</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#pull-arrow"></use></svg></div></div> <div class="tm-article-presenter"> <div class="tm-article-presenter__body"><div class="tm-misprint-area"><div class="tm-misprint-area__wrapper"><article class="tm-article-presenter__content tm-article-presenter__content_narrow"><div class="tm-article-presenter__header"> <div class="tm-article-snippet tm-article-presenter__snippet"><div class="tm-article-snippet__meta-container"><div class="tm-article-snippet__meta"><span class="tm-user-info tm-article-snippet__author"><a href="/ru/users/m1rko/" title="m1rko" class="tm-user-info__userpic"><div class="tm-entity-image"><img alt="" height="24" loading="lazy" src="//habrastorage.org/r/w32/getpro/habr/avatars/4ec/bd0/85d/4ecbd085d692835a931d03174ff19539.png" width="24" class="tm-entity-image__pic"></div></a> <span class="tm-user-info__user"><a href="/ru/users/m1rko/" class="tm-user-info__username">
+      m1rko
+    </a> </span></span> <span class="tm-article-snippet__datetime-published"><time datetime="2019-05-15T08:30:15.000Z" title="2019-05-15, 11:30">15  мая  2019 в 11:30</time></span></div> <!----></div> <h1 lang="ru" class="tm-article-snippet__title tm-article-snippet__title_h1"><span>Иногда больше — это меньше. Когда уменьшение нагрузки приводит к увеличению задержки</span></h1> <div class="tm-article-snippet__hubs"><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/hi/" class="tm-article-snippet__hubs-item-link"><span>Высокая производительность</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/server_side_optimization/" class="tm-article-snippet__hubs-item-link"><span>Серверная оптимизация</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/network_technologies/" class="tm-article-snippet__hubs-item-link"><span>Сетевые технологии</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/debug/" class="tm-article-snippet__hubs-item-link"><span>Отладка</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span></div> <div class="tm-article-snippet__labels"><div class="tm-article-snippet__label"><span>
+        Перевод
+      </span></div></div> <!----> <!----></div></div> <div class="tm-article-presenter__origin"><a href="https://mahdytech.com/low-qps-higher-latency/" target="_blank" class="tm-article-presenter__origin-link">
+                Автор оригинала:
+                <span>
+                  Ahmed Mahdy
+                </span></a></div> <div data-gallery-root="" lang="ru" class="tm-article-body"><div id="post-content-body" class="article-formatted-body article-formatted-body_version-1"><div xmlns="http://www.w3.org/1999/xhtml">Как и в <a href="https://mahdytech.com/2019/01/13/curious-case-999-latency-hike/">большинстве постов</a>, появилась проблема с распределённой службой, назовём эту службу Элвин. На этот раз я не сам обнаружил проблему, мне сообщили ребята с клиентской части.<br/>
+<br/>
+Однажды я проснулся от недовольного письма из-за больших задержек у Элвина, которого мы планировали запустить в ближайшее время. В частности, клиент столкнулся с задержкой 99-го процентиля в районе 50 мс, намного выше нашего бюджета задержки. Это было удивительно, так как я тщательно тестировал сервис, особенно на задержки, ведь это предмет частых жалоб.<br/>
+<br/>
+Прежде чем отдать Элвина в тестирование, я провёл много экспериментов с 40 тыс. запросов в секунду (QPS), все показали задержку менее 10 мс. Я готов был заявить, что не согласен с их результатами. Но ещё раз взглянув на письмо, я обратил внимание на что-то новое: я точно не тестировал условия, которые они упомянули, их QPS был намного ниже, чем мой. Я тестировал на 40k QPS, а они только на 1k. Я запустил ещё один эксперимент, на этот раз с более низким QPS, просто чтобы ублажить их.<br/>
+<a name="habracut"></a><br/>
+Поскольку я пишу об этом в блоге — вероятно, вы уже поняли: их цифры оказались правильными. Я проверял своего виртуального клиента снова и снова, всё с тем же результатом: низкое количество запросов не только увеличивает задержку, но увеличивает количество запросов с задержкой более 10 мс. Другими словами, если на 40k QPS около 50 запросов в секунду превышали 50 мс, то на 1k QPS каждую секунду было 100 запросов выше 50 мс. Парадокс!<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/xd/86/x-/xd86x-er30ek6tg4hkv4qdevvgq.png"/><br/>
+<br/>
+<h1>Сужаем круг поиска</h1><br/>
+Столкнувшись с проблемой задержки в распределённой системе со многими компонентами первым делом нужно составить короткий список подозреваемых. Копнём немного глубже в архитектуру Элвина:<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/lh/is/s5/lhiss5mqv9dq2h9moyhlss_chlk.png"/><br/>
+<br/>
+Хорошей отправной точкой является список выполненных переходов ввода-вывода (сетевые вызовы/поиск по диску и т. д.). Попытаемся выяснить, где задержка. Помимо очевидного ввода-вывода с клиентом, Элвин делает дополнительный шаг: он обращается к хранилищу данных. Однако это хранилище работает в одном кластере с Элвином, поэтому там задержка должна быть меньше, чем с клиентом. Итак, список подозреваемых:<br/>
+<br/>
+<ol>
+<li>Сетевой вызов от клиента к Элвину.<br/>
+</li>
+<li>Сетевой вызов от Элвина к хранилищу данных.<br/>
+</li>
+<li>Поиск на диске в хранилище данных.<br/>
+</li>
+<li>Сетевой вызов из хранилища данных к Элвину.<br/>
+</li>
+<li>Сетевой вызов от Элвина к клиенту.</li>
+</ol><br/>
+Попробуем вычеркнуть некоторые пункты.<br/>
+<br/>
+<h3>Хранилище данных ни при чём</h3><br/>
+Первым делом я преобразовал Элвина в сервер ping-ping, который не обрабатывает запросы. Получив запрос, он возвращает пустой ответ. Если задержка уменьшается, то ошибка в реализации Элвина или хранилища данных — ничего такого неслыханного. В первом эксперименте получаем такой график:<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/i4/zs/9s/i4zs9saymr5ra4tmry3diqbgdyy.png"/><br/>
+<br/>
+Как видим, при использовании сервера ping-ping не наблюдается никаких улучшений. Это означает, что хранилище данных не увеличивает задержку, а список подозреваемых сокращается вдвое:<br/>
+<br/>
+<ol>
+<li>Сетевой вызов от клиента к Элвину.<br/>
+</li>
+<li>Сетевой вызов от Элвина к клиенту.</li>
+</ol><br/>
+Здорово! Список быстро сокращается. Я думал, что почти выяснил причину.<br/>
+<br/>
+<h3>gRPC</h3><br/>
+Сейчас самое время представить вам нового игрока: <a href="https://github.com/grpc/grpc">gRPC</a>. Это библиотека с открытым исходным кодом от Google для внутрипроцессной связи <a href="https://en.wikipedia.org/wiki/Remote_procedure_call">RPC</a>. Хотя <code>gRPC</code> хорошо оптимизирован и широко используется, я первый раз использовал его в системе такого масштаба, и я ожидал, что моя реализация будет неоптимальной — мягко говоря.<br/>
+<br/>
+Наличие <code>gRPC</code> в стеке породило новый вопрос: может, это моя реализация или сам <code>gRPC</code> вызывает проблему задержки? Добавляем в список нового подозреваемого:<br/>
+<br/>
+<ol>
+<li>Клиент вызывает библиотеку <code>gRPC</code><br/>
+</li>
+<li>Библиотека <code>gRPC</code> на клиенте выполняет сетевой вызов библиотеки <code>gRPC</code> на сервере<br/>
+</li>
+<li>Библиотека <code>gRPC</code> обращается к Элвину (операции нет в случае сервера ping-pong)</li>
+</ol><br/>
+Чтобы вы понимали, как выглядит код, моя реализация клиента/Элвина не сильно отличается от клиент-серверных <a href="https://github.com/grpc/grpc/tree/v1.19.0/examples/cpp/helloworld">примеров async</a>.<br/>
+<br/>
+<blockquote><i>Примечание: приведённый выше список немного упрощён, так как <code>gRPC</code> даёт возможность использования собственной (шаблонной?) потоковой модели, в которой переплетаются стек выполнения <code>gRPC</code> и реализация пользователя. Ради простоты будем придерживаться этой модели.</i></blockquote><br/>
+<h3>Профилирование всё исправит</h3><br/>
+Вычеркнув хранилища данных, я подумал, что почти закончил: «Теперь легко! Применим профиль и узнаем, где возникает задержка». Я <a href="https://mahdytech.com/2019/01/13/curious-case-999-latency-hike/">большой поклонник точного профилирования</a>, потому что CPU очень быстры и чаще всего не являются узким местом. Большинство задержек происходит, когда процессор должен остановить обработку, чтобы сделать что-то ещё. Точное профилирование CPU сделано именно для этого: оно точно записывает все <a href="https://www.tutorialspoint.com/what-is-context-switching-in-operating-system">контекстные переключатели</a> и даёт понять, где возникают задержки.<br/>
+<br/>
+Я взял четыре профиля: под высоким QPS (маленькая задержка) и с ping-pong сервером на низком QPS (большая задержка), как на стороне клиента, так и на стороне сервера. И просто на всякий случай также взял образец профиля процессора. При сравнении профилей я обычно ищу аномальный стек вызовов. Например, на плохой стороне с высокой задержкой происходит гораздо больше переключений контекста (в 10 и больше раз). Но в моём случае количество переключений контекста практически совпадало. К моему ужасу, там не оказалось ничего существенного.<br/>
+<br/>
+<h1>Дополнительная отладка</h1><br/>
+Я был в отчаянии. Я не знал, какие ещё инструменты можно использовать, а мой следующий план состоял по сути в повторении экспериментов с разными вариациями, а не чётком диагностировании проблемы.<br/>
+<br/>
+<h3>Что, если</h3><br/>
+С самого начала меня беспокоила конкретное время задержки 50 мс. Это очень большое время. Я решил, что буду вырезать куски из кода, пока не смогу выяснить точно, какая часть вызывает эту ошибку. Затем последовал эксперимент, который сработал.<br/>
+<br/>
+Как обычно, задним умом кажется, что всё было очевидно. Я поместил клиента на одну машину с Элвином — и отправил запрос в <code>localhost</code>. И увеличение задержки исчезло!<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/kl/bk/fv/klbkfv7ajppr9uqp_tywvxwgjre.png"/><br/>
+<br/>
+Что-то было не так с сетью.<br/>
+<br/>
+<h3>Осваиваем навыки сетевого инженера</h3><br/>
+Должен признаться: мои знания сетевых технологий ужасны, особенно с учётом того, что я с ними работаю ежедневно. Но сеть была главным подозреваемым, и мне нужно было научиться, как её отлаживать.<br/>
+<br/>
+К счастью, интернет любит тех, кто хочет учиться. Сочетание ping и tracert казалось достаточно хорошим началом для отладки проблем сетевого транспорта.<br/>
+<br/>
+Во-первых, я запустил <a href="https://docs.microsoft.com/en-us/sysinternals/downloads/psping">PsPing</a> на TCP-порт Элвина. Я использовал параметры по умолчанию — ничего особенного. Из более тысячи пингов ни один не превысил 10 мс, за исключением первого для разогрева. Это противоречит наблюдаемому увеличению задержки 50 мс в 99-м процентиле: там на каждые 100 запросов мы должны были увидеть около одного запроса с задержкой 50 мс.<br/>
+<br/>
+Затем я попробовал <a href="https://support.microsoft.com/en-ca/help/314868/how-to-use-tracert-to-troubleshoot-tcp-ip-problems-in-windows">tracert</a>: может, проблема на одном из узлов по маршруту между Элвином и клиентом. Но и трейсер вернулся с пустыми руками.<br/>
+<br/>
+Таким образом, причиной задержки был не мой код, не реализация gRPC и не сеть. Я уже начал волноваться, что никогда этого не пойму.<br/>
+<br/>
+<h3>Теперь, на какой ОС мы находимся</h3><br/>
+<code>gRPC</code> широко используется в Linux, но для Windows это экзотика. Я решил провести эксперимент, который сработал: я создал виртуальную машину Linux, скомпилировал Элвина для Linux и развернул её.<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/z1/t8/tk/z1t8tkyhrobvurzcdqlmpdtetzc.png"/><br/>
+<br/>
+И вот что получилось: в ping-pong сервере Linux не было таких задержек, как у аналогичного узла Windows, хотя источник данных не отличался. Оказывается, проблема в реализации gRPC для Windows.<br/>
+<br/>
+<h3>Алгоритм Нейгла</h3><br/>
+Всё это время я думал, что мне не хватает флага <code>gRPC</code>. Теперь я понял, что на самом деле это в <code>gRPC</code> не хватает флага Windows. Я нашёл внутреннюю библиотеку RPC, в которой был уверен, что она хорошо работает для всех установленных флагов <a href="https://docs.microsoft.com/en-us/windows/desktop/winsock/windows-sockets-start-page-2">Winsock</a>. Затем добавил все эти флаги в gRPC и развернул Элвина на Windows, в исправленном сервере ping-pong под Windows!<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/7o/it/sf/7oitsfp2rzxotix0cf1xhktbrri.png"/><br/>
+<br/>
+<i>Почти</i> готово: я начал удалять добавленные флаги по одному, пока не вернулась регрессия, так что я смог точно определить её причину. Это был печально известный <a href="https://docs.microsoft.com/en-us/windows/desktop/api/winsock/nf-winsock-setsockopt">TCP_NODELAY</a>, переключатель алгоритма Нейгла.<br/>
+<br/>
+<a href="https://en.wikipedia.org/wiki/Nagle%27s_algorithm">Алгоритм Нейгла</a> пытается уменьшить количество пакетов, отправленных по сети, путём задержки передачи сообщений до тех пор, пока размер пакета не превысит определённое количество байт. Хотя это может быть приятно для среднего пользователя, но разрушительно для серверов реального времени, поскольку ОС будет задерживать некоторые сообщения, вызывая задержки на низком QPS. У <code>gRPC</code> был установлен этот флаг в реализации Linux для сокетов TCP, но не для Windows. Я это <a href="https://github.com/grpc/grpc/commit/1dce1009e67ea4b5934a61b1bcf8a217bd12cc76">исправил</a>.<br/>
+<br/>
+<h1>Заключение</h1><br/>
+Большую задержку на низком QPS вызвала оптимизация ОС. Оглядываясь назад, профилирование не обнаружило задержку, потому что проводилось в режиме ядра, а не в <a href="https://blog.codinghorror.com/understanding-user-and-kernel-mode/">пользовательском режиме</a>. Не знаю, можно ли наблюдать алгоритм Нейгла через захваты ETW, но это было бы интересно.<br/>
+<br/>
+Что касается эксперимента localhost, он, вероятно, не касался фактического сетевого кода, и алгоритм Нейгла не запустился, поэтому проблемы с задержкой исчезли, когда клиент обратился к Элвину через localhost.<br/>
+<br/>
+В следующий раз, когда увидите увеличение задержки при уменьшении количества запросов в секунду, алгоритм Нейгла должен быть в вашем списке подозреваемых!</div></div> <!----> <!----></div> <div class="tm-article-presenter__meta"><div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Теги:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5BTCP_NODELAY%5D" class="tm-tags-list__link">TCP_NODELAY</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5B%D0%B0%D0%BB%D0%B3%D0%BE%D1%80%D0%B8%D1%82%D0%BC%20%D0%9D%D0%B5%D0%B9%D0%B3%D0%BB%D0%B0%5D" class="tm-tags-list__link">алгоритм Нейгла</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5BgRPC%5D" class="tm-tags-list__link">gRPC</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5BWindows%5D" class="tm-tags-list__link">Windows</a></li></ul></div> <div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Хабы:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/hub/hi/" class="tm-hubs-list__link">
+    Высокая производительность
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/server_side_optimization/" class="tm-hubs-list__link">
+    Серверная оптимизация
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/network_technologies/" class="tm-hubs-list__link">
+    Сетевые технологии
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/debug/" class="tm-hubs-list__link">
+    Отладка
+  </a></li></ul></div></div></article></div> <!----></div> <div class="tm-article-sticky-panel"><div class="tm-data-icons tm-article-sticky-panel__icons"><div class="tm-article-rating tm-data-icons__item"><div class="tm-votes-meter tm-article-rating__votes-switcher"><svg height="16" width="16" class="tm-svg-img tm-votes-meter__icon tm-votes-meter__icon_medium"><title>Всего голосов 16: ↑16 и ↓0</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-rating"></use></svg> <span title="Всего голосов 16: ↑16 и ↓0" class="tm-votes-meter__value tm-votes-meter__value_positive tm-votes-meter__value_medium">+16</span></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----> <span title="Количество просмотров" class="tm-icon-counter tm-data-icons__item"><svg height="16" width="16" class="tm-svg-img tm-icon-counter__icon"><title>Просмотры</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-views"></use></svg> <span class="tm-icon-counter__value">3.6K</span></span> <button title="Добавить в закладки" type="button" class="bookmarks-button tm-data-icons__item"><span title="Добавить в закладки" class="tm-svg-icon__wrapper bookmarks-button__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Добавить в закладки</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-favorite"></use></svg></span> <span title="Количество пользователей, добавивших публикацию в закладки" class="bookmarks-button__counter">
+    29
+  </span></button> <!----> <div title="Поделиться" class="tm-sharing tm-data-icons__item"><button type="button" class="tm-sharing__button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="tm-sharing__icon"><path fill="currentColor" d="M10.33.275l9.047 7.572a.2.2 0 010 .306l-9.048 7.572a.2.2 0 01-.328-.153V11c-8 0-9.94 6-9.94 6S-1 5 10 5V.428a.2.2 0 01.328-.153z"></path></svg></button> <!----></div> <DIV class="v-portal" style="display:none;"></DIV></div> </div></div> <!----> <!----> <div class="tm-article-presenter__footer"><div class="tm-article-blocks"><!----> <section class="tm-block tm-block_spacing-bottom"><!----> <div class="tm-block__body tm-block__body_variant-balanced"><div class="tm-article-author"> <div class="tm-user-card tm-article-author__user-card tm-user-card_variant-article"><div class="tm-user-card__info-container"><div class="tm-user-card__header"><div class="tm-user-card__header-data"><a href="/ru/users/m1rko/" class="tm-user-card__userpic tm-user-card__userpic_size-40"><div class="tm-entity-image"><img alt="" src="//habrastorage.org/getpro/habr/avatars/4ec/bd0/85d/4ecbd085d692835a931d03174ff19539.png" class="tm-entity-image__pic"></div></a> <div class="tm-user-card__meta"><div title=" 1501 голос " class="tm-karma tm-user-card__karma"><div class="tm-karma__votes tm-karma__votes_positive">
+    1229.5
+  </div> <div class="tm-karma__text">
+    Карма
+  </div></div> <div title="Рейтинг пользователя" class="tm-rating tm-user-card__rating"><div class="tm-rating__header"> <div class="tm-rating__counter">0</div></div> <div class="tm-rating__text">
+    Рейтинг
+  </div></div></div></div></div> <div class="tm-user-card__info tm-user-card__info_variant-article"><div class="tm-user-card__title tm-user-card__title_variant-article"><span class="tm-user-card__name tm-user-card__name_variant-article">Анатолий Ализар</span> <a href="/ru/users/m1rko/" class="tm-user-card__nickname tm-user-card__nickname_variant-article">
+          @m1rko
+        </a> <!----></div> <p class="tm-user-card__short-info tm-user-card__short-info_variant-article">автор, переводчик, редактор</p></div></div> <div class="tm-user-card__buttons tm-user-card__buttons_variant-article"><!----> <!----> <!----> <!----> <!----></div></div> <!----></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----></section> <div class="tm-article-blocks__comments"><div class="tm-article-page-comments"><div class="tm-article-comments-counter-link tm-article-comments-counter-button"><a href="/ru/post/451904/comments/" class="tm-article-comments-counter-link__link tm-article-comments-counter-link__link_button-style"><svg height="16" width="16" class="tm-svg-img tm-article-comments-counter-link__icon tm-article-comments-counter-link__icon_contrasted"><title>Комментарии</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-comments"></use></svg> <span class="tm-article-comments-counter-link__value tm-article-comments-counter-link__value_contrasted">
+       Комментарии 1 
+    </span></a> <!----></div></div></div> <div class="tm-ad-banner__container tm-page-article__banner"><!----> <div id="articleBottomBanner" class="tm-ad-banner"></div></div> <!----> <!----> <!----> <!----> </div></div></div></div></div> <div class="tm-page__sidebar"><div class="tm-layout-sidebar"><div class="tm-layout-sidebar__ads tm-layout-sidebar__ads_initial"><div class="tm-ad-banner__container tm-layout-sidebar__banner"><!----> <div id="sidebarBanner" class="tm-ad-banner"></div></div></div> <div class="tm-sexy-sidebar tm-sexy-sidebar_initial" style="margin-top:0px;"><!----> <!----></div></div></div></div></div></div></main> <!----></div> <div class="tm-footer-menu"><div class="tm-page-width"><div class="tm-footer-menu__container"><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Ваш аккаунт
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr/?back=/ru/post/451904/&amp;hl=ru" rel="nofollow" target="_self">
+                Войти
+              </a></li><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr-register/?back=/ru/post/451904/&amp;hl=ru" rel="nofollow" target="_self">
+                Регистрация
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Разделы
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/" class="footer-menu__item-link router-link-active">
+                Публикации
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/news/" class="footer-menu__item-link">
+                Новости
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/hubs/" class="footer-menu__item-link">
+                Хабы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/companies/" class="footer-menu__item-link">
+                Компании
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/users/" class="footer-menu__item-link">
+                Авторы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/sandbox/" class="footer-menu__item-link">
+                Песочница
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Информация
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/docs/help/" class="footer-menu__item-link">
+                Устройство сайта
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/authors/codex/" class="footer-menu__item-link">
+                Для авторов
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/companies/corpblogs/" class="footer-menu__item-link">
+                Для компаний
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/docs/transparency/" class="footer-menu__item-link">
+                Документы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/agreement" target="_blank">
+                Соглашение
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/confidential/" target="_blank">
+                Конфиденциальность
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Услуги
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQLwRfQmXibiUlWaRg-BAc38s7oM3lJiaPju7qmdJsp8ysIvZ_G-Npem0njJLMozE2bPHMpDqiI5hhy/pub?start=false&amp;loop=false&amp;delayms=60000&amp;slide=id.g91a03369cd_4_297" target="_blank">
+                Реклама
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://habrastorage.org/storage/stuff/habr/service_price.pdf" target="_blank">
+                Тарифы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQJJds8-Di7BQSP_guHxICN7woVYoN5NP_22ra-BIo4bqnTT9FR6fB-Ku2P0AoRpX0Ds-LRkDeAoD8F/pub?start=false&amp;loop=false&amp;delayms=60000" target="_blank">
+                Контент
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://tmtm.timepad.ru/" target="_blank">
+                Семинары
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/megaprojects/" class="footer-menu__item-link">
+                Мегапроекты
+              </a></li></ul></div></div></div></div></div> <div class="tm-footer"><div class="tm-page-width"><div class="tm-footer__container"><!----> <div class="tm-footer__social"><a href="https://www.facebook.com/habrahabr.ru" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Facebook</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-facebook"></use></svg></a><a href="https://twitter.com/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Twitter</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-twitter"></use></svg></a><a href="https://vk.com/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>VK</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-vkontakte"></use></svg></a><a href="https://telegram.me/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Telegram</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-telegram"></use></svg></a><a href="https://www.youtube.com/channel/UCd_sTwKqVrweTt4oAKY5y4w" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Youtube</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-youtube"></use></svg></a><a href="https://zen.yandex.ru/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Яндекс Дзен</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-zen"></use></svg></a></div> <DIV class="v-portal" style="display:none;"></DIV> <button class="tm-footer__link"><!---->
+        Настройка языка
+      </button> <a href="/ru/about" class="tm-footer__link">
+        О сайте
+      </a> <a href="/ru/feedback/" class="tm-footer__link">
+        Техническая поддержка
+      </a> <!----> <a href="/berserk-mode-nope" class="tm-footer__link">
+        Вернуться на старую версию
+      </a> <div class="tm-footer-copyright"><span class="tm-copyright"><span class="tm-copyright__years">© 2006–2021 </span> <span class="tm-copyright__name">«<a href="https://company.habr.com/" rel="noopener" target="_blank" class="tm-copyright__link">Habr</a>»</span></span></div></div></div></div> <!----> <!----></div> <div class="vue-portal-target"></div></div>
+<script>window.__INITIAL_STATE__={"adblock":{"hasAcceptableAdsFilter":false,"hasAdblock":false},"articlesList":{"articlesList":{"451904":{"id":"451904","timePublished":"2019-05-15T08:30:15+00:00","isCorporative":false,"lang":"ru","titleHtml":"Иногда больше — это меньше. Когда уменьшение нагрузки приводит к увеличению задержки","leadData":{"textHtml":"Как и в \u003Ca href=\"https:\u002F\u002Fmahdytech.com\u002F2019\u002F01\u002F13\u002Fcurious-case-999-latency-hike\u002F\"\u003Eбольшинстве постов\u003C\u002Fa\u003E, появилась проблема с распределённой службой, назовём эту службу Элвин. На этот раз я не сам обнаружил проблему, мне сообщили ребята с клиентской части.\u003Cbr\u003E\r\n\u003Cbr\u003E\r\nОднажды я проснулся от недовольного письма из-за больших задержек у Элвина, которого мы планировали запустить в ближайшее время. В частности, клиент столкнулся с задержкой 99-го процентиля в районе 50 мс, намного выше нашего бюджета задержки. Это было удивительно, так как я тщательно тестировал сервис, особенно на задержки, ведь это предмет частых жалоб.\u003Cbr\u003E\r\n\u003Cbr\u003E\r\nПрежде чем отдать Элвина в тестирование, я провёл много экспериментов с 40 тыс. запросов в секунду (QPS), все показали задержку менее 10 мс. Я готов был заявить, что не согласен с их результатами. Но ещё раз взглянув на письмо, я обратил внимание на что-то новое: я точно не тестировал условия, которые они упомянули, их QPS был намного ниже, чем мой. Я тестировал на 40k QPS, а они только на 1k. Я запустил ещё один эксперимент, на этот раз с более низким QPS, просто чтобы ублажить их.\u003Cbr\u003E","imageUrl":null,"buttonTextHtml":"Читать дальше →","image":null},"editorVersion":"1.0","postType":"article","postLabels":[{"type":"translation","data":{"originalAuthorName":"Ahmed Mahdy","originalUrl":"https:\u002F\u002Fmahdytech.com\u002Flow-qps-higher-latency\u002F"}}],"author":{"scoreStats":{"score":1229.5,"votesCount":1501},"rating":0,"relatedData":null,"contacts":[],"authorContacts":[],"paymentDetails":{"paymentYandexMoney":null,"paymentPayPalMe":null,"paymentWebmoney":null},"id":"1371978","alias":"m1rko","fullname":"Анатолий Ализар","avatarUrl":"\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Favatars\u002F4ec\u002Fbd0\u002F85d\u002F4ecbd085d692835a931d03174ff19539.png","speciality":"автор, переводчик, редактор"},"statistics":{"commentsCount":1,"favoritesCount":29,"readingCount":3557,"score":16,"votesCount":16},"hubs":[{"relatedData":null,"id":"4","alias":"hi","type":"collective","title":"Высокая производительность","titleHtml":"Высокая производительность","isProfiled":true},{"relatedData":null,"id":"8880","alias":"server_side_optimization","type":"collective","title":"Серверная оптимизация","titleHtml":"Серверная оптимизация","isProfiled":true},{"relatedData":null,"id":"17123","alias":"network_technologies","type":"collective","title":"Сетевые технологии","titleHtml":"Сетевые технологии","isProfiled":true},{"relatedData":null,"id":"17716","alias":"debug","type":"collective","title":"Отладка","titleHtml":"Отладка","isProfiled":true}],"flows":[{"id":"1","alias":"develop","title":"Разработка"},{"id":"6","alias":"admin","title":"Администрирование"}],"relatedData":null,"textHtml":"\u003Cdiv xmlns=\"http:\u002F\u002Fwww.w3.org\u002F1999\u002Fxhtml\"\u003EКак и в \u003Ca href=\"https:\u002F\u002Fmahdytech.com\u002F2019\u002F01\u002F13\u002Fcurious-case-999-latency-hike\u002F\"\u003Eбольшинстве постов\u003C\u002Fa\u003E, появилась проблема с распределённой службой, назовём эту службу Элвин. На этот раз я не сам обнаружил проблему, мне сообщили ребята с клиентской части.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nОднажды я проснулся от недовольного письма из-за больших задержек у Элвина, которого мы планировали запустить в ближайшее время. В частности, клиент столкнулся с задержкой 99-го процентиля в районе 50 мс, намного выше нашего бюджета задержки. Это было удивительно, так как я тщательно тестировал сервис, особенно на задержки, ведь это предмет частых жалоб.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПрежде чем отдать Элвина в тестирование, я провёл много экспериментов с 40 тыс. запросов в секунду (QPS), все показали задержку менее 10 мс. Я готов был заявить, что не согласен с их результатами. Но ещё раз взглянув на письмо, я обратил внимание на что-то новое: я точно не тестировал условия, которые они упомянули, их QPS был намного ниже, чем мой. Я тестировал на 40k QPS, а они только на 1k. Я запустил ещё один эксперимент, на этот раз с более низким QPS, просто чтобы ублажить их.\u003Cbr\u002F\u003E\r\n\u003Ca name=\"habracut\"\u003E\u003C\u002Fa\u003E\u003Cbr\u002F\u003E\r\nПоскольку я пишу об этом в блоге — вероятно, вы уже поняли: их цифры оказались правильными. Я проверял своего виртуального клиента снова и снова, всё с тем же результатом: низкое количество запросов не только увеличивает задержку, но увеличивает количество запросов с задержкой более 10 мс. Другими словами, если на 40k QPS около 50 запросов в секунду превышали 50 мс, то на 1k QPS каждую секунду было 100 запросов выше 50 мс. Парадокс!\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fxd\u002F86\u002Fx-\u002Fxd86x-er30ek6tg4hkv4qdevvgq.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch1\u003EСужаем круг поиска\u003C\u002Fh1\u003E\u003Cbr\u002F\u003E\r\nСтолкнувшись с проблемой задержки в распределённой системе со многими компонентами первым делом нужно составить короткий список подозреваемых. Копнём немного глубже в архитектуру Элвина:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Flh\u002Fis\u002Fs5\u002Flhiss5mqv9dq2h9moyhlss_chlk.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nХорошей отправной точкой является список выполненных переходов ввода-вывода (сетевые вызовы\u002Fпоиск по диску и т. д.). Попытаемся выяснить, где задержка. Помимо очевидного ввода-вывода с клиентом, Элвин делает дополнительный шаг: он обращается к хранилищу данных. Однако это хранилище работает в одном кластере с Элвином, поэтому там задержка должна быть меньше, чем с клиентом. Итак, список подозреваемых:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Col\u003E\r\n\u003Cli\u003EСетевой вызов от клиента к Элвину.\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003Cli\u003EСетевой вызов от Элвина к хранилищу данных.\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003Cli\u003EПоиск на диске в хранилище данных.\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003Cli\u003EСетевой вызов из хранилища данных к Элвину.\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003Cli\u003EСетевой вызов от Элвина к клиенту.\u003C\u002Fli\u003E\r\n\u003C\u002Fol\u003E\u003Cbr\u002F\u003E\r\nПопробуем вычеркнуть некоторые пункты.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch3\u003EХранилище данных ни при чём\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\nПервым делом я преобразовал Элвина в сервер ping-ping, который не обрабатывает запросы. Получив запрос, он возвращает пустой ответ. Если задержка уменьшается, то ошибка в реализации Элвина или хранилища данных — ничего такого неслыханного. В первом эксперименте получаем такой график:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fi4\u002Fzs\u002F9s\u002Fi4zs9saymr5ra4tmry3diqbgdyy.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nКак видим, при использовании сервера ping-ping не наблюдается никаких улучшений. Это означает, что хранилище данных не увеличивает задержку, а список подозреваемых сокращается вдвое:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Col\u003E\r\n\u003Cli\u003EСетевой вызов от клиента к Элвину.\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003Cli\u003EСетевой вызов от Элвина к клиенту.\u003C\u002Fli\u003E\r\n\u003C\u002Fol\u003E\u003Cbr\u002F\u003E\r\nЗдорово! Список быстро сокращается. Я думал, что почти выяснил причину.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch3\u003EgRPC\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\nСейчас самое время представить вам нового игрока: \u003Ca href=\"https:\u002F\u002Fgithub.com\u002Fgrpc\u002Fgrpc\"\u003EgRPC\u003C\u002Fa\u003E. Это библиотека с открытым исходным кодом от Google для внутрипроцессной связи \u003Ca href=\"https:\u002F\u002Fen.wikipedia.org\u002Fwiki\u002FRemote_procedure_call\"\u003ERPC\u003C\u002Fa\u003E. Хотя \u003Ccode\u003EgRPC\u003C\u002Fcode\u003E хорошо оптимизирован и широко используется, я первый раз использовал его в системе такого масштаба, и я ожидал, что моя реализация будет неоптимальной — мягко говоря.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nНаличие \u003Ccode\u003EgRPC\u003C\u002Fcode\u003E в стеке породило новый вопрос: может, это моя реализация или сам \u003Ccode\u003EgRPC\u003C\u002Fcode\u003E вызывает проблему задержки? Добавляем в список нового подозреваемого:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Col\u003E\r\n\u003Cli\u003EКлиент вызывает библиотеку \u003Ccode\u003EgRPC\u003C\u002Fcode\u003E\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003Cli\u003EБиблиотека \u003Ccode\u003EgRPC\u003C\u002Fcode\u003E на клиенте выполняет сетевой вызов библиотеки \u003Ccode\u003EgRPC\u003C\u002Fcode\u003E на сервере\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003Cli\u003EБиблиотека \u003Ccode\u003EgRPC\u003C\u002Fcode\u003E обращается к Элвину (операции нет в случае сервера ping-pong)\u003C\u002Fli\u003E\r\n\u003C\u002Fol\u003E\u003Cbr\u002F\u003E\r\nЧтобы вы понимали, как выглядит код, моя реализация клиента\u002FЭлвина не сильно отличается от клиент-серверных \u003Ca href=\"https:\u002F\u002Fgithub.com\u002Fgrpc\u002Fgrpc\u002Ftree\u002Fv1.19.0\u002Fexamples\u002Fcpp\u002Fhelloworld\"\u003Eпримеров async\u003C\u002Fa\u003E.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cblockquote\u003E\u003Ci\u003EПримечание: приведённый выше список немного упрощён, так как \u003Ccode\u003EgRPC\u003C\u002Fcode\u003E даёт возможность использования собственной (шаблонной?) потоковой модели, в которой переплетаются стек выполнения \u003Ccode\u003EgRPC\u003C\u002Fcode\u003E и реализация пользователя. Ради простоты будем придерживаться этой модели.\u003C\u002Fi\u003E\u003C\u002Fblockquote\u003E\u003Cbr\u002F\u003E\r\n\u003Ch3\u003EПрофилирование всё исправит\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\nВычеркнув хранилища данных, я подумал, что почти закончил: «Теперь легко! Применим профиль и узнаем, где возникает задержка». Я \u003Ca href=\"https:\u002F\u002Fmahdytech.com\u002F2019\u002F01\u002F13\u002Fcurious-case-999-latency-hike\u002F\"\u003Eбольшой поклонник точного профилирования\u003C\u002Fa\u003E, потому что CPU очень быстры и чаще всего не являются узким местом. Большинство задержек происходит, когда процессор должен остановить обработку, чтобы сделать что-то ещё. Точное профилирование CPU сделано именно для этого: оно точно записывает все \u003Ca href=\"https:\u002F\u002Fwww.tutorialspoint.com\u002Fwhat-is-context-switching-in-operating-system\"\u003Eконтекстные переключатели\u003C\u002Fa\u003E и даёт понять, где возникают задержки.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЯ взял четыре профиля: под высоким QPS (маленькая задержка) и с ping-pong сервером на низком QPS (большая задержка), как на стороне клиента, так и на стороне сервера. И просто на всякий случай также взял образец профиля процессора. При сравнении профилей я обычно ищу аномальный стек вызовов. Например, на плохой стороне с высокой задержкой происходит гораздо больше переключений контекста (в 10 и больше раз). Но в моём случае количество переключений контекста практически совпадало. К моему ужасу, там не оказалось ничего существенного.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch1\u003EДополнительная отладка\u003C\u002Fh1\u003E\u003Cbr\u002F\u003E\r\nЯ был в отчаянии. Я не знал, какие ещё инструменты можно использовать, а мой следующий план состоял по сути в повторении экспериментов с разными вариациями, а не чётком диагностировании проблемы.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch3\u003EЧто, если\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\nС самого начала меня беспокоила конкретное время задержки 50 мс. Это очень большое время. Я решил, что буду вырезать куски из кода, пока не смогу выяснить точно, какая часть вызывает эту ошибку. Затем последовал эксперимент, который сработал.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nКак обычно, задним умом кажется, что всё было очевидно. Я поместил клиента на одну машину с Элвином — и отправил запрос в \u003Ccode\u003Elocalhost\u003C\u002Fcode\u003E. И увеличение задержки исчезло!\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fkl\u002Fbk\u002Ffv\u002Fklbkfv7ajppr9uqp_tywvxwgjre.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЧто-то было не так с сетью.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch3\u003EОсваиваем навыки сетевого инженера\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\nДолжен признаться: мои знания сетевых технологий ужасны, особенно с учётом того, что я с ними работаю ежедневно. Но сеть была главным подозреваемым, и мне нужно было научиться, как её отлаживать.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nК счастью, интернет любит тех, кто хочет учиться. Сочетание ping и tracert казалось достаточно хорошим началом для отладки проблем сетевого транспорта.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВо-первых, я запустил \u003Ca href=\"https:\u002F\u002Fdocs.microsoft.com\u002Fen-us\u002Fsysinternals\u002Fdownloads\u002Fpsping\"\u003EPsPing\u003C\u002Fa\u003E на TCP-порт Элвина. Я использовал параметры по умолчанию — ничего особенного. Из более тысячи пингов ни один не превысил 10 мс, за исключением первого для разогрева. Это противоречит наблюдаемому увеличению задержки 50 мс в 99-м процентиле: там на каждые 100 запросов мы должны были увидеть около одного запроса с задержкой 50 мс.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЗатем я попробовал \u003Ca href=\"https:\u002F\u002Fsupport.microsoft.com\u002Fen-ca\u002Fhelp\u002F314868\u002Fhow-to-use-tracert-to-troubleshoot-tcp-ip-problems-in-windows\"\u003Etracert\u003C\u002Fa\u003E: может, проблема на одном из узлов по маршруту между Элвином и клиентом. Но и трейсер вернулся с пустыми руками.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nТаким образом, причиной задержки был не мой код, не реализация gRPC и не сеть. Я уже начал волноваться, что никогда этого не пойму.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch3\u003EТеперь, на какой ОС мы находимся\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\n\u003Ccode\u003EgRPC\u003C\u002Fcode\u003E широко используется в Linux, но для Windows это экзотика. Я решил провести эксперимент, который сработал: я создал виртуальную машину Linux, скомпилировал Элвина для Linux и развернул её.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fz1\u002Ft8\u002Ftk\u002Fz1t8tkyhrobvurzcdqlmpdtetzc.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nИ вот что получилось: в ping-pong сервере Linux не было таких задержек, как у аналогичного узла Windows, хотя источник данных не отличался. Оказывается, проблема в реализации gRPC для Windows.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch3\u003EАлгоритм Нейгла\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\nВсё это время я думал, что мне не хватает флага \u003Ccode\u003EgRPC\u003C\u002Fcode\u003E. Теперь я понял, что на самом деле это в \u003Ccode\u003EgRPC\u003C\u002Fcode\u003E не хватает флага Windows. Я нашёл внутреннюю библиотеку RPC, в которой был уверен, что она хорошо работает для всех установленных флагов \u003Ca href=\"https:\u002F\u002Fdocs.microsoft.com\u002Fen-us\u002Fwindows\u002Fdesktop\u002Fwinsock\u002Fwindows-sockets-start-page-2\"\u003EWinsock\u003C\u002Fa\u003E. Затем добавил все эти флаги в gRPC и развернул Элвина на Windows, в исправленном сервере ping-pong под Windows!\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002F7o\u002Fit\u002Fsf\u002F7oitsfp2rzxotix0cf1xhktbrri.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ci\u003EПочти\u003C\u002Fi\u003E готово: я начал удалять добавленные флаги по одному, пока не вернулась регрессия, так что я смог точно определить её причину. Это был печально известный \u003Ca href=\"https:\u002F\u002Fdocs.microsoft.com\u002Fen-us\u002Fwindows\u002Fdesktop\u002Fapi\u002Fwinsock\u002Fnf-winsock-setsockopt\"\u003ETCP_NODELAY\u003C\u002Fa\u003E, переключатель алгоритма Нейгла.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ca href=\"https:\u002F\u002Fen.wikipedia.org\u002Fwiki\u002FNagle%27s_algorithm\"\u003EАлгоритм Нейгла\u003C\u002Fa\u003E пытается уменьшить количество пакетов, отправленных по сети, путём задержки передачи сообщений до тех пор, пока размер пакета не превысит определённое количество байт. Хотя это может быть приятно для среднего пользователя, но разрушительно для серверов реального времени, поскольку ОС будет задерживать некоторые сообщения, вызывая задержки на низком QPS. У \u003Ccode\u003EgRPC\u003C\u002Fcode\u003E был установлен этот флаг в реализации Linux для сокетов TCP, но не для Windows. Я это \u003Ca href=\"https:\u002F\u002Fgithub.com\u002Fgrpc\u002Fgrpc\u002Fcommit\u002F1dce1009e67ea4b5934a61b1bcf8a217bd12cc76\"\u003Eисправил\u003C\u002Fa\u003E.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch1\u003EЗаключение\u003C\u002Fh1\u003E\u003Cbr\u002F\u003E\r\nБольшую задержку на низком QPS вызвала оптимизация ОС. Оглядываясь назад, профилирование не обнаружило задержку, потому что проводилось в режиме ядра, а не в \u003Ca href=\"https:\u002F\u002Fblog.codinghorror.com\u002Funderstanding-user-and-kernel-mode\u002F\"\u003Eпользовательском режиме\u003C\u002Fa\u003E. Не знаю, можно ли наблюдать алгоритм Нейгла через захваты ETW, но это было бы интересно.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЧто касается эксперимента localhost, он, вероятно, не касался фактического сетевого кода, и алгоритм Нейгла не запустился, поэтому проблемы с задержкой исчезли, когда клиент обратился к Элвину через localhost.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВ следующий раз, когда увидите увеличение задержки при уменьшении количества запросов в секунду, алгоритм Нейгла должен быть в вашем списке подозреваемых!\u003C\u002Fdiv\u003E","tags":[{"titleHtml":"TCP_NODELAY"},{"titleHtml":"алгоритм Нейгла"},{"titleHtml":"gRPC"},{"titleHtml":"Windows"}],"metadata":{"stylesUrls":[],"scriptUrls":[],"shareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F451904\u002F68c9a129d53b3cba830f2a26403cbec7\u002F","shareImageWidth":1200,"shareImageHeight":630,"vkShareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F451904\u002F68c9a129d53b3cba830f2a26403cbec7\u002F?format=vk","schemaJsonLd":"{\"@context\":\"http:\\\u002F\\\u002Fschema.org\",\"@type\":\"Article\",\"mainEntityOfPage\":{\"@type\":\"WebPage\",\"@id\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fru\\\u002Fpost\\\u002F451904\\\u002F\"},\"headline\":\"Иногда больше — это меньше. Когда уменьшение нагрузки приводит к увеличению задержки\",\"datePublished\":\"2019-05-15T11:30:15+03:00\",\"dateModified\":\"2019-05-15T12:48:42+03:00\",\"author\":{\"@type\":\"Person\",\"name\":\"Анатолий Ализар\"},\"publisher\":{\"@type\":\"Organization\",\"name\":\"Habr\",\"logo\":{\"@type\":\"ImageObject\",\"url\":\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fa_\\\u002Flk\\\u002F9m\\\u002Fa_lk9mjkccjox-zccjrpfolmkmq.png\"}},\"description\":\"Как и в большинстве постов, появилась проблема с распределённой службой, назовём эту службу Элвин. На этот раз я не сам обнаружил проблему, мне сообщили ребята с...\",\"url\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fru\\\u002Fpost\\\u002F451904\\\u002F#post-content-body\",\"about\":[\"h_hi\",\"h_server_side_optimization\",\"h_network_technologies\",\"h_debug\",\"f_develop\",\"f_admin\"],\"image\":[\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fxd\\\u002F86\\\u002Fx-\\\u002Fxd86x-er30ek6tg4hkv4qdevvgq.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Flh\\\u002Fis\\\u002Fs5\\\u002Flhiss5mqv9dq2h9moyhlss_chlk.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fi4\\\u002Fzs\\\u002F9s\\\u002Fi4zs9saymr5ra4tmry3diqbgdyy.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fkl\\\u002Fbk\\\u002Ffv\\\u002Fklbkfv7ajppr9uqp_tywvxwgjre.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fz1\\\u002Ft8\\\u002Ftk\\\u002Fz1t8tkyhrobvurzcdqlmpdtetzc.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002F7o\\\u002Fit\\\u002Fsf\\\u002F7oitsfp2rzxotix0cf1xhktbrri.png\"]}","metaDescription":"Как и в большинстве постов, появилась проблема с распределённой службой, назовём эту службу Элвин. На этот раз я не сам обнаружил проблему, мне сообщили ребята с клиентской части.\r\n\r\nОднажды я...","mainImageUrl":null,"amp":false},"polls":[],"commentsEnabled":true,"rulesRemindEnabled":false,"votesEnabled":true,"status":"published","plannedPublishTime":null,"checked":null,"isEditorial":false}},"articlesIds":{},"isLoading":false,"pagesCount":{},"route":{},"reasonsList":null,"view":"cards","lastVisitedRoute":{},"ssrCommentsArticleIds":[""],"karma":{}},"authorContribution":{"authors":{}},"betaTest":{"currentAnnouncement":null,"announcements":{},"announcementCards":null,"announcementComments":{},"announcementCommentThreads":{},"announcementCommentingStatuses":{},"archivedList":[]},"authorStatistics":{"articleRefs":{},"articleIds":{},"pagesCount":{},"route":{},"viewsCount":[],"maxStatsCount":{}},"career":{"seoLandings":[],"hubs":"hi,server_side_optimization,network_technologies,debug"},"comments":{"articleComments":{},"searchCommentsResults":null,"previewComment":null,"pagesCount":null,"commentAccess":{},"scrollParents":{},"pageArticleComments":{"lastViewedComment":0,"postId":null,"lastCommentTimestamp":"","moderated":[],"moderatedIds":[],"commentRoute":""}},"companies":{"companyRefs":{},"companyIds":{},"companyTopIds":{},"pagesCount":{},"companyProfiles":{},"companiesCategories":[],"companiesCategoriesTotalCount":0,"companiesWidgets":{},"companiesWorkers":{},"companiesFans":{},"route":{},"isLoading":false,"companyWorkersLoading":false,"companyFansLoading":false,"vacancies":{}},"companiesContribution":{"hubs":{},"flows":{},"companyRefs":{}},"companyHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"conversation":{"messages":[],"respondent":null,"isLoadMore":false},"conversations":{"conversations":[],"unreadCount":0,"pagesCount":0,"isLoadMore":false},"desktopState":{"desktopFl":null,"desktopHl":null,"isChecked":false,"isLoginDemanded":false},"dfp":{"slotsDict":{}},"docs":{"menu":{},"articles":{},"mainMenu":[],"loading":{"main":false,"dropdown":false,"article":false}},"feature":{"isProbablyVisible":"true"},"flows":{"flows":[{"alias":"develop","id":1,"route":{"name":"FLOW_PAGE","params":{"flowName":"develop"}}},{"alias":"admin","id":6,"route":{"name":"FLOW_PAGE","params":{"flowName":"admin"}}},{"alias":"design","id":2,"route":{"name":"FLOW_PAGE","params":{"flowName":"design"}}},{"alias":"management","id":3,"route":{"name":"FLOW_PAGE","params":{"flowName":"management"}}},{"alias":"marketing","id":4,"route":{"name":"FLOW_PAGE","params":{"flowName":"marketing"}}},{"alias":"popsci","id":7,"route":{"name":"FLOW_PAGE","params":{"flowName":"popsci"}}}]},"global":{"isPwa":false,"device":"desktop","isHabrCom":true},"hubs":{"hubRefs":{},"hubIds":{},"pagesCount":{},"isLoading":false,"route":{}},"hubsBlock":{"hubRefs":{},"hubIds":{}},"i18n":{"fl":"ru","hl":"ru"},"info":{"infoPage":{},"isLoading":true},"location":{"urlStruct":{"protocol":null,"slashes":null,"auth":null,"host":null,"port":null,"hostname":null,"hash":null,"search":null,"query":{},"pathname":null,"path":null,"href":""},"searchQuery":null},"me":{"user":null,"ppgDemanded":false,"karmaResetInfo":{"canReincarnate":null,"wasReincarnated":null,"currentScore":null},"notes":null},"mostReadingList":{"mostReadingListIds":[],"mostReadingListRefs":null,"promoPost":null},"pinnedPost":{"pinnedPost":null},"ppa":{"articles":{},"card":null,"transactions":null,"totalTransactions":null,"isAccessible":null},"projectsBlocks":{"activeBlocks":{}},"pullRefresh":{"shouldRefresh":false},"sandbox":{"articleIds":[],"articleRefs":{},"pagesCount":null,"route":{},"lastVisitedRoute":{},"isLoading":false},"settingsOther":{"inputs":{"uiLang":{"errors":[],"ref":null,"value":""},"articlesLangEnglish":{"errors":[],"ref":null,"value":false},"articlesLangRussian":{"errors":[],"ref":null,"value":false},"agreement":{"errors":[],"ref":null,"value":false},"email":{"errors":[],"ref":null,"value":true},"digest":{"errors":[],"ref":null,"value":true}}},"similarList":{"similarListIds":[],"similarListRefs":null},"ssr":{"error":null,"isDataLoaded":false,"isDataLoading":false,"isHydrationFailed":false,"isServer":false},"userHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"userInvites":{"availableInvites":0,"usedInvitesIds":[],"usedInvitesRefs":{},"usedInvitesPagesCount":0,"unusedInvitesIds":[],"unusedInvitesRefs":{},"unusedInvitesPagesCount":0},"users":{"authorRefs":{},"authorIds":{},"pagesCount":{},"authorProfiles":{},"userHubs":{},"userInvitations":{},"authorFollowers":{},"authorFollowed":{},"karmaStats":[],"statistics":null,"isLoading":false,"authorFollowersLoading":false,"authorFollowedLoading":false,"userHubsLoading":false,"userInvitationsLoading":false,"route":{}},"viewport":{"prevScrollY":{},"scrollY":0,"width":0},"tracker":{"items":{},"pagesCache":{},"markedViewedSilently":{},"markedRead":{},"unreadCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null},"unviewedCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null}}};(function(){var s;(s=document.currentScript||document.scripts[document.scripts.length-1]).parentNode.removeChild(s);}());</script>
+<script src="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" defer></script><script src="https://assets.habr.com/habr-web/js/app.c0af73e7.js" defer></script>
+
+
+
+    <script>
+      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+        (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+        m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+      })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+    </script>
+  
+  <script type="text/javascript" >
+    (function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+    m[i].l=1*new Date();k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})
+    (window, document, "script", "https://mc.yandex.ru/metrika/tag.js", "ym");
+
+    ym(24049213, "init", {
+      defer:true,
+      trackLinks:true,
+      accurateTrackBounce:true,
+      webvisor:false,
+    });
+  </script>
+  <noscript>
+    <div>
+      <img src="https://mc.yandex.ru/watch/24049213" style="position:absolute; left:-9999px;" alt="" />
+    </div>
+  </noscript>
+  
+    <script type="text/javascript">
+      window.addEventListener('load', function () {
+        setTimeout(() => {
+          const img = new Image();
+          img.src = 'https://vk.com/rtrg?p=VK-RTRG-421343-57vKE';
+        }, 0);
+      });
+    </script>
+  
+</body>
+</html>

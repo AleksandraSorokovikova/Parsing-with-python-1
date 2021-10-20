@@ -1,0 +1,826 @@
+<!DOCTYPE html>
+<html lang="ru" data-vue-meta="%7B%22lang%22:%7B%22ssr%22:%22ru%22%7D%7D">
+<head >
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
+  <title>Резервное копирование, часть 2: Обзор и тестирование rsync-based средств резервного копирования / Хабр</title>
+  <style>
+    /* cyrillic-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSxf6TF0.woff2) format('woff2');
+      unicode-range: U+0460-052F, U+1C80-1C88, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+    }
+
+    /* cyrillic */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveQhf6TF0.woff2) format('woff2');
+      unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+    }
+
+    /* latin-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSBf6TF0.woff2) format('woff2');
+      unicode-range: U+0100-024F, U+0259, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20CF, U+2113, U+2C60-2C7F, U+A720-A7FF;
+    }
+
+    /* latin */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveRhf6.woff2) format('woff2');
+      unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+    }
+  </style>
+  <link rel="preload" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" as="script"><link rel="preload" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/app.c0af73e7.js" as="script">
+  <link rel="stylesheet" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css"><link rel="stylesheet" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css">
+  <script>window.i18nFetch = new Promise((res, rej) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open('GET', '/js/i18n/ru-compiled.85eb77f0b17c8235e7b64b9f81ea5ec2.json');
+          xhr.responseType = 'json';
+          xhr.onload = function(e) {
+            if (this.status === 200) {
+              res({ru: xhr.response});
+            } else {
+              rej(e);
+            }
+          };
+          xhr.send();
+        });</script>
+  
+  <script data-vue-meta="ssr" src="/js/ads.js" onload="window['zhY4i4nJ9K'] = true" data-vmid="checkad"></script><script data-vue-meta="ssr" type="application/ld+json" data-vmid="ldjson-schema">{"@context":"http:\/\/schema.org","@type":"Article","mainEntityOfPage":{"@type":"WebPage","@id":"https:\/\/habr.com\/ru\/company\/southbridge\/blog\/452630\/"},"headline":"Резервное копирование, часть 2: Обзор и тестирование rsync-based средств резервного копирования","datePublished":"2019-05-21T09:02:30+03:00","dateModified":"2019-10-23T21:20:52+03:00","author":{"@type":"Person","name":"nAbdullin"},"publisher":{"@type":"Organization","name":"Habr","logo":{"@type":"ImageObject","url":"https:\/\/habrastorage.org\/webt\/a_\/lk\/9m\/a_lk9mjkccjox-zccjrpfolmkmq.png"}},"description":"Данной статьей продолжается   цикл о резервном копировании  Резервное копирование, часть 1: Зачем нужно резервное копирование, обзор методов, технологий  Резерв...","url":"https:\/\/habr.com\/ru\/company\/southbridge\/blog\/452630\/#post-content-body","about":["c_southbridge","h_sys_admin","h_s_admin","h_devops","f_admin"],"image":["https:\/\/habrastorage.org\/webt\/qz\/kb\/vb\/qzkbvb4hilrlczg2cxjosdu-ube.jpeg","https:\/\/habrastorage.org\/webt\/oy\/rd\/ry\/oyrdryrtuoaktxno8ap_gdxirpe.png","https:\/\/habrastorage.org\/webt\/dx\/cj\/wu\/dxcjwunnxfr_2orkmdhj2stkdci.png","https:\/\/habrastorage.org\/webt\/e7\/cr\/64\/e7cr64iu4dn3sz9jtjr0eqdvcek.png","https:\/\/habrastorage.org\/webt\/v_\/-g\/7b\/v_-g7b392dqlunmoqk_idtuilhc.png"]}</script>
+  <script src="//www.googletagservices.com/tag/js/gpt.js" async></script>
+  <style>.grecaptcha-badge{visibility: hidden;}</style>
+  <meta name="habr-version" content="2.49.0">
+  
+  <meta data-vue-meta="ssr" property="fb:app_id" content="444736788986613"><meta data-vue-meta="ssr" property="fb:pages" content="472597926099084"><meta data-vue-meta="ssr" name="twitter:card" content="summary_large_image"><meta data-vue-meta="ssr" name="twitter:site" content="@habr_eng"><meta data-vue-meta="ssr" property="og:title" content="Резервное копирование, часть 2: Обзор и тестирование rsync-based средств резервного копирования" data-vmid="og:title"><meta data-vue-meta="ssr" name="twitter:title" content="Резервное копирование, часть 2: Обзор и тестирование rsync-based средств резервного копирования" data-vmid="twitter:title"><meta data-vue-meta="ssr" name="aiturec:title" content="Резервное копирование, часть 2: Обзор и тестирование rsync-based средств резервного копирования" data-vmid="aiturec:title"><meta data-vue-meta="ssr" name="description" content="Данной статьей продолжается 
+
+цикл о резервном копировании
+ Резервное копирование, часть 1: Зачем нужно резервное копирование, обзор методов, технологий
+ Резервное копирование, часть 2: Обзор и..." data-vmid="description"><meta data-vue-meta="ssr" itemprop="description" content="Данной статьей продолжается 
+
+цикл о резервном копировании
+ Резервное копирование, часть 1: Зачем нужно резервное копирование, обзор методов, технологий
+ Резервное копирование, часть 2: Обзор и..." data-vmid="description:itemprop"><meta data-vue-meta="ssr" property="og:description" content="Данной статьей продолжается 
+
+цикл о резервном копировании
+ Резервное копирование, часть 1: Зачем нужно резервное копирование, обзор методов, технологий
+ Резервное копирование, часть 2: Обзор и..." data-vmid="og:description"><meta data-vue-meta="ssr" name="twitter:description" content="Данной статьей продолжается 
+
+цикл о резервном копировании
+ Резервное копирование, часть 1: Зачем нужно резервное копирование, обзор методов, технологий
+ Резервное копирование, часть 2: Обзор и..." data-vmid="twitter:description"><meta data-vue-meta="ssr" property="aiturec:description" content="Данной статьей продолжается 
+
+цикл о резервном копировании
+ Резервное копирование, часть 1: Зачем нужно резервное копирование, обзор методов, технологий
+ Резервное копирование, часть 2: Обзор и..." data-vmid="aiturec:description"><meta data-vue-meta="ssr" itemprop="image" content="https://habr.com/share/publication/452630/40f45529f31b5d9703747249c3b0a253/" data-vmid="image:itemprop"><meta data-vue-meta="ssr" property="og:image" content="https://habr.com/share/publication/452630/40f45529f31b5d9703747249c3b0a253/" data-vmid="og:image"><meta data-vue-meta="ssr" property="aiturec:image" content="https://habr.com/share/publication/452630/40f45529f31b5d9703747249c3b0a253/" data-vmid="aiturec:image"><meta data-vue-meta="ssr" name="twitter:image" content="https://habr.com/share/publication/452630/40f45529f31b5d9703747249c3b0a253/" data-vmid="twitter:image"><meta data-vue-meta="ssr" property="vk:image" content="https://habr.com/share/publication/452630/40f45529f31b5d9703747249c3b0a253/" data-vmid="vk:image"><meta data-vue-meta="ssr" property="aiturec:item_id" content="452630" data-vmid="aiturec:item_id"><meta data-vue-meta="ssr" property="aiturec:datetime" content="2019-05-21T06:02:30.000Z" data-vmid="aiturec:datetime"><meta data-vue-meta="ssr" property="og:type" content="article" data-vmid="og:type"><meta data-vue-meta="ssr" property="og:locale" content="ru_RU" data-vmid="og:locale"><meta data-vue-meta="ssr" property="og:image:width" content="1200" data-vmid="og:image:width"><meta data-vue-meta="ssr" property="og:image:height" content="630" data-vmid="og:image:height">
+  <link data-vue-meta="ssr" href="https://habr.com/ru/rss/post/452630/?fl=ru" type="application/rss+xml" title="" rel="alternate" name="rss"><link data-vue-meta="ssr" href="https://habr.com/ru/company/southbridge/blog/452630/" rel="canonical" data-vmid="canonical"><link data-vue-meta="ssr" data-vmid="hreflang"><link data-vue-meta="ssr" image_src="image" href="https://habr.com/share/publication/452630/40f45529f31b5d9703747249c3b0a253/" data-vmid="image:href">
+  <meta name="apple-mobile-web-app-status-bar-style" content="#303b44">
+  <meta name="msapplication-TileColor" content="#629FBC">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="16x16"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-16.png"
+  >
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="32x32"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-32.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="76x76"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-76.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="120x120"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="152x152"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-152.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="180x180"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-180.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="256x256"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-256.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1136x640.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2436x1125.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1792x828.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_828x1792.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1334x750.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2208x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1125x2436.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2208.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2732x2048.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2688x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2224x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_750x1334.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x2732.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2388x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2224.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_640x1136.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2388.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x1536.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1536x2048.png"
+  >
+  <link
+    rel="mask-icon"
+    color="#77a2b6"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.svg"
+  >
+  <link
+    crossorigin="use-credentials"
+    href="/manifest.webmanifest"
+    rel="manifest"
+  >
+</head>
+<body>
+
+
+<div id="app" data-server-rendered="true" data-async-called="true"><div class="tm-layout__wrapper"><!----> <div></div> <!----> <header class="tm-header"><div class="tm-page-width"><div class="tm-header__container"><!----> <span class="tm-header__logo-wrap"><a href="/ru/" class="tm-header__logo tm-header__logo_ru"><svg height="16" width="16" class="tm-svg-img tm-header__icon"><title>Хабр</title> <use xlink:href="/img/habr-logo-ru.svg#logo"></use></svg></a> <span class="tm-header__beta-sign" style="display:none;">β</span></span> <div class="tm-dropdown tm-header__projects"><div class="tm-dropdown__head"><button class="tm-header__dropdown-toggle"><svg height="16" width="16" class="tm-svg-img tm-header__icon tm-header__icon_dropdown"><title>Открыть список</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#arrow-down"></use></svg></button></div> <!----></div> <a href="/ru/sandbox/start/" class="tm-header__become-author-btn">
+            Как стать автором
+          </a> <div class="tm-feature tm-header__feature tm-feature_variant-inline"><!----></div> <!----> <!----></div></div></header> <div class="tm-layout"><div class="tm-page-progress-bar"></div> <div data-menu-sticky="true" class="tm-base-layout__header tm-base-layout__header_is-sticky"><div class="tm-page-width"><div class="tm-base-layout__header-wrapper"><div class="tm-main-menu"><div class="tm-main-menu__section"><nav class="tm-main-menu__section-content"><!----> <a href="/ru/all/" class="tm-main-menu__item">
+        Все потоки
+      </a> <a href="/ru/flows/develop/" class="tm-main-menu__item">
+          Разработка
+        </a><a href="/ru/flows/admin/" class="tm-main-menu__item">
+          Администрирование
+        </a><a href="/ru/flows/design/" class="tm-main-menu__item">
+          Дизайн
+        </a><a href="/ru/flows/management/" class="tm-main-menu__item">
+          Менеджмент
+        </a><a href="/ru/flows/marketing/" class="tm-main-menu__item">
+          Маркетинг
+        </a><a href="/ru/flows/popsci/" class="tm-main-menu__item">
+          Научпоп
+        </a></nav></div></div> <div class="tm-header-user-menu tm-base-layout__user-menu"><a href="/ru/search/" class="tm-header-user-menu__item tm-header-user-menu__search"><svg height="24" width="24" class="tm-svg-img tm-header-user-menu__icon tm-header-user-menu__icon_search tm-header-user-menu__icon_dark"><title>Поиск</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#search"></use></svg></a> <!----> <!----> <!----> <div class="tm-header-user-menu__item tm-header-user-menu__user_desktop"><div class="tm-dropdown"><div class="tm-dropdown__head"><svg height="24" width="24" data-test-id="menu-toggle-guest" class="tm-svg-img tm-header-user-menu__icon"><title>Профиль</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#header-user"></use></svg> <!----></div> <!----></div> <!----></div> <!----></div></div></div></div> <!----> <div class="tm-page-width"></div> <main class="tm-layout__container"><div hl="ru" companyName="southbridge" data-async-called="true" class="tm-page"><div class="tm-page-width"><div class="tm-page__header"><div class="tm-company-card__branding tm-company-article__branding tm-company-card__branding_loading"><div class="tm-company-card__branding-placeholder"><!----></div> <a href="https://slurm.io/kubernetes-security?utm_source=habr&amp;utm_medium=top&amp;utm_campaign=kubernetes-security&amp;utm_content=top_20-10-2021&amp;utm_term=habr-top"><img src="//habrastorage.org/getpro/habr/branding/307/f03/4ad/307f034ad5afe09d902d1991c541ef3d.png" width="100%" class="tm-company-card__branding-image"></a></div></div> <div class="tm-page__wrapper"><div class="tm-page__main tm-page__main_has-sidebar"><div class="pull-down"><div class="pull-down__header" style="height:0px;"><div class="pull-down__content" style="bottom:10px;"><svg height="24" width="24" class="tm-svg-img pull-down__arrow"><title>Обновить</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#pull-arrow"></use></svg></div></div> <div class="tm-article-presenter"><div class="tm-company-card tm-company-article__company-card"><div class="tm-company-card__info"><div class="tm-company-card__header"><a href="/ru/company/southbridge/profile/" class="tm-company-card__avatar"><div class="tm-entity-image"><img alt="" height="48" src="//habrastorage.org/getpro/habr/company/754/d93/3ca/754d933caeb494c6127add17ff60feb5.png" width="48" class="tm-entity-image__pic"></div></a> <a href="https://career.habr.com/companies/southbridge" rel="noopener" target="_blank" class="tm-grade tm-company-card__rating"><div class="tm-rating"><div class="tm-rating__header"><svg height="24" width="24" class="tm-svg-img tm-svg-grade__icon"><title>Оценка компании на Хабр Карьере</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#grade"></use></svg> <div class="tm-rating__counter tm-rating__counter_variant-grade">4.31</div></div> <div class="tm-rating__text tm-rating__text_variant-grade">
+    Оценка
+  </div></div></a> <div class="tm-rating tm-company-card__rating"><div class="tm-rating__header"> <div class="tm-rating__counter">181.52</div></div> <div class="tm-rating__text">
+    Рейтинг
+  </div></div></div> <div class="tm-company-card__info"><a href="/ru/company/southbridge/profile/" class="tm-company-card__name">
+        Southbridge
+      </a> <div class="tm-company-card__description">Обеспечиваем стабильную работу highload-проектов</div></div></div> <div class="tm-company-card__buttons"><!----> <!----></div></div> <div class="tm-article-presenter__body"><div class="tm-misprint-area"><div class="tm-misprint-area__wrapper"><article class="tm-article-presenter__content tm-article-presenter__content_narrow"><div class="tm-article-presenter__header"> <div class="tm-article-snippet tm-article-presenter__snippet"><div class="tm-article-snippet__meta-container"><div class="tm-article-snippet__meta"><span class="tm-user-info tm-article-snippet__author"><a href="/ru/users/nAbdullin/" title="nAbdullin" class="tm-user-info__userpic"><div class="tm-entity-image"><svg height="24" width="24" class="tm-svg-img tm-image-placeholder tm-image-placeholder_pink"><!----> <use xlink:href="/img/megazord-v24.ce74655c.svg#placeholder-user"></use></svg></div></a> <span class="tm-user-info__user"><a href="/ru/users/nAbdullin/" class="tm-user-info__username">
+      nAbdullin
+    </a> </span></span> <span class="tm-article-snippet__datetime-published"><time datetime="2019-05-21T06:02:30.000Z" title="2019-05-21, 09:02">21  мая  2019 в 09:02</time></span></div> <!----></div> <h1 lang="ru" class="tm-article-snippet__title tm-article-snippet__title_h1"><span>Резервное копирование, часть 2: Обзор и тестирование rsync-based средств резервного копирования</span></h1> <div class="tm-article-snippet__hubs"><span class="tm-article-snippet__hubs-item"><a href="/ru/company/southbridge/blog/" class="tm-article-snippet__hubs-item-link router-link-active"><span>Блог компании Southbridge</span> <!----></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/sys_admin/" class="tm-article-snippet__hubs-item-link"><span>Системное администрирование</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/s_admin/" class="tm-article-snippet__hubs-item-link"><span>Серверное администрирование</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/devops/" class="tm-article-snippet__hubs-item-link"><span>DevOps</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span></div> <!----> <!----> <!----></div></div> <!----> <div data-gallery-root="" lang="ru" class="tm-article-body"><div id="post-content-body" class="article-formatted-body article-formatted-body_version-1"><div xmlns="http://www.w3.org/1999/xhtml"><div style="text-align:center;"><img src="https://habrastorage.org/r/w780q1/webt/qz/kb/vb/qzkbvb4hilrlczg2cxjosdu-ube.jpeg" data-src="https://habrastorage.org/webt/qz/kb/vb/qzkbvb4hilrlczg2cxjosdu-ube.jpeg" data-blurred="true"/></div><br/>
+Данной статьей продолжается <br/>
+<br/>
+<div class="spoiler"><b class="spoiler_title">цикл о резервном копировании</b><div class="spoiler_text"><ol>
+<li> <a href="https://habr.com/ru/company/southbridge/blog/449282/">Резервное копирование, часть 1: Зачем нужно резервное копирование, обзор методов, технологий</a></li>
+<li> <a href="https://habr.com/ru/company/southbridge/blog/452630/">Резервное копирование, часть 2: Обзор и тестирование rsync-based средст резервного копирования</a></li>
+<li> <a href="https://habr.com/ru/company/southbridge/blog/454420/">Резервное копирование, часть 3: Обзор и тестирование duplicity, duplicati</a></li>
+<li> <a href="https://habr.com/ru/company/southbridge/blog/454734/#first_unread">Резервное копирование, часть 4: Обзор и тестирование zbackup, restic, borgbackup</a></li>
+<li> <a href="https://habr.com/ru/company/southbridge/blog/459550/">Резервное копирование, часть 5: Тестирование Bacula и Veeam Backup for Linux</a></li>
+<li> Резервное копирование, часть 6: Сравнение средств резервного копирования</li>
+<li> Резервное копирование, часть 7: Выводы</li>
+</ol><br/>
+</div></div><br/>
+Как мы уже писали в первой статье, есть весьма большое число программ резервного копирования, основанных на rsync.<br/>
+<br/>
+Из тех, что больше всего подходят под наши условия, я буду рассматривать 3: rdiff-backup, rsnapshot и burp.<br/>
+<a name="habracut"></a><br/>
+<h4>Тестовые наборы файлов</h4><br/>
+<i>Наборы файлов для тестирования будут одинаковыми для всех кандидатов, включая будущие статьи.</i><br/>
+<br/>
+<b>Первый набор</b>: 10 Гб медиафайлов, и примерно 50 мб — исходный код сайта на php, размеры файлов от нескольких килобайт для исходного кода, до десятков мегабайт для медиафайлов. Цель — имитация сайта с статикой.<br/>
+<br/>
+<b>Второй набор</b>: получается из первого при переименовании подкаталога с медиафайлами размером 5 гб. Цель — изучение поведения системы резервного копирования на переименование каталога.<br/>
+<br/>
+<b>Третий набор</b>: получается из первого удалением 3гб медиафайлов и добавлением новых 3 гб медиафайлов. Цель — изучение поведения системы резервного копирования при типовой операции обновления сайта.<br/>
+<br/>
+<h4>Получение результатов</h4><br/>
+Любое резервное копирование выполняется минимум 3 раза и сопровождается сбросом кэшей файловой системы командами <code>sync</code> и <code>echo 3 > /proc/sys/vm/drop_caches</code> как на стороне тестового сервера, так и сервера хранения резервных копий.<br/>
+<br/>
+На сервере, который будет источником резервных копий, установлено ПО для мониторинга — netdata, с помощью которого будет оцениваться нагрузка на сервер при копированиии, это нужно для оценки нагрузки сервера процессом резервного копирования.<br/>
+<br/>
+Также считаю, что сервер хранения резервных копий медленнее по процессору, чем основной сервер, но обладает более емкими дисками с относительно небольшой скоростью случайной записи — наиболее частая ситуация при резервном копировании, а по причине того, что сервер резервного копирования по-хорошему не должен делать другие задачи, кроме резервного копирования, его нагрузку с помощью netdata я отслеживать не буду.<br/>
+<br/>
+Также у меня изменились сервера, на которых я буду проверять различные системы для резервного копирования.<br/>
+<br/>
+<div class="spoiler"><b class="spoiler_title">Сейчас у них следующие характеристики</b><div class="spoiler_text"><b>Процессор</b><br/>
+<br/>
+<pre><code class="plaintext">sysbench --threads=2 --time=30 --cpu-max-prime=20000 cpu run
+sysbench 1.0.17 (using system LuaJIT 2.0.4)
+
+Running the test with following options:
+Number of threads: 2
+Initializing random number generator from current time
+
+
+Prime numbers limit: 20000
+
+Initializing worker threads...
+
+Threads started!
+
+CPU speed:
+    events per second:  1081.62
+
+General statistics:
+    total time:                          30.0013s
+    total number of events:              32453
+
+Latency (ms):
+         min:                                    1.48
+         avg:                                    1.85
+         max:                                    9.84
+         95th percentile:                        2.07
+         sum:                                59973.40
+
+Threads fairness:
+    events (avg/stddev):           16226.5000/57.50
+    execution time (avg/stddev):   29.9867/0.00
+</code></pre><br/>
+<b>Оперативная память, чтение...</b><br/>
+<br/>
+<pre><code class="plaintext">sysbench --threads=4 --time=30 --memory-block-size=1K --memory-scope=global --memory-total-size=100G --memory-oper=read memory run
+sysbench 1.0.17 (using system LuaJIT 2.0.4)
+
+Running the test with following options:
+Number of threads: 4
+Initializing random number generator from current time
+
+
+Running memory speed test with the following options:
+  block size: 1KiB
+  total size: 102400MiB
+  operation: read
+  scope: global
+
+Initializing worker threads...
+
+Threads started!
+
+Total operations: 104857600 (5837637.63 per second)
+
+102400.00 MiB transferred (5700.82 MiB/sec)
+
+
+General statistics:
+    total time:                          17.9540s
+    total number of events:              104857600
+
+Latency (ms):
+         min:                                    0.00
+         avg:                                    0.00
+         max:                                   66.08
+         95th percentile:                        0.00
+         sum:                                18544.64
+
+Threads fairness:
+    events (avg/stddev):           26214400.0000/0.00
+    execution time (avg/stddev):   4.6362/0.12
+</code></pre><br/>
+<b>… и запись</b><br/>
+<br/>
+<pre><code class="plaintext">sysbench --threads=4 --time=30 --memory-block-size=1K --memory-scope=global --memory-total-size=100G --memory-oper=write memory run
+sysbench 1.0.17 (using system LuaJIT 2.0.4)
+
+Running the test with following options:
+Number of threads: 4
+Initializing random number generator from current time
+
+
+Running memory speed test with the following options:
+  block size: 1KiB
+  total size: 102400MiB
+  operation: write
+  scope: global
+
+Initializing worker threads...
+
+Threads started!
+
+Total operations: 91414596 (3046752.56 per second)
+
+89272.07 MiB transferred (2975.34 MiB/sec)
+
+
+General statistics:
+    total time:                          30.0019s
+    total number of events:              91414596
+
+Latency (ms):
+         min:                                    0.00
+         avg:                                    0.00
+         max:                                 1022.90
+         95th percentile:                        0.00
+         sum:                                66430.91
+
+Threads fairness:
+    events (avg/stddev):           22853649.0000/945488.53
+    execution time (avg/stddev):   16.6077/1.76
+</code></pre><br/>
+<b>Диск на сервере-источнике данных</b><br/>
+<br/>
+<pre><code class="plaintext">sysbench --threads=4 --file-test-mode=rndrw --time=60 --file-block-size=4K --file-total-size=1G fileio run
+sysbench 1.0.17 (using system LuaJIT 2.0.4)
+
+Running the test with following options:
+Number of threads: 4
+Initializing random number generator from current time
+
+
+Extra file open flags: (none)
+128 files, 8MiB each
+1GiB total file size
+Block size 4KiB
+Number of IO requests: 0
+Read/Write ratio for combined random IO test: 1.50
+Periodic FSYNC enabled, calling fsync() each 100 requests.
+Calling fsync() at the end of test, Enabled.
+Using synchronous I/O mode
+Doing random r/w test
+Initializing worker threads...
+
+Threads started!
+
+
+File operations:
+    reads/s:                      4587.95
+    writes/s:                     3058.66
+    fsyncs/s:                     9795.73
+
+Throughput:
+    read, MiB/s:                  17.92
+    written, MiB/s:               11.95
+
+General statistics:
+    total time:                          60.0241s
+    total number of events:              1046492
+
+Latency (ms):
+         min:                                    0.00
+         avg:                                    0.23
+         max:                                   14.45
+         95th percentile:                        0.94
+         sum:                               238629.34
+
+Threads fairness:
+    events (avg/stddev):           261623.0000/1849.14
+    execution time (avg/stddev):   59.6573/0.00
+</code></pre><br/>
+<b>Диск на сервере хранения резервных копий</b><br/>
+<br/>
+<pre><code class="plaintext">sysbench --threads=4 --file-test-mode=rndrw --time=60 --file-block-size=4K --file-total-size=1G fileio run
+sysbench 1.0.17 (using system LuaJIT 2.0.4)
+
+Running the test with following options:
+Number of threads: 4
+Initializing random number generator from current time
+
+
+Extra file open flags: (none)
+128 files, 8MiB each
+1GiB total file size
+Block size 4KiB
+Number of IO requests: 0
+Read/Write ratio for combined random IO test: 1.50
+Periodic FSYNC enabled, calling fsync() each 100 requests.
+Calling fsync() at the end of test, Enabled.
+Using synchronous I/O mode
+Doing random r/w test
+Initializing worker threads...
+
+Threads started!
+
+
+File operations:
+    reads/s:                      11.37
+    writes/s:                     7.58
+    fsyncs/s:                     29.99
+
+Throughput:
+    read, MiB/s:                  0.04
+    written, MiB/s:               0.03
+
+General statistics:
+    total time:                          73.8868s
+    total number of events:              3104
+
+Latency (ms):
+         min:                                    0.00
+         avg:                                   78.57
+         max:                                 3840.90
+         95th percentile:                      297.92
+         sum:                               243886.02
+
+Threads fairness:
+    events (avg/stddev):           776.0000/133.26
+    execution time (avg/stddev):   60.9715/1.59
+</code></pre><br/>
+<b>Скорость сети между серверами</b><br/>
+<br/>
+<pre><code class="plaintext">iperf3 -c backup
+Connecting to host backup, port 5201
+[  4] local x.x.x.x port 59402 connected to y.y.y.y port 5201
+[ ID] Interval           Transfer     Bandwidth       Retr  Cwnd
+[  4]   0.00-1.00   sec   419 MBytes  3.52 Gbits/sec  810    182 KBytes
+[  4]   1.00-2.00   sec   393 MBytes  3.30 Gbits/sec  810    228 KBytes
+[  4]   2.00-3.00   sec   378 MBytes  3.17 Gbits/sec  810    197 KBytes
+[  4]   3.00-4.00   sec   380 MBytes  3.19 Gbits/sec  855    198 KBytes
+[  4]   4.00-5.00   sec   375 MBytes  3.15 Gbits/sec  810    182 KBytes
+[  4]   5.00-6.00   sec   379 MBytes  3.17 Gbits/sec  765    228 KBytes
+[  4]   6.00-7.00   sec   376 MBytes  3.15 Gbits/sec  810    180 KBytes
+[  4]   7.00-8.00   sec   379 MBytes  3.18 Gbits/sec  765    253 KBytes
+[  4]   8.00-9.00   sec   380 MBytes  3.19 Gbits/sec  810    239 KBytes
+[  4]   9.00-10.00  sec   411 MBytes  3.44 Gbits/sec  855    184 KBytes
+- - - - - - - - - - - - - - - - - - - - - - - - -
+[ ID] Interval           Transfer     Bandwidth       Retr
+[  4]   0.00-10.00  sec  3.78 GBytes  3.25 Gbits/sec  8100             sender
+[  4]   0.00-10.00  sec  3.78 GBytes  3.25 Gbits/sec                  receiver
+</code></pre><br/>
+</div></div><br/>
+<h4>Методика тестирования</h4><br/>
+<ol>
+<li>На тестовом сервере подготавливается файловая система с первым тестовым набором, на сервере хранения резервных копий при необходимости инициализируется репозиторий. <br/>
+Запускается процесс резервного копирования и замеряется его время.</li>
+<li>На тестовом сервере производится миграция файлов до второго тестового набора. Запускается процесс резервного копирования и замеряется его время.</li>
+<li>На тестовом сервере производится миграция до третьего тестового набора. Запускается процесс резервного копирования и замеряется его время.</li>
+<li>Полученный третий тестовый набор принимается новым первым; пункты 1-3 повторяются еще 2 раза.</li>
+<li>Данные заносятся в сводную таблицу, добавляются графики с netdata.</li>
+<li>Составляется отчет по отдельному методу резервного копирования.</li>
+</ol><br/>
+<h4>Ожидаемые результаты</h4><br/>
+Так как все 3 кандидата основаны на одной и той же технологии (rsync), ожидается, что результаты будут близки к обычному rsync, включая все его преимущества, а именно:<br/>
+<br/>
+<ol>
+<li>Файлы в репозитории будут храниться «как есть».</li>
+<li>Размер репозитория будет расти только включая разницу между резервными копиями.</li>
+<li>Будет сравнительно большая нагрузка на сеть при передаче данных, а также небольшая нагрузка на процессор.</li>
+</ol><br/>
+Тестовый прогон обычного rsync будет применяться в качестве эталона, его результаты<br/>
+<br/>
+<div class="spoiler"><b class="spoiler_title">таковы</b><div class="spoiler_text"><img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/oy/rd/ry/oyrdryrtuoaktxno8ap_gdxirpe.png"/><br/>
+<br/>
+Узкое место было на сервере хранения резервных данных в виде диска на основе HDD, что достаточно четко видно на графиках в виде пилы.<br/>
+<br/>
+Данные были скопированы за 4 минуты и 15 секунд.<br/>
+<br/>
+</div></div><br/>
+<h4>Тестирование rdiff-backup</h4><br/>
+Первый кандидат — rdiff-backup, скрипт на python, который выполняет резервное копирование одного каталога в другой. При этом текущая резервная копия хранится «как есть», а резервные копии, сделанные ранее, складываются в специальный подкаталог инкрементально, и таким образом, экономится место.<br/>
+<br/>
+Будем проверять типовой режим работы, т.е. запуск процесса резервного копирования инициирует клиент самостоятельно, а на стороне сервера для резервного копирования запускается процесс, который принимает данные.<br/>
+<br/>
+Давайте посмотрим, <div class="spoiler"><b class="spoiler_title">на что он способен в наших условиях</b><div class="spoiler_text">.<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/dx/cj/wu/dxcjwunnxfr_2orkmdhj2stkdci.png"/><br/>
+<br/>
+Время работы каждого тестового запуска:<br/>
+ <br/>
+<div class="scrollable-table"><table>
+<tr>
+<th></th>
+<th>Первый запуск</th>
+<th>Второй запуск</th>
+<th>Третий запуск</th>
+</tr>
+<tr>
+<td>Первый набор</td>
+<td>16m32s</td>
+<td>16m26s</td>
+<td>16m19s</td>
+</tr>
+<tr>
+<td>Второй набор</td>
+<td>2h5m</td>
+<td>2h10m</td>
+<td>2h8m</td>
+</tr>
+<tr>
+<td>Третий набор</td>
+<td>2h9m</td>
+<td>2h10m</td>
+<td>2h10m</td>
+</tr>
+</table></div><br/>
+</div></div><br/>
+Rdiff-backup весьма болезненно реагирует на любое большое изменение данных, также не до конца утилизирует сеть.<br/>
+<br/>
+<h4>Тестирование rsnapshot</h4><br/>
+Второй кандидат — rsnapshot, представляет собой скрипт на perl, главное требование которого для эффективной работы — поддержка жестких ссылок. Таким образом экономится место на диске. При этом не изменившиеся с момента предыдущей резервной копии файлы будут ссылаться на оригинальный файл с помощью жестких ссылок.<br/>
+<br/>
+Также инвертирована логика процесса резервного копирования: сервер активно «ходит» сам по своим клиентам и забирает данные.<br/>
+<br/>
+Результаты тестирования<br/>
+<br/>
+<div class="spoiler"><b class="spoiler_title">получились следующие</b><div class="spoiler_text"><img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/e7/cr/64/e7cr64iu4dn3sz9jtjr0eqdvcek.png"/><br/>
+<br/>
+<div class="scrollable-table"><table>
+<tr>
+<th></th>
+<th>Первый запуск</th>
+<th>Второй запуск</th>
+<th>Третий запуск</th>
+</tr>
+<tr>
+<td>Первый набор</td>
+<td>4m22s</td>
+<td>4m19s</td>
+<td>4m16s</td>
+</tr>
+<tr>
+<td>Второй набор</td>
+<td>2m6s</td>
+<td>2m10s</td>
+<td>2m6s</td>
+</tr>
+<tr>
+<td>Третий набор</td>
+<td>1m18s</td>
+<td>1m10s</td>
+<td>1m10s</td>
+</tr>
+</table></div></div></div><br/>
+Отработал весьма и весьма быстро, гораздо быстрее rdiff-backup и очень близко к чистому rsync.<br/>
+<br/>
+<h4>Тестирование burp</h4><br/>
+Еще один вариант — реализация на C поверх librsync — burp, имеет клиент-серверную архитектуру включая авторизацию клиентов, а также наличие web-интерфейса (не входит в базовую поставку). Еще одна интересная особенность — резервное копирование без права восстановления у клиентов.<br/>
+<br/>
+Давайте посмотрим на<div class="spoiler"><b class="spoiler_title">производительность</b><div class="spoiler_text">.<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/v_/-g/7b/v_-g7b392dqlunmoqk_idtuilhc.png"/><br/>
+<br/>
+<div class="scrollable-table"><table>
+<tr>
+<th></th>
+<th>Первый запуск</th>
+<th>Второй запуск</th>
+<th>Третий запуск</th>
+</tr>
+<tr>
+<td>Первый набор</td>
+<td>11m21s</td>
+<td>11m10s</td>
+<td>10m56s</td>
+</tr>
+<tr>
+<td>Второй набор</td>
+<td>5m37s</td>
+<td>5m40s</td>
+<td>5m35s</td>
+</tr>
+<tr>
+<td>Третий набор</td>
+<td>3m33s</td>
+<td>3m24s</td>
+<td>3m40s</td>
+</tr>
+</table></div></div></div><br/>
+Отработал в 2 раза медленнее, чем rsnapshot, однако тоже достаточно быстро, и уж точно быстрее rdiff-backup. Графики немного пилообразны — производительность опять же упирается в дисковую подсистему сервера хранения резервных копий, хотя это и не так выражено, как у rsnapshot.<br/>
+<br/>
+<h4>Результаты</h4><br/>
+Размер репозиториев у всех кандидатов был примерно одинаковым, т. е. сначала рост до 10 гб, потом рост до 15 гб, потом рост до 18 гб и т.д., что связано с особенностью работы rsync. Также стоит отметить однопоточность всех кандидатов (загрузка по процессору около 50% при двухядерной машине). Все 3 кандидата предоставляли возможность восстановления последней резервной копии «как есть», то есть можно было восстанавливать файлы без применения каких-либо сторонних программ включая те, которые применялись для создания репозиториев. Это также «родовое наследие» rsync.<br/>
+<br/>
+<h4>Выводы</h4><br/>
+Чем сложнее система резервного копирования и чем больше у нее различных возможностей — тем медленнее она будет работать, но для не сильно требовательных проектов подойдет любая из них, кроме, возможно, rdiff-backup.<br/>
+<br/>
+<h4>Анонс</h4><br/>
+Данная заметка продолжает цикл о резервном копировании<br/>
+<br/>
+<a href="https://habr.com/ru/company/southbridge/blog/449282/">Резервное копирование, часть 1: Зачем нужно резервное копирование, обзор методов, технологий</a><br/>
+<a href="https://habr.com/ru/company/southbridge/blog/452630/">Резервное копирование, часть 2: Обзор и тестирование rsync-based средств резервного копирования</a><br/>
+<a href="https://habr.com/ru/company/southbridge/blog/454420/">Резервное копирование, часть 3: Обзор и тестирование duplicity, duplicati</a><br/>
+<a href="https://habr.com/ru/company/southbridge/blog/454734/#first_unread">Резервное копирование, часть 4: Обзор и тестирование zbackup, restic, borgbackup</a><br/>
+<a href="https://habr.com/ru/company/southbridge/blog/459550/">Резервное копирование, часть 5: Тестирование Bacula и Veeam Backup for Linux</a><br/>
+<a href="https://habr.com/ru/company/southbridge/blog/468963/">Резервное копирование: часть по просьбам читателей: обзор AMANDA, UrBackup, BackupPC</a><br/>
+<a href="https://habr.com/ru/company/southbridge/blog/470802/">Резервное копирование, часть 6: Сравнение средств резервного копирования</a><br/>
+<a href="https://habr.com/ru/company/southbridge/blog/472776/">Резервное копирование, часть 7: Выводы</a><br/>
+<br/>
+<u>Автор публикации</u>: <a href="https://habr.com/ru/users/Finnix/">Finnix</a></div></div> <!----> <!----></div> <div class="tm-article-presenter__meta"><div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Теги:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bbackup%5D" class="tm-tags-list__link">backup</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Brsync%5D" class="tm-tags-list__link">rsync</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Brdiff-backup%5D" class="tm-tags-list__link">rdiff-backup</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Brsnapshot%5D" class="tm-tags-list__link">rsnapshot</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bburp%5D" class="tm-tags-list__link">burp</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5B%D1%80%D0%B5%D0%B7%D0%B5%D1%80%D0%B2%D0%BD%D0%BE%D0%B5%20%D0%BA%D0%BE%D0%BF%D0%B8%D1%80%D0%BE%D0%B2%D0%B0%D0%BD%D0%B8%D0%B5%5D" class="tm-tags-list__link">резервное копирование</a></li></ul></div> <div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Хабы:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/company/southbridge/blog/" class="tm-hubs-list__link router-link-active">
+    Блог компании Southbridge
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/sys_admin/" class="tm-hubs-list__link">
+    Системное администрирование
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/s_admin/" class="tm-hubs-list__link">
+    Серверное администрирование
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/devops/" class="tm-hubs-list__link">
+    DevOps
+  </a></li></ul></div></div></article></div> <!----></div> <div class="tm-article-sticky-panel"><div class="tm-data-icons tm-article-sticky-panel__icons"><div class="tm-article-rating tm-data-icons__item"><div class="tm-votes-meter tm-article-rating__votes-switcher"><svg height="16" width="16" class="tm-svg-img tm-votes-meter__icon tm-votes-meter__icon_medium"><title>Всего голосов 30: ↑27 и ↓3</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-rating"></use></svg> <span title="Всего голосов 30: ↑27 и ↓3" class="tm-votes-meter__value tm-votes-meter__value_positive tm-votes-meter__value_medium">+24</span></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----> <span title="Количество просмотров" class="tm-icon-counter tm-data-icons__item"><svg height="16" width="16" class="tm-svg-img tm-icon-counter__icon"><title>Просмотры</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-views"></use></svg> <span class="tm-icon-counter__value">14K</span></span> <button title="Добавить в закладки" type="button" class="bookmarks-button tm-data-icons__item"><span title="Добавить в закладки" class="tm-svg-icon__wrapper bookmarks-button__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Добавить в закладки</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-favorite"></use></svg></span> <span title="Количество пользователей, добавивших публикацию в закладки" class="bookmarks-button__counter">
+    93
+  </span></button> <!----> <div title="Поделиться" class="tm-sharing tm-data-icons__item"><button type="button" class="tm-sharing__button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="tm-sharing__icon"><path fill="currentColor" d="M10.33.275l9.047 7.572a.2.2 0 010 .306l-9.048 7.572a.2.2 0 01-.328-.153V11c-8 0-9.94 6-9.94 6S-1 5 10 5V.428a.2.2 0 01.328-.153z"></path></svg></button> <!----></div> <DIV class="v-portal" style="display:none;"></DIV></div> </div></div> <!----> <!----> <div class="tm-article-presenter__footer"><div class="tm-article-blocks"><!----> <section class="tm-block tm-block_spacing-bottom"><!----> <div class="tm-block__body tm-block__body_variant-balanced"><div class="tm-article-author"><div class="tm-article-author__company"><div class="tm-article-author__company-card"><div class="tm-company-snippet"><a href="/ru/company/southbridge/profile/" class="tm-company-snippet__logo-link"><div class="tm-entity-image"><img alt="" height="40" src="//habrastorage.org/getpro/habr/company/754/d93/3ca/754d933caeb494c6127add17ff60feb5.png" width="40" class="tm-entity-image__pic"></div></a> <div class="tm-company-snippet__info"><a href="/ru/company/southbridge/profile/" class="tm-company-snippet__title">Southbridge</a> <div class="tm-company-snippet__description">Обеспечиваем стабильную работу highload-проектов</div></div></div> <div class="tm-article-author__buttons"><!----> <!----></div></div> <div class="tm-article-author__company-contacts"><a href="https://southbridge.io/" rel="noopener" target="_blank" class="tm-article-author__contact">
+      Сайт
+    </a></div> <div class="tm-article-author__separator"></div></div> <div class="tm-user-card tm-article-author__user-card tm-user-card_variant-article"><div class="tm-user-card__info-container"><div class="tm-user-card__header"><div class="tm-user-card__header-data"><a href="/ru/users/nAbdullin/" class="tm-user-card__userpic tm-user-card__userpic_size-40"><div class="tm-entity-image"><svg class="tm-svg-img tm-image-placeholder tm-image-placeholder_pink"><!----> <use xlink:href="/img/megazord-v24.ce74655c.svg#placeholder-user"></use></svg></div></a> <div class="tm-user-card__meta"><div title=" 150 голосов " class="tm-karma tm-user-card__karma"><div class="tm-karma__votes tm-karma__votes_positive">
+    108
+  </div> <div class="tm-karma__text">
+    Карма
+  </div></div> <div title="Рейтинг пользователя" class="tm-rating tm-user-card__rating"><div class="tm-rating__header"> <div class="tm-rating__counter">0</div></div> <div class="tm-rating__text">
+    Рейтинг
+  </div></div></div></div></div> <div class="tm-user-card__info tm-user-card__info_variant-article"><div class="tm-user-card__title tm-user-card__title_variant-article"><!----> <a href="/ru/users/nAbdullin/" class="tm-user-card__nickname tm-user-card__nickname_variant-article">
+          @nAbdullin
+        </a> <!----></div> <p class="tm-user-card__short-info tm-user-card__short-info_variant-article">Пользователь</p></div></div> <div class="tm-user-card__buttons tm-user-card__buttons_variant-article"><!----> <!----> <!----> <!----> <!----></div></div> <!----></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----></section> <div class="tm-article-blocks__comments"><div class="tm-article-page-comments"><div class="tm-article-comments-counter-link tm-article-comments-counter-button"><a href="/ru/company/southbridge/blog/452630/comments/" class="tm-article-comments-counter-link__link tm-article-comments-counter-link__link_button-style"><svg height="16" width="16" class="tm-svg-img tm-article-comments-counter-link__icon tm-article-comments-counter-link__icon_contrasted"><title>Комментарии</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-comments"></use></svg> <span class="tm-article-comments-counter-link__value tm-article-comments-counter-link__value_contrasted">
+       Комментарии 6 
+    </span></a> <!----></div></div></div>  <!---->  <!----> <!----></div></div></div></div></div> <div class="tm-page__sidebar"><div class="tm-layout-sidebar"><div class="tm-layout-sidebar__placeholder_initial"></div> <div class="tm-sexy-sidebar tm-sexy-sidebar_initial" style="margin-top:0px;"><!----> <section class="tm-block tm-block_spacing-bottom"><header class="tm-block__header"><h2 class="tm-block__title">Информация</h2> <!----></header> <div class="tm-block__body"><div class="tm-company-basic-info"><dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Дата основания</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><time datetime="2008-02-21T21:00:00.000Z" title="2008-02-22, 00:00">22  февраля  2008</time></dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Местоположение</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap">
+    Россия
+  </dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Сайт</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><a href="https://southbridge.io" target="_blank" class="tm-company-basic-info__link">
+      southbridge.io
+    </a></dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Численность</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap">
+    51–100 человек
+  </dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Дата регистрации</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><time datetime="2012-11-15T08:41:16.000Z" title="2012-11-15, 12:41">15  ноября  2012</time></dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Представитель</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><a href="/ru/users/aSkobin/" class="tm-company-basic-info__link">
+      Антон Скобин
+    </a></dd></dl></div></div> <!----></section> <div class="tm-company-widgets"></div> <!----></div></div></div></div></div></div></main> <!----></div> <div class="tm-footer-menu"><div class="tm-page-width"><div class="tm-footer-menu__container"><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Ваш аккаунт
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr/?back=/ru/company/southbridge/blog/452630/&amp;hl=ru" rel="nofollow" target="_self">
+                Войти
+              </a></li><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr-register/?back=/ru/company/southbridge/blog/452630/&amp;hl=ru" rel="nofollow" target="_self">
+                Регистрация
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Разделы
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/" class="footer-menu__item-link router-link-active">
+                Публикации
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/news/" class="footer-menu__item-link">
+                Новости
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/hubs/" class="footer-menu__item-link">
+                Хабы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/companies/" class="footer-menu__item-link">
+                Компании
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/users/" class="footer-menu__item-link">
+                Авторы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/sandbox/" class="footer-menu__item-link">
+                Песочница
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Информация
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/docs/help/" class="footer-menu__item-link">
+                Устройство сайта
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/authors/codex/" class="footer-menu__item-link">
+                Для авторов
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/companies/corpblogs/" class="footer-menu__item-link">
+                Для компаний
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/docs/transparency/" class="footer-menu__item-link">
+                Документы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/agreement" target="_blank">
+                Соглашение
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/confidential/" target="_blank">
+                Конфиденциальность
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Услуги
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQLwRfQmXibiUlWaRg-BAc38s7oM3lJiaPju7qmdJsp8ysIvZ_G-Npem0njJLMozE2bPHMpDqiI5hhy/pub?start=false&amp;loop=false&amp;delayms=60000&amp;slide=id.g91a03369cd_4_297" target="_blank">
+                Реклама
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://habrastorage.org/storage/stuff/habr/service_price.pdf" target="_blank">
+                Тарифы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQJJds8-Di7BQSP_guHxICN7woVYoN5NP_22ra-BIo4bqnTT9FR6fB-Ku2P0AoRpX0Ds-LRkDeAoD8F/pub?start=false&amp;loop=false&amp;delayms=60000" target="_blank">
+                Контент
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://tmtm.timepad.ru/" target="_blank">
+                Семинары
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/megaprojects/" class="footer-menu__item-link">
+                Мегапроекты
+              </a></li></ul></div></div></div></div></div> <div class="tm-footer"><div class="tm-page-width"><div class="tm-footer__container"><!----> <div class="tm-footer__social"><a href="https://www.facebook.com/habrahabr.ru" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Facebook</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-facebook"></use></svg></a><a href="https://twitter.com/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Twitter</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-twitter"></use></svg></a><a href="https://vk.com/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>VK</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-vkontakte"></use></svg></a><a href="https://telegram.me/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Telegram</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-telegram"></use></svg></a><a href="https://www.youtube.com/channel/UCd_sTwKqVrweTt4oAKY5y4w" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Youtube</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-youtube"></use></svg></a><a href="https://zen.yandex.ru/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Яндекс Дзен</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-zen"></use></svg></a></div> <DIV class="v-portal" style="display:none;"></DIV> <button class="tm-footer__link"><!---->
+        Настройка языка
+      </button> <a href="/ru/about" class="tm-footer__link">
+        О сайте
+      </a> <a href="/ru/feedback/" class="tm-footer__link">
+        Техническая поддержка
+      </a> <!----> <a href="/berserk-mode-nope" class="tm-footer__link">
+        Вернуться на старую версию
+      </a> <div class="tm-footer-copyright"><span class="tm-copyright"><span class="tm-copyright__years">© 2006–2021 </span> <span class="tm-copyright__name">«<a href="https://company.habr.com/" rel="noopener" target="_blank" class="tm-copyright__link">Habr</a>»</span></span></div></div></div></div> <!----> <!----></div> <div class="vue-portal-target"></div></div>
+<script>window.__INITIAL_STATE__={"adblock":{"hasAcceptableAdsFilter":false,"hasAdblock":false},"articlesList":{"articlesList":{"452630":{"id":"452630","timePublished":"2019-05-21T06:02:30+00:00","isCorporative":true,"lang":"ru","titleHtml":"Резервное копирование, часть 2: Обзор и тестирование rsync-based средств резервного копирования","leadData":{"textHtml":"\u003Cdiv style=\"text-align:center;\"\u003E\u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fqz\u002Fkb\u002Fvb\u002Fqzkbvb4hilrlczg2cxjosdu-ube.jpeg\"\u003E\u003C\u002Fdiv\u003E\u003Cbr\u003E\r\nДанной статьей продолжается \u003Cbr\u003E\r\n\u003Cbr\u003E\r\n\u003Cdiv class=\"spoiler\"\u003E\u003Cb class=\"spoiler_title\"\u003Eцикл о резервном копировании\u003C\u002Fb\u003E\u003Cdiv class=\"spoiler_text\"\u003E\u003Col\u003E\r\n\u003Cli\u003E \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fsouthbridge\u002Fblog\u002F449282\u002F\"\u003EРезервное копирование, часть 1: Зачем нужно резервное копирование, обзор методов, технологий\u003C\u002Fa\u003E\u003C\u002Fli\u003E\r\n\u003Cli\u003E \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fsouthbridge\u002Fblog\u002F452630\u002F\"\u003EРезервное копирование, часть 2: Обзор и тестирование rsync-based средст резервного копирования\u003C\u002Fa\u003E\u003C\u002Fli\u003E\r\n\u003Cli\u003E \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fsouthbridge\u002Fblog\u002F454420\u002F\"\u003EРезервное копирование, часть 3: Обзор и тестирование duplicity, duplicati\u003C\u002Fa\u003E\u003C\u002Fli\u003E\r\n\u003Cli\u003E \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fsouthbridge\u002Fblog\u002F454734\u002F#first_unread\"\u003EРезервное копирование, часть 4: Обзор и тестирование zbackup, restic, borgbackup\u003C\u002Fa\u003E\u003C\u002Fli\u003E\r\n\u003Cli\u003E \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fsouthbridge\u002Fblog\u002F459550\u002F\"\u003EРезервное копирование, часть 5: Тестирование Bacula и Veeam Backup for Linux\u003C\u002Fa\u003E\u003C\u002Fli\u003E\r\n\u003Cli\u003E Резервное копирование, часть 6: Сравнение средств резервного копирования\u003C\u002Fli\u003E\r\n\u003Cli\u003E Резервное копирование, часть 7: Выводы\u003C\u002Fli\u003E\r\n\u003C\u002Fol\u003E\u003Cbr\u003E\r\n\u003C\u002Fdiv\u003E\u003C\u002Fdiv\u003E\u003Cbr\u003E\r\nКак мы уже писали в первой статье, есть весьма большое число программ резервного копирования, основанных на rsync.\u003Cbr\u003E\r\n\u003Cbr\u003E\r\nИз тех, что больше всего подходят под наши условия, я буду рассматривать 3: rdiff-backup, rsnapshot и burp.\u003Cbr\u003E","imageUrl":null,"buttonTextHtml":"Читать дальше →","image":null},"editorVersion":"1.0","postType":"article","postLabels":[],"author":{"scoreStats":{"score":108,"votesCount":150},"rating":0,"relatedData":null,"contacts":[],"authorContacts":[],"paymentDetails":{"paymentYandexMoney":null,"paymentPayPalMe":null,"paymentWebmoney":null},"id":"1829125","alias":"nAbdullin","fullname":null,"avatarUrl":null,"speciality":null},"statistics":{"commentsCount":6,"favoritesCount":93,"readingCount":13731,"score":24,"votesCount":30},"hubs":[{"relatedData":null,"id":"17901","alias":"southbridge","type":"corporative","title":"Блог компании Southbridge","titleHtml":"Блог компании Southbridge","isProfiled":false},{"relatedData":null,"id":"221","alias":"sys_admin","type":"collective","title":"Системное администрирование","titleHtml":"Системное администрирование","isProfiled":true},{"relatedData":null,"id":"17350","alias":"s_admin","type":"collective","title":"Серверное администрирование","titleHtml":"Серверное администрирование","isProfiled":true},{"relatedData":null,"id":"20788","alias":"devops","type":"collective","title":"DevOps","titleHtml":"DevOps","isProfiled":true}],"flows":[{"id":"6","alias":"admin","title":"Администрирование"}],"relatedData":null,"textHtml":"\u003Cdiv xmlns=\"http:\u002F\u002Fwww.w3.org\u002F1999\u002Fxhtml\"\u003E\u003Cdiv style=\"text-align:center;\"\u003E\u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fr\u002Fw780q1\u002Fwebt\u002Fqz\u002Fkb\u002Fvb\u002Fqzkbvb4hilrlczg2cxjosdu-ube.jpeg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fqz\u002Fkb\u002Fvb\u002Fqzkbvb4hilrlczg2cxjosdu-ube.jpeg\" data-blurred=\"true\"\u002F\u003E\u003C\u002Fdiv\u003E\u003Cbr\u002F\u003E\r\nДанной статьей продолжается \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cdiv class=\"spoiler\"\u003E\u003Cb class=\"spoiler_title\"\u003Eцикл о резервном копировании\u003C\u002Fb\u003E\u003Cdiv class=\"spoiler_text\"\u003E\u003Col\u003E\r\n\u003Cli\u003E \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fsouthbridge\u002Fblog\u002F449282\u002F\"\u003EРезервное копирование, часть 1: Зачем нужно резервное копирование, обзор методов, технологий\u003C\u002Fa\u003E\u003C\u002Fli\u003E\r\n\u003Cli\u003E \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fsouthbridge\u002Fblog\u002F452630\u002F\"\u003EРезервное копирование, часть 2: Обзор и тестирование rsync-based средст резервного копирования\u003C\u002Fa\u003E\u003C\u002Fli\u003E\r\n\u003Cli\u003E \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fsouthbridge\u002Fblog\u002F454420\u002F\"\u003EРезервное копирование, часть 3: Обзор и тестирование duplicity, duplicati\u003C\u002Fa\u003E\u003C\u002Fli\u003E\r\n\u003Cli\u003E \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fsouthbridge\u002Fblog\u002F454734\u002F#first_unread\"\u003EРезервное копирование, часть 4: Обзор и тестирование zbackup, restic, borgbackup\u003C\u002Fa\u003E\u003C\u002Fli\u003E\r\n\u003Cli\u003E \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fsouthbridge\u002Fblog\u002F459550\u002F\"\u003EРезервное копирование, часть 5: Тестирование Bacula и Veeam Backup for Linux\u003C\u002Fa\u003E\u003C\u002Fli\u003E\r\n\u003Cli\u003E Резервное копирование, часть 6: Сравнение средств резервного копирования\u003C\u002Fli\u003E\r\n\u003Cli\u003E Резервное копирование, часть 7: Выводы\u003C\u002Fli\u003E\r\n\u003C\u002Fol\u003E\u003Cbr\u002F\u003E\r\n\u003C\u002Fdiv\u003E\u003C\u002Fdiv\u003E\u003Cbr\u002F\u003E\r\nКак мы уже писали в первой статье, есть весьма большое число программ резервного копирования, основанных на rsync.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nИз тех, что больше всего подходят под наши условия, я буду рассматривать 3: rdiff-backup, rsnapshot и burp.\u003Cbr\u002F\u003E\r\n\u003Ca name=\"habracut\"\u003E\u003C\u002Fa\u003E\u003Cbr\u002F\u003E\r\n\u003Ch4\u003EТестовые наборы файлов\u003C\u002Fh4\u003E\u003Cbr\u002F\u003E\r\n\u003Ci\u003EНаборы файлов для тестирования будут одинаковыми для всех кандидатов, включая будущие статьи.\u003C\u002Fi\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cb\u003EПервый набор\u003C\u002Fb\u003E: 10 Гб медиафайлов, и примерно 50 мб — исходный код сайта на php, размеры файлов от нескольких килобайт для исходного кода, до десятков мегабайт для медиафайлов. Цель — имитация сайта с статикой.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cb\u003EВторой набор\u003C\u002Fb\u003E: получается из первого при переименовании подкаталога с медиафайлами размером 5 гб. Цель — изучение поведения системы резервного копирования на переименование каталога.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cb\u003EТретий набор\u003C\u002Fb\u003E: получается из первого удалением 3гб медиафайлов и добавлением новых 3 гб медиафайлов. Цель — изучение поведения системы резервного копирования при типовой операции обновления сайта.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch4\u003EПолучение результатов\u003C\u002Fh4\u003E\u003Cbr\u002F\u003E\r\nЛюбое резервное копирование выполняется минимум 3 раза и сопровождается сбросом кэшей файловой системы командами \u003Ccode\u003Esync\u003C\u002Fcode\u003E и \u003Ccode\u003Eecho 3 \u003E \u002Fproc\u002Fsys\u002Fvm\u002Fdrop_caches\u003C\u002Fcode\u003E как на стороне тестового сервера, так и сервера хранения резервных копий.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nНа сервере, который будет источником резервных копий, установлено ПО для мониторинга — netdata, с помощью которого будет оцениваться нагрузка на сервер при копированиии, это нужно для оценки нагрузки сервера процессом резервного копирования.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nТакже считаю, что сервер хранения резервных копий медленнее по процессору, чем основной сервер, но обладает более емкими дисками с относительно небольшой скоростью случайной записи — наиболее частая ситуация при резервном копировании, а по причине того, что сервер резервного копирования по-хорошему не должен делать другие задачи, кроме резервного копирования, его нагрузку с помощью netdata я отслеживать не буду.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nТакже у меня изменились сервера, на которых я буду проверять различные системы для резервного копирования.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cdiv class=\"spoiler\"\u003E\u003Cb class=\"spoiler_title\"\u003EСейчас у них следующие характеристики\u003C\u002Fb\u003E\u003Cdiv class=\"spoiler_text\"\u003E\u003Cb\u003EПроцессор\u003C\u002Fb\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003Esysbench --threads=2 --time=30 --cpu-max-prime=20000 cpu run\nsysbench 1.0.17 (using system LuaJIT 2.0.4)\n\nRunning the test with following options:\nNumber of threads: 2\nInitializing random number generator from current time\n\n\nPrime numbers limit: 20000\n\nInitializing worker threads...\n\nThreads started!\n\nCPU speed:\n    events per second:  1081.62\n\nGeneral statistics:\n    total time:                          30.0013s\n    total number of events:              32453\n\nLatency (ms):\n         min:                                    1.48\n         avg:                                    1.85\n         max:                                    9.84\n         95th percentile:                        2.07\n         sum:                                59973.40\n\nThreads fairness:\n    events (avg\u002Fstddev):           16226.5000\u002F57.50\n    execution time (avg\u002Fstddev):   29.9867\u002F0.00\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cb\u003EОперативная память, чтение...\u003C\u002Fb\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003Esysbench --threads=4 --time=30 --memory-block-size=1K --memory-scope=global --memory-total-size=100G --memory-oper=read memory run\nsysbench 1.0.17 (using system LuaJIT 2.0.4)\n\nRunning the test with following options:\nNumber of threads: 4\nInitializing random number generator from current time\n\n\nRunning memory speed test with the following options:\n  block size: 1KiB\n  total size: 102400MiB\n  operation: read\n  scope: global\n\nInitializing worker threads...\n\nThreads started!\n\nTotal operations: 104857600 (5837637.63 per second)\n\n102400.00 MiB transferred (5700.82 MiB\u002Fsec)\n\n\nGeneral statistics:\n    total time:                          17.9540s\n    total number of events:              104857600\n\nLatency (ms):\n         min:                                    0.00\n         avg:                                    0.00\n         max:                                   66.08\n         95th percentile:                        0.00\n         sum:                                18544.64\n\nThreads fairness:\n    events (avg\u002Fstddev):           26214400.0000\u002F0.00\n    execution time (avg\u002Fstddev):   4.6362\u002F0.12\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cb\u003E… и запись\u003C\u002Fb\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003Esysbench --threads=4 --time=30 --memory-block-size=1K --memory-scope=global --memory-total-size=100G --memory-oper=write memory run\nsysbench 1.0.17 (using system LuaJIT 2.0.4)\n\nRunning the test with following options:\nNumber of threads: 4\nInitializing random number generator from current time\n\n\nRunning memory speed test with the following options:\n  block size: 1KiB\n  total size: 102400MiB\n  operation: write\n  scope: global\n\nInitializing worker threads...\n\nThreads started!\n\nTotal operations: 91414596 (3046752.56 per second)\n\n89272.07 MiB transferred (2975.34 MiB\u002Fsec)\n\n\nGeneral statistics:\n    total time:                          30.0019s\n    total number of events:              91414596\n\nLatency (ms):\n         min:                                    0.00\n         avg:                                    0.00\n         max:                                 1022.90\n         95th percentile:                        0.00\n         sum:                                66430.91\n\nThreads fairness:\n    events (avg\u002Fstddev):           22853649.0000\u002F945488.53\n    execution time (avg\u002Fstddev):   16.6077\u002F1.76\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cb\u003EДиск на сервере-источнике данных\u003C\u002Fb\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003Esysbench --threads=4 --file-test-mode=rndrw --time=60 --file-block-size=4K --file-total-size=1G fileio run\nsysbench 1.0.17 (using system LuaJIT 2.0.4)\n\nRunning the test with following options:\nNumber of threads: 4\nInitializing random number generator from current time\n\n\nExtra file open flags: (none)\n128 files, 8MiB each\n1GiB total file size\nBlock size 4KiB\nNumber of IO requests: 0\nRead\u002FWrite ratio for combined random IO test: 1.50\nPeriodic FSYNC enabled, calling fsync() each 100 requests.\nCalling fsync() at the end of test, Enabled.\nUsing synchronous I\u002FO mode\nDoing random r\u002Fw test\nInitializing worker threads...\n\nThreads started!\n\n\nFile operations:\n    reads\u002Fs:                      4587.95\n    writes\u002Fs:                     3058.66\n    fsyncs\u002Fs:                     9795.73\n\nThroughput:\n    read, MiB\u002Fs:                  17.92\n    written, MiB\u002Fs:               11.95\n\nGeneral statistics:\n    total time:                          60.0241s\n    total number of events:              1046492\n\nLatency (ms):\n         min:                                    0.00\n         avg:                                    0.23\n         max:                                   14.45\n         95th percentile:                        0.94\n         sum:                               238629.34\n\nThreads fairness:\n    events (avg\u002Fstddev):           261623.0000\u002F1849.14\n    execution time (avg\u002Fstddev):   59.6573\u002F0.00\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cb\u003EДиск на сервере хранения резервных копий\u003C\u002Fb\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003Esysbench --threads=4 --file-test-mode=rndrw --time=60 --file-block-size=4K --file-total-size=1G fileio run\nsysbench 1.0.17 (using system LuaJIT 2.0.4)\n\nRunning the test with following options:\nNumber of threads: 4\nInitializing random number generator from current time\n\n\nExtra file open flags: (none)\n128 files, 8MiB each\n1GiB total file size\nBlock size 4KiB\nNumber of IO requests: 0\nRead\u002FWrite ratio for combined random IO test: 1.50\nPeriodic FSYNC enabled, calling fsync() each 100 requests.\nCalling fsync() at the end of test, Enabled.\nUsing synchronous I\u002FO mode\nDoing random r\u002Fw test\nInitializing worker threads...\n\nThreads started!\n\n\nFile operations:\n    reads\u002Fs:                      11.37\n    writes\u002Fs:                     7.58\n    fsyncs\u002Fs:                     29.99\n\nThroughput:\n    read, MiB\u002Fs:                  0.04\n    written, MiB\u002Fs:               0.03\n\nGeneral statistics:\n    total time:                          73.8868s\n    total number of events:              3104\n\nLatency (ms):\n         min:                                    0.00\n         avg:                                   78.57\n         max:                                 3840.90\n         95th percentile:                      297.92\n         sum:                               243886.02\n\nThreads fairness:\n    events (avg\u002Fstddev):           776.0000\u002F133.26\n    execution time (avg\u002Fstddev):   60.9715\u002F1.59\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cb\u003EСкорость сети между серверами\u003C\u002Fb\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003Eiperf3 -c backup\nConnecting to host backup, port 5201\n[  4] local x.x.x.x port 59402 connected to y.y.y.y port 5201\n[ ID] Interval           Transfer     Bandwidth       Retr  Cwnd\n[  4]   0.00-1.00   sec   419 MBytes  3.52 Gbits\u002Fsec  810    182 KBytes\n[  4]   1.00-2.00   sec   393 MBytes  3.30 Gbits\u002Fsec  810    228 KBytes\n[  4]   2.00-3.00   sec   378 MBytes  3.17 Gbits\u002Fsec  810    197 KBytes\n[  4]   3.00-4.00   sec   380 MBytes  3.19 Gbits\u002Fsec  855    198 KBytes\n[  4]   4.00-5.00   sec   375 MBytes  3.15 Gbits\u002Fsec  810    182 KBytes\n[  4]   5.00-6.00   sec   379 MBytes  3.17 Gbits\u002Fsec  765    228 KBytes\n[  4]   6.00-7.00   sec   376 MBytes  3.15 Gbits\u002Fsec  810    180 KBytes\n[  4]   7.00-8.00   sec   379 MBytes  3.18 Gbits\u002Fsec  765    253 KBytes\n[  4]   8.00-9.00   sec   380 MBytes  3.19 Gbits\u002Fsec  810    239 KBytes\n[  4]   9.00-10.00  sec   411 MBytes  3.44 Gbits\u002Fsec  855    184 KBytes\n- - - - - - - - - - - - - - - - - - - - - - - - -\n[ ID] Interval           Transfer     Bandwidth       Retr\n[  4]   0.00-10.00  sec  3.78 GBytes  3.25 Gbits\u002Fsec  8100             sender\n[  4]   0.00-10.00  sec  3.78 GBytes  3.25 Gbits\u002Fsec                  receiver\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003C\u002Fdiv\u003E\u003C\u002Fdiv\u003E\u003Cbr\u002F\u003E\r\n\u003Ch4\u003EМетодика тестирования\u003C\u002Fh4\u003E\u003Cbr\u002F\u003E\r\n\u003Col\u003E\r\n\u003Cli\u003EНа тестовом сервере подготавливается файловая система с первым тестовым набором, на сервере хранения резервных копий при необходимости инициализируется репозиторий. \u003Cbr\u002F\u003E\r\nЗапускается процесс резервного копирования и замеряется его время.\u003C\u002Fli\u003E\r\n\u003Cli\u003EНа тестовом сервере производится миграция файлов до второго тестового набора. Запускается процесс резервного копирования и замеряется его время.\u003C\u002Fli\u003E\r\n\u003Cli\u003EНа тестовом сервере производится миграция до третьего тестового набора. Запускается процесс резервного копирования и замеряется его время.\u003C\u002Fli\u003E\r\n\u003Cli\u003EПолученный третий тестовый набор принимается новым первым; пункты 1-3 повторяются еще 2 раза.\u003C\u002Fli\u003E\r\n\u003Cli\u003EДанные заносятся в сводную таблицу, добавляются графики с netdata.\u003C\u002Fli\u003E\r\n\u003Cli\u003EСоставляется отчет по отдельному методу резервного копирования.\u003C\u002Fli\u003E\r\n\u003C\u002Fol\u003E\u003Cbr\u002F\u003E\r\n\u003Ch4\u003EОжидаемые результаты\u003C\u002Fh4\u003E\u003Cbr\u002F\u003E\r\nТак как все 3 кандидата основаны на одной и той же технологии (rsync), ожидается, что результаты будут близки к обычному rsync, включая все его преимущества, а именно:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Col\u003E\r\n\u003Cli\u003EФайлы в репозитории будут храниться «как есть».\u003C\u002Fli\u003E\r\n\u003Cli\u003EРазмер репозитория будет расти только включая разницу между резервными копиями.\u003C\u002Fli\u003E\r\n\u003Cli\u003EБудет сравнительно большая нагрузка на сеть при передаче данных, а также небольшая нагрузка на процессор.\u003C\u002Fli\u003E\r\n\u003C\u002Fol\u003E\u003Cbr\u002F\u003E\r\nТестовый прогон обычного rsync будет применяться в качестве эталона, его результаты\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cdiv class=\"spoiler\"\u003E\u003Cb class=\"spoiler_title\"\u003Eтаковы\u003C\u002Fb\u003E\u003Cdiv class=\"spoiler_text\"\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Foy\u002Frd\u002Fry\u002Foyrdryrtuoaktxno8ap_gdxirpe.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nУзкое место было на сервере хранения резервных данных в виде диска на основе HDD, что достаточно четко видно на графиках в виде пилы.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nДанные были скопированы за 4 минуты и 15 секунд.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003C\u002Fdiv\u003E\u003C\u002Fdiv\u003E\u003Cbr\u002F\u003E\r\n\u003Ch4\u003EТестирование rdiff-backup\u003C\u002Fh4\u003E\u003Cbr\u002F\u003E\r\nПервый кандидат — rdiff-backup, скрипт на python, который выполняет резервное копирование одного каталога в другой. При этом текущая резервная копия хранится «как есть», а резервные копии, сделанные ранее, складываются в специальный подкаталог инкрементально, и таким образом, экономится место.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nБудем проверять типовой режим работы, т.е. запуск процесса резервного копирования инициирует клиент самостоятельно, а на стороне сервера для резервного копирования запускается процесс, который принимает данные.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nДавайте посмотрим, \u003Cdiv class=\"spoiler\"\u003E\u003Cb class=\"spoiler_title\"\u003Eна что он способен в наших условиях\u003C\u002Fb\u003E\u003Cdiv class=\"spoiler_text\"\u003E.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fdx\u002Fcj\u002Fwu\u002Fdxcjwunnxfr_2orkmdhj2stkdci.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВремя работы каждого тестового запуска:\u003Cbr\u002F\u003E\r\n \u003Cbr\u002F\u003E\r\n\u003Cdiv class=\"scrollable-table\"\u003E\u003Ctable\u003E\r\n\u003Ctr\u003E\r\n\u003Cth\u003E\u003C\u002Fth\u003E\r\n\u003Cth\u003EПервый запуск\u003C\u002Fth\u003E\r\n\u003Cth\u003EВторой запуск\u003C\u002Fth\u003E\r\n\u003Cth\u003EТретий запуск\u003C\u002Fth\u003E\r\n\u003C\u002Ftr\u003E\r\n\u003Ctr\u003E\r\n\u003Ctd\u003EПервый набор\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E16m32s\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E16m26s\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E16m19s\u003C\u002Ftd\u003E\r\n\u003C\u002Ftr\u003E\r\n\u003Ctr\u003E\r\n\u003Ctd\u003EВторой набор\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E2h5m\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E2h10m\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E2h8m\u003C\u002Ftd\u003E\r\n\u003C\u002Ftr\u003E\r\n\u003Ctr\u003E\r\n\u003Ctd\u003EТретий набор\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E2h9m\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E2h10m\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E2h10m\u003C\u002Ftd\u003E\r\n\u003C\u002Ftr\u003E\r\n\u003C\u002Ftable\u003E\u003C\u002Fdiv\u003E\u003Cbr\u002F\u003E\r\n\u003C\u002Fdiv\u003E\u003C\u002Fdiv\u003E\u003Cbr\u002F\u003E\r\nRdiff-backup весьма болезненно реагирует на любое большое изменение данных, также не до конца утилизирует сеть.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch4\u003EТестирование rsnapshot\u003C\u002Fh4\u003E\u003Cbr\u002F\u003E\r\nВторой кандидат — rsnapshot, представляет собой скрипт на perl, главное требование которого для эффективной работы — поддержка жестких ссылок. Таким образом экономится место на диске. При этом не изменившиеся с момента предыдущей резервной копии файлы будут ссылаться на оригинальный файл с помощью жестких ссылок.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nТакже инвертирована логика процесса резервного копирования: сервер активно «ходит» сам по своим клиентам и забирает данные.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nРезультаты тестирования\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cdiv class=\"spoiler\"\u003E\u003Cb class=\"spoiler_title\"\u003Eполучились следующие\u003C\u002Fb\u003E\u003Cdiv class=\"spoiler_text\"\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fe7\u002Fcr\u002F64\u002Fe7cr64iu4dn3sz9jtjr0eqdvcek.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cdiv class=\"scrollable-table\"\u003E\u003Ctable\u003E\r\n\u003Ctr\u003E\r\n\u003Cth\u003E\u003C\u002Fth\u003E\r\n\u003Cth\u003EПервый запуск\u003C\u002Fth\u003E\r\n\u003Cth\u003EВторой запуск\u003C\u002Fth\u003E\r\n\u003Cth\u003EТретий запуск\u003C\u002Fth\u003E\r\n\u003C\u002Ftr\u003E\r\n\u003Ctr\u003E\r\n\u003Ctd\u003EПервый набор\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E4m22s\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E4m19s\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E4m16s\u003C\u002Ftd\u003E\r\n\u003C\u002Ftr\u003E\r\n\u003Ctr\u003E\r\n\u003Ctd\u003EВторой набор\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E2m6s\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E2m10s\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E2m6s\u003C\u002Ftd\u003E\r\n\u003C\u002Ftr\u003E\r\n\u003Ctr\u003E\r\n\u003Ctd\u003EТретий набор\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E1m18s\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E1m10s\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E1m10s\u003C\u002Ftd\u003E\r\n\u003C\u002Ftr\u003E\r\n\u003C\u002Ftable\u003E\u003C\u002Fdiv\u003E\u003C\u002Fdiv\u003E\u003C\u002Fdiv\u003E\u003Cbr\u002F\u003E\r\nОтработал весьма и весьма быстро, гораздо быстрее rdiff-backup и очень близко к чистому rsync.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch4\u003EТестирование burp\u003C\u002Fh4\u003E\u003Cbr\u002F\u003E\r\nЕще один вариант — реализация на C поверх librsync — burp, имеет клиент-серверную архитектуру включая авторизацию клиентов, а также наличие web-интерфейса (не входит в базовую поставку). Еще одна интересная особенность — резервное копирование без права восстановления у клиентов.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nДавайте посмотрим на\u003Cdiv class=\"spoiler\"\u003E\u003Cb class=\"spoiler_title\"\u003Eпроизводительность\u003C\u002Fb\u003E\u003Cdiv class=\"spoiler_text\"\u003E.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fv_\u002F-g\u002F7b\u002Fv_-g7b392dqlunmoqk_idtuilhc.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cdiv class=\"scrollable-table\"\u003E\u003Ctable\u003E\r\n\u003Ctr\u003E\r\n\u003Cth\u003E\u003C\u002Fth\u003E\r\n\u003Cth\u003EПервый запуск\u003C\u002Fth\u003E\r\n\u003Cth\u003EВторой запуск\u003C\u002Fth\u003E\r\n\u003Cth\u003EТретий запуск\u003C\u002Fth\u003E\r\n\u003C\u002Ftr\u003E\r\n\u003Ctr\u003E\r\n\u003Ctd\u003EПервый набор\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E11m21s\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E11m10s\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E10m56s\u003C\u002Ftd\u003E\r\n\u003C\u002Ftr\u003E\r\n\u003Ctr\u003E\r\n\u003Ctd\u003EВторой набор\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E5m37s\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E5m40s\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E5m35s\u003C\u002Ftd\u003E\r\n\u003C\u002Ftr\u003E\r\n\u003Ctr\u003E\r\n\u003Ctd\u003EТретий набор\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E3m33s\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E3m24s\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E3m40s\u003C\u002Ftd\u003E\r\n\u003C\u002Ftr\u003E\r\n\u003C\u002Ftable\u003E\u003C\u002Fdiv\u003E\u003C\u002Fdiv\u003E\u003C\u002Fdiv\u003E\u003Cbr\u002F\u003E\r\nОтработал в 2 раза медленнее, чем rsnapshot, однако тоже достаточно быстро, и уж точно быстрее rdiff-backup. Графики немного пилообразны — производительность опять же упирается в дисковую подсистему сервера хранения резервных копий, хотя это и не так выражено, как у rsnapshot.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch4\u003EРезультаты\u003C\u002Fh4\u003E\u003Cbr\u002F\u003E\r\nРазмер репозиториев у всех кандидатов был примерно одинаковым, т. е. сначала рост до 10 гб, потом рост до 15 гб, потом рост до 18 гб и т.д., что связано с особенностью работы rsync. Также стоит отметить однопоточность всех кандидатов (загрузка по процессору около 50% при двухядерной машине). Все 3 кандидата предоставляли возможность восстановления последней резервной копии «как есть», то есть можно было восстанавливать файлы без применения каких-либо сторонних программ включая те, которые применялись для создания репозиториев. Это также «родовое наследие» rsync.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch4\u003EВыводы\u003C\u002Fh4\u003E\u003Cbr\u002F\u003E\r\nЧем сложнее система резервного копирования и чем больше у нее различных возможностей — тем медленнее она будет работать, но для не сильно требовательных проектов подойдет любая из них, кроме, возможно, rdiff-backup.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch4\u003EАнонс\u003C\u002Fh4\u003E\u003Cbr\u002F\u003E\r\nДанная заметка продолжает цикл о резервном копировании\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fsouthbridge\u002Fblog\u002F449282\u002F\"\u003EРезервное копирование, часть 1: Зачем нужно резервное копирование, обзор методов, технологий\u003C\u002Fa\u003E\u003Cbr\u002F\u003E\r\n\u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fsouthbridge\u002Fblog\u002F452630\u002F\"\u003EРезервное копирование, часть 2: Обзор и тестирование rsync-based средств резервного копирования\u003C\u002Fa\u003E\u003Cbr\u002F\u003E\r\n\u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fsouthbridge\u002Fblog\u002F454420\u002F\"\u003EРезервное копирование, часть 3: Обзор и тестирование duplicity, duplicati\u003C\u002Fa\u003E\u003Cbr\u002F\u003E\r\n\u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fsouthbridge\u002Fblog\u002F454734\u002F#first_unread\"\u003EРезервное копирование, часть 4: Обзор и тестирование zbackup, restic, borgbackup\u003C\u002Fa\u003E\u003Cbr\u002F\u003E\r\n\u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fsouthbridge\u002Fblog\u002F459550\u002F\"\u003EРезервное копирование, часть 5: Тестирование Bacula и Veeam Backup for Linux\u003C\u002Fa\u003E\u003Cbr\u002F\u003E\r\n\u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fsouthbridge\u002Fblog\u002F468963\u002F\"\u003EРезервное копирование: часть по просьбам читателей: обзор AMANDA, UrBackup, BackupPC\u003C\u002Fa\u003E\u003Cbr\u002F\u003E\r\n\u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fsouthbridge\u002Fblog\u002F470802\u002F\"\u003EРезервное копирование, часть 6: Сравнение средств резервного копирования\u003C\u002Fa\u003E\u003Cbr\u002F\u003E\r\n\u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fsouthbridge\u002Fblog\u002F472776\u002F\"\u003EРезервное копирование, часть 7: Выводы\u003C\u002Fa\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cu\u003EАвтор публикации\u003C\u002Fu\u003E: \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fusers\u002FFinnix\u002F\"\u003EFinnix\u003C\u002Fa\u003E\u003C\u002Fdiv\u003E","tags":[{"titleHtml":"backup"},{"titleHtml":"rsync"},{"titleHtml":"rdiff-backup"},{"titleHtml":"rsnapshot"},{"titleHtml":"burp"},{"titleHtml":"резервное копирование"}],"metadata":{"stylesUrls":[],"scriptUrls":[],"shareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F452630\u002F40f45529f31b5d9703747249c3b0a253\u002F","shareImageWidth":1200,"shareImageHeight":630,"vkShareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F452630\u002F40f45529f31b5d9703747249c3b0a253\u002F?format=vk","schemaJsonLd":"{\"@context\":\"http:\\\u002F\\\u002Fschema.org\",\"@type\":\"Article\",\"mainEntityOfPage\":{\"@type\":\"WebPage\",\"@id\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fru\\\u002Fcompany\\\u002Fsouthbridge\\\u002Fblog\\\u002F452630\\\u002F\"},\"headline\":\"Резервное копирование, часть 2: Обзор и тестирование rsync-based средств резервного копирования\",\"datePublished\":\"2019-05-21T09:02:30+03:00\",\"dateModified\":\"2019-10-23T21:20:52+03:00\",\"author\":{\"@type\":\"Person\",\"name\":\"nAbdullin\"},\"publisher\":{\"@type\":\"Organization\",\"name\":\"Habr\",\"logo\":{\"@type\":\"ImageObject\",\"url\":\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fa_\\\u002Flk\\\u002F9m\\\u002Fa_lk9mjkccjox-zccjrpfolmkmq.png\"}},\"description\":\"Данной статьей продолжается   цикл о резервном копировании  Резервное копирование, часть 1: Зачем нужно резервное копирование, обзор методов, технологий  Резерв...\",\"url\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fru\\\u002Fcompany\\\u002Fsouthbridge\\\u002Fblog\\\u002F452630\\\u002F#post-content-body\",\"about\":[\"c_southbridge\",\"h_sys_admin\",\"h_s_admin\",\"h_devops\",\"f_admin\"],\"image\":[\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fqz\\\u002Fkb\\\u002Fvb\\\u002Fqzkbvb4hilrlczg2cxjosdu-ube.jpeg\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Foy\\\u002Frd\\\u002Fry\\\u002Foyrdryrtuoaktxno8ap_gdxirpe.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fdx\\\u002Fcj\\\u002Fwu\\\u002Fdxcjwunnxfr_2orkmdhj2stkdci.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fe7\\\u002Fcr\\\u002F64\\\u002Fe7cr64iu4dn3sz9jtjr0eqdvcek.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fv_\\\u002F-g\\\u002F7b\\\u002Fv_-g7b392dqlunmoqk_idtuilhc.png\"]}","metaDescription":"Данной статьей продолжается \r\n\r\nцикл о резервном копировании\r\n Резервное копирование, часть 1: Зачем нужно резервное копирование, обзор методов, технологий\r\n Резервное копирование, часть 2: Обзор и...","mainImageUrl":null,"amp":false},"polls":[],"commentsEnabled":true,"rulesRemindEnabled":false,"votesEnabled":true,"status":"published","plannedPublishTime":null,"checked":null,"isEditorial":false}},"articlesIds":{},"isLoading":false,"pagesCount":{},"route":{},"reasonsList":null,"view":"cards","lastVisitedRoute":{},"ssrCommentsArticleIds":[""],"karma":{}},"authorContribution":{"authors":{}},"betaTest":{"currentAnnouncement":null,"announcements":{},"announcementCards":null,"announcementComments":{},"announcementCommentThreads":{},"announcementCommentingStatuses":{},"archivedList":[]},"authorStatistics":{"articleRefs":{},"articleIds":{},"pagesCount":{},"route":{},"viewsCount":[],"maxStatsCount":{}},"career":{"seoLandings":[],"hubs":""},"comments":{"articleComments":{},"searchCommentsResults":null,"previewComment":null,"pagesCount":null,"commentAccess":{},"scrollParents":{},"pageArticleComments":{"lastViewedComment":0,"postId":null,"lastCommentTimestamp":"","moderated":[],"moderatedIds":[],"commentRoute":""}},"companies":{"companyRefs":{"southbridge":{"alias":"southbridge","imageUrl":"\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fcompany\u002F754\u002Fd93\u002F3ca\u002F754d933caeb494c6127add17ff60feb5.png","titleHtml":"Southbridge","descriptionHtml":"Обеспечиваем стабильную работу highload-проектов","relatedData":null,"statistics":{"postsCount":604,"newsCount":28,"vacanciesCount":1,"employeesCount":25,"careerRating":4.31,"subscribersCount":32008,"rating":181.52,"invest":null},"foundationDate":{"year":"2008","month":"02","day":"22"},"location":{"city":{"id":"447159","title":"Москва"},"region":{"id":"1885","title":"Москва и Московская обл."},"country":{"id":"168","title":"Россия"}},"siteUrl":"https:\u002F\u002Fsouthbridge.io","staffNumber":"51–100 человек","registrationDate":"2012-11-15T08:41:16+00:00","representativeUser":{"alias":"aSkobin","fullname":"Антон Скобин"},"contacts":[{"title":"Сайт","url":"https:\u002F\u002Fsouthbridge.io\u002F"}],"settings":{"analyticsSettings":[{"type":"ga","trackingId":"UA-78870906-5"},{"type":"ym","trackingId":"49219348"}],"branding":{"imageUrl":"\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fbranding\u002F307\u002Ff03\u002F4ad\u002F307f034ad5afe09d902d1991c541ef3d.png","linkUrl":"https:\u002F\u002Fslurm.io\u002Fkubernetes-security?utm_source=habr&utm_medium=top&utm_campaign=kubernetes-security&utm_content=top_20-10-2021&utm_term=habr-top","pixelUrl":""},"status":"active"},"metadata":{"titleHtml":"Southbridge, Москва - Обеспечиваем стабильную работу highload-проектов с 22 февраля 2008 г.","title":"Southbridge, Москва - Обеспечиваем стабильную работу highload-проектов с 22 февраля 2008 г.","keywords":["DevOps","Системное администрирование","IT-инфраструктура","Серверное администрирование","Kubernetes"],"descriptionHtml":"604 статьи от авторов компании Southbridge","description":"604 статьи от авторов компании Southbridge"},"aDeskSettings":null,"careerAlias":"southbridge","maxCustomTrackerLinks":3}},"companyIds":{},"companyTopIds":{},"pagesCount":{},"companyProfiles":{},"companiesCategories":[],"companiesCategoriesTotalCount":0,"companiesWidgets":{},"companiesWorkers":{},"companiesFans":{},"route":{},"isLoading":false,"companyWorkersLoading":false,"companyFansLoading":false,"vacancies":{}},"companiesContribution":{"hubs":{},"flows":{},"companyRefs":{}},"companyHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"conversation":{"messages":[],"respondent":null,"isLoadMore":false},"conversations":{"conversations":[],"unreadCount":0,"pagesCount":0,"isLoadMore":false},"desktopState":{"desktopFl":null,"desktopHl":null,"isChecked":false,"isLoginDemanded":false},"dfp":{"slotsDict":{}},"docs":{"menu":{},"articles":{},"mainMenu":[],"loading":{"main":false,"dropdown":false,"article":false}},"feature":{"isProbablyVisible":"true"},"flows":{"flows":[{"alias":"develop","id":1,"route":{"name":"FLOW_PAGE","params":{"flowName":"develop"}}},{"alias":"admin","id":6,"route":{"name":"FLOW_PAGE","params":{"flowName":"admin"}}},{"alias":"design","id":2,"route":{"name":"FLOW_PAGE","params":{"flowName":"design"}}},{"alias":"management","id":3,"route":{"name":"FLOW_PAGE","params":{"flowName":"management"}}},{"alias":"marketing","id":4,"route":{"name":"FLOW_PAGE","params":{"flowName":"marketing"}}},{"alias":"popsci","id":7,"route":{"name":"FLOW_PAGE","params":{"flowName":"popsci"}}}]},"global":{"isPwa":false,"device":"desktop","isHabrCom":true},"hubs":{"hubRefs":{},"hubIds":{},"pagesCount":{},"isLoading":false,"route":{}},"hubsBlock":{"hubRefs":{},"hubIds":{}},"i18n":{"fl":"ru","hl":"ru"},"info":{"infoPage":{},"isLoading":true},"location":{"urlStruct":{"protocol":null,"slashes":null,"auth":null,"host":null,"port":null,"hostname":null,"hash":null,"search":null,"query":{},"pathname":null,"path":null,"href":""},"searchQuery":null},"me":{"user":null,"ppgDemanded":false,"karmaResetInfo":{"canReincarnate":null,"wasReincarnated":null,"currentScore":null},"notes":null},"mostReadingList":{"mostReadingListIds":[],"mostReadingListRefs":null,"promoPost":null},"pinnedPost":{"pinnedPost":null},"ppa":{"articles":{},"card":null,"transactions":null,"totalTransactions":null,"isAccessible":null},"projectsBlocks":{"activeBlocks":{}},"pullRefresh":{"shouldRefresh":false},"sandbox":{"articleIds":[],"articleRefs":{},"pagesCount":null,"route":{},"lastVisitedRoute":{},"isLoading":false},"settingsOther":{"inputs":{"uiLang":{"errors":[],"ref":null,"value":""},"articlesLangEnglish":{"errors":[],"ref":null,"value":false},"articlesLangRussian":{"errors":[],"ref":null,"value":false},"agreement":{"errors":[],"ref":null,"value":false},"email":{"errors":[],"ref":null,"value":true},"digest":{"errors":[],"ref":null,"value":true}}},"similarList":{"similarListIds":[],"similarListRefs":null},"ssr":{"error":null,"isDataLoaded":false,"isDataLoading":false,"isHydrationFailed":false,"isServer":false},"userHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"userInvites":{"availableInvites":0,"usedInvitesIds":[],"usedInvitesRefs":{},"usedInvitesPagesCount":0,"unusedInvitesIds":[],"unusedInvitesRefs":{},"unusedInvitesPagesCount":0},"users":{"authorRefs":{},"authorIds":{},"pagesCount":{},"authorProfiles":{},"userHubs":{},"userInvitations":{},"authorFollowers":{},"authorFollowed":{},"karmaStats":[],"statistics":null,"isLoading":false,"authorFollowersLoading":false,"authorFollowedLoading":false,"userHubsLoading":false,"userInvitationsLoading":false,"route":{}},"viewport":{"prevScrollY":{},"scrollY":0,"width":0},"tracker":{"items":{},"pagesCache":{},"markedViewedSilently":{},"markedRead":{},"unreadCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null},"unviewedCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null}}};(function(){var s;(s=document.currentScript||document.scripts[document.scripts.length-1]).parentNode.removeChild(s);}());</script>
+<script src="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" defer></script><script src="https://assets.habr.com/habr-web/js/app.c0af73e7.js" defer></script>
+
+
+
+    <script>
+      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+        (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+        m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+      })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+    </script>
+  
+  <script type="text/javascript" >
+    (function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+    m[i].l=1*new Date();k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})
+    (window, document, "script", "https://mc.yandex.ru/metrika/tag.js", "ym");
+
+    ym(24049213, "init", {
+      defer:true,
+      trackLinks:true,
+      accurateTrackBounce:true,
+      webvisor:false,
+    });
+  </script>
+  <noscript>
+    <div>
+      <img src="https://mc.yandex.ru/watch/24049213" style="position:absolute; left:-9999px;" alt="" />
+    </div>
+  </noscript>
+  
+    <script type="text/javascript">
+      window.addEventListener('load', function () {
+        setTimeout(() => {
+          const img = new Image();
+          img.src = 'https://vk.com/rtrg?p=VK-RTRG-421343-57vKE';
+        }, 0);
+      });
+    </script>
+  
+</body>
+</html>

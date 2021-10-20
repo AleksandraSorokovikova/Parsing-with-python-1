@@ -1,0 +1,833 @@
+<!DOCTYPE html>
+<html lang="ru" data-vue-meta="%7B%22lang%22:%7B%22ssr%22:%22ru%22%7D%7D">
+<head >
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
+  <title>Практическое применение ELK. Настраиваем logstash / Хабр</title>
+  <style>
+    /* cyrillic-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSxf6TF0.woff2) format('woff2');
+      unicode-range: U+0460-052F, U+1C80-1C88, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+    }
+
+    /* cyrillic */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveQhf6TF0.woff2) format('woff2');
+      unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+    }
+
+    /* latin-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSBf6TF0.woff2) format('woff2');
+      unicode-range: U+0100-024F, U+0259, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20CF, U+2113, U+2C60-2C7F, U+A720-A7FF;
+    }
+
+    /* latin */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveRhf6.woff2) format('woff2');
+      unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+    }
+  </style>
+  <link rel="preload" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" as="script"><link rel="preload" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/app.c0af73e7.js" as="script">
+  <link rel="stylesheet" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css"><link rel="stylesheet" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css">
+  <script>window.i18nFetch = new Promise((res, rej) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open('GET', '/js/i18n/ru-compiled.85eb77f0b17c8235e7b64b9f81ea5ec2.json');
+          xhr.responseType = 'json';
+          xhr.onload = function(e) {
+            if (this.status === 200) {
+              res({ru: xhr.response});
+            } else {
+              rej(e);
+            }
+          };
+          xhr.send();
+        });</script>
+  
+  <script data-vue-meta="ssr" src="/js/ads.js" onload="window['zhY4i4nJ9K'] = true" data-vmid="checkad"></script><script data-vue-meta="ssr" type="application/ld+json" data-vmid="ldjson-schema">{"@context":"http:\/\/schema.org","@type":"Article","mainEntityOfPage":{"@type":"WebPage","@id":"https:\/\/habr.com\/ru\/post\/451264\/"},"headline":"Практическое применение ELK. Настраиваем logstash","datePublished":"2019-05-10T21:18:06+03:00","dateModified":"2019-05-10T21:18:06+03:00","author":{"@type":"Person","name":"azirumga"},"publisher":{"@type":"Organization","name":"Habr","logo":{"@type":"ImageObject","url":"https:\/\/habrastorage.org\/webt\/a_\/lk\/9m\/a_lk9mjkccjox-zccjrpfolmkmq.png"}},"description":"Введение Разворачивая очередную систему, столкнулись с необходимостью обрабатывать большое количество разнообразных логов. В качестве инструмента выбрали ELK. В...","url":"https:\/\/habr.com\/ru\/post\/451264\/#post-content-body","about":["h_sys_admin","h_nix","f_admin"],"image":["https:\/\/habrastorage.org\/webt\/ci\/zd\/49\/cizd49eci9alvlbi1fwk8nyyaky.png","https:\/\/habrastorage.org\/webt\/5u\/s3\/dw\/5us3dwu8forutzwmtlfnlcjt-ic.png","https:\/\/habrastorage.org\/webt\/uj\/oy\/tz\/ujoytzcsc_mmiagm05savxahnzm.jpeg"]}</script>
+  <script src="//www.googletagservices.com/tag/js/gpt.js" async></script>
+  <style>.grecaptcha-badge{visibility: hidden;}</style>
+  <meta name="habr-version" content="2.49.0">
+  
+  <meta data-vue-meta="ssr" property="fb:app_id" content="444736788986613"><meta data-vue-meta="ssr" property="fb:pages" content="472597926099084"><meta data-vue-meta="ssr" name="twitter:card" content="summary_large_image"><meta data-vue-meta="ssr" name="twitter:site" content="@habr_eng"><meta data-vue-meta="ssr" property="og:title" content="Практическое применение ELK. Настраиваем logstash" data-vmid="og:title"><meta data-vue-meta="ssr" name="twitter:title" content="Практическое применение ELK. Настраиваем logstash" data-vmid="twitter:title"><meta data-vue-meta="ssr" name="aiturec:title" content="Практическое применение ELK. Настраиваем logstash" data-vmid="aiturec:title"><meta data-vue-meta="ssr" name="description" content="Введение
+Разворачивая очередную систему, столкнулись с необходимостью обрабатывать большое количество разнообразных логов. В качестве инструмента выбрали ELK. В данной статье пойдёт речь о нашем..." data-vmid="description"><meta data-vue-meta="ssr" itemprop="description" content="Введение
+Разворачивая очередную систему, столкнулись с необходимостью обрабатывать большое количество разнообразных логов. В качестве инструмента выбрали ELK. В данной статье пойдёт речь о нашем..." data-vmid="description:itemprop"><meta data-vue-meta="ssr" property="og:description" content="Введение
+Разворачивая очередную систему, столкнулись с необходимостью обрабатывать большое количество разнообразных логов. В качестве инструмента выбрали ELK. В данной статье пойдёт речь о нашем..." data-vmid="og:description"><meta data-vue-meta="ssr" name="twitter:description" content="Введение
+Разворачивая очередную систему, столкнулись с необходимостью обрабатывать большое количество разнообразных логов. В качестве инструмента выбрали ELK. В данной статье пойдёт речь о нашем..." data-vmid="twitter:description"><meta data-vue-meta="ssr" property="aiturec:description" content="Введение
+Разворачивая очередную систему, столкнулись с необходимостью обрабатывать большое количество разнообразных логов. В качестве инструмента выбрали ELK. В данной статье пойдёт речь о нашем..." data-vmid="aiturec:description"><meta data-vue-meta="ssr" itemprop="image" content="https://habr.com/share/publication/451264/644adb7be690501ebb2761aa680c9d8d/" data-vmid="image:itemprop"><meta data-vue-meta="ssr" property="og:image" content="https://habr.com/share/publication/451264/644adb7be690501ebb2761aa680c9d8d/" data-vmid="og:image"><meta data-vue-meta="ssr" property="aiturec:image" content="https://habr.com/share/publication/451264/644adb7be690501ebb2761aa680c9d8d/" data-vmid="aiturec:image"><meta data-vue-meta="ssr" name="twitter:image" content="https://habr.com/share/publication/451264/644adb7be690501ebb2761aa680c9d8d/" data-vmid="twitter:image"><meta data-vue-meta="ssr" property="vk:image" content="https://habr.com/share/publication/451264/644adb7be690501ebb2761aa680c9d8d/" data-vmid="vk:image"><meta data-vue-meta="ssr" property="aiturec:item_id" content="451264" data-vmid="aiturec:item_id"><meta data-vue-meta="ssr" property="aiturec:datetime" content="2019-05-10T18:18:06.000Z" data-vmid="aiturec:datetime"><meta data-vue-meta="ssr" property="og:type" content="article" data-vmid="og:type"><meta data-vue-meta="ssr" property="og:locale" content="ru_RU" data-vmid="og:locale"><meta data-vue-meta="ssr" property="og:image:width" content="1200" data-vmid="og:image:width"><meta data-vue-meta="ssr" property="og:image:height" content="630" data-vmid="og:image:height">
+  <link data-vue-meta="ssr" href="https://habr.com/ru/rss/post/451264/?fl=ru" type="application/rss+xml" title="" rel="alternate" name="rss"><link data-vue-meta="ssr" href="https://habr.com/ru/post/451264/" rel="canonical" data-vmid="canonical"><link data-vue-meta="ssr" data-vmid="hreflang"><link data-vue-meta="ssr" image_src="image" href="https://habr.com/share/publication/451264/644adb7be690501ebb2761aa680c9d8d/" data-vmid="image:href">
+  <meta name="apple-mobile-web-app-status-bar-style" content="#303b44">
+  <meta name="msapplication-TileColor" content="#629FBC">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="16x16"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-16.png"
+  >
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="32x32"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-32.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="76x76"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-76.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="120x120"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="152x152"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-152.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="180x180"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-180.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="256x256"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-256.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1136x640.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2436x1125.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1792x828.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_828x1792.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1334x750.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2208x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1125x2436.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2208.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2732x2048.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2688x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2224x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_750x1334.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x2732.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2388x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2224.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_640x1136.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2388.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x1536.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1536x2048.png"
+  >
+  <link
+    rel="mask-icon"
+    color="#77a2b6"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.svg"
+  >
+  <link
+    crossorigin="use-credentials"
+    href="/manifest.webmanifest"
+    rel="manifest"
+  >
+</head>
+<body>
+
+
+<div id="app" data-server-rendered="true" data-async-called="true"><div class="tm-layout__wrapper"><!----> <div></div> <!----> <header class="tm-header"><div class="tm-page-width"><div class="tm-header__container"><!----> <span class="tm-header__logo-wrap"><a href="/ru/" class="tm-header__logo tm-header__logo_ru"><svg height="16" width="16" class="tm-svg-img tm-header__icon"><title>Хабр</title> <use xlink:href="/img/habr-logo-ru.svg#logo"></use></svg></a> <span class="tm-header__beta-sign" style="display:none;">β</span></span> <div class="tm-dropdown tm-header__projects"><div class="tm-dropdown__head"><button class="tm-header__dropdown-toggle"><svg height="16" width="16" class="tm-svg-img tm-header__icon tm-header__icon_dropdown"><title>Открыть список</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#arrow-down"></use></svg></button></div> <!----></div> <a href="/ru/sandbox/start/" class="tm-header__become-author-btn">
+            Как стать автором
+          </a> <div class="tm-feature tm-header__feature tm-feature_variant-inline"><!----></div> <!----> <!----></div></div></header> <div class="tm-layout"><div class="tm-page-progress-bar"></div> <div data-menu-sticky="true" class="tm-base-layout__header tm-base-layout__header_is-sticky"><div class="tm-page-width"><div class="tm-base-layout__header-wrapper"><div class="tm-main-menu"><div class="tm-main-menu__section"><nav class="tm-main-menu__section-content"><!----> <a href="/ru/all/" class="tm-main-menu__item">
+        Все потоки
+      </a> <a href="/ru/flows/develop/" class="tm-main-menu__item">
+          Разработка
+        </a><a href="/ru/flows/admin/" class="tm-main-menu__item">
+          Администрирование
+        </a><a href="/ru/flows/design/" class="tm-main-menu__item">
+          Дизайн
+        </a><a href="/ru/flows/management/" class="tm-main-menu__item">
+          Менеджмент
+        </a><a href="/ru/flows/marketing/" class="tm-main-menu__item">
+          Маркетинг
+        </a><a href="/ru/flows/popsci/" class="tm-main-menu__item">
+          Научпоп
+        </a></nav></div></div> <div class="tm-header-user-menu tm-base-layout__user-menu"><a href="/ru/search/" class="tm-header-user-menu__item tm-header-user-menu__search"><svg height="24" width="24" class="tm-svg-img tm-header-user-menu__icon tm-header-user-menu__icon_search tm-header-user-menu__icon_dark"><title>Поиск</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#search"></use></svg></a> <!----> <!----> <!----> <div class="tm-header-user-menu__item tm-header-user-menu__user_desktop"><div class="tm-dropdown"><div class="tm-dropdown__head"><svg height="24" width="24" data-test-id="menu-toggle-guest" class="tm-svg-img tm-header-user-menu__icon"><title>Профиль</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#header-user"></use></svg> <!----></div> <!----></div> <!----></div> <!----></div></div></div></div> <!----> <div class="tm-page-width"></div> <main class="tm-layout__container"><div hl="ru" data-async-called="true" class="tm-page"><div class="tm-page-width"><!----> <div class="tm-page__wrapper"><div class="tm-page__main tm-page__main_has-sidebar"><div class="pull-down"><div class="pull-down__header" style="height:0px;"><div class="pull-down__content" style="bottom:10px;"><svg height="24" width="24" class="tm-svg-img pull-down__arrow"><title>Обновить</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#pull-arrow"></use></svg></div></div> <div class="tm-article-presenter"> <div class="tm-article-presenter__body"><div class="tm-misprint-area"><div class="tm-misprint-area__wrapper"><article class="tm-article-presenter__content tm-article-presenter__content_narrow"><div class="tm-article-presenter__header"> <div class="tm-article-snippet tm-article-presenter__snippet"><div class="tm-article-snippet__meta-container"><div class="tm-article-snippet__meta"><span class="tm-user-info tm-article-snippet__author"><a href="/ru/users/azirumga/" title="azirumga" class="tm-user-info__userpic"><div class="tm-entity-image"><svg height="24" width="24" class="tm-svg-img tm-image-placeholder tm-image-placeholder_blue"><!----> <use xlink:href="/img/megazord-v24.ce74655c.svg#placeholder-user"></use></svg></div></a> <span class="tm-user-info__user"><a href="/ru/users/azirumga/" class="tm-user-info__username">
+      azirumga
+    </a> </span></span> <span class="tm-article-snippet__datetime-published"><time datetime="2019-05-10T18:18:06.000Z" title="2019-05-10, 21:18">10  мая  2019 в 21:18</time></span></div> <!----></div> <h1 lang="ru" class="tm-article-snippet__title tm-article-snippet__title_h1"><span>Практическое применение ELK. Настраиваем logstash</span></h1> <div class="tm-article-snippet__hubs"><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/sys_admin/" class="tm-article-snippet__hubs-item-link"><span>Системное администрирование</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/nix/" class="tm-article-snippet__hubs-item-link"><span>*nix</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span></div> <div class="tm-article-snippet__labels"><div class="tm-article-snippet__label"><span>
+        Из песочницы
+      </span></div></div> <!----> <!----></div></div> <!----> <div data-gallery-root="" lang="ru" class="tm-article-body"><div id="post-content-body" class="article-formatted-body article-formatted-body_version-1"><div xmlns="http://www.w3.org/1999/xhtml"><h1>Введение</h1><br/>
+Разворачивая очередную систему, столкнулись с необходимостью обрабатывать большое количество разнообразных логов. В качестве инструмента выбрали ELK. В данной статье пойдёт речь о нашем опыте настройки этого стека.<br/>
+<br/>
+Не ставим цели описать все его возможности, но хотим сконцентрироваться именно на решении практических задач. Вызвано это тем, что при наличии достаточно большого количества документации и уже готовых образов, подводных камней достаточно много, по крайней мере у нас они обнаружились.<br/>
+<a name="habracut"></a><br/>
+Мы разворачивали стек через docker-compose. Более того, у нас был хорошо написанный docker-compose.yml, который позволил нам практически без проблем поднять стек. И нам казалось, что победа уже близка, сейчас немного докрутим под свои нужды и всё.<br/>
+<br/>
+К сожалению, попытка донастроить систему на получение и обработку логов от нашего приложения, с ходу не увенчалась успехом. Поэтому, мы решили, что стоит изучить каждый компонент отдельно, а потом уже вернуться к их связям.<br/>
+<br/>
+Итак, начали с logstash.<br/>
+<br/>
+<h1>Окружение, развёртывание, запуск Logstash в контейнере</h1><br/>
+Для развёртывания используем docker-compose, описанные здесь эксперименты проводились на MacOS и Ubuntu 18.0.4.<br/>
+<br/>
+Образ logstash, который был прописан у нас в исходном docker-compose.yml, это docker.elastic.co/logstash/logstash:6.3.2<br/>
+<br/>
+Его мы будем использовать для экспериментов.<br/>
+<br/>
+Для запуска logstash мы написали отдельный docker-compose.yml. Можно конечно было из командной строки образ запускать, но мы ведь конкретную задачу решали, где у нас всё из docker-compose запускается.<br/>
+<br/>
+<h2>Кратко про конфигурационные файлы</h2><br/>
+Как следует из описания, logstash можно запускать как для одного канала, в этом случае, ему нужно передать файл *.conf или для нескольких каналов, в этом случае ему надо передать файл pipelines.yml, который, в свою очередь, будет ссылаться на файлы .conf для каждого канала.<br/>
+Мы пошли по второму пути. Он нам показался более универсальным и масштабируемым. Поэтому, мы создали pipelines.yml, и сделали директорию pipelines, в которую будем класть файлы .conf для каждого канала.<br/>
+<br/>
+Внутри контейнера есть ещё один конфигурационный файл — logstash.yml. Мы его не трогаем, используем как есть.<br/>
+<br/>
+Итак, структура наших каталогов:<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/ci/zd/49/cizd49eci9alvlbi1fwk8nyyaky.png"/><br/>
+<br/>
+Для получения входных данных пока считаем, что это tcp по порту 5046, а для вывода будем использовать stdout.<br/>
+<br/>
+Вот такая простая конфигурация для первого запуска. Поскольку ведь начальная задача — запустить.<br/>
+<br/>
+Итак, у нас есть вот такой docker-compose.yml<br/>
+<br/>
+<pre><code class="plaintext">version: '3'
+
+networks:
+  elk:
+
+volumes:
+  elasticsearch:
+    driver: local
+
+services:
+
+  logstash:
+    container_name: logstash_one_channel
+    image: docker.elastic.co/logstash/logstash:6.3.2
+    networks:
+      	- elk
+    ports:
+      	- 5046:5046
+    volumes:
+      	- ./config/pipelines.yml:/usr/share/logstash/config/pipelines.yml:ro
+	- ./config/pipelines:/usr/share/logstash/config/pipelines:ro
+</code></pre><br/>
+Что мы здесь видим?<br/>
+<br/>
+<ol>
+<li>Networks и volumes были взяты из исходного docker-compose.yml (тот где целиком стек запускается) и думаю, что сильно здесь на общую картинку не влияют.</li>
+<li>Мы создаём один сервис (services) logstash, из образа docker.elastic.co/logstash/logstash:6.3.2 и присваиваем ему имя logstash_one_channel.</li>
+<li>Мы пробрасываем внутрь контейнера порт 5046, на такой же внутренний порт.</li>
+<li>Мы отображаем наш файл настройки каналов ./config/pipelines.yml на файл /usr/share/logstash/config/pipelines.yml внутри контейнера, откуда его подхватит logstash и делаем его read-only, просто на всякий случай.</li>
+<li>Мы отображаем директорию ./config/pipelines, где у нас лежат файлы с настройками каналов, в директорию /usr/share/logstash/config/pipelines и тоже делаем её read-only.</li>
+</ol> <br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/5u/s3/dw/5us3dwu8forutzwmtlfnlcjt-ic.png"/><br/>
+<br/>
+Файл pipelines.yml<br/>
+<br/>
+<pre><code class="plaintext">- pipeline.id: HABR
+  pipeline.workers: 1
+  pipeline.batch.size: 1
+  path.config: "./config/pipelines/habr_pipeline.conf"
+</code></pre><br/>
+Здесь описан один канал с идентификатором HABR и путь к его конфигурационному файлу.<br/>
+<br/>
+И наконец файл «./config/pipelines/habr_pipeline.conf"<br/>
+<br/>
+<pre><code class="plaintext">input {
+  tcp {
+    port => "5046"
+   }
+  }
+filter {
+  mutate {
+    add_field => [ "habra_field", "Hello Habr" ]
+    }
+  }
+output {
+  stdout {
+      
+    }
+  }
+</code></pre><br/>
+Не будем пока вдаваться в его описание, пробуем запустить:<br/>
+<br/>
+<pre><code class="bash">docker-compose up
+</code></pre><br/>
+Что мы видим? <br/>
+<br/>
+Контейнер запустился. Можем проверить его работу:<br/>
+<br/>
+<pre><code class="bash">echo '13123123123123123123123213123213' | nc localhost 5046
+</code></pre><br/>
+И видим в консоли контейнера ответ:<br/>
+<br/>
+<img src="https://habrastorage.org/r/w780q1/webt/uj/oy/tz/ujoytzcsc_mmiagm05savxahnzm.jpeg" data-src="https://habrastorage.org/webt/uj/oy/tz/ujoytzcsc_mmiagm05savxahnzm.jpeg" data-blurred="true"/><br/>
+<br/>
+Но при этом, видим также:<br/>
+<br/>
+<font color="«#38B9C7»">logstash_one_channel |</font> [2019-04-29T11:28:59,790]<font color="«CC0000»">[ERROR][logstash.licensechecker.licensereader] Unable to retrieve license information from license server {:message=>«Elasticsearch Unreachable: [http://elasticsearch:9200/]</font>[Manticore::ResolutionFailure] elasticsearch», …<br/>
+<br/>
+<font color="«#38B9C7»">logstash_one_channel | </font> [2019-04-29T11:28:59,894][INFO ][logstash.pipeline ] <font color="green">Pipeline started successfully </font> {:pipeline_id=>".monitoring-logstash", :thread=>"#&lt;Thread:0x119abb86 run>»}<br/>
+<br/>
+<font color="«#38B9C7»">logstash_one_channel | </font> [2019-04-29T11:28:59,988][INFO ][logstash.agent ] Pipelines running {:count=>2, :running_pipelines=>[:HABR, :".monitoring-logstash"], :non_running_pipelines=>[]}<br/>
+<font color="«#38B9C7»">logstash_one_channel | </font> [2019-04-29T11:29:00,015]<font color="«CC0000»">[ERROR][logstash.inputs.metrics ] X-Pack is installed on Logstash but not on Elasticsearch. Please install X-Pack on Elasticsearch to use the monitoring feature. Other features may be available.</font><br/>
+<font color="«#38B9C7»">logstash_one_channel | </font> [2019-04-29T11:29:00,526][INFO ][logstash.agent ] Successfully started Logstash API endpoint {:port=>9600}<br/>
+<font color="«#38B9C7»">logstash_one_channel | </font> [2019-04-29T11:29:04,478][INFO ][logstash.outputs.elasticsearch] Running health check to see if an Elasticsearch connection is working {:healthcheck_url=>http://elasticsearch:9200/, :path=>"/"}<br/>
+l<font color="«#38B9C7»">ogstash_one_channel | </font> [2019-04-29T11:29:04,487]<font color="orange">[WARN ][logstash.outputs.elasticsearch] Attempted to resurrect connection to dead ES instance, but got an error. {:url=>«<a href="http://elasticsearch">elasticsearch</a>:9200/», :error_type=>LogStash::Outputs::ElasticSearch::HttpClient::Pool::HostUnreachableError, :error=>«Elasticsearch Unreachable: [http://elasticsearch:9200/][Manticore::ResolutionFailure] elasticsearch»}</font><br/>
+<font color="«#38B9C7»">logstash_one_channel | </font> [2019-04-29T11:29:04,704][INFO ][logstash.licensechecker.licensereader] Running health check to see if an Elasticsearch connection is working {:healthcheck_url=>http://elasticsearch:9200/, :path=>"/"}<br/>
+<font color="«#38B9C7»">logstash_one_channel | </font> [2019-04-29T11:29:04,710]<font color="orange">[WARN ][logstash.licensechecker.licensereader] Attempted to resurrect connection to dead ES instance, but got an error. {:url=>«<a href="http://elasticsearch">elasticsearch</a>:9200/», :error_type=>LogStash::Outputs::ElasticSearch::HttpClient::Pool::HostUnreachableError, :error=>«Elasticsearch Unreachable: [http://elasticsearch:9200/][Manticore::ResolutionFailure] elasticsearch»}</font><br/>
+<br/>
+И наш лог всё время ползёт вверх.<br/>
+<br/>
+Здесь я выделил зелёным цветом сообщение о том, что pipeline успешно запустилась, красным — сообщение об ошибке и жёлтым — сообщение о попытке связаться с <a href="http://elasticsearch">elasticsearch</a>:9200.<br/>
+Происходит это из за того, что в logstash.conf, включенном в состав образа, стоит проверка на доступность elasticsearch. Ведь logstash предполагает, что работает в составе Elk стека, а мы его отделили.<br/>
+<br/>
+Работать можно, но не удобно.<br/>
+<br/>
+Решением является отключить эту проверку через переменную окружения XPACK_MONITORING_ENABLED.<br/>
+<br/>
+Внесём изменение в docker-compose.yml и снова запускаем:<br/>
+<br/>
+<pre><code class="plaintext">version: '3'
+
+networks:
+  elk:
+
+volumes:
+  elasticsearch:
+    driver: local
+
+services:
+
+  logstash:
+    container_name: logstash_one_channel
+    image: docker.elastic.co/logstash/logstash:6.3.2
+    networks:
+      - elk
+    environment:
+      XPACK_MONITORING_ENABLED: "false"
+    ports:
+      - 5046:5046
+   volumes:
+      - ./config/pipelines.yml:/usr/share/logstash/config/pipelines.yml:ro
+      - ./config/pipelines:/usr/share/logstash/config/pipelines:ro
+
+</code></pre><br/>
+Вот теперь, всё нормально. Контейнер готов к экспериментам.<br/>
+<br/>
+Можем снова набрать в соседней консоли:<br/>
+<br/>
+<pre><code class="bash">echo '13123123123123123123123213123213' | nc localhost 5046
+</code></pre><br/>
+И увидеть:<br/>
+<br/>
+<pre><code class="plaintext">logstash_one_channel | {
+logstash_one_channel |         "message" => "13123123123123123123123213123213",
+logstash_one_channel |      "@timestamp" => 2019-04-29T11:43:44.582Z,
+logstash_one_channel |        "@version" => "1",
+logstash_one_channel |     "habra_field" => "Hello Habr",
+logstash_one_channel |            "host" => "gateway",
+logstash_one_channel |            "port" => 49418
+logstash_one_channel | }
+</code></pre><br/>
+<h1>Работа в рамках одного канала</h1><br/>
+Итак, мы запустились. Теперь собственно можно уделить время настройке непосредственно logstash. Не будем пока трогать файл pipelines.yml, посмотрим, что можно получить, работая с одним каналом.<br/>
+<br/>
+Надо сказать, что общий принцип работы с файлом конфигурации канала хорошо описан в официальном руководстве, вот <a href="https://www.elastic.co/guide/en/logstash/current/configuration-file-structure.html">здесь</a><br/>
+Если хочется почитать по-русски, то мы пользовались вот этой <a href="https://habr.com/ru/post/165059/"> статьёй</a>(но синтаксис запросов там старый, надо это учитывать).<br/>
+<br/>
+Пойдем последовательно от секции Input. Работу по tcp мы уже видели. Что ещё здесь может быть интересного?<br/>
+<br/>
+<h2>Тестовые сообщения, используя heartbeat</h2><br/>
+Есть такая интересная возможность генерировать автоматические тестовые сообщения.<br/>
+Для этого в input секцию нужно включить плагин heartbean.<br/>
+<br/>
+<pre><code class="plaintext">input {
+  heartbeat {
+    message => "HeartBeat!"
+   }
+  } 
+</code></pre><br/>
+Включаем, начинаем раз в минуту получать <br/>
+<br/>
+<pre><code class="plaintext">logstash_one_channel | {
+logstash_one_channel |      "@timestamp" => 2019-04-29T13:52:04.567Z,
+logstash_one_channel |     "habra_field" => "Hello Habr",
+logstash_one_channel |         "message" => "HeartBeat!",
+logstash_one_channel |        "@version" => "1",
+logstash_one_channel |            "host" => "a0667e5c57ec"
+logstash_one_channel | }
+</code></pre><br/>
+Хотим получать почаще, надо добавить параметр interval.<br/>
+Вот так будем получать раз в 10 секунд сообщение.<br/>
+<br/>
+<pre><code class="plaintext">input {
+  heartbeat {
+    message => "HeartBeat!"
+    interval => 10
+   }
+  }
+</code></pre><br/>
+<h2>Получение данных из файла</h2><br/>
+Ещё решили посмотреть режим file. Если нормально с файлом работает, то возможно, и агента никакого не потребуется, ну хотя бы для локального использования.<br/>
+<br/>
+По описанию, режим работы должен быть аналогичный tail -f, т.е. читает новые строки или, как опция, читает весь файл.<br/>
+<br/>
+Итак, что мы хотим получить:<br/>
+<br/>
+<ol>
+<li>Мы хотим получать строки, которые дописываются в один лог файл.</li>
+<li>Мы хотим получать данные, которые записываются в несколько лог файлов, при этом, иметь возможность разделить что откуда получено.</li>
+<li>Мы хотим проверить, что при перезапуске logstash он не получит эти данные повторно.</li>
+<li>Мы хотим проверить, что если logstash отключить, а данные в файлы продолжают писаться, то, когда мы его запустим, то мы эти данные получим.</li>
+</ol><br/>
+Для проведения эксперимента добавим ещё одну строчку в docker-compose.yml, открыв директорию, в которую мы кладём файлы.<br/>
+<br/>
+<pre><code class="plaintext">version: '3'
+
+networks:
+  elk:
+
+volumes:
+  elasticsearch:
+    driver: local
+
+services:
+
+  logstash:
+    container_name: logstash_one_channel
+    image: docker.elastic.co/logstash/logstash:6.3.2
+    networks:
+      - elk
+    environment:
+      XPACK_MONITORING_ENABLED: "false"
+    ports:
+      - 5046:5046
+   volumes:
+      - ./config/pipelines.yml:/usr/share/logstash/config/pipelines.yml:ro
+      - ./config/pipelines:/usr/share/logstash/config/pipelines:ro
+      - ./logs:/usr/share/logstash/input
+
+</code></pre><br/>
+И изменим секцию input в habr_pipeline.conf<br/>
+<br/>
+<pre><code class="plaintext">input {
+  file {
+    path => "/usr/share/logstash/input/*.log"
+   }
+  }
+</code></pre><br/>
+Запускаемся:<br/>
+<br/>
+<pre><code class="bash">docker-compose up
+</code></pre><br/>
+Для создания и записывания лог файлов будем пользоваться командой:<br/>
+<br/>
+<pre><code class="bash"> echo '1' >> logs/number1.log
+</code></pre><br/>
+<pre><code class="plaintext">{
+logstash_one_channel |            "host" => "ac2d4e3ef70f",
+logstash_one_channel |     "habra_field" => "Hello Habr",
+logstash_one_channel |      "@timestamp" => 2019-04-29T14:28:53.876Z,
+logstash_one_channel |        "@version" => "1",
+logstash_one_channel |         "message" => "1",
+logstash_one_channel |            "path" => "/usr/share/logstash/input/number1.log"
+logstash_one_channel | }
+</code></pre><br/>
+Ага, работает!<br/>
+<br/>
+При этом, мы видим, что у нас автоматически добавилось поле path. Значит в дальнейшем, мы сможем по нему фильтровать записи.<br/>
+<br/>
+Попробуем ещё:<br/>
+<br/>
+<pre><code class="bash">echo '2' >> logs/number1.log
+</code></pre><br/>
+<pre><code class="plaintext">{
+logstash_one_channel |            "host" => "ac2d4e3ef70f",
+logstash_one_channel |     "habra_field" => "Hello Habr",
+logstash_one_channel |      "@timestamp" => 2019-04-29T14:28:59.906Z,
+logstash_one_channel |        "@version" => "1",
+logstash_one_channel |         "message" => "2",
+logstash_one_channel |            "path" => "/usr/share/logstash/input/number1.log"
+logstash_one_channel | }
+</code></pre><br/>
+<br/>
+А теперь в другой файл:<br/>
+<br/>
+<pre><code class="bash"> echo '1' >> logs/number2.log
+</code></pre><br/>
+<pre><code class="plaintext">{
+logstash_one_channel |            "host" => "ac2d4e3ef70f",
+logstash_one_channel |     "habra_field" => "Hello Habr",
+logstash_one_channel |      "@timestamp" => 2019-04-29T14:29:26.061Z,
+logstash_one_channel |        "@version" => "1",
+logstash_one_channel |         "message" => "1",
+logstash_one_channel |            "path" => "/usr/share/logstash/input/number2.log"
+logstash_one_channel | }
+</code></pre><br/>
+Отлично! Файл подхватился, path указался верно, всё хорошо.<br/>
+<br/>
+Остановим logstash и запусти заново. Подождём. Тишина. Т.е. Повторно мы эти записи не получаем.<br/>
+<br/>
+А теперь самый смелый эксперимент.<br/>
+<br/>
+Кладём logstash и выполняем:<br/>
+<br/>
+<pre><code class="bash">echo '3' >> logs/number2.log
+echo '4' >> logs/number1.log
+</code></pre><br/>
+Снова запускаем logstash и видим:<br/>
+<br/>
+<pre><code class="plaintext">logstash_one_channel | {
+logstash_one_channel |            "host" => "ac2d4e3ef70f",
+logstash_one_channel |     "habra_field" => "Hello Habr",
+logstash_one_channel |         "message" => "3",
+logstash_one_channel |        "@version" => "1",
+logstash_one_channel |            "path" => "/usr/share/logstash/input/number2.log",
+logstash_one_channel |      "@timestamp" => 2019-04-29T14:48:50.589Z
+logstash_one_channel | }
+logstash_one_channel | {
+logstash_one_channel |            "host" => "ac2d4e3ef70f",
+logstash_one_channel |     "habra_field" => "Hello Habr",
+logstash_one_channel |         "message" => "4",
+logstash_one_channel |        "@version" => "1",
+logstash_one_channel |            "path" => "/usr/share/logstash/input/number1.log",
+logstash_one_channel |      "@timestamp" => 2019-04-29T14:48:50.856Z
+logstash_one_channel | }
+
+</code></pre><br/>
+Ура! Всё подхватилось.<br/>
+<br/>
+Но, надо предупредить о следующем. Если контейнер с logstash удаляется (docker stop logstash_one_channel &amp;&amp; docker rm logstash_one_channel), то ничего не подхватится. Внутри контейнера была сохранена позиция файла, до которой он был считан. Если запускать «с нуля», то он будет принимать только новые строки.<br/>
+<br/>
+<h3>Считывание уже существующих файлов</h3><br/>
+Допустим мы первый раз запускаем logstash, но у нас уже есть логи и мы хотели бы их обработать. <br/>
+Если мы запустим logstash с той секцией input, которую использовали выше, то мы ничего не получим. Только новые строки будут обрабатываться logstash.<br/>
+<br/>
+Для того, чтобы подтянулись строки из существующих файлов, следует добавить в input секцию дополнительную строчку:<br/>
+<br/>
+<pre><code class="plaintext">input {
+  file {
+    start_position => "beginning"
+    path => "/usr/share/logstash/input/*.log"
+   }
+  }
+</code></pre><br/>
+Причём, есть нюанс, это действует только на новые файлы, которые logstash ещё не видел. Для тех же файлов, что уже попадали в поле зрения logstash, он уже запомнил их размер и теперь будет брать только новые записи в них.<br/>
+<br/>
+Остановимся на этом на изучении секции input. Там ещё множество вариантов, но нам, для дальнейших экспериментов пока хватит.<br/>
+<br/>
+<h2>Маршрутизация и преобразование данных</h2><br/>
+Попробуем решить следующую задачу, допустим у нас идут сообщения из одного канала, часть из них информационные, а часть сообщение об ошибках. Отличаются тегом. Одни INFO, другие ERROR.<br/>
+<br/>
+Нам нужно на выходе их разделить. Т.е. Информационные сообщения пишем в один канал, а сообщения об ошибках в другой.<br/>
+<br/>
+Для этого, от секции input переходим к filter и output.<br/>
+<br/>
+С помощью секции filter мы разберём входящее сообщение, получив из него hash(пары ключ-значение), с которым уже можно работать, т.е. разбирать по условиям. А в секции output, отберём сообщения и отправим каждое в свой канал.<br/>
+<br/>
+<h3>Разбор сообщения с помощью grok</h3><br/>
+Для того, чтобы разбирать текстовые строки и получать из них набор полей, в секции filter есть специальный плагин — grok.<br/>
+<br/>
+Не ставя себе целью дать здесь его детальное описание (за этим отсылаю к <a href="https://www.elastic.co/guide/en/logstash/current/plugins-filters-grok.html">официальной документации</a>), приведу свой простой пример.<br/>
+<br/>
+Для этого, надо определиться с форматом входных строк. У меня они такие:<br/>
+<br/>
+1 INFO message1<br/>
+2 ERROR message2<br/>
+<br/>
+Т.е. Идентификатор на первом месте, затем INFO/ERROR, затем какое-то слово без пробелов.<br/>
+Не сложно, но для понимания принципа работы хватит.<br/>
+<br/>
+Итак, в секции filter, в плагине grok мы должны определить паттерн для разбора наших строк.<br/>
+<br/>
+Выглядеть он будет так:<br/>
+<br/>
+<pre><code class="plaintext">filter {
+  grok {
+    match => { "message" => ["%{INT:message_id} %{LOGLEVEL:message_type} %{WORD:message_text}"] }
+   }
+  } 
+</code></pre><br/>
+По сути, это регулярное выражение. Используются уже готовые паттерны, такие как INT, LOGLEVEL, WORD. Их описание, а также другие паттерны, можно посмотреть вот <a href="https://github.com/logstash-plugins/logstash-patterns-core/blob/master/patterns/grok-patterns">здесь</a><br/>
+<br/>
+Теперь, проходя через этот фильтр, наша строка превратится в hash из трёх полей: message_id, message_type, message_text.<br/>
+<br/>
+Именно они будут выводиться в секции output.<br/>
+<br/>
+<h3>Маршрутизация сообщений в секции output с помощью команды if</h3><br/>
+В секции output, как мы помним, мы собирались разделить сообщения на два потока. Одни — которые iNFO, будем выводить на консоль, а с ошибками, будем выводить в файл.<br/>
+<br/>
+Как нам разделить эти сообщения? Условие задачи уже подсказывает решение — у нас ведь есть уже выделенное поле message_type, которое может принимать только два значения INFO и ERROR. Именно по нему и сделаем выбор с помощью оператора if.<br/>
+<br/>
+<pre><code class="plaintext">if [message_type] == "ERROR" {
+        # Здесь выводим в файл
+       } else
+     {
+      # Здесь выводим в stdout
+    }
+</code></pre><br/>
+Описание работы с полями и операторами, можно посмотреть вот в этой секции <a href="https://www.elastic.co/guide/en/logstash/current/configuration.html">официального мануала</a>.<br/>
+<br/>
+Теперь, про собственно сам вывод.<br/>
+<br/>
+Вывод в консоль, здесь всё понятно — stdout {}<br/>
+<br/>
+А вот вывод в файл — вспоминаем, что мы это всё запускаем из контейнера и чтобы файл, в который мы пишем результат, был доступен снаружи, нам необходимо открыть эту директорию в docker-compose.yml.<br/>
+<br/>
+Итого:<br/>
+<br/>
+Секция output нашего файла выглядит вот так:<br/>
+<br/>
+<pre><code class="plaintext"> output {
+  if [message_type] == "ERROR" {
+    file {
+          path => "/usr/share/logstash/output/test.log"
+          codec => line { format => "custom format: %{message}"}
+         }
+    } else
+     {stdout {
+             }
+     }
+  }
+</code></pre><br/>
+В docker-compose.yml добавляем ещё один том, для вывода:<br/>
+<br/>
+<pre><code class="plaintext">version: '3'
+
+networks:
+  elk:
+
+volumes:
+  elasticsearch:
+    driver: local
+
+services:
+
+  logstash:
+    container_name: logstash_one_channel
+    image: docker.elastic.co/logstash/logstash:6.3.2
+    networks:
+      - elk
+    environment:
+      XPACK_MONITORING_ENABLED: "false"
+    ports:
+      - 5046:5046
+   volumes:
+      - ./config/pipelines.yml:/usr/share/logstash/config/pipelines.yml:ro
+      - ./config/pipelines:/usr/share/logstash/config/pipelines:ro
+      - ./logs:/usr/share/logstash/input
+      - ./output:/usr/share/logstash/output
+</code></pre><br/>
+Запускаем, пробуем, видим разделение на два потока.</div></div> <!----> <!----></div> <div class="tm-article-presenter__meta"><div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Теги:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Blogstash%5D" class="tm-tags-list__link">logstash</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Belk%5D" class="tm-tags-list__link">elk</a></li></ul></div> <div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Хабы:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/hub/sys_admin/" class="tm-hubs-list__link">
+    Системное администрирование
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/nix/" class="tm-hubs-list__link">
+    *nix
+  </a></li></ul></div></div></article></div> <!----></div> <div class="tm-article-sticky-panel"><div class="tm-data-icons tm-article-sticky-panel__icons"><div class="tm-article-rating tm-data-icons__item"><div class="tm-votes-meter tm-article-rating__votes-switcher"><svg height="16" width="16" class="tm-svg-img tm-votes-meter__icon tm-votes-meter__icon_medium"><title>Всего голосов 19: ↑18 и ↓1</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-rating"></use></svg> <span title="Всего голосов 19: ↑18 и ↓1" class="tm-votes-meter__value tm-votes-meter__value_positive tm-votes-meter__value_medium">+17</span></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----> <span title="Количество просмотров" class="tm-icon-counter tm-data-icons__item"><svg height="16" width="16" class="tm-svg-img tm-icon-counter__icon"><title>Просмотры</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-views"></use></svg> <span class="tm-icon-counter__value">60K</span></span> <button title="Добавить в закладки" type="button" class="bookmarks-button tm-data-icons__item"><span title="Добавить в закладки" class="tm-svg-icon__wrapper bookmarks-button__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Добавить в закладки</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-favorite"></use></svg></span> <span title="Количество пользователей, добавивших публикацию в закладки" class="bookmarks-button__counter">
+    148
+  </span></button> <!----> <div title="Поделиться" class="tm-sharing tm-data-icons__item"><button type="button" class="tm-sharing__button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="tm-sharing__icon"><path fill="currentColor" d="M10.33.275l9.047 7.572a.2.2 0 010 .306l-9.048 7.572a.2.2 0 01-.328-.153V11c-8 0-9.94 6-9.94 6S-1 5 10 5V.428a.2.2 0 01.328-.153z"></path></svg></button> <!----></div> <DIV class="v-portal" style="display:none;"></DIV></div> </div></div> <!----> <!----> <div class="tm-article-presenter__footer"><div class="tm-article-blocks"><!----> <section class="tm-block tm-block_spacing-bottom"><!----> <div class="tm-block__body tm-block__body_variant-balanced"><div class="tm-article-author"> <div class="tm-user-card tm-article-author__user-card tm-user-card_variant-article"><div class="tm-user-card__info-container"><div class="tm-user-card__header"><div class="tm-user-card__header-data"><a href="/ru/users/azirumga/" class="tm-user-card__userpic tm-user-card__userpic_size-40"><div class="tm-entity-image"><svg class="tm-svg-img tm-image-placeholder tm-image-placeholder_blue"><!----> <use xlink:href="/img/megazord-v24.ce74655c.svg#placeholder-user"></use></svg></div></a> <div class="tm-user-card__meta"><div title=" 9 голосов " class="tm-karma tm-user-card__karma"><div class="tm-karma__votes tm-karma__votes_positive">
+    7
+  </div> <div class="tm-karma__text">
+    Карма
+  </div></div> <div title="Рейтинг пользователя" class="tm-rating tm-user-card__rating"><div class="tm-rating__header"> <div class="tm-rating__counter">0</div></div> <div class="tm-rating__text">
+    Рейтинг
+  </div></div></div></div></div> <div class="tm-user-card__info tm-user-card__info_variant-article"><div class="tm-user-card__title tm-user-card__title_variant-article"><!----> <a href="/ru/users/azirumga/" class="tm-user-card__nickname tm-user-card__nickname_variant-article">
+          @azirumga
+        </a> <!----></div> <p class="tm-user-card__short-info tm-user-card__short-info_variant-article">Пользователь</p></div></div> <div class="tm-user-card__buttons tm-user-card__buttons_variant-article"><!----> <!----> <!----> <!----> <!----></div></div> <!----></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----></section> <div class="tm-article-blocks__comments"><div class="tm-article-page-comments"><div class="tm-article-comments-counter-link tm-article-comments-counter-button"><a href="/ru/post/451264/comments/" class="tm-article-comments-counter-link__link tm-article-comments-counter-link__link_button-style"><svg height="16" width="16" class="tm-svg-img tm-article-comments-counter-link__icon tm-article-comments-counter-link__icon_contrasted"><title>Комментарии</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-comments"></use></svg> <span class="tm-article-comments-counter-link__value tm-article-comments-counter-link__value_contrasted">
+       Комментарии 18 
+    </span></a> <!----></div></div></div> <div class="tm-ad-banner__container tm-page-article__banner"><!----> <div id="articleBottomBanner" class="tm-ad-banner"></div></div> <!----> <!----> <!----> <!----> </div></div></div></div></div> <div class="tm-page__sidebar"><div class="tm-layout-sidebar"><div class="tm-layout-sidebar__ads tm-layout-sidebar__ads_initial"><div class="tm-ad-banner__container tm-layout-sidebar__banner"><!----> <div id="sidebarBanner" class="tm-ad-banner"></div></div></div> <div class="tm-sexy-sidebar tm-sexy-sidebar_initial" style="margin-top:0px;"><!----> <!----></div></div></div></div></div></div></main> <!----></div> <div class="tm-footer-menu"><div class="tm-page-width"><div class="tm-footer-menu__container"><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Ваш аккаунт
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr/?back=/ru/post/451264/&amp;hl=ru" rel="nofollow" target="_self">
+                Войти
+              </a></li><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr-register/?back=/ru/post/451264/&amp;hl=ru" rel="nofollow" target="_self">
+                Регистрация
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Разделы
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/" class="footer-menu__item-link router-link-active">
+                Публикации
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/news/" class="footer-menu__item-link">
+                Новости
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/hubs/" class="footer-menu__item-link">
+                Хабы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/companies/" class="footer-menu__item-link">
+                Компании
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/users/" class="footer-menu__item-link">
+                Авторы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/sandbox/" class="footer-menu__item-link">
+                Песочница
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Информация
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/docs/help/" class="footer-menu__item-link">
+                Устройство сайта
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/authors/codex/" class="footer-menu__item-link">
+                Для авторов
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/companies/corpblogs/" class="footer-menu__item-link">
+                Для компаний
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/docs/transparency/" class="footer-menu__item-link">
+                Документы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/agreement" target="_blank">
+                Соглашение
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/confidential/" target="_blank">
+                Конфиденциальность
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Услуги
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQLwRfQmXibiUlWaRg-BAc38s7oM3lJiaPju7qmdJsp8ysIvZ_G-Npem0njJLMozE2bPHMpDqiI5hhy/pub?start=false&amp;loop=false&amp;delayms=60000&amp;slide=id.g91a03369cd_4_297" target="_blank">
+                Реклама
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://habrastorage.org/storage/stuff/habr/service_price.pdf" target="_blank">
+                Тарифы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQJJds8-Di7BQSP_guHxICN7woVYoN5NP_22ra-BIo4bqnTT9FR6fB-Ku2P0AoRpX0Ds-LRkDeAoD8F/pub?start=false&amp;loop=false&amp;delayms=60000" target="_blank">
+                Контент
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://tmtm.timepad.ru/" target="_blank">
+                Семинары
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/megaprojects/" class="footer-menu__item-link">
+                Мегапроекты
+              </a></li></ul></div></div></div></div></div> <div class="tm-footer"><div class="tm-page-width"><div class="tm-footer__container"><!----> <div class="tm-footer__social"><a href="https://www.facebook.com/habrahabr.ru" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Facebook</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-facebook"></use></svg></a><a href="https://twitter.com/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Twitter</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-twitter"></use></svg></a><a href="https://vk.com/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>VK</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-vkontakte"></use></svg></a><a href="https://telegram.me/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Telegram</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-telegram"></use></svg></a><a href="https://www.youtube.com/channel/UCd_sTwKqVrweTt4oAKY5y4w" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Youtube</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-youtube"></use></svg></a><a href="https://zen.yandex.ru/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Яндекс Дзен</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-zen"></use></svg></a></div> <DIV class="v-portal" style="display:none;"></DIV> <button class="tm-footer__link"><!---->
+        Настройка языка
+      </button> <a href="/ru/about" class="tm-footer__link">
+        О сайте
+      </a> <a href="/ru/feedback/" class="tm-footer__link">
+        Техническая поддержка
+      </a> <!----> <a href="/berserk-mode-nope" class="tm-footer__link">
+        Вернуться на старую версию
+      </a> <div class="tm-footer-copyright"><span class="tm-copyright"><span class="tm-copyright__years">© 2006–2021 </span> <span class="tm-copyright__name">«<a href="https://company.habr.com/" rel="noopener" target="_blank" class="tm-copyright__link">Habr</a>»</span></span></div></div></div></div> <!----> <!----></div> <div class="vue-portal-target"></div></div>
+<script>window.__INITIAL_STATE__={"adblock":{"hasAcceptableAdsFilter":false,"hasAdblock":false},"articlesList":{"articlesList":{"451264":{"id":"451264","timePublished":"2019-05-10T18:18:06+00:00","isCorporative":false,"lang":"ru","titleHtml":"Практическое применение ELK. Настраиваем logstash","leadData":{"textHtml":"\u003Ch1\u003EВведение\u003C\u002Fh1\u003E\u003Cbr\u002F\u003E\r\nРазворачивая очередную систему, столкнулись с необходимостью обрабатывать большое количество разнообразных логов. В качестве инструмента выбрали ELK. В данной статье пойдёт речь о нашем опыте настройки этого стека.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nНе ставим цели описать все его возможности, но хотим сконцентрироваться именно на решении практических задач. Вызвано это тем, что при наличии достаточно большого количества документации и уже готовых образов, подводных камней достаточно много, по крайней мере у нас они обнаружились.\u003Cbr\u002F\u003E\r\n","imageUrl":null,"buttonTextHtml":"Читать дальше &rarr;","image":null},"editorVersion":"1.0","postType":"article","postLabels":[{"type":"sandbox","data":null}],"author":{"scoreStats":{"score":7,"votesCount":9},"rating":0,"relatedData":null,"contacts":[],"authorContacts":[],"paymentDetails":{"paymentYandexMoney":null,"paymentPayPalMe":null,"paymentWebmoney":null},"id":"2040691","alias":"azirumga","fullname":null,"avatarUrl":null,"speciality":null},"statistics":{"commentsCount":18,"favoritesCount":148,"readingCount":59680,"score":17,"votesCount":19},"hubs":[{"relatedData":null,"id":"221","alias":"sys_admin","type":"collective","title":"Системное администрирование","titleHtml":"Системное администрирование","isProfiled":true},{"relatedData":null,"id":"7289","alias":"nix","type":"collective","title":"*nix","titleHtml":"*nix","isProfiled":true}],"flows":[{"id":"6","alias":"admin","title":"Администрирование"}],"relatedData":null,"textHtml":"\u003Cdiv xmlns=\"http:\u002F\u002Fwww.w3.org\u002F1999\u002Fxhtml\"\u003E\u003Ch1\u003EВведение\u003C\u002Fh1\u003E\u003Cbr\u002F\u003E\r\nРазворачивая очередную систему, столкнулись с необходимостью обрабатывать большое количество разнообразных логов. В качестве инструмента выбрали ELK. В данной статье пойдёт речь о нашем опыте настройки этого стека.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nНе ставим цели описать все его возможности, но хотим сконцентрироваться именно на решении практических задач. Вызвано это тем, что при наличии достаточно большого количества документации и уже готовых образов, подводных камней достаточно много, по крайней мере у нас они обнаружились.\u003Cbr\u002F\u003E\r\n\u003Ca name=\"habracut\"\u003E\u003C\u002Fa\u003E\u003Cbr\u002F\u003E\r\nМы разворачивали стек через docker-compose. Более того, у нас был хорошо написанный docker-compose.yml, который позволил нам практически без проблем поднять стек. И нам казалось, что победа уже близка, сейчас немного докрутим под свои нужды и всё.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nК сожалению, попытка донастроить систему на получение и обработку логов от нашего приложения, с ходу не увенчалась успехом. Поэтому, мы решили, что стоит изучить каждый компонент отдельно, а потом уже вернуться к их связям.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nИтак, начали с logstash.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch1\u003EОкружение, развёртывание, запуск Logstash в контейнере\u003C\u002Fh1\u003E\u003Cbr\u002F\u003E\r\nДля развёртывания используем docker-compose, описанные здесь эксперименты проводились на MacOS и Ubuntu 18.0.4.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nОбраз logstash, который был прописан у нас в исходном docker-compose.yml, это docker.elastic.co\u002Flogstash\u002Flogstash:6.3.2\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЕго мы будем использовать для экспериментов.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nДля запуска logstash мы написали отдельный docker-compose.yml. Можно конечно было из командной строки образ запускать, но мы ведь конкретную задачу решали, где у нас всё из docker-compose запускается.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EКратко про конфигурационные файлы\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nКак следует из описания, logstash можно запускать как для одного канала, в этом случае, ему нужно передать файл *.conf или для нескольких каналов, в этом случае ему надо передать файл pipelines.yml, который, в свою очередь, будет ссылаться на файлы .conf для каждого канала.\u003Cbr\u002F\u003E\r\nМы пошли по второму пути. Он нам показался более универсальным и масштабируемым. Поэтому, мы создали pipelines.yml, и сделали директорию pipelines, в которую будем класть файлы .conf для каждого канала.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВнутри контейнера есть ещё один конфигурационный файл — logstash.yml. Мы его не трогаем, используем как есть.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nИтак, структура наших каталогов:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fci\u002Fzd\u002F49\u002Fcizd49eci9alvlbi1fwk8nyyaky.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nДля получения входных данных пока считаем, что это tcp по порту 5046, а для вывода будем использовать stdout.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВот такая простая конфигурация для первого запуска. Поскольку ведь начальная задача — запустить.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nИтак, у нас есть вот такой docker-compose.yml\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003Eversion: '3'\n\nnetworks:\n  elk:\n\nvolumes:\n  elasticsearch:\n    driver: local\n\nservices:\n\n  logstash:\n    container_name: logstash_one_channel\n    image: docker.elastic.co\u002Flogstash\u002Flogstash:6.3.2\n    networks:\n      \t- elk\n    ports:\n      \t- 5046:5046\n    volumes:\n      \t- .\u002Fconfig\u002Fpipelines.yml:\u002Fusr\u002Fshare\u002Flogstash\u002Fconfig\u002Fpipelines.yml:ro\n\t- .\u002Fconfig\u002Fpipelines:\u002Fusr\u002Fshare\u002Flogstash\u002Fconfig\u002Fpipelines:ro\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nЧто мы здесь видим?\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Col\u003E\r\n\u003Cli\u003ENetworks и volumes были взяты из исходного docker-compose.yml (тот где целиком стек запускается) и думаю, что сильно здесь на общую картинку не влияют.\u003C\u002Fli\u003E\r\n\u003Cli\u003EМы создаём один сервис (services) logstash, из образа docker.elastic.co\u002Flogstash\u002Flogstash:6.3.2 и присваиваем ему имя logstash_one_channel.\u003C\u002Fli\u003E\r\n\u003Cli\u003EМы пробрасываем внутрь контейнера порт 5046, на такой же внутренний порт.\u003C\u002Fli\u003E\r\n\u003Cli\u003EМы отображаем наш файл настройки каналов .\u002Fconfig\u002Fpipelines.yml на файл \u002Fusr\u002Fshare\u002Flogstash\u002Fconfig\u002Fpipelines.yml внутри контейнера, откуда его подхватит logstash и делаем его read-only, просто на всякий случай.\u003C\u002Fli\u003E\r\n\u003Cli\u003EМы отображаем директорию .\u002Fconfig\u002Fpipelines, где у нас лежат файлы с настройками каналов, в директорию \u002Fusr\u002Fshare\u002Flogstash\u002Fconfig\u002Fpipelines и тоже делаем её read-only.\u003C\u002Fli\u003E\r\n\u003C\u002Fol\u003E \u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002F5u\u002Fs3\u002Fdw\u002F5us3dwu8forutzwmtlfnlcjt-ic.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nФайл pipelines.yml\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E- pipeline.id: HABR\n  pipeline.workers: 1\n  pipeline.batch.size: 1\n  path.config: \".\u002Fconfig\u002Fpipelines\u002Fhabr_pipeline.conf\"\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nЗдесь описан один канал с идентификатором HABR и путь к его конфигурационному файлу.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nИ наконец файл «.\u002Fconfig\u002Fpipelines\u002Fhabr_pipeline.conf\"\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003Einput {\n  tcp {\n    port =\u003E \"5046\"\n   }\n  }\nfilter {\n  mutate {\n    add_field =\u003E [ \"habra_field\", \"Hello Habr\" ]\n    }\n  }\noutput {\n  stdout {\n      \n    }\n  }\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nНе будем пока вдаваться в его описание, пробуем запустить:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"bash\"\u003Edocker-compose up\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nЧто мы видим? \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nКонтейнер запустился. Можем проверить его работу:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"bash\"\u003Eecho '13123123123123123123123213123213' | nc localhost 5046\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nИ видим в консоли контейнера ответ:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fr\u002Fw780q1\u002Fwebt\u002Fuj\u002Foy\u002Ftz\u002Fujoytzcsc_mmiagm05savxahnzm.jpeg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fuj\u002Foy\u002Ftz\u002Fujoytzcsc_mmiagm05savxahnzm.jpeg\" data-blurred=\"true\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nНо при этом, видим также:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cfont color=\"«#38B9C7»\"\u003Elogstash_one_channel |\u003C\u002Ffont\u003E [2019-04-29T11:28:59,790]\u003Cfont color=\"«CC0000»\"\u003E[ERROR][logstash.licensechecker.licensereader] Unable to retrieve license information from license server {:message=\u003E«Elasticsearch Unreachable: [http:\u002F\u002Felasticsearch:9200\u002F]\u003C\u002Ffont\u003E[Manticore::ResolutionFailure] elasticsearch», …\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cfont color=\"«#38B9C7»\"\u003Elogstash_one_channel | \u003C\u002Ffont\u003E [2019-04-29T11:28:59,894][INFO ][logstash.pipeline ] \u003Cfont color=\"green\"\u003EPipeline started successfully \u003C\u002Ffont\u003E {:pipeline_id=\u003E\".monitoring-logstash\", :thread=\u003E\"#&lt;Thread:0x119abb86 run\u003E»}\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cfont color=\"«#38B9C7»\"\u003Elogstash_one_channel | \u003C\u002Ffont\u003E [2019-04-29T11:28:59,988][INFO ][logstash.agent ] Pipelines running {:count=\u003E2, :running_pipelines=\u003E[:HABR, :\".monitoring-logstash\"], :non_running_pipelines=\u003E[]}\u003Cbr\u002F\u003E\r\n\u003Cfont color=\"«#38B9C7»\"\u003Elogstash_one_channel | \u003C\u002Ffont\u003E [2019-04-29T11:29:00,015]\u003Cfont color=\"«CC0000»\"\u003E[ERROR][logstash.inputs.metrics ] X-Pack is installed on Logstash but not on Elasticsearch. Please install X-Pack on Elasticsearch to use the monitoring feature. Other features may be available.\u003C\u002Ffont\u003E\u003Cbr\u002F\u003E\r\n\u003Cfont color=\"«#38B9C7»\"\u003Elogstash_one_channel | \u003C\u002Ffont\u003E [2019-04-29T11:29:00,526][INFO ][logstash.agent ] Successfully started Logstash API endpoint {:port=\u003E9600}\u003Cbr\u002F\u003E\r\n\u003Cfont color=\"«#38B9C7»\"\u003Elogstash_one_channel | \u003C\u002Ffont\u003E [2019-04-29T11:29:04,478][INFO ][logstash.outputs.elasticsearch] Running health check to see if an Elasticsearch connection is working {:healthcheck_url=\u003Ehttp:\u002F\u002Felasticsearch:9200\u002F, :path=\u003E\"\u002F\"}\u003Cbr\u002F\u003E\r\nl\u003Cfont color=\"«#38B9C7»\"\u003Eogstash_one_channel | \u003C\u002Ffont\u003E [2019-04-29T11:29:04,487]\u003Cfont color=\"orange\"\u003E[WARN ][logstash.outputs.elasticsearch] Attempted to resurrect connection to dead ES instance, but got an error. {:url=\u003E«\u003Ca href=\"http:\u002F\u002Felasticsearch\"\u003Eelasticsearch\u003C\u002Fa\u003E:9200\u002F», :error_type=\u003ELogStash::Outputs::ElasticSearch::HttpClient::Pool::HostUnreachableError, :error=\u003E«Elasticsearch Unreachable: [http:\u002F\u002Felasticsearch:9200\u002F][Manticore::ResolutionFailure] elasticsearch»}\u003C\u002Ffont\u003E\u003Cbr\u002F\u003E\r\n\u003Cfont color=\"«#38B9C7»\"\u003Elogstash_one_channel | \u003C\u002Ffont\u003E [2019-04-29T11:29:04,704][INFO ][logstash.licensechecker.licensereader] Running health check to see if an Elasticsearch connection is working {:healthcheck_url=\u003Ehttp:\u002F\u002Felasticsearch:9200\u002F, :path=\u003E\"\u002F\"}\u003Cbr\u002F\u003E\r\n\u003Cfont color=\"«#38B9C7»\"\u003Elogstash_one_channel | \u003C\u002Ffont\u003E [2019-04-29T11:29:04,710]\u003Cfont color=\"orange\"\u003E[WARN ][logstash.licensechecker.licensereader] Attempted to resurrect connection to dead ES instance, but got an error. {:url=\u003E«\u003Ca href=\"http:\u002F\u002Felasticsearch\"\u003Eelasticsearch\u003C\u002Fa\u003E:9200\u002F», :error_type=\u003ELogStash::Outputs::ElasticSearch::HttpClient::Pool::HostUnreachableError, :error=\u003E«Elasticsearch Unreachable: [http:\u002F\u002Felasticsearch:9200\u002F][Manticore::ResolutionFailure] elasticsearch»}\u003C\u002Ffont\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nИ наш лог всё время ползёт вверх.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЗдесь я выделил зелёным цветом сообщение о том, что pipeline успешно запустилась, красным — сообщение об ошибке и жёлтым — сообщение о попытке связаться с \u003Ca href=\"http:\u002F\u002Felasticsearch\"\u003Eelasticsearch\u003C\u002Fa\u003E:9200.\u003Cbr\u002F\u003E\r\nПроисходит это из за того, что в logstash.conf, включенном в состав образа, стоит проверка на доступность elasticsearch. Ведь logstash предполагает, что работает в составе Elk стека, а мы его отделили.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nРаботать можно, но не удобно.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nРешением является отключить эту проверку через переменную окружения XPACK_MONITORING_ENABLED.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВнесём изменение в docker-compose.yml и снова запускаем:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003Eversion: '3'\n\nnetworks:\n  elk:\n\nvolumes:\n  elasticsearch:\n    driver: local\n\nservices:\n\n  logstash:\n    container_name: logstash_one_channel\n    image: docker.elastic.co\u002Flogstash\u002Flogstash:6.3.2\n    networks:\n      - elk\n    environment:\n      XPACK_MONITORING_ENABLED: \"false\"\n    ports:\n      - 5046:5046\n   volumes:\n      - .\u002Fconfig\u002Fpipelines.yml:\u002Fusr\u002Fshare\u002Flogstash\u002Fconfig\u002Fpipelines.yml:ro\n      - .\u002Fconfig\u002Fpipelines:\u002Fusr\u002Fshare\u002Flogstash\u002Fconfig\u002Fpipelines:ro\n\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nВот теперь, всё нормально. Контейнер готов к экспериментам.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nМожем снова набрать в соседней консоли:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"bash\"\u003Eecho '13123123123123123123123213123213' | nc localhost 5046\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nИ увидеть:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003Elogstash_one_channel | {\nlogstash_one_channel |         \"message\" =\u003E \"13123123123123123123123213123213\",\nlogstash_one_channel |      \"@timestamp\" =\u003E 2019-04-29T11:43:44.582Z,\nlogstash_one_channel |        \"@version\" =\u003E \"1\",\nlogstash_one_channel |     \"habra_field\" =\u003E \"Hello Habr\",\nlogstash_one_channel |            \"host\" =\u003E \"gateway\",\nlogstash_one_channel |            \"port\" =\u003E 49418\nlogstash_one_channel | }\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Ch1\u003EРабота в рамках одного канала\u003C\u002Fh1\u003E\u003Cbr\u002F\u003E\r\nИтак, мы запустились. Теперь собственно можно уделить время настройке непосредственно logstash. Не будем пока трогать файл pipelines.yml, посмотрим, что можно получить, работая с одним каналом.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nНадо сказать, что общий принцип работы с файлом конфигурации канала хорошо описан в официальном руководстве, вот \u003Ca href=\"https:\u002F\u002Fwww.elastic.co\u002Fguide\u002Fen\u002Flogstash\u002Fcurrent\u002Fconfiguration-file-structure.html\"\u003Eздесь\u003C\u002Fa\u003E\u003Cbr\u002F\u003E\r\nЕсли хочется почитать по-русски, то мы пользовались вот этой \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fpost\u002F165059\u002F\"\u003E статьёй\u003C\u002Fa\u003E(но синтаксис запросов там старый, надо это учитывать).\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПойдем последовательно от секции Input. Работу по tcp мы уже видели. Что ещё здесь может быть интересного?\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EТестовые сообщения, используя heartbeat\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nЕсть такая интересная возможность генерировать автоматические тестовые сообщения.\u003Cbr\u002F\u003E\r\nДля этого в input секцию нужно включить плагин heartbean.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003Einput {\n  heartbeat {\n    message =\u003E \"HeartBeat!\"\n   }\n  } \n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nВключаем, начинаем раз в минуту получать \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003Elogstash_one_channel | {\nlogstash_one_channel |      \"@timestamp\" =\u003E 2019-04-29T13:52:04.567Z,\nlogstash_one_channel |     \"habra_field\" =\u003E \"Hello Habr\",\nlogstash_one_channel |         \"message\" =\u003E \"HeartBeat!\",\nlogstash_one_channel |        \"@version\" =\u003E \"1\",\nlogstash_one_channel |            \"host\" =\u003E \"a0667e5c57ec\"\nlogstash_one_channel | }\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nХотим получать почаще, надо добавить параметр interval.\u003Cbr\u002F\u003E\r\nВот так будем получать раз в 10 секунд сообщение.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003Einput {\n  heartbeat {\n    message =\u003E \"HeartBeat!\"\n    interval =\u003E 10\n   }\n  }\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EПолучение данных из файла\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nЕщё решили посмотреть режим file. Если нормально с файлом работает, то возможно, и агента никакого не потребуется, ну хотя бы для локального использования.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПо описанию, режим работы должен быть аналогичный tail -f, т.е. читает новые строки или, как опция, читает весь файл.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nИтак, что мы хотим получить:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Col\u003E\r\n\u003Cli\u003EМы хотим получать строки, которые дописываются в один лог файл.\u003C\u002Fli\u003E\r\n\u003Cli\u003EМы хотим получать данные, которые записываются в несколько лог файлов, при этом, иметь возможность разделить что откуда получено.\u003C\u002Fli\u003E\r\n\u003Cli\u003EМы хотим проверить, что при перезапуске logstash он не получит эти данные повторно.\u003C\u002Fli\u003E\r\n\u003Cli\u003EМы хотим проверить, что если logstash отключить, а данные в файлы продолжают писаться, то, когда мы его запустим, то мы эти данные получим.\u003C\u002Fli\u003E\r\n\u003C\u002Fol\u003E\u003Cbr\u002F\u003E\r\nДля проведения эксперимента добавим ещё одну строчку в docker-compose.yml, открыв директорию, в которую мы кладём файлы.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003Eversion: '3'\n\nnetworks:\n  elk:\n\nvolumes:\n  elasticsearch:\n    driver: local\n\nservices:\n\n  logstash:\n    container_name: logstash_one_channel\n    image: docker.elastic.co\u002Flogstash\u002Flogstash:6.3.2\n    networks:\n      - elk\n    environment:\n      XPACK_MONITORING_ENABLED: \"false\"\n    ports:\n      - 5046:5046\n   volumes:\n      - .\u002Fconfig\u002Fpipelines.yml:\u002Fusr\u002Fshare\u002Flogstash\u002Fconfig\u002Fpipelines.yml:ro\n      - .\u002Fconfig\u002Fpipelines:\u002Fusr\u002Fshare\u002Flogstash\u002Fconfig\u002Fpipelines:ro\n      - .\u002Flogs:\u002Fusr\u002Fshare\u002Flogstash\u002Finput\n\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nИ изменим секцию input в habr_pipeline.conf\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003Einput {\n  file {\n    path =\u003E \"\u002Fusr\u002Fshare\u002Flogstash\u002Finput\u002F*.log\"\n   }\n  }\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nЗапускаемся:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"bash\"\u003Edocker-compose up\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nДля создания и записывания лог файлов будем пользоваться командой:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"bash\"\u003E\u2028echo '1' \u003E\u003E logs\u002Fnumber1.log\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E{\nlogstash_one_channel |            \"host\" =\u003E \"ac2d4e3ef70f\",\nlogstash_one_channel |     \"habra_field\" =\u003E \"Hello Habr\",\nlogstash_one_channel |      \"@timestamp\" =\u003E 2019-04-29T14:28:53.876Z,\nlogstash_one_channel |        \"@version\" =\u003E \"1\",\nlogstash_one_channel |         \"message\" =\u003E \"1\",\nlogstash_one_channel |            \"path\" =\u003E \"\u002Fusr\u002Fshare\u002Flogstash\u002Finput\u002Fnumber1.log\"\nlogstash_one_channel | }\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nАга, работает!\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПри этом, мы видим, что у нас автоматически добавилось поле path. Значит в дальнейшем, мы сможем по нему фильтровать записи.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПопробуем ещё:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"bash\"\u003Eecho '2' \u003E\u003E logs\u002Fnumber1.log\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E{\nlogstash_one_channel |            \"host\" =\u003E \"ac2d4e3ef70f\",\nlogstash_one_channel |     \"habra_field\" =\u003E \"Hello Habr\",\nlogstash_one_channel |      \"@timestamp\" =\u003E 2019-04-29T14:28:59.906Z,\nlogstash_one_channel |        \"@version\" =\u003E \"1\",\nlogstash_one_channel |         \"message\" =\u003E \"2\",\nlogstash_one_channel |            \"path\" =\u003E \"\u002Fusr\u002Fshare\u002Flogstash\u002Finput\u002Fnumber1.log\"\nlogstash_one_channel | }\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nА теперь в другой файл:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"bash\"\u003E echo '1' \u003E\u003E logs\u002Fnumber2.log\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E{\nlogstash_one_channel |            \"host\" =\u003E \"ac2d4e3ef70f\",\nlogstash_one_channel |     \"habra_field\" =\u003E \"Hello Habr\",\nlogstash_one_channel |      \"@timestamp\" =\u003E 2019-04-29T14:29:26.061Z,\nlogstash_one_channel |        \"@version\" =\u003E \"1\",\nlogstash_one_channel |         \"message\" =\u003E \"1\",\nlogstash_one_channel |            \"path\" =\u003E \"\u002Fusr\u002Fshare\u002Flogstash\u002Finput\u002Fnumber2.log\"\nlogstash_one_channel | }\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nОтлично! Файл подхватился, path указался верно, всё хорошо.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nОстановим logstash и запусти заново. Подождём. Тишина. Т.е. Повторно мы эти записи не получаем.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nА теперь самый смелый эксперимент.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nКладём logstash и выполняем:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"bash\"\u003Eecho '3' \u003E\u003E logs\u002Fnumber2.log\necho '4' \u003E\u003E logs\u002Fnumber1.log\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nСнова запускаем logstash и видим:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003Elogstash_one_channel | {\nlogstash_one_channel |            \"host\" =\u003E \"ac2d4e3ef70f\",\nlogstash_one_channel |     \"habra_field\" =\u003E \"Hello Habr\",\nlogstash_one_channel |         \"message\" =\u003E \"3\",\nlogstash_one_channel |        \"@version\" =\u003E \"1\",\nlogstash_one_channel |            \"path\" =\u003E \"\u002Fusr\u002Fshare\u002Flogstash\u002Finput\u002Fnumber2.log\",\nlogstash_one_channel |      \"@timestamp\" =\u003E 2019-04-29T14:48:50.589Z\nlogstash_one_channel | }\nlogstash_one_channel | {\nlogstash_one_channel |            \"host\" =\u003E \"ac2d4e3ef70f\",\nlogstash_one_channel |     \"habra_field\" =\u003E \"Hello Habr\",\nlogstash_one_channel |         \"message\" =\u003E \"4\",\nlogstash_one_channel |        \"@version\" =\u003E \"1\",\nlogstash_one_channel |            \"path\" =\u003E \"\u002Fusr\u002Fshare\u002Flogstash\u002Finput\u002Fnumber1.log\",\nlogstash_one_channel |      \"@timestamp\" =\u003E 2019-04-29T14:48:50.856Z\nlogstash_one_channel | }\n\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nУра! Всё подхватилось.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nНо, надо предупредить о следующем. Если контейнер с logstash удаляется (docker stop logstash_one_channel &amp;&amp; docker rm logstash_one_channel), то ничего не подхватится. Внутри контейнера была сохранена позиция файла, до которой он был считан. Если запускать «с нуля», то он будет принимать только новые строки.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch3\u003EСчитывание уже существующих файлов\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\nДопустим мы первый раз запускаем logstash, но у нас уже есть логи и мы хотели бы их обработать. \u003Cbr\u002F\u003E\r\nЕсли мы запустим logstash с той секцией input, которую использовали выше, то мы ничего не получим. Только новые строки будут обрабатываться logstash.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nДля того, чтобы подтянулись строки из существующих файлов, следует добавить в input секцию дополнительную строчку:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003Einput {\n  file {\n    start_position =\u003E \"beginning\"\n    path =\u003E \"\u002Fusr\u002Fshare\u002Flogstash\u002Finput\u002F*.log\"\n   }\n  }\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nПричём, есть нюанс, это действует только на новые файлы, которые logstash ещё не видел. Для тех же файлов, что уже попадали в поле зрения logstash, он уже запомнил их размер и теперь будет брать только новые записи в них.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nОстановимся на этом на изучении секции input. Там ещё множество вариантов, но нам, для дальнейших экспериментов пока хватит.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EМаршрутизация и преобразование данных\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nПопробуем решить следующую задачу, допустим у нас идут сообщения из одного канала, часть из них информационные, а часть сообщение об ошибках. Отличаются тегом. Одни INFO, другие ERROR.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nНам нужно на выходе их разделить. Т.е. Информационные сообщения пишем в один канал, а сообщения об ошибках в другой.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nДля этого, от секции input переходим к filter и output.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nС помощью секции filter мы разберём входящее сообщение, получив из него hash(пары ключ-значение), с которым уже можно работать, т.е. разбирать по условиям. А в секции output, отберём сообщения и отправим каждое в свой канал.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch3\u003EРазбор сообщения с помощью grok\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\nДля того, чтобы разбирать текстовые строки и получать из них набор полей, в секции filter есть специальный плагин — grok.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nНе ставя себе целью дать здесь его детальное описание (за этим отсылаю к \u003Ca href=\"https:\u002F\u002Fwww.elastic.co\u002Fguide\u002Fen\u002Flogstash\u002Fcurrent\u002Fplugins-filters-grok.html\"\u003Eофициальной документации\u003C\u002Fa\u003E), приведу свой простой пример.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nДля этого, надо определиться с форматом входных строк. У меня они такие:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n1 INFO message1\u003Cbr\u002F\u003E\r\n2 ERROR message2\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nТ.е. Идентификатор на первом месте, затем INFO\u002FERROR, затем какое-то слово без пробелов.\u003Cbr\u002F\u003E\r\nНе сложно, но для понимания принципа работы хватит.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nИтак, в секции filter, в плагине grok мы должны определить паттерн для разбора наших строк.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВыглядеть он будет так:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003Efilter {\n  grok {\n    match =\u003E { \"message\" =\u003E [\"%{INT:message_id} %{LOGLEVEL:message_type} %{WORD:message_text}\"] }\n   }\n  } \n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nПо сути, это регулярное выражение. Используются уже готовые паттерны, такие как INT, LOGLEVEL, WORD. Их описание, а также другие паттерны, можно посмотреть вот \u003Ca href=\"https:\u002F\u002Fgithub.com\u002Flogstash-plugins\u002Flogstash-patterns-core\u002Fblob\u002Fmaster\u002Fpatterns\u002Fgrok-patterns\"\u003Eздесь\u003C\u002Fa\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nТеперь, проходя через этот фильтр, наша строка превратится в hash из трёх полей: message_id, message_type, message_text.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nИменно они будут выводиться в секции output.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch3\u003EМаршрутизация сообщений в секции output с помощью команды if\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\nВ секции output, как мы помним, мы собирались разделить сообщения на два потока. Одни — которые iNFO, будем выводить на консоль, а с ошибками, будем выводить в файл.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nКак нам разделить эти сообщения? Условие задачи уже подсказывает решение — у нас ведь есть уже выделенное поле message_type, которое может принимать только два значения INFO и ERROR. Именно по нему и сделаем выбор с помощью оператора if.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003Eif [message_type] == \"ERROR\" {\n        # Здесь выводим в файл\n       } else\n     {\n      # Здесь выводим в stdout\n    }\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nОписание работы с полями и операторами, можно посмотреть вот в этой секции \u003Ca href=\"https:\u002F\u002Fwww.elastic.co\u002Fguide\u002Fen\u002Flogstash\u002Fcurrent\u002Fconfiguration.html\"\u003Eофициального мануала\u003C\u002Fa\u003E.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nТеперь, про собственно сам вывод.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВывод в консоль, здесь всё понятно — stdout {}\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nА вот вывод в файл — вспоминаем, что мы это всё запускаем из контейнера и чтобы файл, в который мы пишем результат, был доступен снаружи, нам необходимо открыть эту директорию в docker-compose.yml.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nИтого:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nСекция output нашего файла выглядит вот так:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E\u2028output {\n  if [message_type] == \"ERROR\" {\n    file {\n          path =\u003E \"\u002Fusr\u002Fshare\u002Flogstash\u002Foutput\u002Ftest.log\"\n          codec =\u003E line { format =\u003E \"custom format: %{message}\"}\n         }\n    } else\n     {stdout {\n             }\n     }\n  }\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nВ docker-compose.yml добавляем ещё один том, для вывода:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003Eversion: '3'\n\nnetworks:\n  elk:\n\nvolumes:\n  elasticsearch:\n    driver: local\n\nservices:\n\n  logstash:\n    container_name: logstash_one_channel\n    image: docker.elastic.co\u002Flogstash\u002Flogstash:6.3.2\n    networks:\n      - elk\n    environment:\n      XPACK_MONITORING_ENABLED: \"false\"\n    ports:\n      - 5046:5046\n   volumes:\n      - .\u002Fconfig\u002Fpipelines.yml:\u002Fusr\u002Fshare\u002Flogstash\u002Fconfig\u002Fpipelines.yml:ro\n      - .\u002Fconfig\u002Fpipelines:\u002Fusr\u002Fshare\u002Flogstash\u002Fconfig\u002Fpipelines:ro\n      - .\u002Flogs:\u002Fusr\u002Fshare\u002Flogstash\u002Finput\n      - .\u002Foutput:\u002Fusr\u002Fshare\u002Flogstash\u002Foutput\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nЗапускаем, пробуем, видим разделение на два потока.\u003C\u002Fdiv\u003E","tags":[{"titleHtml":"logstash"},{"titleHtml":"elk"}],"metadata":{"stylesUrls":[],"scriptUrls":[],"shareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F451264\u002F644adb7be690501ebb2761aa680c9d8d\u002F","shareImageWidth":1200,"shareImageHeight":630,"vkShareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F451264\u002F644adb7be690501ebb2761aa680c9d8d\u002F?format=vk","schemaJsonLd":"{\"@context\":\"http:\\\u002F\\\u002Fschema.org\",\"@type\":\"Article\",\"mainEntityOfPage\":{\"@type\":\"WebPage\",\"@id\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fru\\\u002Fpost\\\u002F451264\\\u002F\"},\"headline\":\"Практическое применение ELK. Настраиваем logstash\",\"datePublished\":\"2019-05-10T21:18:06+03:00\",\"dateModified\":\"2019-05-10T21:18:06+03:00\",\"author\":{\"@type\":\"Person\",\"name\":\"azirumga\"},\"publisher\":{\"@type\":\"Organization\",\"name\":\"Habr\",\"logo\":{\"@type\":\"ImageObject\",\"url\":\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fa_\\\u002Flk\\\u002F9m\\\u002Fa_lk9mjkccjox-zccjrpfolmkmq.png\"}},\"description\":\"Введение Разворачивая очередную систему, столкнулись с необходимостью обрабатывать большое количество разнообразных логов. В качестве инструмента выбрали ELK. В...\",\"url\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fru\\\u002Fpost\\\u002F451264\\\u002F#post-content-body\",\"about\":[\"h_sys_admin\",\"h_nix\",\"f_admin\"],\"image\":[\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fci\\\u002Fzd\\\u002F49\\\u002Fcizd49eci9alvlbi1fwk8nyyaky.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002F5u\\\u002Fs3\\\u002Fdw\\\u002F5us3dwu8forutzwmtlfnlcjt-ic.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fuj\\\u002Foy\\\u002Ftz\\\u002Fujoytzcsc_mmiagm05savxahnzm.jpeg\"]}","metaDescription":"Введение\r\nРазворачивая очередную систему, столкнулись с необходимостью обрабатывать большое количество разнообразных логов. В качестве инструмента выбрали ELK. В данной статье пойдёт речь о нашем...","mainImageUrl":null,"amp":false},"polls":[],"commentsEnabled":true,"rulesRemindEnabled":false,"votesEnabled":true,"status":"published","plannedPublishTime":null,"checked":null,"isEditorial":false}},"articlesIds":{},"isLoading":false,"pagesCount":{},"route":{},"reasonsList":null,"view":"cards","lastVisitedRoute":{},"ssrCommentsArticleIds":[""],"karma":{}},"authorContribution":{"authors":{}},"betaTest":{"currentAnnouncement":null,"announcements":{},"announcementCards":null,"announcementComments":{},"announcementCommentThreads":{},"announcementCommentingStatuses":{},"archivedList":[]},"authorStatistics":{"articleRefs":{},"articleIds":{},"pagesCount":{},"route":{},"viewsCount":[],"maxStatsCount":{}},"career":{"seoLandings":[],"hubs":"sys_admin,nix"},"comments":{"articleComments":{},"searchCommentsResults":null,"previewComment":null,"pagesCount":null,"commentAccess":{},"scrollParents":{},"pageArticleComments":{"lastViewedComment":0,"postId":null,"lastCommentTimestamp":"","moderated":[],"moderatedIds":[],"commentRoute":""}},"companies":{"companyRefs":{},"companyIds":{},"companyTopIds":{},"pagesCount":{},"companyProfiles":{},"companiesCategories":[],"companiesCategoriesTotalCount":0,"companiesWidgets":{},"companiesWorkers":{},"companiesFans":{},"route":{},"isLoading":false,"companyWorkersLoading":false,"companyFansLoading":false,"vacancies":{}},"companiesContribution":{"hubs":{},"flows":{},"companyRefs":{}},"companyHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"conversation":{"messages":[],"respondent":null,"isLoadMore":false},"conversations":{"conversations":[],"unreadCount":0,"pagesCount":0,"isLoadMore":false},"desktopState":{"desktopFl":null,"desktopHl":null,"isChecked":false,"isLoginDemanded":false},"dfp":{"slotsDict":{}},"docs":{"menu":{},"articles":{},"mainMenu":[],"loading":{"main":false,"dropdown":false,"article":false}},"feature":{"isProbablyVisible":"true"},"flows":{"flows":[{"alias":"develop","id":1,"route":{"name":"FLOW_PAGE","params":{"flowName":"develop"}}},{"alias":"admin","id":6,"route":{"name":"FLOW_PAGE","params":{"flowName":"admin"}}},{"alias":"design","id":2,"route":{"name":"FLOW_PAGE","params":{"flowName":"design"}}},{"alias":"management","id":3,"route":{"name":"FLOW_PAGE","params":{"flowName":"management"}}},{"alias":"marketing","id":4,"route":{"name":"FLOW_PAGE","params":{"flowName":"marketing"}}},{"alias":"popsci","id":7,"route":{"name":"FLOW_PAGE","params":{"flowName":"popsci"}}}]},"global":{"isPwa":false,"device":"desktop","isHabrCom":true},"hubs":{"hubRefs":{},"hubIds":{},"pagesCount":{},"isLoading":false,"route":{}},"hubsBlock":{"hubRefs":{},"hubIds":{}},"i18n":{"fl":"ru","hl":"ru"},"info":{"infoPage":{},"isLoading":true},"location":{"urlStruct":{"protocol":null,"slashes":null,"auth":null,"host":null,"port":null,"hostname":null,"hash":null,"search":null,"query":{},"pathname":null,"path":null,"href":""},"searchQuery":null},"me":{"user":null,"ppgDemanded":false,"karmaResetInfo":{"canReincarnate":null,"wasReincarnated":null,"currentScore":null},"notes":null},"mostReadingList":{"mostReadingListIds":[],"mostReadingListRefs":null,"promoPost":null},"pinnedPost":{"pinnedPost":null},"ppa":{"articles":{},"card":null,"transactions":null,"totalTransactions":null,"isAccessible":null},"projectsBlocks":{"activeBlocks":{}},"pullRefresh":{"shouldRefresh":false},"sandbox":{"articleIds":[],"articleRefs":{},"pagesCount":null,"route":{},"lastVisitedRoute":{},"isLoading":false},"settingsOther":{"inputs":{"uiLang":{"errors":[],"ref":null,"value":""},"articlesLangEnglish":{"errors":[],"ref":null,"value":false},"articlesLangRussian":{"errors":[],"ref":null,"value":false},"agreement":{"errors":[],"ref":null,"value":false},"email":{"errors":[],"ref":null,"value":true},"digest":{"errors":[],"ref":null,"value":true}}},"similarList":{"similarListIds":[],"similarListRefs":null},"ssr":{"error":null,"isDataLoaded":false,"isDataLoading":false,"isHydrationFailed":false,"isServer":false},"userHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"userInvites":{"availableInvites":0,"usedInvitesIds":[],"usedInvitesRefs":{},"usedInvitesPagesCount":0,"unusedInvitesIds":[],"unusedInvitesRefs":{},"unusedInvitesPagesCount":0},"users":{"authorRefs":{},"authorIds":{},"pagesCount":{},"authorProfiles":{},"userHubs":{},"userInvitations":{},"authorFollowers":{},"authorFollowed":{},"karmaStats":[],"statistics":null,"isLoading":false,"authorFollowersLoading":false,"authorFollowedLoading":false,"userHubsLoading":false,"userInvitationsLoading":false,"route":{}},"viewport":{"prevScrollY":{},"scrollY":0,"width":0},"tracker":{"items":{},"pagesCache":{},"markedViewedSilently":{},"markedRead":{},"unreadCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null},"unviewedCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null}}};(function(){var s;(s=document.currentScript||document.scripts[document.scripts.length-1]).parentNode.removeChild(s);}());</script>
+<script src="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" defer></script><script src="https://assets.habr.com/habr-web/js/app.c0af73e7.js" defer></script>
+
+
+
+    <script>
+      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+        (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+        m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+      })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+    </script>
+  
+  <script type="text/javascript" >
+    (function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+    m[i].l=1*new Date();k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})
+    (window, document, "script", "https://mc.yandex.ru/metrika/tag.js", "ym");
+
+    ym(24049213, "init", {
+      defer:true,
+      trackLinks:true,
+      accurateTrackBounce:true,
+      webvisor:false,
+    });
+  </script>
+  <noscript>
+    <div>
+      <img src="https://mc.yandex.ru/watch/24049213" style="position:absolute; left:-9999px;" alt="" />
+    </div>
+  </noscript>
+  
+    <script type="text/javascript">
+      window.addEventListener('load', function () {
+        setTimeout(() => {
+          const img = new Image();
+          img.src = 'https://vk.com/rtrg?p=VK-RTRG-421343-57vKE';
+        }, 0);
+      });
+    </script>
+  
+</body>
+</html>

@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="ru" data-vue-meta="%7B%22lang%22:%7B%22ssr%22:%22ru%22%7D%7D">
+<head >
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
+  <title>Распознавание дороги посредством семантической сегментации / Хабр</title>
+  <style>
+    /* cyrillic-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSxf6TF0.woff2) format('woff2');
+      unicode-range: U+0460-052F, U+1C80-1C88, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+    }
+
+    /* cyrillic */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveQhf6TF0.woff2) format('woff2');
+      unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+    }
+
+    /* latin-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSBf6TF0.woff2) format('woff2');
+      unicode-range: U+0100-024F, U+0259, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20CF, U+2113, U+2C60-2C7F, U+A720-A7FF;
+    }
+
+    /* latin */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveRhf6.woff2) format('woff2');
+      unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+    }
+  </style>
+  <link rel="preload" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" as="script"><link rel="preload" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/app.c0af73e7.js" as="script">
+  <link rel="stylesheet" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css"><link rel="stylesheet" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css">
+  <script>window.i18nFetch = new Promise((res, rej) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open('GET', '/js/i18n/ru-compiled.85eb77f0b17c8235e7b64b9f81ea5ec2.json');
+          xhr.responseType = 'json';
+          xhr.onload = function(e) {
+            if (this.status === 200) {
+              res({ru: xhr.response});
+            } else {
+              rej(e);
+            }
+          };
+          xhr.send();
+        });</script>
+  
+  <script data-vue-meta="ssr" src="/js/ads.js" onload="window['zhY4i4nJ9K'] = true" data-vmid="checkad"></script><script data-vue-meta="ssr" type="application/ld+json" data-vmid="ldjson-schema">{"@context":"http:\/\/schema.org","@type":"Article","mainEntityOfPage":{"@type":"WebPage","@id":"https:\/\/habr.com\/ru\/post\/452088\/"},"headline":"Распознавание дороги посредством семантической сегментации","datePublished":"2019-06-27T07:12:54+03:00","dateModified":"2019-06-27T10:50:29+03:00","author":{"@type":"Person","name":"Stantin"},"publisher":{"@type":"Organization","name":"Habr","logo":{"@type":"ImageObject","url":"https:\/\/habrastorage.org\/webt\/a_\/lk\/9m\/a_lk9mjkccjox-zccjrpfolmkmq.png"}},"description":"В предыдущей серии я проводил эксперимент с автономным движением своего домашнего танка. Дорога распознавалась с помощью цветового фильтра, а полученная маска шл...","url":"https:\/\/habr.com\/ru\/post\/452088\/#post-content-body","about":["h_image_processing","h_machine_learning","h_raspberrypi","h_robot","h_artificial_intelligence","f_develop","f_popsci"],"image":["https:\/\/habrastorage.org\/webt\/at\/m4\/zl\/atm4zleo88k-gaaek75alwzrt_8.png","https:\/\/habrastorage.org\/webt\/2h\/vs\/vh\/2hvsvhc9ntkfulrphsvaylzz8je.jpeg","https:\/\/habrastorage.org\/webt\/rv\/yp\/za\/rvypza_qrlmnobm-jjafbqgxu4y.jpeg","https:\/\/habrastorage.org\/webt\/rb\/kc\/5o\/rbkc5okogbebc5vns4whjzrfsuw.jpeg","https:\/\/habrastorage.org\/webt\/fc\/5m\/4e\/fc5m4es-4sc2jortt28xescg2nq.jpeg","https:\/\/habrastorage.org\/webt\/mb\/db\/he\/mbdbheuq0b-sytqwps5qnepuxi4.jpeg","https:\/\/habrastorage.org\/webt\/ac\/at\/bl\/acatblunbshunktslu31uongwoe.jpeg","https:\/\/habrastorage.org\/webt\/ck\/3_\/gs\/ck3_gstzycmsirkih6oxyd6rpdi.png"]}</script>
+  <script src="//www.googletagservices.com/tag/js/gpt.js" async></script>
+  <style>.grecaptcha-badge{visibility: hidden;}</style>
+  <meta name="habr-version" content="2.49.0">
+  
+  <meta data-vue-meta="ssr" property="fb:app_id" content="444736788986613"><meta data-vue-meta="ssr" property="fb:pages" content="472597926099084"><meta data-vue-meta="ssr" name="twitter:card" content="summary_large_image"><meta data-vue-meta="ssr" name="twitter:site" content="@habr_eng"><meta data-vue-meta="ssr" property="og:title" content="Распознавание дороги посредством семантической сегментации" data-vmid="og:title"><meta data-vue-meta="ssr" name="twitter:title" content="Распознавание дороги посредством семантической сегментации" data-vmid="twitter:title"><meta data-vue-meta="ssr" name="aiturec:title" content="Распознавание дороги посредством семантической сегментации" data-vmid="aiturec:title"><meta data-vue-meta="ssr" name="description" content="В предыдущей серии я проводил эксперимент с автономным движением своего домашнего танка. Дорога распознавалась с помощью цветового фильтра, а полученная маска шла на вход специально обученной..." data-vmid="description"><meta data-vue-meta="ssr" itemprop="description" content="В предыдущей серии я проводил эксперимент с автономным движением своего домашнего танка. Дорога распознавалась с помощью цветового фильтра, а полученная маска шла на вход специально обученной..." data-vmid="description:itemprop"><meta data-vue-meta="ssr" property="og:description" content="В предыдущей серии я проводил эксперимент с автономным движением своего домашнего танка. Дорога распознавалась с помощью цветового фильтра, а полученная маска шла на вход специально обученной..." data-vmid="og:description"><meta data-vue-meta="ssr" name="twitter:description" content="В предыдущей серии я проводил эксперимент с автономным движением своего домашнего танка. Дорога распознавалась с помощью цветового фильтра, а полученная маска шла на вход специально обученной..." data-vmid="twitter:description"><meta data-vue-meta="ssr" property="aiturec:description" content="В предыдущей серии я проводил эксперимент с автономным движением своего домашнего танка. Дорога распознавалась с помощью цветового фильтра, а полученная маска шла на вход специально обученной..." data-vmid="aiturec:description"><meta data-vue-meta="ssr" itemprop="image" content="https://habr.com/share/publication/452088/8e9743437242bf80560a3b44cc154f46/" data-vmid="image:itemprop"><meta data-vue-meta="ssr" property="og:image" content="https://habr.com/share/publication/452088/8e9743437242bf80560a3b44cc154f46/" data-vmid="og:image"><meta data-vue-meta="ssr" property="aiturec:image" content="https://habr.com/share/publication/452088/8e9743437242bf80560a3b44cc154f46/" data-vmid="aiturec:image"><meta data-vue-meta="ssr" name="twitter:image" content="https://habr.com/share/publication/452088/8e9743437242bf80560a3b44cc154f46/" data-vmid="twitter:image"><meta data-vue-meta="ssr" property="vk:image" content="https://habr.com/share/publication/452088/8e9743437242bf80560a3b44cc154f46/" data-vmid="vk:image"><meta data-vue-meta="ssr" property="aiturec:item_id" content="452088" data-vmid="aiturec:item_id"><meta data-vue-meta="ssr" property="aiturec:datetime" content="2019-06-27T04:12:54.000Z" data-vmid="aiturec:datetime"><meta data-vue-meta="ssr" property="og:type" content="article" data-vmid="og:type"><meta data-vue-meta="ssr" property="og:locale" content="ru_RU" data-vmid="og:locale"><meta data-vue-meta="ssr" property="og:image:width" content="1200" data-vmid="og:image:width"><meta data-vue-meta="ssr" property="og:image:height" content="630" data-vmid="og:image:height">
+  <link data-vue-meta="ssr" href="https://habr.com/ru/rss/post/452088/?fl=ru" type="application/rss+xml" title="" rel="alternate" name="rss"><link data-vue-meta="ssr" href="https://habr.com/ru/post/452088/" rel="canonical" data-vmid="canonical"><link data-vue-meta="ssr" data-vmid="hreflang"><link data-vue-meta="ssr" image_src="image" href="https://habr.com/share/publication/452088/8e9743437242bf80560a3b44cc154f46/" data-vmid="image:href">
+  <meta name="apple-mobile-web-app-status-bar-style" content="#303b44">
+  <meta name="msapplication-TileColor" content="#629FBC">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="16x16"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-16.png"
+  >
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="32x32"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-32.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="76x76"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-76.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="120x120"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="152x152"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-152.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="180x180"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-180.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="256x256"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-256.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1136x640.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2436x1125.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1792x828.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_828x1792.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1334x750.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2208x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1125x2436.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2208.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2732x2048.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2688x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2224x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_750x1334.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x2732.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2388x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2224.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_640x1136.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2388.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x1536.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1536x2048.png"
+  >
+  <link
+    rel="mask-icon"
+    color="#77a2b6"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.svg"
+  >
+  <link
+    crossorigin="use-credentials"
+    href="/manifest.webmanifest"
+    rel="manifest"
+  >
+</head>
+<body>
+
+
+<div id="app" data-server-rendered="true" data-async-called="true"><div class="tm-layout__wrapper"><!----> <div></div> <!----> <header class="tm-header"><div class="tm-page-width"><div class="tm-header__container"><!----> <span class="tm-header__logo-wrap"><a href="/ru/" class="tm-header__logo tm-header__logo_ru"><svg height="16" width="16" class="tm-svg-img tm-header__icon"><title>Хабр</title> <use xlink:href="/img/habr-logo-ru.svg#logo"></use></svg></a> <span class="tm-header__beta-sign" style="display:none;">β</span></span> <div class="tm-dropdown tm-header__projects"><div class="tm-dropdown__head"><button class="tm-header__dropdown-toggle"><svg height="16" width="16" class="tm-svg-img tm-header__icon tm-header__icon_dropdown"><title>Открыть список</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#arrow-down"></use></svg></button></div> <!----></div> <a href="/ru/sandbox/start/" class="tm-header__become-author-btn">
+            Как стать автором
+          </a> <div class="tm-feature tm-header__feature tm-feature_variant-inline"><!----></div> <!----> <!----></div></div></header> <div class="tm-layout"><div class="tm-page-progress-bar"></div> <div data-menu-sticky="true" class="tm-base-layout__header tm-base-layout__header_is-sticky"><div class="tm-page-width"><div class="tm-base-layout__header-wrapper"><div class="tm-main-menu"><div class="tm-main-menu__section"><nav class="tm-main-menu__section-content"><!----> <a href="/ru/all/" class="tm-main-menu__item">
+        Все потоки
+      </a> <a href="/ru/flows/develop/" class="tm-main-menu__item">
+          Разработка
+        </a><a href="/ru/flows/admin/" class="tm-main-menu__item">
+          Администрирование
+        </a><a href="/ru/flows/design/" class="tm-main-menu__item">
+          Дизайн
+        </a><a href="/ru/flows/management/" class="tm-main-menu__item">
+          Менеджмент
+        </a><a href="/ru/flows/marketing/" class="tm-main-menu__item">
+          Маркетинг
+        </a><a href="/ru/flows/popsci/" class="tm-main-menu__item">
+          Научпоп
+        </a></nav></div></div> <div class="tm-header-user-menu tm-base-layout__user-menu"><a href="/ru/search/" class="tm-header-user-menu__item tm-header-user-menu__search"><svg height="24" width="24" class="tm-svg-img tm-header-user-menu__icon tm-header-user-menu__icon_search tm-header-user-menu__icon_dark"><title>Поиск</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#search"></use></svg></a> <!----> <!----> <!----> <div class="tm-header-user-menu__item tm-header-user-menu__user_desktop"><div class="tm-dropdown"><div class="tm-dropdown__head"><svg height="24" width="24" data-test-id="menu-toggle-guest" class="tm-svg-img tm-header-user-menu__icon"><title>Профиль</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#header-user"></use></svg> <!----></div> <!----></div> <!----></div> <!----></div></div></div></div> <!----> <div class="tm-page-width"></div> <main class="tm-layout__container"><div hl="ru" data-async-called="true" class="tm-page"><div class="tm-page-width"><!----> <div class="tm-page__wrapper"><div class="tm-page__main tm-page__main_has-sidebar"><div class="pull-down"><div class="pull-down__header" style="height:0px;"><div class="pull-down__content" style="bottom:10px;"><svg height="24" width="24" class="tm-svg-img pull-down__arrow"><title>Обновить</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#pull-arrow"></use></svg></div></div> <div class="tm-article-presenter"> <div class="tm-article-presenter__body"><div class="tm-misprint-area"><div class="tm-misprint-area__wrapper"><article class="tm-article-presenter__content tm-article-presenter__content_narrow"><div class="tm-article-presenter__header"> <div class="tm-article-snippet tm-article-presenter__snippet"><div class="tm-article-snippet__meta-container"><div class="tm-article-snippet__meta"><span class="tm-user-info tm-article-snippet__author"><a href="/ru/users/Stantin/" title="Stantin" class="tm-user-info__userpic"><div class="tm-entity-image"><svg height="24" width="24" class="tm-svg-img tm-image-placeholder tm-image-placeholder_pink"><!----> <use xlink:href="/img/megazord-v24.ce74655c.svg#placeholder-user"></use></svg></div></a> <span class="tm-user-info__user"><a href="/ru/users/Stantin/" class="tm-user-info__username">
+      Stantin
+    </a> </span></span> <span class="tm-article-snippet__datetime-published"><time datetime="2019-06-27T04:12:54.000Z" title="2019-06-27, 07:12">27  июня  2019 в 07:12</time></span></div> <!----></div> <h1 lang="ru" class="tm-article-snippet__title tm-article-snippet__title_h1"><span>Распознавание дороги посредством семантической сегментации</span></h1> <div class="tm-article-snippet__hubs"><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/image_processing/" class="tm-article-snippet__hubs-item-link"><span>Обработка изображений</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/machine_learning/" class="tm-article-snippet__hubs-item-link"><span>Машинное обучение</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/raspberrypi/" class="tm-article-snippet__hubs-item-link"><span>Разработка на Raspberry Pi</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/robot/" class="tm-article-snippet__hubs-item-link"><span>Робототехника</span> <!----></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/artificial_intelligence/" class="tm-article-snippet__hubs-item-link"><span>Искусственный интеллект</span> <!----></a></span></div> <!----> <!----> <!----></div></div> <!----> <div data-gallery-root="" lang="ru" class="tm-article-body"><div id="post-content-body" class="article-formatted-body article-formatted-body_version-1"><div xmlns="http://www.w3.org/1999/xhtml">В <a href="https://habr.com/ru/post/439928/">предыдущей серии</a> я проводил эксперимент с автономным движением <a href="https://habr.com/ru/post/358230/">своего домашнего танка</a>. Дорога распознавалась с помощью цветового фильтра, а полученная маска шла на вход специально обученной нейросети-классификатору, которая выбирала ехать вправо, влево или прямо.<br/>
+<br/>
+Слабым местом было распознавание самого дорожного полотна из-за переменчивости цветовых оттенков, из-за чего нейросеть, принимающая решения, выдавала странные результаты. В комментариях к той статье рекомендовали обратить внимание на семантическую сегментацию. Тема оказалась перспективной и применение сегментирующей нейросети принесло свои плюсы, но и минусы, куда же без них.<br/>
+<br/>
+Но обо всем по порядку и для начала немного матчасти.<br/>
+<a name="habracut"></a><br/>
+<h2>Сегментация</h2><br/>
+Сегментация — процесс выделения некоторых частей на изображении. Простейший и самый очевидный вид сегментации — по цвету. Однако, используя этот метод, невозможно понять, что и где изображено на картинке. <br/>
+<br/>
+Вот <a href="https://towardsdatascience.com/image-segmentation-using-pythons-scikit-image-module-533a61ecc980">неплохая статья</a>, описывающая примитивные подходы.<br/>
+<br/>
+<h3>Семантическая сегментация</h3><br/>
+Семантическая сегментация — разбиение изображения на объекты с определением типов этих объектов.<br/>
+<br/>
+Выглядит это как-то так:<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/at/m4/zl/atm4zleo88k-gaaek75alwzrt_8.png"/><br/>
+<br/>
+Результаты очень впечатляющие, посмотрим чего стоит воплотить это в реальной жизни.<br/>
+<br/>
+<h4>U-net</h4><br/>
+Самая известная нейросеть, изначально разработанная для медицины.<br/>
+<a href="https://arxiv.org/abs/1505.04597">Первоисточник</a><br/>
+<br/>
+Народ быстро сообразил, что подход можно использовать на все случаи жизни.<br/>
+<br/>
+В интернете много статей, как готовить данные и обучать U-net сети:<br/>
+<br/>
+<ul>
+<li><a href="https://towardsdatascience.com/fastai-image-segmentation-eacad8543f6f">Раз</a></li>
+<li><a href="https://github.com/aschneuw/road-segmentation-unet">Два</a></li>
+<li><a href="https://towardsdatascience.com/training-road-scene-segmentation-on-cityscapes-with-supervisely-tensorflow-and-unet-1232314781a8">Три</a></li>
+</ul><br/>
+Однако, готовой U-net сети, чтобы быстро взять и поэкспериментировать, я не нашел.<br/>
+<br/>
+<h4>E-net</h4><br/>
+Более молодая и менее известная сеть. Разработана как раз для распознавания городских улиц.<br/>
+<br/>
+<ul>
+<li><a href="https://arxiv.org/abs/1606.02147">Оригинальный документ</a></li>
+<li><a href="https://towardsdatascience.com/enet-a-deep-neural-architecture-for-real-time-semantic-segmentation-2baa59cf97e9">Вводная статья</a></li>
+<li><a href="https://github.com/TimoSaemann/ENet/tree/master/Tutorial">Руководство по обучению</a></li>
+<li><a href="https://www.pyimagesearch.com/2018/09/03/semantic-segmentation-with-opencv-and-deep-learning/">Отличная статья по использованию</a></li>
+</ul><br/>
+<h4>Данные</h4><br/>
+Самые популярные датасеты, для сегментации улиц (на них изначально обучали E-net):<br/>
+<br/>
+<ul>
+<li><a href="https://www.cityscapes-dataset.com">CityScapes — Немецкие и швейцарские города</a></li>
+<li><a href="http://mi.eng.cam.ac.uk/research/projects/VideoRec/CamVid/">CamVid — улицы Кембриджа в Англии</a></li>
+<li><a href="http://3dvision.princeton.edu/datasets.html">SUN — Принстонский набор датасетов для разных видов сцен</a></li>
+</ul><br/>
+На этих же датасетах сейчас обучают и U-net.<br/>
+<br/>
+<h4>Выбор реализации</h4><br/>
+Поток новой информации по сегментации был довольно ошеломляющим. Инстинктивно хотелось зацепиться за что-нибудь попроще. Внутреннего дзена разбираться в архитектуре сетей и тратить время на обучение я в себе не почувствовал. Зато в статье от <a href="https://www.pyimagesearch.com/2018/09/03/semantic-segmentation-with-opencv-and-deep-learning/">PyImageSearch</a> была уже готовая и обученная нейросеть, причем в формате совместимом с OpenCV-DNN.<br/>
+<br/>
+Так что выбор был сделан в сторону наименьшего сопротивления.<br/>
+<br/>
+Использование очень простое:<br/>
+(Более всего беспокоит то, что сеть обучена на картинках размером 1024x512 — это во-первых больше, чем отдает камера на Raspberry, во-вторых требуемая производительность для обработки такого объема данных несколько смущает. В итоге, главная проблема окажется именно в этом).<br/>
+<br/>
+Читаем нейросеть из файлов (в одном сама модель, в другом имена классов, в третьем — цвета).<br/>
+<br/>
+<pre><code class="python">def load_segment_model():
+    try:
+        classes = None
+        with open(PiConf.SEGMENT_CLASSES) as f:
+            classes = f.read().strip().split("\n")
+        colors = None
+        with open(PiConf.SEGMENT_COLORS) as f:
+            colors= f.read().strip().split("\n")
+        colors = [np.array(c.split(",")).astype("int") for c in colors]
+        colors = np.array(colors, dtype="uint8")
+        print("[INFO] loading model...")
+        net = cv2.dnn.readNet(PiConf.SEGMENT_MODEL)
+        return net, classes, colors
+    except Exception as e:
+        logging.exception("Cannot load segment model")
+    return None, None, None
+</code></pre><br/>
+Сегментируем изображение, попутно размечая сегменты поверх оригинального изображения<br/>
+(В моем случае все классы, кроме дороги, невидимы).<br/>
+<br/>
+<pre><code class="python">def segment_image(image_path, seg_net, seg_classes, seg_colors):
+
+    image0 = cv2.imread(image_path)
+    image = cv2.resize(image0, (1024, 512),interpolation=cv2.INTER_NEAREST)
+    blob = cv2.dnn.blobFromImage(image, 1 / 255.0, (1024, 512), 0, swapRB=True, crop=False)
+
+    seg_net.setInput(blob)
+    start = time.time()
+    output = seg_net.forward()
+    end = time.time()
+
+    print("[INFO] inference took {:.4f} seconds".format(end - start))
+
+    (numClasses, height, width) = output.shape[1:4]
+
+    classMap = np.argmax(output[0], axis=0)
+
+    mask = seg_colors[classMap]
+
+    mask = cv2.resize(mask, (image0.shape[1], image0.shape[0]),interpolation=cv2.INTER_NEAREST)
+    classMap = cv2.resize(classMap, (image0.shape[1], image0.shape[0]), interpolation=cv2.INTER_NEAREST)
+
+    gmask = cv2.cvtColor(mask, cv2.COLOR_BGR2GRAY)
+    gmask = cv2.resize(gmask, (128, 64), interpolation=cv2.INTER_NEAREST)
+    gmask = gmask[0:64,32:96]
+
+    output = ((0.6 * image0) + (0.4 * mask)).astype("uint8")
+    return output, gmask
+</code></pre><br/>
+<h4>Проверка</h4><br/>
+Берем готовые картинки с танка и натравливаем на них сегментирующую нейросеть.<br/>
+<br/>
+<h5>1</h5><br/>
+<img src="https://habrastorage.org/r/w780q1/webt/2h/vs/vh/2hvsvhc9ntkfulrphsvaylzz8je.jpeg" data-src="https://habrastorage.org/webt/2h/vs/vh/2hvsvhc9ntkfulrphsvaylzz8je.jpeg" data-blurred="true"/><br/>
+<br/>
+Дорогой признана только левая часть тротуара.<br/>
+<br/>
+Сжимаем картинку и берем из нее центр размером 64x64:<br/>
+(Такой размер ожидается нейросетью, которая принимает решение о смене направления)<br/>
+<br/>
+<img src="https://habrastorage.org/r/w780q1/webt/rv/yp/za/rvypza_qrlmnobm-jjafbqgxu4y.jpeg" data-src="https://habrastorage.org/webt/rv/yp/za/rvypza_qrlmnobm-jjafbqgxu4y.jpeg" data-blurred="true"/><br/>
+<br/>
+Нейросеть направления (по факту — классификатор) командует взять влево. Не очень правильно, но терпимо.<br/>
+<br/>
+<h5>2</h5><br/>
+<img src="https://habrastorage.org/r/w780q1/webt/rb/kc/5o/rbkc5okogbebc5vns4whjzrfsuw.jpeg" data-src="https://habrastorage.org/webt/rb/kc/5o/rbkc5okogbebc5vns4whjzrfsuw.jpeg" data-blurred="true"/><br/>
+<br/>
+Похожая ситуация, опять правый нижний угол потерян (там еще и асфальт мокрый).<br/>
+Однако большая часть дороги все же распознана.<br/>
+<br/>
+<img src="https://habrastorage.org/r/w780q1/webt/fc/5m/4e/fc5m4es-4sc2jortt28xescg2nq.jpeg" data-src="https://habrastorage.org/webt/fc/5m/4e/fc5m4es-4sc2jortt28xescg2nq.jpeg" data-blurred="true"/><br/>
+<br/>
+Классификатор предлагает ехать прямо.<br/>
+<br/>
+<h5>3</h5><br/>
+Ситуция, когда робот оказался посреди тротуара.<br/>
+<br/>
+<img src="https://habrastorage.org/r/w780q1/webt/mb/db/he/mbdbheuq0b-sytqwps5qnepuxi4.jpeg" data-src="https://habrastorage.org/webt/mb/db/he/mbdbheuq0b-sytqwps5qnepuxi4.jpeg" data-blurred="true"/><br/>
+<br/>
+Дорога распознана практически идеально.<br/>
+<br/>
+<img src="https://habrastorage.org/r/w780q1/webt/ac/at/bl/acatblunbshunktslu31uongwoe.jpeg" data-src="https://habrastorage.org/webt/ac/at/bl/acatblunbshunktslu31uongwoe.jpeg" data-blurred="true"/><br/>
+<br/>
+Классификатор командает брать вправо (чтобы найти кромку дороги в следующий раз).<br/>
+<br/>
+<h4>Применение</h4><br/>
+Поколдовав немного над прошивкой танка, заменил цветовой детектор дороги на сегментирующую нейросеть.<br/>
+<br/>
+При запуске всего этого на Raspberry Pi первое, что вылезло — удручающая производительность.<br/>
+На сегментацию одного изображения уходит по 6 секунд — за это время танк бодрой рысцой успевает проскочить все повороты.<br/>
+<br/>
+В реальных испытаниях так и получилось — несмотря на практически идеальное распознавание тротуара и правильные команды с управляющей нейросети — за время время обработки изображения танк успевал уйти в сторону.<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/ck/3_/gs/ck3_gstzycmsirkih6oxyd6rpdi.png"/><br/>
+<br/>
+В общем, на Raspberry картинки такого размера не переварить.<br/>
+Похоже, все таки придется заняться обучением специализированной нейросети.<br/>
+<br/>
+<h4>Ссылки</h4><br/>
+<ul>
+<li><a href="https://habr.com/ru/post/439928">Распознавание тротуара на основе цветов и OpenCV</a></li>
+<li><a href="https://github.com/tprlab/pitanq/tree/segmentation">Исходный код прошивки танка с сегментацией</a></li>
+<li><a href="https://www.pyimagesearch.com/2018/09/03/semantic-segmentation-with-opencv-and-deep-learning/">Лучшая прикладная статья по теме сегментации с готовой нейросетью</a></li>
+<li><a href="https://github.com/TimoSaemann/ENet/tree/master/Tutorial">Руководство по обучению нейросети для сегментации</a></li>
+</ul></div></div> <!----> <!----></div> <div class="tm-article-presenter__meta"><div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Теги:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5B%D1%80%D0%BE%D0%B1%D0%BE%D1%82%D0%BE%D1%82%D0%B5%D1%85%D0%BD%D0%B8%D0%BA%D0%B0%5D" class="tm-tags-list__link">робототехника</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bopencv%5D" class="tm-tags-list__link">opencv</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Braspberry%20pi%5D" class="tm-tags-list__link">raspberry pi</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5B%D0%BD%D0%B5%D0%B9%D1%80%D0%BE%D1%81%D0%B5%D1%82%D1%8C%5D" class="tm-tags-list__link">нейросеть</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bimage%20segmentation%5D" class="tm-tags-list__link">image segmentation</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5B%D0%BA%D0%BE%D0%BC%D0%BF%D1%8C%D1%8E%D1%82%D0%B5%D1%80%D0%BD%D0%BE%D0%B5%20%D0%B7%D1%80%D0%B5%D0%BD%D0%B8%D0%B5%5D" class="tm-tags-list__link">компьютерное зрение</a></li></ul></div> <div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Хабы:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/hub/image_processing/" class="tm-hubs-list__link">
+    Обработка изображений
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/machine_learning/" class="tm-hubs-list__link">
+    Машинное обучение
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/raspberrypi/" class="tm-hubs-list__link">
+    Разработка на Raspberry Pi
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/robot/" class="tm-hubs-list__link">
+    Робототехника
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/artificial_intelligence/" class="tm-hubs-list__link">
+    Искусственный интеллект
+  </a></li></ul></div></div></article></div> <!----></div> <div class="tm-article-sticky-panel"><div class="tm-data-icons tm-article-sticky-panel__icons"><div class="tm-article-rating tm-data-icons__item"><div class="tm-votes-meter tm-article-rating__votes-switcher"><svg height="16" width="16" class="tm-svg-img tm-votes-meter__icon tm-votes-meter__icon_medium"><title>Всего голосов 15: ↑14 и ↓1</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-rating"></use></svg> <span title="Всего голосов 15: ↑14 и ↓1" class="tm-votes-meter__value tm-votes-meter__value_positive tm-votes-meter__value_medium">+13</span></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----> <span title="Количество просмотров" class="tm-icon-counter tm-data-icons__item"><svg height="16" width="16" class="tm-svg-img tm-icon-counter__icon"><title>Просмотры</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-views"></use></svg> <span class="tm-icon-counter__value">6.2K</span></span> <button title="Добавить в закладки" type="button" class="bookmarks-button tm-data-icons__item"><span title="Добавить в закладки" class="tm-svg-icon__wrapper bookmarks-button__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Добавить в закладки</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-favorite"></use></svg></span> <span title="Количество пользователей, добавивших публикацию в закладки" class="bookmarks-button__counter">
+    50
+  </span></button> <!----> <div title="Поделиться" class="tm-sharing tm-data-icons__item"><button type="button" class="tm-sharing__button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="tm-sharing__icon"><path fill="currentColor" d="M10.33.275l9.047 7.572a.2.2 0 010 .306l-9.048 7.572a.2.2 0 01-.328-.153V11c-8 0-9.94 6-9.94 6S-1 5 10 5V.428a.2.2 0 01.328-.153z"></path></svg></button> <!----></div> <DIV class="v-portal" style="display:none;"></DIV></div> </div></div> <!----> <!----> <div class="tm-article-presenter__footer"><div class="tm-article-blocks"><!----> <section class="tm-block tm-block_spacing-bottom"><!----> <div class="tm-block__body tm-block__body_variant-balanced"><div class="tm-article-author"> <div class="tm-user-card tm-article-author__user-card tm-user-card_variant-article"><div class="tm-user-card__info-container"><div class="tm-user-card__header"><div class="tm-user-card__header-data"><a href="/ru/users/Stantin/" class="tm-user-card__userpic tm-user-card__userpic_size-40"><div class="tm-entity-image"><svg class="tm-svg-img tm-image-placeholder tm-image-placeholder_pink"><!----> <use xlink:href="/img/megazord-v24.ce74655c.svg#placeholder-user"></use></svg></div></a> <div class="tm-user-card__meta"><div title=" 42 голоса " class="tm-karma tm-user-card__karma"><div class="tm-karma__votes tm-karma__votes_positive">
+    38
+  </div> <div class="tm-karma__text">
+    Карма
+  </div></div> <div title="Рейтинг пользователя" class="tm-rating tm-user-card__rating"><div class="tm-rating__header"> <div class="tm-rating__counter">0</div></div> <div class="tm-rating__text">
+    Рейтинг
+  </div></div></div></div></div> <div class="tm-user-card__info tm-user-card__info_variant-article"><div class="tm-user-card__title tm-user-card__title_variant-article"><!----> <a href="/ru/users/Stantin/" class="tm-user-card__nickname tm-user-card__nickname_variant-article">
+          @Stantin
+        </a> <!----></div> <p class="tm-user-card__short-info tm-user-card__short-info_variant-article">Пользователь</p></div></div> <div class="tm-user-card__buttons tm-user-card__buttons_variant-article"><!----> <!----> <!----> <!----> <!----></div></div> <!----></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----></section> <div class="tm-article-blocks__comments"><div class="tm-article-page-comments"><div class="tm-article-comments-counter-link tm-article-comments-counter-button"><a href="/ru/post/452088/comments/" class="tm-article-comments-counter-link__link tm-article-comments-counter-link__link_button-style"><svg height="16" width="16" class="tm-svg-img tm-article-comments-counter-link__icon tm-article-comments-counter-link__icon_contrasted"><title>Комментарии</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-comments"></use></svg> <span class="tm-article-comments-counter-link__value tm-article-comments-counter-link__value_contrasted">
+       Комментарии 26 
+    </span></a> <!----></div></div></div> <div class="tm-ad-banner__container tm-page-article__banner"><!----> <div id="articleBottomBanner" class="tm-ad-banner"></div></div> <!----> <!----> <!----> <!----> </div></div></div></div></div> <div class="tm-page__sidebar"><div class="tm-layout-sidebar"><div class="tm-layout-sidebar__ads tm-layout-sidebar__ads_initial"><div class="tm-ad-banner__container tm-layout-sidebar__banner"><!----> <div id="sidebarBanner" class="tm-ad-banner"></div></div></div> <div class="tm-sexy-sidebar tm-sexy-sidebar_initial" style="margin-top:0px;"><!----> <!----></div></div></div></div></div></div></main> <!----></div> <div class="tm-footer-menu"><div class="tm-page-width"><div class="tm-footer-menu__container"><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Ваш аккаунт
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr/?back=/ru/post/452088/&amp;hl=ru" rel="nofollow" target="_self">
+                Войти
+              </a></li><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr-register/?back=/ru/post/452088/&amp;hl=ru" rel="nofollow" target="_self">
+                Регистрация
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Разделы
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/" class="footer-menu__item-link router-link-active">
+                Публикации
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/news/" class="footer-menu__item-link">
+                Новости
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/hubs/" class="footer-menu__item-link">
+                Хабы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/companies/" class="footer-menu__item-link">
+                Компании
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/users/" class="footer-menu__item-link">
+                Авторы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/sandbox/" class="footer-menu__item-link">
+                Песочница
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Информация
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/docs/help/" class="footer-menu__item-link">
+                Устройство сайта
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/authors/codex/" class="footer-menu__item-link">
+                Для авторов
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/companies/corpblogs/" class="footer-menu__item-link">
+                Для компаний
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/docs/transparency/" class="footer-menu__item-link">
+                Документы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/agreement" target="_blank">
+                Соглашение
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/confidential/" target="_blank">
+                Конфиденциальность
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Услуги
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQLwRfQmXibiUlWaRg-BAc38s7oM3lJiaPju7qmdJsp8ysIvZ_G-Npem0njJLMozE2bPHMpDqiI5hhy/pub?start=false&amp;loop=false&amp;delayms=60000&amp;slide=id.g91a03369cd_4_297" target="_blank">
+                Реклама
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://habrastorage.org/storage/stuff/habr/service_price.pdf" target="_blank">
+                Тарифы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQJJds8-Di7BQSP_guHxICN7woVYoN5NP_22ra-BIo4bqnTT9FR6fB-Ku2P0AoRpX0Ds-LRkDeAoD8F/pub?start=false&amp;loop=false&amp;delayms=60000" target="_blank">
+                Контент
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://tmtm.timepad.ru/" target="_blank">
+                Семинары
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/megaprojects/" class="footer-menu__item-link">
+                Мегапроекты
+              </a></li></ul></div></div></div></div></div> <div class="tm-footer"><div class="tm-page-width"><div class="tm-footer__container"><!----> <div class="tm-footer__social"><a href="https://www.facebook.com/habrahabr.ru" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Facebook</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-facebook"></use></svg></a><a href="https://twitter.com/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Twitter</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-twitter"></use></svg></a><a href="https://vk.com/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>VK</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-vkontakte"></use></svg></a><a href="https://telegram.me/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Telegram</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-telegram"></use></svg></a><a href="https://www.youtube.com/channel/UCd_sTwKqVrweTt4oAKY5y4w" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Youtube</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-youtube"></use></svg></a><a href="https://zen.yandex.ru/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Яндекс Дзен</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-zen"></use></svg></a></div> <DIV class="v-portal" style="display:none;"></DIV> <button class="tm-footer__link"><!---->
+        Настройка языка
+      </button> <a href="/ru/about" class="tm-footer__link">
+        О сайте
+      </a> <a href="/ru/feedback/" class="tm-footer__link">
+        Техническая поддержка
+      </a> <!----> <a href="/berserk-mode-nope" class="tm-footer__link">
+        Вернуться на старую версию
+      </a> <div class="tm-footer-copyright"><span class="tm-copyright"><span class="tm-copyright__years">© 2006–2021 </span> <span class="tm-copyright__name">«<a href="https://company.habr.com/" rel="noopener" target="_blank" class="tm-copyright__link">Habr</a>»</span></span></div></div></div></div> <!----> <!----></div> <div class="vue-portal-target"></div></div>
+<script>window.__INITIAL_STATE__={"adblock":{"hasAcceptableAdsFilter":false,"hasAdblock":false},"articlesList":{"articlesList":{"452088":{"id":"452088","timePublished":"2019-06-27T04:12:54+00:00","isCorporative":false,"lang":"ru","titleHtml":"Распознавание дороги посредством семантической сегментации","leadData":{"textHtml":"В \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fpost\u002F439928\u002F\"\u003Eпредыдущей серии\u003C\u002Fa\u003E я проводил эксперимент с автономным движением \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fpost\u002F358230\u002F\"\u003Eсвоего домашнего танка\u003C\u002Fa\u003E. Дорога распознавалась с помощью цветового фильтра, а полученная маска шла на вход специально обученной нейросети-классификатору, которая выбирала ехать вправо, влево или прямо.\u003Cbr\u003E\r\n\u003Cbr\u003E\r\nСлабым местом было распознавание самого дорожного полотна из-за переменчивости цветовых оттенков, из-за чего нейросеть, принимающая решения, выдавала странные результаты. В комментариях к той статье рекомендовали обратить внимание на семантическую сегментацию. Тема оказалась перспективной и применение сегментирующей нейросети принесло свои плюсы, но и минусы, куда же без них.\u003Cbr\u003E\r\n\u003Cbr\u003E\r\nНо обо всем по порядку и для начала немного матчасти.\u003Cbr\u003E","imageUrl":null,"buttonTextHtml":"Читать дальше →","image":null},"editorVersion":"1.0","postType":"article","postLabels":[],"author":{"scoreStats":{"score":38,"votesCount":42},"rating":0,"relatedData":null,"contacts":[],"authorContacts":[],"paymentDetails":{"paymentYandexMoney":null,"paymentPayPalMe":null,"paymentWebmoney":null},"id":"1703935","alias":"Stantin","fullname":null,"avatarUrl":null,"speciality":null},"statistics":{"commentsCount":26,"favoritesCount":50,"readingCount":6249,"score":13,"votesCount":15},"hubs":[{"relatedData":null,"id":"17175","alias":"image_processing","type":"collective","title":"Обработка изображений","titleHtml":"Обработка изображений","isProfiled":true},{"relatedData":null,"id":"19439","alias":"machine_learning","type":"collective","title":"Машинное обучение","titleHtml":"Машинное обучение","isProfiled":true},{"relatedData":null,"id":"21476","alias":"raspberrypi","type":"collective","title":"Разработка на Raspberry Pi","titleHtml":"Разработка на Raspberry Pi","isProfiled":true},{"relatedData":null,"id":"21902","alias":"robot","type":"collective","title":"Робототехника","titleHtml":"Робототехника","isProfiled":false},{"relatedData":null,"id":"21922","alias":"artificial_intelligence","type":"collective","title":"Искусственный интеллект","titleHtml":"Искусственный интеллект","isProfiled":false}],"flows":[{"id":"1","alias":"develop","title":"Разработка"},{"id":"7","alias":"popsci","title":"Научпоп"}],"relatedData":null,"textHtml":"\u003Cdiv xmlns=\"http:\u002F\u002Fwww.w3.org\u002F1999\u002Fxhtml\"\u003EВ \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fpost\u002F439928\u002F\"\u003Eпредыдущей серии\u003C\u002Fa\u003E я проводил эксперимент с автономным движением \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fpost\u002F358230\u002F\"\u003Eсвоего домашнего танка\u003C\u002Fa\u003E. Дорога распознавалась с помощью цветового фильтра, а полученная маска шла на вход специально обученной нейросети-классификатору, которая выбирала ехать вправо, влево или прямо.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nСлабым местом было распознавание самого дорожного полотна из-за переменчивости цветовых оттенков, из-за чего нейросеть, принимающая решения, выдавала странные результаты. В комментариях к той статье рекомендовали обратить внимание на семантическую сегментацию. Тема оказалась перспективной и применение сегментирующей нейросети принесло свои плюсы, но и минусы, куда же без них.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nНо обо всем по порядку и для начала немного матчасти.\u003Cbr\u002F\u003E\r\n\u003Ca name=\"habracut\"\u003E\u003C\u002Fa\u003E\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EСегментация\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nСегментация — процесс выделения некоторых частей на изображении. Простейший и самый очевидный вид сегментации — по цвету. Однако, используя этот метод, невозможно понять, что и где изображено на картинке. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВот \u003Ca href=\"https:\u002F\u002Ftowardsdatascience.com\u002Fimage-segmentation-using-pythons-scikit-image-module-533a61ecc980\"\u003Eнеплохая статья\u003C\u002Fa\u003E, описывающая примитивные подходы.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch3\u003EСемантическая сегментация\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\nСемантическая сегментация — разбиение изображения на объекты с определением типов этих объектов.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВыглядит это как-то так:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fat\u002Fm4\u002Fzl\u002Fatm4zleo88k-gaaek75alwzrt_8.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nРезультаты очень впечатляющие, посмотрим чего стоит воплотить это в реальной жизни.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch4\u003EU-net\u003C\u002Fh4\u003E\u003Cbr\u002F\u003E\r\nСамая известная нейросеть, изначально разработанная для медицины.\u003Cbr\u002F\u003E\r\n\u003Ca href=\"https:\u002F\u002Farxiv.org\u002Fabs\u002F1505.04597\"\u003EПервоисточник\u003C\u002Fa\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nНарод быстро сообразил, что подход можно использовать на все случаи жизни.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВ интернете много статей, как готовить данные и обучать U-net сети:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003E\u003Ca href=\"https:\u002F\u002Ftowardsdatascience.com\u002Ffastai-image-segmentation-eacad8543f6f\"\u003EРаз\u003C\u002Fa\u003E\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Ca href=\"https:\u002F\u002Fgithub.com\u002Faschneuw\u002Froad-segmentation-unet\"\u003EДва\u003C\u002Fa\u003E\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Ca href=\"https:\u002F\u002Ftowardsdatascience.com\u002Ftraining-road-scene-segmentation-on-cityscapes-with-supervisely-tensorflow-and-unet-1232314781a8\"\u003EТри\u003C\u002Fa\u003E\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\nОднако, готовой U-net сети, чтобы быстро взять и поэкспериментировать, я не нашел.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch4\u003EE-net\u003C\u002Fh4\u003E\u003Cbr\u002F\u003E\r\nБолее молодая и менее известная сеть. Разработана как раз для распознавания городских улиц.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003E\u003Ca href=\"https:\u002F\u002Farxiv.org\u002Fabs\u002F1606.02147\"\u003EОригинальный документ\u003C\u002Fa\u003E\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Ca href=\"https:\u002F\u002Ftowardsdatascience.com\u002Fenet-a-deep-neural-architecture-for-real-time-semantic-segmentation-2baa59cf97e9\"\u003EВводная статья\u003C\u002Fa\u003E\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Ca href=\"https:\u002F\u002Fgithub.com\u002FTimoSaemann\u002FENet\u002Ftree\u002Fmaster\u002FTutorial\"\u003EРуководство по обучению\u003C\u002Fa\u003E\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Ca href=\"https:\u002F\u002Fwww.pyimagesearch.com\u002F2018\u002F09\u002F03\u002Fsemantic-segmentation-with-opencv-and-deep-learning\u002F\"\u003EОтличная статья по использованию\u003C\u002Fa\u003E\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\n\u003Ch4\u003EДанные\u003C\u002Fh4\u003E\u003Cbr\u002F\u003E\r\nСамые популярные датасеты, для сегментации улиц (на них изначально обучали E-net):\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003E\u003Ca href=\"https:\u002F\u002Fwww.cityscapes-dataset.com\"\u003ECityScapes — Немецкие и швейцарские города\u003C\u002Fa\u003E\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Ca href=\"http:\u002F\u002Fmi.eng.cam.ac.uk\u002Fresearch\u002Fprojects\u002FVideoRec\u002FCamVid\u002F\"\u003ECamVid — улицы Кембриджа в Англии\u003C\u002Fa\u003E\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Ca href=\"http:\u002F\u002F3dvision.princeton.edu\u002Fdatasets.html\"\u003ESUN — Принстонский набор датасетов для разных видов сцен\u003C\u002Fa\u003E\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\nНа этих же датасетах сейчас обучают и U-net.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch4\u003EВыбор реализации\u003C\u002Fh4\u003E\u003Cbr\u002F\u003E\r\nПоток новой информации по сегментации был довольно ошеломляющим. Инстинктивно хотелось зацепиться за что-нибудь попроще. Внутреннего дзена разбираться в архитектуре сетей и тратить время на обучение я в себе не почувствовал. Зато в статье от \u003Ca href=\"https:\u002F\u002Fwww.pyimagesearch.com\u002F2018\u002F09\u002F03\u002Fsemantic-segmentation-with-opencv-and-deep-learning\u002F\"\u003EPyImageSearch\u003C\u002Fa\u003E была уже готовая и обученная нейросеть, причем в формате совместимом с OpenCV-DNN.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nТак что выбор был сделан в сторону наименьшего сопротивления.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nИспользование очень простое:\u003Cbr\u002F\u003E\r\n(Более всего беспокоит то, что сеть обучена на картинках размером 1024x512 — это во-первых больше, чем отдает камера на Raspberry, во-вторых требуемая производительность для обработки такого объема данных несколько смущает. В итоге, главная проблема окажется именно в этом).\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЧитаем нейросеть из файлов (в одном сама модель, в другом имена классов, в третьем — цвета).\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"python\"\u003Edef load_segment_model():\n    try:\n        classes = None\n        with open(PiConf.SEGMENT_CLASSES) as f:\n            classes = f.read().strip().split(\"\\n\")\n        colors = None\n        with open(PiConf.SEGMENT_COLORS) as f:\n            colors= f.read().strip().split(\"\\n\")\n        colors = [np.array(c.split(\",\")).astype(\"int\") for c in colors]\n        colors = np.array(colors, dtype=\"uint8\")\n        print(\"[INFO] loading model...\")\n        net = cv2.dnn.readNet(PiConf.SEGMENT_MODEL)\n        return net, classes, colors\n    except Exception as e:\n        logging.exception(\"Cannot load segment model\")\n    return None, None, None\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nСегментируем изображение, попутно размечая сегменты поверх оригинального изображения\u003Cbr\u002F\u003E\r\n(В моем случае все классы, кроме дороги, невидимы).\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"python\"\u003Edef segment_image(image_path, seg_net, seg_classes, seg_colors):\n\n    image0 = cv2.imread(image_path)\n    image = cv2.resize(image0, (1024, 512),interpolation=cv2.INTER_NEAREST)\n    blob = cv2.dnn.blobFromImage(image, 1 \u002F 255.0, (1024, 512), 0, swapRB=True, crop=False)\n\n    seg_net.setInput(blob)\n    start = time.time()\n    output = seg_net.forward()\n    end = time.time()\n\n    print(\"[INFO] inference took {:.4f} seconds\".format(end - start))\n\n    (numClasses, height, width) = output.shape[1:4]\n\n    classMap = np.argmax(output[0], axis=0)\n\n    mask = seg_colors[classMap]\n\n    mask = cv2.resize(mask, (image0.shape[1], image0.shape[0]),interpolation=cv2.INTER_NEAREST)\n    classMap = cv2.resize(classMap, (image0.shape[1], image0.shape[0]), interpolation=cv2.INTER_NEAREST)\n\n    gmask = cv2.cvtColor(mask, cv2.COLOR_BGR2GRAY)\n    gmask = cv2.resize(gmask, (128, 64), interpolation=cv2.INTER_NEAREST)\n    gmask = gmask[0:64,32:96]\n\n    output = ((0.6 * image0) + (0.4 * mask)).astype(\"uint8\")\n    return output, gmask\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Ch4\u003EПроверка\u003C\u002Fh4\u003E\u003Cbr\u002F\u003E\r\nБерем готовые картинки с танка и натравливаем на них сегментирующую нейросеть.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch5\u003E1\u003C\u002Fh5\u003E\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fr\u002Fw780q1\u002Fwebt\u002F2h\u002Fvs\u002Fvh\u002F2hvsvhc9ntkfulrphsvaylzz8je.jpeg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002F2h\u002Fvs\u002Fvh\u002F2hvsvhc9ntkfulrphsvaylzz8je.jpeg\" data-blurred=\"true\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nДорогой признана только левая часть тротуара.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nСжимаем картинку и берем из нее центр размером 64x64:\u003Cbr\u002F\u003E\r\n(Такой размер ожидается нейросетью, которая принимает решение о смене направления)\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fr\u002Fw780q1\u002Fwebt\u002Frv\u002Fyp\u002Fza\u002Frvypza_qrlmnobm-jjafbqgxu4y.jpeg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Frv\u002Fyp\u002Fza\u002Frvypza_qrlmnobm-jjafbqgxu4y.jpeg\" data-blurred=\"true\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nНейросеть направления (по факту — классификатор) командует взять влево. Не очень правильно, но терпимо.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch5\u003E2\u003C\u002Fh5\u003E\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fr\u002Fw780q1\u002Fwebt\u002Frb\u002Fkc\u002F5o\u002Frbkc5okogbebc5vns4whjzrfsuw.jpeg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Frb\u002Fkc\u002F5o\u002Frbkc5okogbebc5vns4whjzrfsuw.jpeg\" data-blurred=\"true\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПохожая ситуация, опять правый нижний угол потерян (там еще и асфальт мокрый).\u003Cbr\u002F\u003E\r\nОднако большая часть дороги все же распознана.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fr\u002Fw780q1\u002Fwebt\u002Ffc\u002F5m\u002F4e\u002Ffc5m4es-4sc2jortt28xescg2nq.jpeg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Ffc\u002F5m\u002F4e\u002Ffc5m4es-4sc2jortt28xescg2nq.jpeg\" data-blurred=\"true\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nКлассификатор предлагает ехать прямо.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch5\u003E3\u003C\u002Fh5\u003E\u003Cbr\u002F\u003E\r\nСитуция, когда робот оказался посреди тротуара.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fr\u002Fw780q1\u002Fwebt\u002Fmb\u002Fdb\u002Fhe\u002Fmbdbheuq0b-sytqwps5qnepuxi4.jpeg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fmb\u002Fdb\u002Fhe\u002Fmbdbheuq0b-sytqwps5qnepuxi4.jpeg\" data-blurred=\"true\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nДорога распознана практически идеально.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fr\u002Fw780q1\u002Fwebt\u002Fac\u002Fat\u002Fbl\u002Facatblunbshunktslu31uongwoe.jpeg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fac\u002Fat\u002Fbl\u002Facatblunbshunktslu31uongwoe.jpeg\" data-blurred=\"true\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nКлассификатор командает брать вправо (чтобы найти кромку дороги в следующий раз).\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch4\u003EПрименение\u003C\u002Fh4\u003E\u003Cbr\u002F\u003E\r\nПоколдовав немного над прошивкой танка, заменил цветовой детектор дороги на сегментирующую нейросеть.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПри запуске всего этого на Raspberry Pi первое, что вылезло — удручающая производительность.\u003Cbr\u002F\u003E\r\nНа сегментацию одного изображения уходит по 6 секунд — за это время танк бодрой рысцой успевает проскочить все повороты.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВ реальных испытаниях так и получилось — несмотря на практически идеальное распознавание тротуара и правильные команды с управляющей нейросети — за время время обработки изображения танк успевал уйти в сторону.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fck\u002F3_\u002Fgs\u002Fck3_gstzycmsirkih6oxyd6rpdi.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВ общем, на Raspberry картинки такого размера не переварить.\u003Cbr\u002F\u003E\r\nПохоже, все таки придется заняться обучением специализированной нейросети.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch4\u003EСсылки\u003C\u002Fh4\u003E\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003E\u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fpost\u002F439928\"\u003EРаспознавание тротуара на основе цветов и OpenCV\u003C\u002Fa\u003E\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Ca href=\"https:\u002F\u002Fgithub.com\u002Ftprlab\u002Fpitanq\u002Ftree\u002Fsegmentation\"\u003EИсходный код прошивки танка с сегментацией\u003C\u002Fa\u003E\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Ca href=\"https:\u002F\u002Fwww.pyimagesearch.com\u002F2018\u002F09\u002F03\u002Fsemantic-segmentation-with-opencv-and-deep-learning\u002F\"\u003EЛучшая прикладная статья по теме сегментации с готовой нейросетью\u003C\u002Fa\u003E\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Ca href=\"https:\u002F\u002Fgithub.com\u002FTimoSaemann\u002FENet\u002Ftree\u002Fmaster\u002FTutorial\"\u003EРуководство по обучению нейросети для сегментации\u003C\u002Fa\u003E\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003C\u002Fdiv\u003E","tags":[{"titleHtml":"робототехника"},{"titleHtml":"opencv"},{"titleHtml":"raspberry pi"},{"titleHtml":"нейросеть"},{"titleHtml":"image segmentation"},{"titleHtml":"компьютерное зрение"}],"metadata":{"stylesUrls":[],"scriptUrls":[],"shareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F452088\u002F8e9743437242bf80560a3b44cc154f46\u002F","shareImageWidth":1200,"shareImageHeight":630,"vkShareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F452088\u002F8e9743437242bf80560a3b44cc154f46\u002F?format=vk","schemaJsonLd":"{\"@context\":\"http:\\\u002F\\\u002Fschema.org\",\"@type\":\"Article\",\"mainEntityOfPage\":{\"@type\":\"WebPage\",\"@id\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fru\\\u002Fpost\\\u002F452088\\\u002F\"},\"headline\":\"Распознавание дороги посредством семантической сегментации\",\"datePublished\":\"2019-06-27T07:12:54+03:00\",\"dateModified\":\"2019-06-27T10:50:29+03:00\",\"author\":{\"@type\":\"Person\",\"name\":\"Stantin\"},\"publisher\":{\"@type\":\"Organization\",\"name\":\"Habr\",\"logo\":{\"@type\":\"ImageObject\",\"url\":\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fa_\\\u002Flk\\\u002F9m\\\u002Fa_lk9mjkccjox-zccjrpfolmkmq.png\"}},\"description\":\"В предыдущей серии я проводил эксперимент с автономным движением своего домашнего танка. Дорога распознавалась с помощью цветового фильтра, а полученная маска шл...\",\"url\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fru\\\u002Fpost\\\u002F452088\\\u002F#post-content-body\",\"about\":[\"h_image_processing\",\"h_machine_learning\",\"h_raspberrypi\",\"h_robot\",\"h_artificial_intelligence\",\"f_develop\",\"f_popsci\"],\"image\":[\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fat\\\u002Fm4\\\u002Fzl\\\u002Fatm4zleo88k-gaaek75alwzrt_8.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002F2h\\\u002Fvs\\\u002Fvh\\\u002F2hvsvhc9ntkfulrphsvaylzz8je.jpeg\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Frv\\\u002Fyp\\\u002Fza\\\u002Frvypza_qrlmnobm-jjafbqgxu4y.jpeg\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Frb\\\u002Fkc\\\u002F5o\\\u002Frbkc5okogbebc5vns4whjzrfsuw.jpeg\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Ffc\\\u002F5m\\\u002F4e\\\u002Ffc5m4es-4sc2jortt28xescg2nq.jpeg\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fmb\\\u002Fdb\\\u002Fhe\\\u002Fmbdbheuq0b-sytqwps5qnepuxi4.jpeg\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fac\\\u002Fat\\\u002Fbl\\\u002Facatblunbshunktslu31uongwoe.jpeg\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fck\\\u002F3_\\\u002Fgs\\\u002Fck3_gstzycmsirkih6oxyd6rpdi.png\"]}","metaDescription":"В предыдущей серии я проводил эксперимент с автономным движением своего домашнего танка. Дорога распознавалась с помощью цветового фильтра, а полученная маска шла на вход специально обученной...","mainImageUrl":null,"amp":false},"polls":[],"commentsEnabled":true,"rulesRemindEnabled":false,"votesEnabled":true,"status":"published","plannedPublishTime":null,"checked":null,"isEditorial":false}},"articlesIds":{},"isLoading":false,"pagesCount":{},"route":{},"reasonsList":null,"view":"cards","lastVisitedRoute":{},"ssrCommentsArticleIds":[""],"karma":{}},"authorContribution":{"authors":{}},"betaTest":{"currentAnnouncement":null,"announcements":{},"announcementCards":null,"announcementComments":{},"announcementCommentThreads":{},"announcementCommentingStatuses":{},"archivedList":[]},"authorStatistics":{"articleRefs":{},"articleIds":{},"pagesCount":{},"route":{},"viewsCount":[],"maxStatsCount":{}},"career":{"seoLandings":[],"hubs":"image_processing,machine_learning,raspberrypi,robot,artificial_intelligence"},"comments":{"articleComments":{},"searchCommentsResults":null,"previewComment":null,"pagesCount":null,"commentAccess":{},"scrollParents":{},"pageArticleComments":{"lastViewedComment":0,"postId":null,"lastCommentTimestamp":"","moderated":[],"moderatedIds":[],"commentRoute":""}},"companies":{"companyRefs":{},"companyIds":{},"companyTopIds":{},"pagesCount":{},"companyProfiles":{},"companiesCategories":[],"companiesCategoriesTotalCount":0,"companiesWidgets":{},"companiesWorkers":{},"companiesFans":{},"route":{},"isLoading":false,"companyWorkersLoading":false,"companyFansLoading":false,"vacancies":{}},"companiesContribution":{"hubs":{},"flows":{},"companyRefs":{}},"companyHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"conversation":{"messages":[],"respondent":null,"isLoadMore":false},"conversations":{"conversations":[],"unreadCount":0,"pagesCount":0,"isLoadMore":false},"desktopState":{"desktopFl":null,"desktopHl":null,"isChecked":false,"isLoginDemanded":false},"dfp":{"slotsDict":{}},"docs":{"menu":{},"articles":{},"mainMenu":[],"loading":{"main":false,"dropdown":false,"article":false}},"feature":{"isProbablyVisible":"true"},"flows":{"flows":[{"alias":"develop","id":1,"route":{"name":"FLOW_PAGE","params":{"flowName":"develop"}}},{"alias":"admin","id":6,"route":{"name":"FLOW_PAGE","params":{"flowName":"admin"}}},{"alias":"design","id":2,"route":{"name":"FLOW_PAGE","params":{"flowName":"design"}}},{"alias":"management","id":3,"route":{"name":"FLOW_PAGE","params":{"flowName":"management"}}},{"alias":"marketing","id":4,"route":{"name":"FLOW_PAGE","params":{"flowName":"marketing"}}},{"alias":"popsci","id":7,"route":{"name":"FLOW_PAGE","params":{"flowName":"popsci"}}}]},"global":{"isPwa":false,"device":"desktop","isHabrCom":true},"hubs":{"hubRefs":{},"hubIds":{},"pagesCount":{},"isLoading":false,"route":{}},"hubsBlock":{"hubRefs":{},"hubIds":{}},"i18n":{"fl":"ru","hl":"ru"},"info":{"infoPage":{},"isLoading":true},"location":{"urlStruct":{"protocol":null,"slashes":null,"auth":null,"host":null,"port":null,"hostname":null,"hash":null,"search":null,"query":{},"pathname":null,"path":null,"href":""},"searchQuery":null},"me":{"user":null,"ppgDemanded":false,"karmaResetInfo":{"canReincarnate":null,"wasReincarnated":null,"currentScore":null},"notes":null},"mostReadingList":{"mostReadingListIds":[],"mostReadingListRefs":null,"promoPost":null},"pinnedPost":{"pinnedPost":null},"ppa":{"articles":{},"card":null,"transactions":null,"totalTransactions":null,"isAccessible":null},"projectsBlocks":{"activeBlocks":{}},"pullRefresh":{"shouldRefresh":false},"sandbox":{"articleIds":[],"articleRefs":{},"pagesCount":null,"route":{},"lastVisitedRoute":{},"isLoading":false},"settingsOther":{"inputs":{"uiLang":{"errors":[],"ref":null,"value":""},"articlesLangEnglish":{"errors":[],"ref":null,"value":false},"articlesLangRussian":{"errors":[],"ref":null,"value":false},"agreement":{"errors":[],"ref":null,"value":false},"email":{"errors":[],"ref":null,"value":true},"digest":{"errors":[],"ref":null,"value":true}}},"similarList":{"similarListIds":[],"similarListRefs":null},"ssr":{"error":null,"isDataLoaded":false,"isDataLoading":false,"isHydrationFailed":false,"isServer":false},"userHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"userInvites":{"availableInvites":0,"usedInvitesIds":[],"usedInvitesRefs":{},"usedInvitesPagesCount":0,"unusedInvitesIds":[],"unusedInvitesRefs":{},"unusedInvitesPagesCount":0},"users":{"authorRefs":{},"authorIds":{},"pagesCount":{},"authorProfiles":{},"userHubs":{},"userInvitations":{},"authorFollowers":{},"authorFollowed":{},"karmaStats":[],"statistics":null,"isLoading":false,"authorFollowersLoading":false,"authorFollowedLoading":false,"userHubsLoading":false,"userInvitationsLoading":false,"route":{}},"viewport":{"prevScrollY":{},"scrollY":0,"width":0},"tracker":{"items":{},"pagesCache":{},"markedViewedSilently":{},"markedRead":{},"unreadCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null},"unviewedCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null}}};(function(){var s;(s=document.currentScript||document.scripts[document.scripts.length-1]).parentNode.removeChild(s);}());</script>
+<script src="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" defer></script><script src="https://assets.habr.com/habr-web/js/app.c0af73e7.js" defer></script>
+
+
+
+    <script>
+      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+        (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+        m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+      })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+    </script>
+  
+  <script type="text/javascript" >
+    (function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+    m[i].l=1*new Date();k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})
+    (window, document, "script", "https://mc.yandex.ru/metrika/tag.js", "ym");
+
+    ym(24049213, "init", {
+      defer:true,
+      trackLinks:true,
+      accurateTrackBounce:true,
+      webvisor:false,
+    });
+  </script>
+  <noscript>
+    <div>
+      <img src="https://mc.yandex.ru/watch/24049213" style="position:absolute; left:-9999px;" alt="" />
+    </div>
+  </noscript>
+  
+    <script type="text/javascript">
+      window.addEventListener('load', function () {
+        setTimeout(() => {
+          const img = new Image();
+          img.src = 'https://vk.com/rtrg?p=VK-RTRG-421343-57vKE';
+        }, 0);
+      });
+    </script>
+  
+</body>
+</html>

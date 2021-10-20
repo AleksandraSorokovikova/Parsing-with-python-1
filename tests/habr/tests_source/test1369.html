@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="ru" data-vue-meta="%7B%22lang%22:%7B%22ssr%22:%22ru%22%7D%7D">
+<head >
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
+  <title>Я не знал, как работают процессоры, поэтому написал программный симулятор / Хабр</title>
+  <style>
+    /* cyrillic-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSxf6TF0.woff2) format('woff2');
+      unicode-range: U+0460-052F, U+1C80-1C88, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+    }
+
+    /* cyrillic */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveQhf6TF0.woff2) format('woff2');
+      unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+    }
+
+    /* latin-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSBf6TF0.woff2) format('woff2');
+      unicode-range: U+0100-024F, U+0259, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20CF, U+2113, U+2C60-2C7F, U+A720-A7FF;
+    }
+
+    /* latin */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveRhf6.woff2) format('woff2');
+      unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+    }
+  </style>
+  <link rel="preload" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" as="script"><link rel="preload" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/app.c0af73e7.js" as="script">
+  <link rel="stylesheet" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css"><link rel="stylesheet" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css">
+  <script>window.i18nFetch = new Promise((res, rej) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open('GET', '/js/i18n/ru-compiled.85eb77f0b17c8235e7b64b9f81ea5ec2.json');
+          xhr.responseType = 'json';
+          xhr.onload = function(e) {
+            if (this.status === 200) {
+              res({ru: xhr.response});
+            } else {
+              rej(e);
+            }
+          };
+          xhr.send();
+        });</script>
+  
+  <script data-vue-meta="ssr" src="/js/ads.js" onload="window['zhY4i4nJ9K'] = true" data-vmid="checkad"></script><script data-vue-meta="ssr" type="application/ld+json" data-vmid="ldjson-schema">{"@context":"http:\/\/schema.org","@type":"Article","mainEntityOfPage":{"@type":"WebPage","@id":"https:\/\/habr.com\/ru\/post\/453158\/"},"headline":"Я не знал, как работают процессоры, поэтому написал программный симулятор","datePublished":"2019-05-23T17:05:02+03:00","dateModified":"2019-05-24T10:44:38+03:00","author":{"@type":"Person","name":"Анатолий Ализар"},"publisher":{"@type":"Organization","name":"Habr","logo":{"@type":"ImageObject","url":"https:\/\/habrastorage.org\/webt\/a_\/lk\/9m\/a_lk9mjkccjox-zccjrpfolmkmq.png"}},"description":"Несколько месяцев назад меня вдруг поразила мысль, что я понятия не имею о принципах работы компьютерного железа. Я до сих пор не знаю, как работают современные...","url":"https:\/\/habr.com\/ru\/post\/453158\/#post-content-body","about":["h_system_programming","h_go","h_electronics","h_cpu","h_easyelectronics","f_develop","f_popsci"],"image":["https:\/\/habrastorage.org\/getpro\/habr\/post_images\/805\/dcf\/f99\/805dcff99a150856f08b3cb14a12cc4e.gif","https:\/\/habrastorage.org\/getpro\/habr\/post_images\/a52\/981\/08a\/a5298108a34383e40dab633f35692384.png","https:\/\/habrastorage.org\/getpro\/habr\/post_images\/a01\/36e\/e40\/a0136ee405bb5172cf8a048a03d2cb9f.png","https:\/\/habrastorage.org\/getpro\/habr\/post_images\/361\/245\/937\/361245937fcf63ef06c17d6380061b81.png","https:\/\/habrastorage.org\/webt\/t_\/hm\/rp\/t_hmrpg_rrprxwh5uiiybl2jf6w.png","https:\/\/habrastorage.org\/getpro\/habr\/formulas\/7c8\/8c0\/ca9\/7c88c0ca920a1c983f6c9642f6a9aa5e.svg","https:\/\/habrastorage.org\/webt\/dc\/ge\/e_\/dcgee_zl9m4i_wrzlkovzh8pnjc.png","https:\/\/habrastorage.org\/getpro\/habr\/post_images\/6f5\/b5e\/3a7\/6f5b5e3a7542371fbea370296344369a.gif"]}</script>
+  <script src="//www.googletagservices.com/tag/js/gpt.js" async></script>
+  <style>.grecaptcha-badge{visibility: hidden;}</style>
+  <meta name="habr-version" content="2.49.0">
+  
+  <meta data-vue-meta="ssr" property="fb:app_id" content="444736788986613"><meta data-vue-meta="ssr" property="fb:pages" content="472597926099084"><meta data-vue-meta="ssr" name="twitter:card" content="summary_large_image"><meta data-vue-meta="ssr" name="twitter:site" content="@habr_eng"><meta data-vue-meta="ssr" property="og:title" content="Я не знал, как работают процессоры, поэтому написал программный симулятор" data-vmid="og:title"><meta data-vue-meta="ssr" name="twitter:title" content="Я не знал, как работают процессоры, поэтому написал программный симулятор" data-vmid="twitter:title"><meta data-vue-meta="ssr" name="aiturec:title" content="Я не знал, как работают процессоры, поэтому написал программный симулятор" data-vmid="aiturec:title"><meta data-vue-meta="ssr" name="description" content="Несколько месяцев назад меня вдруг поразила мысль, что я понятия не имею о принципах работы компьютерного железа. Я до сих пор не знаю, как работают современные компьютеры.
+
+Я прочитал книгу «Но..." data-vmid="description"><meta data-vue-meta="ssr" itemprop="description" content="Несколько месяцев назад меня вдруг поразила мысль, что я понятия не имею о принципах работы компьютерного железа. Я до сих пор не знаю, как работают современные компьютеры.
+
+Я прочитал книгу «Но..." data-vmid="description:itemprop"><meta data-vue-meta="ssr" property="og:description" content="Несколько месяцев назад меня вдруг поразила мысль, что я понятия не имею о принципах работы компьютерного железа. Я до сих пор не знаю, как работают современные компьютеры.
+
+Я прочитал книгу «Но..." data-vmid="og:description"><meta data-vue-meta="ssr" name="twitter:description" content="Несколько месяцев назад меня вдруг поразила мысль, что я понятия не имею о принципах работы компьютерного железа. Я до сих пор не знаю, как работают современные компьютеры.
+
+Я прочитал книгу «Но..." data-vmid="twitter:description"><meta data-vue-meta="ssr" property="aiturec:description" content="Несколько месяцев назад меня вдруг поразила мысль, что я понятия не имею о принципах работы компьютерного железа. Я до сих пор не знаю, как работают современные компьютеры.
+
+Я прочитал книгу «Но..." data-vmid="aiturec:description"><meta data-vue-meta="ssr" itemprop="image" content="https://habr.com/share/publication/453158/1faae1cc0da07c772c27e76e1112cd4c/" data-vmid="image:itemprop"><meta data-vue-meta="ssr" property="og:image" content="https://habr.com/share/publication/453158/1faae1cc0da07c772c27e76e1112cd4c/" data-vmid="og:image"><meta data-vue-meta="ssr" property="aiturec:image" content="https://habr.com/share/publication/453158/1faae1cc0da07c772c27e76e1112cd4c/" data-vmid="aiturec:image"><meta data-vue-meta="ssr" name="twitter:image" content="https://habr.com/share/publication/453158/1faae1cc0da07c772c27e76e1112cd4c/" data-vmid="twitter:image"><meta data-vue-meta="ssr" property="vk:image" content="https://habr.com/share/publication/453158/1faae1cc0da07c772c27e76e1112cd4c/" data-vmid="vk:image"><meta data-vue-meta="ssr" property="aiturec:item_id" content="453158" data-vmid="aiturec:item_id"><meta data-vue-meta="ssr" property="aiturec:datetime" content="2019-05-23T14:05:02.000Z" data-vmid="aiturec:datetime"><meta data-vue-meta="ssr" property="og:type" content="article" data-vmid="og:type"><meta data-vue-meta="ssr" property="og:locale" content="ru_RU" data-vmid="og:locale"><meta data-vue-meta="ssr" property="og:image:width" content="1200" data-vmid="og:image:width"><meta data-vue-meta="ssr" property="og:image:height" content="630" data-vmid="og:image:height">
+  <link data-vue-meta="ssr" href="https://habr.com/ru/rss/post/453158/?fl=ru" type="application/rss+xml" title="" rel="alternate" name="rss"><link data-vue-meta="ssr" href="https://habr.com/ru/post/453158/" rel="canonical" data-vmid="canonical"><link data-vue-meta="ssr" data-vmid="hreflang"><link data-vue-meta="ssr" image_src="image" href="https://habr.com/share/publication/453158/1faae1cc0da07c772c27e76e1112cd4c/" data-vmid="image:href">
+  <meta name="apple-mobile-web-app-status-bar-style" content="#303b44">
+  <meta name="msapplication-TileColor" content="#629FBC">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="16x16"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-16.png"
+  >
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="32x32"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-32.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="76x76"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-76.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="120x120"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="152x152"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-152.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="180x180"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-180.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="256x256"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-256.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1136x640.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2436x1125.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1792x828.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_828x1792.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1334x750.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2208x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1125x2436.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2208.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2732x2048.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2688x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2224x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_750x1334.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x2732.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2388x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2224.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_640x1136.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2388.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x1536.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1536x2048.png"
+  >
+  <link
+    rel="mask-icon"
+    color="#77a2b6"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.svg"
+  >
+  <link
+    crossorigin="use-credentials"
+    href="/manifest.webmanifest"
+    rel="manifest"
+  >
+</head>
+<body>
+
+
+<div id="app" data-server-rendered="true" data-async-called="true"><div class="tm-layout__wrapper"><!----> <div></div> <!----> <header class="tm-header"><div class="tm-page-width"><div class="tm-header__container"><!----> <span class="tm-header__logo-wrap"><a href="/ru/" class="tm-header__logo tm-header__logo_ru"><svg height="16" width="16" class="tm-svg-img tm-header__icon"><title>Хабр</title> <use xlink:href="/img/habr-logo-ru.svg#logo"></use></svg></a> <span class="tm-header__beta-sign" style="display:none;">β</span></span> <div class="tm-dropdown tm-header__projects"><div class="tm-dropdown__head"><button class="tm-header__dropdown-toggle"><svg height="16" width="16" class="tm-svg-img tm-header__icon tm-header__icon_dropdown"><title>Открыть список</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#arrow-down"></use></svg></button></div> <!----></div> <a href="/ru/sandbox/start/" class="tm-header__become-author-btn">
+            Как стать автором
+          </a> <div class="tm-feature tm-header__feature tm-feature_variant-inline"><!----></div> <!----> <!----></div></div></header> <div class="tm-layout"><div class="tm-page-progress-bar"></div> <div data-menu-sticky="true" class="tm-base-layout__header tm-base-layout__header_is-sticky"><div class="tm-page-width"><div class="tm-base-layout__header-wrapper"><div class="tm-main-menu"><div class="tm-main-menu__section"><nav class="tm-main-menu__section-content"><!----> <a href="/ru/all/" class="tm-main-menu__item">
+        Все потоки
+      </a> <a href="/ru/flows/develop/" class="tm-main-menu__item">
+          Разработка
+        </a><a href="/ru/flows/admin/" class="tm-main-menu__item">
+          Администрирование
+        </a><a href="/ru/flows/design/" class="tm-main-menu__item">
+          Дизайн
+        </a><a href="/ru/flows/management/" class="tm-main-menu__item">
+          Менеджмент
+        </a><a href="/ru/flows/marketing/" class="tm-main-menu__item">
+          Маркетинг
+        </a><a href="/ru/flows/popsci/" class="tm-main-menu__item">
+          Научпоп
+        </a></nav></div></div> <div class="tm-header-user-menu tm-base-layout__user-menu"><a href="/ru/search/" class="tm-header-user-menu__item tm-header-user-menu__search"><svg height="24" width="24" class="tm-svg-img tm-header-user-menu__icon tm-header-user-menu__icon_search tm-header-user-menu__icon_dark"><title>Поиск</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#search"></use></svg></a> <!----> <!----> <!----> <div class="tm-header-user-menu__item tm-header-user-menu__user_desktop"><div class="tm-dropdown"><div class="tm-dropdown__head"><svg height="24" width="24" data-test-id="menu-toggle-guest" class="tm-svg-img tm-header-user-menu__icon"><title>Профиль</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#header-user"></use></svg> <!----></div> <!----></div> <!----></div> <!----></div></div></div></div> <!----> <div class="tm-page-width"></div> <main class="tm-layout__container"><div hl="ru" data-async-called="true" class="tm-page"><div class="tm-page-width"><!----> <div class="tm-page__wrapper"><div class="tm-page__main tm-page__main_has-sidebar"><div class="pull-down"><div class="pull-down__header" style="height:0px;"><div class="pull-down__content" style="bottom:10px;"><svg height="24" width="24" class="tm-svg-img pull-down__arrow"><title>Обновить</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#pull-arrow"></use></svg></div></div> <div class="tm-article-presenter"> <div class="tm-article-presenter__body"><div class="tm-misprint-area"><div class="tm-misprint-area__wrapper"><article class="tm-article-presenter__content tm-article-presenter__content_narrow"><div class="tm-article-presenter__header"> <div class="tm-article-snippet tm-article-presenter__snippet"><div class="tm-article-snippet__meta-container"><div class="tm-article-snippet__meta"><span class="tm-user-info tm-article-snippet__author"><a href="/ru/users/m1rko/" title="m1rko" class="tm-user-info__userpic"><div class="tm-entity-image"><img alt="" height="24" loading="lazy" src="//habrastorage.org/r/w32/getpro/habr/avatars/4ec/bd0/85d/4ecbd085d692835a931d03174ff19539.png" width="24" class="tm-entity-image__pic"></div></a> <span class="tm-user-info__user"><a href="/ru/users/m1rko/" class="tm-user-info__username">
+      m1rko
+    </a> </span></span> <span class="tm-article-snippet__datetime-published"><time datetime="2019-05-23T14:05:02.000Z" title="2019-05-23, 17:05">23  мая  2019 в 17:05</time></span></div> <!----></div> <h1 lang="ru" class="tm-article-snippet__title tm-article-snippet__title_h1"><span>Я не знал, как работают процессоры, поэтому написал программный симулятор</span></h1> <div class="tm-article-snippet__hubs"><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/system_programming/" class="tm-article-snippet__hubs-item-link"><span>Системное программирование</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/go/" class="tm-article-snippet__hubs-item-link"><span>Go</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/electronics/" class="tm-article-snippet__hubs-item-link"><span>Производство и разработка электроники</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/cpu/" class="tm-article-snippet__hubs-item-link"><span>Процессоры</span> <!----></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/easyelectronics/" class="tm-article-snippet__hubs-item-link"><span>Электроника для начинающих</span> <!----></a></span></div> <div class="tm-article-snippet__labels"><div class="tm-article-snippet__label"><span>
+        Перевод
+      </span></div></div> <!----> <!----></div></div> <div class="tm-article-presenter__origin"><a href="https://djhworld.github.io/post/2019/05/21/i-dont-know-how-cpus-work-so-i-simulated-one-in-code/" target="_blank" class="tm-article-presenter__origin-link">
+                Автор оригинала:
+                <span>
+                  Daniel Harper
+                </span></a></div> <div data-gallery-root="" lang="ru" class="tm-article-body"><div id="post-content-body" class="article-formatted-body article-formatted-body_version-1"><div xmlns="http://www.w3.org/1999/xhtml"><div style="text-align:center;"><img src="/img/image-loader.svg" data-src="https://habrastorage.org/getpro/habr/post_images/805/dcf/f99/805dcff99a150856f08b3cb14a12cc4e.gif"/></div><br/>
+Несколько месяцев назад меня вдруг поразила мысль, что я понятия не имею о принципах работы компьютерного железа. Я до сих пор не знаю, как работают <i>современные</i> компьютеры.<br/>
+<br/>
+Я прочитал книгу <a href="http://buthowdoitknow.com/">«Но откуда он знает?»</a> Кларка Скотта с детальным описанием простого 8-битного компьютера: начиная с логических вентилей, ОЗУ, транзисторов процессора, заканчивая арифметико-логическим устройством и операциями ввода-вывода. И мне захотелось реализовать всё это в коде.<br/>
+<br/>
+Хотя я не <i>настолько</i> интересуюсь физикой микросхем, но книга просто скользит по волнам и красиво объясняет электросхемы и как биты перемещаются по системе — от читателя не требуется знание электротехники. Но мне недостаточно текстового описания. Я должен видеть вещи в действии и учиться на своих неизбежных ошибках. Так я начал реализацию схем в коде. Путь оказался тернист, но поучителен.<br/>
+<a name="habracut"></a><br/>
+Результат моей работы можно посмотреть в репозитории <a href="https://github.com/djhworld/simple-computer">simple-computer</a>: простом вычислителе. Он простой и он вычисляет.<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/getpro/habr/post_images/a52/981/08a/a5298108a34383e40dab633f35692384.png"/><br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/getpro/habr/post_images/a01/36e/e40/a0136ee405bb5172cf8a048a03d2cb9f.png"/><br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/getpro/habr/post_images/361/245/937/361245937fcf63ef06c17d6380061b81.png"/><br/>
+<i><font color="gray">Пример программ</font></i><br/>
+<br/>
+Код процессора реализован как <a href="https://github.com/djhworld/simple-computer/blob/master/cpu/cpu.go#L763">ужасная куча логических вентилей, которые включаются и выключаются</a>, но он работает. Я <a href="https://github.com/djhworld/simple-computer/blob/master/cpu/cpu_test.go">прогнал модульные тесты</a>, а все мы знаем, что модульные тесты — неопровержимое доказательство, что программа работает.<br/>
+<br/>
+Код обрабатывает <a href="https://github.com/djhworld/simple-computer/blob/master/io/keyboard.go#L20">ввод с клавиатуры</a> и отображает текст <a href="https://github.com/djhworld/simple-computer/blob/master/io/display.go#L13">на дисплее</a>, используя кропотливо созданный набор глифов для профессионального шрифта, который я назвал <i>Daniel Code Pro</i>. Единственный чит: чтобы взять ввод с клавиатуры и вывести результат, мне пришлось подключить каналы через <a href="https://github.com/djhworld/simple-computer/blob/master/cmd/simulator/glfw_io.go">GLFW</a>, но в остальном это полностью программная симуляция электросхемы.<br/>
+<br/>
+Я даже написал <a href="https://github.com/djhworld/simple-computer/blob/master/asm/assembler.go">грубый ассемблер</a>, который на многое открыл глаза, мягко говоря. Он не идеален. На самом деле даже немного дерьмовый, но он показал мне проблемы, которые другие люди уже решили много-много лет назад.<br/>
+<br/>
+<h1>Но зачем ты это делаешь?</h1><br/>
+<i>«Тринадцатилетние дети собирают процессоры в Minecraft. Позови, когда сможешь сделать <b>настоящий</b> CPU из телеграфных реле»</i> <br/>
+<br/>
+Моя ментальная модель устройства CPU застряла на уровне учебников по информатике для начинающих. Процессор для <a href="https://github.com/djhworld/gomeboycolor">эмулятора Gameboy, который я написал в 2013 году</a>, на самом деле не похож на современные CPU. Даже если эмулятор — это просто конечный автомат (машина состояний), он не описывает состояния на уровне логических вентилей. Почти всё можно реализовать с помощью только оператора <code>switch</code> и сохраняя состояние регистров.<br/>
+<br/>
+Я хочу лучше разобраться, как всё устроено, потому что не знаю, например, что такое кэш L1/L2 и конвейеризация и я не совсем уверен, что понимаю статьи об уязвимостях Meltdown и Spectre. Кто-то сказал, что они оптимизируют код таким образом, чтобы использовать кэш процессора, но я не знаю, как это проверить, кроме как поверить на слово. Я не совсем уверен, что означают все инструкции x86. Не понимаю, как люди отправляют задачи на GPU или TPU. И вообще, что такое TPU? Я не знаю, как использовать SIMD-инструкции.<br/>
+<br/>
+Всё это построено на фундаменте, который нужно усвоить в первую очередь. Это значит вернуться к основам и сделать что-то простое. В вышеупомянутой книге Кларка Скотта описан простейший компьютер. Вот почему я начал с него.<br/>
+<br/>
+<h1>Слава Скотту! Он работает!</h1><br/>
+Компьютер Скотта — это 8-разрядный процессор, подключённый к 256 байтам ОЗУ, все они подключены через 8-разрядную системную шину. У него 4 регистра общего назначения и <a href="https://github.com/djhworld/simple-computer#instructions">17 машинных инструкций</a>. Кто-то сделал <a href="http://www.buthowdoitknow.com/but_how_do_it_know_cpu_model.html">визуальный симулятор для веба</a>: это действительно здорово. Страшно подумать, сколько времени потребовалось, чтобы отследить все состояния схемы!<br/>
+<br/>
+<a href="https://habrastorage.org/webt/t_/hm/rp/t_hmrpg_rrprxwh5uiiybl2jf6w.png"><img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/t_/hm/rp/t_hmrpg_rrprxwh5uiiybl2jf6w.png"/></a><br/>
+<i><font color="gray">Схема со всеми компонентам процессора Скотта. Копирайт 2009-2016. Зигберт Фильбингер и Джон Кларк Скотт</font></i> <br/>
+<br/>
+Книга сопровождает вас по маршруту от скромных логических вентилей до битов в памяти и регистров, а затем продолжает наслаивать компоненты, пока вы не получите что-то похожее на схему выше. Очень рекомендую прочитать книгу, даже если вы уже знакомы с концепциями. Только не версию Kindle, потому что диаграммы иногда трудно увеличить и разобрать на экране «читалки». По-моему, это многолетняя проблема Kindle.<br/>
+<br/>
+Мой компьютер отличается от версии Скотта разве что тем, что я обновил его до 16 бит, чтобы увеличить объём доступной памяти, ведь хранение только глифов для таблицы ASCII занимает большую часть 8-битной машины Скотта, оставляя совсем мало места для полезного кода.<br/>
+<br/>
+<h1>Мой процесс разработки</h1><br/>
+В целом, разработка шла по такой схеме: чтение текста, изучение диаграмм, а затем попытка реализовать их на языке программирования общего назначения и определённо не использовать никаких специализированных инструментов для проектирования интегральных схем. Я написал симулятор на Go просто потому, что немного знаком с этим языком. Скептики могут сказать: «Болван! Неужели ты не мог изучить <a href="https://en.wikipedia.org/wiki/VHDL">VHDL</a> или <a href="https://en.wikipedia.org/wiki/Verilog">Verilog</a>, или <a href="http://www.cburch.com/logisim/">LogSim</a>, или ещё что-то. Но к тому моменту я уже написал свои биты, байты и логические вентили и погрузился слишком глубоко. Может, в следующий раз я выучу эти языки и пойму, сколько времени потратил впустую, но это мои проблемы.<br/>
+<br/>
+В большой схеме в компьютере просто передаётся куча булевых значений, поэтому подходит любой язык, который дружит с булевой алгеброй.<br/>
+<br/>
+Наложение схемы на эти булевы значения помогает нам (программистам) вывести смысл, а самое главное — решить, какой <a href="https://en.wikipedia.org/wiki/Endianness">порядок байтов</a> будет использовать система, и убедиться, что все компоненты передают данные по шине в правильном порядке.<br/>
+<br/>
+Это было очень трудно реализовать. Ради смещения я выбрал представление с обратным порядком байтов, но при тестировании ALU никак не мог понять, почему выходят неправильные цифры. Мой кот услышал много, очень много непечатных выражений.<br/>
+<br/>
+Разработка шла не быстро: возможно, она заняла около месяца-двух моего свободного времени. Но когда только процессор успешно выполнил операцию <img src="https://habrastorage.org/getpro/habr/formulas/7c8/8c0/ca9/7c88c0ca920a1c983f6c9642f6a9aa5e.svg" alt="$2 + 2 = 5$" data-tex="inline"/>, я был на седьмом небе от счастья.<br/>
+<br/>
+Всё шло своим чередом, пока дело не дошло до ввода-вывода. Книга предлагала дизайн системы с простой клавиатурой и интерфейсом дисплея, чтобы вводить данные в машину и выводить результат. Ну, <i>мы уже зашли так далеко</i>, нет смысла останавливаться на полпути. Я поставил цель реализовать набор на клавиатуре и отображение букв на дисплее.<br/>
+<br/>
+<h1>Периферия</h1><br/>
+В качестве аппаратного интерфейса между CPU и внешним миром периферийные устройства используют <a href="https://en.wikipedia.org/wiki/Adapter_pattern">шаблон адаптера</a>. Наверное, несложно догадаться, что этот шаблон позаимствован из проектирования программного обеспечения.<br/>
+<br/>
+<a href="https://habrastorage.org/webt/dc/ge/e_/dcgee_zl9m4i_wrzlkovzh8pnjc.png"><img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/dc/ge/e_/dcgee_zl9m4i_wrzlkovzh8pnjc.png"/></a><br/>
+<i><font color="gray">Как адаптеры ввода-вывода подключаются к окну GLFW</font></i> <br/>
+<br/>
+С таким разделением оказалось довольно просто подключить клавиатуру и дисплей к окну под управлением GLFW. На самом деле я просто вытащил большую часть кода из своего <a href="https://github.com/djhworld/gomeboycolor-glfw">эмулятора</a> и немного изменил его, чтобы каналы Go работали как сигналы ввода/вывода.<br/>
+<br/>
+<h1>Запускаем компьютер</h1><br/>
+<div style="text-align:center;"><img src="/img/image-loader.svg" data-src="https://habrastorage.org/getpro/habr/post_images/6f5/b5e/3a7/6f5b5e3a7542371fbea370296344369a.gif"/></div><br/>
+<br/>
+Вероятно, это самая сложная часть, по крайней мере, самая громоздкая. Трудно писать на ассемблере с таким ограниченным набором инструкций, а на моём грубом ассемблере ещё хуже, потому что вы не можете обматерить никого, кроме себя.<br/>
+<br/>
+Самой большой проблемой стало жонглирование четырьмя регистрами, отслеживать их, вытаскивая данные из регистров и временно сохраняя их в памяти. В процессе я вспомнил, что у процессора Gameboy есть регистр указателя стека для удобства выгрузки и загрузки регистров. К сожалению, у этого компьютера нет такой роскоши, поэтому приходилось постоянно вручную перемещать данные в память и обратно.<br/>
+<br/>
+Я решил потратить время только на одну псевдоинструкцию <code>CALL</code>, чтобы вызвать функцию, а затем вернуться к точке. Без этого доступны вызовы только на один уровень в глубину.<br/>
+<br/>
+Кроме того, поскольку машина не поддерживает прерывания, пришлось реализовать ужасный код опроса состояния клавиатуры. В книге обсуждаются шаги, необходимые для реализации прерываний, но это серьёзно усложняет схему.<br/>
+<br/>
+Но хватить ныть, я всё-таки написал <a href="https://github.com/djhworld/simple-computer/blob/master/_programs/README.md">четыре программы</a>, и большинство из них используют какой-то общий код для рендеринга шрифтов, ввода с клавиатуры и т. д. Это не совсем операционная система, но даёт понимание, что делает простая ОС.<br/>
+<br/>
+Это было нелегко. Самая сложная часть программы text-writer — правильно рассчитать, когда перейти к новой строке или что происходит, когда вы нажимаете клавишу Enter.<br/>
+<br/>
+<pre><code class="go">main-getInput:
+	CALL ROUTINE-io-pollKeyboard
+	CALL ROUTINE-io-drawFontCharacter
+	JMP main-getInput</code></pre><i><font color="gray">Основной цикл программы text-writer</font></i><br/>
+<br/>
+Я не удосужился реализовать клавишу Backspace и клавиши-модификаторы. Зато понял, сколько труда требует разработка текстовых редакторов и насколько это утомительно.<br/>
+<br/>
+<h1>Выводы</h1><br/>
+Это был весёлый и очень полезный для меня проект. В разгар программирования на ассемблере я почти забыл о логических вентилях, работающих внизу. Я поднялся на верхние уровни абстракции.<br/>
+<br/>
+Хотя этот процессор очень прост и далёк от CPU в моём ноутбуке, но мне кажется, что проект многому меня научил, в частности:<br/>
+<br/>
+<ul>
+<li>Как биты перемещаются по шине между всеми компонентами.<br/>
+</li>
+<li>Как работает <i>простой</i> ALU.<br/>
+</li>
+<li>Как выглядит <i>простой</i> цикл Fetch-Decode-Execute.<br/>
+</li>
+<li>Что машина без регистра указателя стека и концепции стека — отстой.<br/>
+</li>
+<li>Что машина без прерываний тоже отстой.<br/>
+</li>
+<li>Что такое ассемблер и что он делает.<br/>
+</li>
+<li>Как периферийные устройства взаимодействуют с простым процессором.<br/>
+</li>
+<li>Как работают <i>простые</i> шрифты и как отображать их на дисплее.<br/>
+</li>
+<li>Как может выглядеть <i>простая</i> операционная система.</li>
+</ul><br/>
+Так что дальше? В книге говорится, что никто не производил таких компьютеров с 1952 года. Это значит, что мне придётся изучить материал за последние 67 лет. Это займёт меня на какое-то время. Я вижу, что <a href="https://software.intel.com/sites/default/files/managed/39/c5/325462-sdm-vol-1-2abcd-3abcd.pdf">руководство по x86 составляет 4800 страниц</a>: вполне достаточно для приятного, лёгкого чтения перед сном.<br/>
+<br/>
+Может, я немного побалуюсь с операционной системой, языком C, убью вечер с <a href="https://obsolescence.wixsite.com/obsolescence/pidp-11">набором для сборки PiDP-11</a> и паяльником, а потом заброшу это дело. Не знаю, посмотрим.<br/>
+<br/>
+Если серьёзно, то я думаю исследовать архитектуру RISC, возможно, RISC-V. Вероятно, лучше начать с ранних процессоров RISC, чтобы понять их происхождение. У современных процессоров гораздо больше функций: кэши и прочее, я хочу разобраться в них. Там нужно многое изучить.<br/>
+<br/>
+Пригодятся ли эти знания на моей основной работе? Возможно, пригодятся, хотя вряд ли. В любом случае, мне это нравится, так что неважно. Спасибо за чтение!</div></div> <!----> <!----></div> <div class="tm-article-presenter__meta"><div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Теги:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5BCPU%5D" class="tm-tags-list__link">CPU</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5BALU%5D" class="tm-tags-list__link">ALU</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5B%D1%83%D1%81%D1%82%D1%80%D0%BE%D0%B9%D1%81%D1%82%D0%B2%D0%BE%20%D0%BF%D1%80%D0%BE%D1%86%D0%B5%D1%81%D1%81%D0%BE%D1%80%D0%B0%5D" class="tm-tags-list__link">устройство процессора</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5B%D0%B1%D1%83%D0%BB%D0%B5%D0%B2%D0%B0%20%D0%B0%D0%BB%D0%B3%D0%B5%D0%B1%D1%80%D0%B0%5D" class="tm-tags-list__link">булева алгебра</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5B%D0%BB%D0%BE%D0%B3%D0%B8%D1%87%D0%B5%D1%81%D0%BA%D0%B8%D0%B5%20%D0%B2%D0%B5%D0%BD%D1%82%D0%B8%D0%BB%D0%B8%5D" class="tm-tags-list__link">логические вентили</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5BNAND%5D" class="tm-tags-list__link">NAND</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5B%D0%B0%D1%81%D1%81%D0%B5%D0%BC%D0%B1%D0%BB%D0%B5%D1%80%5D" class="tm-tags-list__link">ассемблер</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5B%D0%BF%D0%B5%D1%80%D0%B8%D1%84%D0%B5%D1%80%D0%B8%D0%B9%D0%BD%D1%8B%D0%B5%20%D1%83%D1%81%D1%82%D1%80%D0%BE%D0%B9%D1%81%D1%82%D0%B2%D0%B0%5D" class="tm-tags-list__link">периферийные устройства</a></li></ul></div> <div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Хабы:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/hub/system_programming/" class="tm-hubs-list__link">
+    Системное программирование
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/go/" class="tm-hubs-list__link">
+    Go
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/electronics/" class="tm-hubs-list__link">
+    Производство и разработка электроники
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/cpu/" class="tm-hubs-list__link">
+    Процессоры
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/easyelectronics/" class="tm-hubs-list__link">
+    Электроника для начинающих
+  </a></li></ul></div></div></article></div> <!----></div> <div class="tm-article-sticky-panel"><div class="tm-data-icons tm-article-sticky-panel__icons"><div class="tm-article-rating tm-data-icons__item"><div class="tm-votes-meter tm-article-rating__votes-switcher"><svg height="16" width="16" class="tm-svg-img tm-votes-meter__icon tm-votes-meter__icon_medium"><title>Всего голосов 72: ↑68 и ↓4</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-rating"></use></svg> <span title="Всего голосов 72: ↑68 и ↓4" class="tm-votes-meter__value tm-votes-meter__value_positive tm-votes-meter__value_medium">+64</span></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----> <span title="Количество просмотров" class="tm-icon-counter tm-data-icons__item"><svg height="16" width="16" class="tm-svg-img tm-icon-counter__icon"><title>Просмотры</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-views"></use></svg> <span class="tm-icon-counter__value">37K</span></span> <button title="Добавить в закладки" type="button" class="bookmarks-button tm-data-icons__item"><span title="Добавить в закладки" class="tm-svg-icon__wrapper bookmarks-button__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Добавить в закладки</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-favorite"></use></svg></span> <span title="Количество пользователей, добавивших публикацию в закладки" class="bookmarks-button__counter">
+    253
+  </span></button> <!----> <div title="Поделиться" class="tm-sharing tm-data-icons__item"><button type="button" class="tm-sharing__button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="tm-sharing__icon"><path fill="currentColor" d="M10.33.275l9.047 7.572a.2.2 0 010 .306l-9.048 7.572a.2.2 0 01-.328-.153V11c-8 0-9.94 6-9.94 6S-1 5 10 5V.428a.2.2 0 01.328-.153z"></path></svg></button> <!----></div> <DIV class="v-portal" style="display:none;"></DIV></div> </div></div> <!----> <!----> <div class="tm-article-presenter__footer"><div class="tm-article-blocks"><!----> <section class="tm-block tm-block_spacing-bottom"><!----> <div class="tm-block__body tm-block__body_variant-balanced"><div class="tm-article-author"> <div class="tm-user-card tm-article-author__user-card tm-user-card_variant-article"><div class="tm-user-card__info-container"><div class="tm-user-card__header"><div class="tm-user-card__header-data"><a href="/ru/users/m1rko/" class="tm-user-card__userpic tm-user-card__userpic_size-40"><div class="tm-entity-image"><img alt="" src="//habrastorage.org/getpro/habr/avatars/4ec/bd0/85d/4ecbd085d692835a931d03174ff19539.png" class="tm-entity-image__pic"></div></a> <div class="tm-user-card__meta"><div title=" 1501 голос " class="tm-karma tm-user-card__karma"><div class="tm-karma__votes tm-karma__votes_positive">
+    1229.5
+  </div> <div class="tm-karma__text">
+    Карма
+  </div></div> <div title="Рейтинг пользователя" class="tm-rating tm-user-card__rating"><div class="tm-rating__header"> <div class="tm-rating__counter">0</div></div> <div class="tm-rating__text">
+    Рейтинг
+  </div></div></div></div></div> <div class="tm-user-card__info tm-user-card__info_variant-article"><div class="tm-user-card__title tm-user-card__title_variant-article"><span class="tm-user-card__name tm-user-card__name_variant-article">Анатолий Ализар</span> <a href="/ru/users/m1rko/" class="tm-user-card__nickname tm-user-card__nickname_variant-article">
+          @m1rko
+        </a> <!----></div> <p class="tm-user-card__short-info tm-user-card__short-info_variant-article">автор, переводчик, редактор</p></div></div> <div class="tm-user-card__buttons tm-user-card__buttons_variant-article"><!----> <!----> <!----> <!----> <!----></div></div> <!----></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----></section> <div class="tm-article-blocks__comments"><div class="tm-article-page-comments"><div class="tm-article-comments-counter-link tm-article-comments-counter-button"><a href="/ru/post/453158/comments/" class="tm-article-comments-counter-link__link tm-article-comments-counter-link__link_button-style"><svg height="16" width="16" class="tm-svg-img tm-article-comments-counter-link__icon tm-article-comments-counter-link__icon_contrasted"><title>Комментарии</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-comments"></use></svg> <span class="tm-article-comments-counter-link__value tm-article-comments-counter-link__value_contrasted">
+       Комментарии 33 
+    </span></a> <!----></div></div></div> <div class="tm-ad-banner__container tm-page-article__banner"><!----> <div id="articleBottomBanner" class="tm-ad-banner"></div></div> <!----> <!----> <!----> <!----> </div></div></div></div></div> <div class="tm-page__sidebar"><div class="tm-layout-sidebar"><div class="tm-layout-sidebar__ads tm-layout-sidebar__ads_initial"><div class="tm-ad-banner__container tm-layout-sidebar__banner"><!----> <div id="sidebarBanner" class="tm-ad-banner"></div></div></div> <div class="tm-sexy-sidebar tm-sexy-sidebar_initial" style="margin-top:0px;"><!----> <section data-async-called="true" class="tm-block tm-block_spacing-bottom"><header class="tm-block__header"><h2 class="tm-block__title">Работа</h2> <!----></header> <div class="tm-block__body"><div class="tm-vacancies-block__item"><a href="https://career.habr.com/vacancies/go_razrabotchik" target="_blank" class="tm-vacancies-block__vacancy-title">
+        Go разработчик
+      </a> <div class="tm-vacancies-block__vacancies-count">
+        113
+    вакансий
+      </div></div></div> <footer class="tm-block__footer"><a href="https://career.habr.com/vacancies" class="tm-block-extralink">
+      Все вакансии
+    </a></footer></section></div></div></div></div></div></div></main> <!----></div> <div class="tm-footer-menu"><div class="tm-page-width"><div class="tm-footer-menu__container"><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Ваш аккаунт
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr/?back=/ru/post/453158/&amp;hl=ru" rel="nofollow" target="_self">
+                Войти
+              </a></li><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr-register/?back=/ru/post/453158/&amp;hl=ru" rel="nofollow" target="_self">
+                Регистрация
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Разделы
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/" class="footer-menu__item-link router-link-active">
+                Публикации
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/news/" class="footer-menu__item-link">
+                Новости
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/hubs/" class="footer-menu__item-link">
+                Хабы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/companies/" class="footer-menu__item-link">
+                Компании
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/users/" class="footer-menu__item-link">
+                Авторы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/sandbox/" class="footer-menu__item-link">
+                Песочница
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Информация
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/docs/help/" class="footer-menu__item-link">
+                Устройство сайта
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/authors/codex/" class="footer-menu__item-link">
+                Для авторов
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/companies/corpblogs/" class="footer-menu__item-link">
+                Для компаний
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/docs/transparency/" class="footer-menu__item-link">
+                Документы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/agreement" target="_blank">
+                Соглашение
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/confidential/" target="_blank">
+                Конфиденциальность
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Услуги
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQLwRfQmXibiUlWaRg-BAc38s7oM3lJiaPju7qmdJsp8ysIvZ_G-Npem0njJLMozE2bPHMpDqiI5hhy/pub?start=false&amp;loop=false&amp;delayms=60000&amp;slide=id.g91a03369cd_4_297" target="_blank">
+                Реклама
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://habrastorage.org/storage/stuff/habr/service_price.pdf" target="_blank">
+                Тарифы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQJJds8-Di7BQSP_guHxICN7woVYoN5NP_22ra-BIo4bqnTT9FR6fB-Ku2P0AoRpX0Ds-LRkDeAoD8F/pub?start=false&amp;loop=false&amp;delayms=60000" target="_blank">
+                Контент
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://tmtm.timepad.ru/" target="_blank">
+                Семинары
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/megaprojects/" class="footer-menu__item-link">
+                Мегапроекты
+              </a></li></ul></div></div></div></div></div> <div class="tm-footer"><div class="tm-page-width"><div class="tm-footer__container"><!----> <div class="tm-footer__social"><a href="https://www.facebook.com/habrahabr.ru" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Facebook</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-facebook"></use></svg></a><a href="https://twitter.com/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Twitter</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-twitter"></use></svg></a><a href="https://vk.com/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>VK</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-vkontakte"></use></svg></a><a href="https://telegram.me/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Telegram</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-telegram"></use></svg></a><a href="https://www.youtube.com/channel/UCd_sTwKqVrweTt4oAKY5y4w" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Youtube</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-youtube"></use></svg></a><a href="https://zen.yandex.ru/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Яндекс Дзен</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-zen"></use></svg></a></div> <DIV class="v-portal" style="display:none;"></DIV> <button class="tm-footer__link"><!---->
+        Настройка языка
+      </button> <a href="/ru/about" class="tm-footer__link">
+        О сайте
+      </a> <a href="/ru/feedback/" class="tm-footer__link">
+        Техническая поддержка
+      </a> <!----> <a href="/berserk-mode-nope" class="tm-footer__link">
+        Вернуться на старую версию
+      </a> <div class="tm-footer-copyright"><span class="tm-copyright"><span class="tm-copyright__years">© 2006–2021 </span> <span class="tm-copyright__name">«<a href="https://company.habr.com/" rel="noopener" target="_blank" class="tm-copyright__link">Habr</a>»</span></span></div></div></div></div> <!----> <!----></div> <div class="vue-portal-target"></div></div>
+<script>window.__INITIAL_STATE__={"adblock":{"hasAcceptableAdsFilter":false,"hasAdblock":false},"articlesList":{"articlesList":{"453158":{"id":"453158","timePublished":"2019-05-23T14:05:02+00:00","isCorporative":false,"lang":"ru","titleHtml":"Я не знал, как работают процессоры, поэтому написал программный симулятор","leadData":{"textHtml":"\u003Cdiv style=\"text-align:center;\"\u003E\u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fpost_images\u002F805\u002Fdcf\u002Ff99\u002F805dcff99a150856f08b3cb14a12cc4e.gif\"\u003E\u003C\u002Fdiv\u003E\u003Cbr\u003E\r\nНесколько месяцев назад меня вдруг поразила мысль, что я понятия не имею о принципах работы компьютерного железа. Я до сих пор не знаю, как работают \u003Ci\u003Eсовременные\u003C\u002Fi\u003E компьютеры.\u003Cbr\u003E\r\n\u003Cbr\u003E\r\nЯ прочитал книгу \u003Ca href=\"http:\u002F\u002Fbuthowdoitknow.com\u002F\"\u003E«Но откуда он знает?»\u003C\u002Fa\u003E Кларка Скотта с детальным описанием простого 8-битного компьютера: начиная с логических вентилей, ОЗУ, транзисторов процессора, заканчивая арифметико-логическим устройством и операциями ввода-вывода. И мне захотелось реализовать всё это в коде.\u003Cbr\u003E\r\n\u003Cbr\u003E\r\nХотя я не \u003Ci\u003Eнастолько\u003C\u002Fi\u003E интересуюсь физикой микросхем, но книга просто скользит по волнам и красиво объясняет электросхемы и как биты перемещаются по системе — от читателя не требуется знание электротехники. Но мне недостаточно текстового описания. Я должен видеть вещи в действии и учиться на своих неизбежных ошибках. Так я начал реализацию схем в коде. Путь оказался тернист, но поучителен.\u003Cbr\u003E","imageUrl":null,"buttonTextHtml":"Читать дальше →","image":null},"editorVersion":"1.0","postType":"article","postLabels":[{"type":"translation","data":{"originalAuthorName":"Daniel Harper","originalUrl":"https:\u002F\u002Fdjhworld.github.io\u002Fpost\u002F2019\u002F05\u002F21\u002Fi-dont-know-how-cpus-work-so-i-simulated-one-in-code\u002F"}}],"author":{"scoreStats":{"score":1229.5,"votesCount":1501},"rating":0,"relatedData":null,"contacts":[],"authorContacts":[],"paymentDetails":{"paymentYandexMoney":null,"paymentPayPalMe":null,"paymentWebmoney":null},"id":"1371978","alias":"m1rko","fullname":"Анатолий Ализар","avatarUrl":"\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Favatars\u002F4ec\u002Fbd0\u002F85d\u002F4ecbd085d692835a931d03174ff19539.png","speciality":"автор, переводчик, редактор"},"statistics":{"commentsCount":33,"favoritesCount":253,"readingCount":37432,"score":64,"votesCount":72},"hubs":[{"relatedData":null,"id":"5767","alias":"system_programming","type":"collective","title":"Системное программирование","titleHtml":"Системное программирование","isProfiled":true},{"relatedData":null,"id":"17748","alias":"go","type":"collective","title":"Go","titleHtml":"Go","isProfiled":true},{"relatedData":null,"id":"21484","alias":"electronics","type":"collective","title":"Производство и разработка электроники","titleHtml":"Производство и разработка электроники","isProfiled":true},{"relatedData":null,"id":"21956","alias":"cpu","type":"collective","title":"Процессоры","titleHtml":"Процессоры","isProfiled":false},{"relatedData":null,"id":"22016","alias":"easyelectronics","type":"collective","title":"Электроника для начинающих","titleHtml":"Электроника для начинающих","isProfiled":false}],"flows":[{"id":"1","alias":"develop","title":"Разработка"},{"id":"7","alias":"popsci","title":"Научпоп"}],"relatedData":null,"textHtml":"\u003Cdiv xmlns=\"http:\u002F\u002Fwww.w3.org\u002F1999\u002Fxhtml\"\u003E\u003Cdiv style=\"text-align:center;\"\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fpost_images\u002F805\u002Fdcf\u002Ff99\u002F805dcff99a150856f08b3cb14a12cc4e.gif\"\u002F\u003E\u003C\u002Fdiv\u003E\u003Cbr\u002F\u003E\r\nНесколько месяцев назад меня вдруг поразила мысль, что я понятия не имею о принципах работы компьютерного железа. Я до сих пор не знаю, как работают \u003Ci\u003Eсовременные\u003C\u002Fi\u003E компьютеры.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЯ прочитал книгу \u003Ca href=\"http:\u002F\u002Fbuthowdoitknow.com\u002F\"\u003E«Но откуда он знает?»\u003C\u002Fa\u003E Кларка Скотта с детальным описанием простого 8-битного компьютера: начиная с логических вентилей, ОЗУ, транзисторов процессора, заканчивая арифметико-логическим устройством и операциями ввода-вывода. И мне захотелось реализовать всё это в коде.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nХотя я не \u003Ci\u003Eнастолько\u003C\u002Fi\u003E интересуюсь физикой микросхем, но книга просто скользит по волнам и красиво объясняет электросхемы и как биты перемещаются по системе — от читателя не требуется знание электротехники. Но мне недостаточно текстового описания. Я должен видеть вещи в действии и учиться на своих неизбежных ошибках. Так я начал реализацию схем в коде. Путь оказался тернист, но поучителен.\u003Cbr\u002F\u003E\r\n\u003Ca name=\"habracut\"\u003E\u003C\u002Fa\u003E\u003Cbr\u002F\u003E\r\nРезультат моей работы можно посмотреть в репозитории \u003Ca href=\"https:\u002F\u002Fgithub.com\u002Fdjhworld\u002Fsimple-computer\"\u003Esimple-computer\u003C\u002Fa\u003E: простом вычислителе. Он простой и он вычисляет.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fpost_images\u002Fa52\u002F981\u002F08a\u002Fa5298108a34383e40dab633f35692384.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fpost_images\u002Fa01\u002F36e\u002Fe40\u002Fa0136ee405bb5172cf8a048a03d2cb9f.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fpost_images\u002F361\u002F245\u002F937\u002F361245937fcf63ef06c17d6380061b81.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Ci\u003E\u003Cfont color=\"gray\"\u003EПример программ\u003C\u002Ffont\u003E\u003C\u002Fi\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nКод процессора реализован как \u003Ca href=\"https:\u002F\u002Fgithub.com\u002Fdjhworld\u002Fsimple-computer\u002Fblob\u002Fmaster\u002Fcpu\u002Fcpu.go#L763\"\u003Eужасная куча логических вентилей, которые включаются и выключаются\u003C\u002Fa\u003E, но он работает. Я \u003Ca href=\"https:\u002F\u002Fgithub.com\u002Fdjhworld\u002Fsimple-computer\u002Fblob\u002Fmaster\u002Fcpu\u002Fcpu_test.go\"\u003Eпрогнал модульные тесты\u003C\u002Fa\u003E, а все мы знаем, что модульные тесты — неопровержимое доказательство, что программа работает.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nКод обрабатывает \u003Ca href=\"https:\u002F\u002Fgithub.com\u002Fdjhworld\u002Fsimple-computer\u002Fblob\u002Fmaster\u002Fio\u002Fkeyboard.go#L20\"\u003Eввод с клавиатуры\u003C\u002Fa\u003E и отображает текст \u003Ca href=\"https:\u002F\u002Fgithub.com\u002Fdjhworld\u002Fsimple-computer\u002Fblob\u002Fmaster\u002Fio\u002Fdisplay.go#L13\"\u003Eна дисплее\u003C\u002Fa\u003E, используя кропотливо созданный набор глифов для профессионального шрифта, который я назвал \u003Ci\u003EDaniel Code Pro\u003C\u002Fi\u003E. Единственный чит: чтобы взять ввод с клавиатуры и вывести результат, мне пришлось подключить каналы через \u003Ca href=\"https:\u002F\u002Fgithub.com\u002Fdjhworld\u002Fsimple-computer\u002Fblob\u002Fmaster\u002Fcmd\u002Fsimulator\u002Fglfw_io.go\"\u003EGLFW\u003C\u002Fa\u003E, но в остальном это полностью программная симуляция электросхемы.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЯ даже написал \u003Ca href=\"https:\u002F\u002Fgithub.com\u002Fdjhworld\u002Fsimple-computer\u002Fblob\u002Fmaster\u002Fasm\u002Fassembler.go\"\u003Eгрубый ассемблер\u003C\u002Fa\u003E, который на многое открыл глаза, мягко говоря. Он не идеален. На самом деле даже немного дерьмовый, но он показал мне проблемы, которые другие люди уже решили много-много лет назад.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch1\u003EНо зачем ты это делаешь?\u003C\u002Fh1\u003E\u003Cbr\u002F\u003E\r\n\u003Ci\u003E«Тринадцатилетние дети собирают процессоры в Minecraft. Позови, когда сможешь сделать \u003Cb\u003Eнастоящий\u003C\u002Fb\u003E CPU из телеграфных реле»\u003C\u002Fi\u003E \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nМоя ментальная модель устройства CPU застряла на уровне учебников по информатике для начинающих. Процессор для \u003Ca href=\"https:\u002F\u002Fgithub.com\u002Fdjhworld\u002Fgomeboycolor\"\u003Eэмулятора Gameboy, который я написал в 2013 году\u003C\u002Fa\u003E, на самом деле не похож на современные CPU. Даже если эмулятор — это просто конечный автомат (машина состояний), он не описывает состояния на уровне логических вентилей. Почти всё можно реализовать с помощью только оператора \u003Ccode\u003Eswitch\u003C\u002Fcode\u003E и сохраняя состояние регистров.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЯ хочу лучше разобраться, как всё устроено, потому что не знаю, например, что такое кэш L1\u002FL2 и конвейеризация и я не совсем уверен, что понимаю статьи об уязвимостях Meltdown и Spectre. Кто-то сказал, что они оптимизируют код таким образом, чтобы использовать кэш процессора, но я не знаю, как это проверить, кроме как поверить на слово. Я не совсем уверен, что означают все инструкции x86. Не понимаю, как люди отправляют задачи на GPU или TPU. И вообще, что такое TPU? Я не знаю, как использовать SIMD-инструкции.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВсё это построено на фундаменте, который нужно усвоить в первую очередь. Это значит вернуться к основам и сделать что-то простое. В вышеупомянутой книге Кларка Скотта описан простейший компьютер. Вот почему я начал с него.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch1\u003EСлава Скотту! Он работает!\u003C\u002Fh1\u003E\u003Cbr\u002F\u003E\r\nКомпьютер Скотта — это 8-разрядный процессор, подключённый к 256 байтам ОЗУ, все они подключены через 8-разрядную системную шину. У него 4 регистра общего назначения и \u003Ca href=\"https:\u002F\u002Fgithub.com\u002Fdjhworld\u002Fsimple-computer#instructions\"\u003E17 машинных инструкций\u003C\u002Fa\u003E. Кто-то сделал \u003Ca href=\"http:\u002F\u002Fwww.buthowdoitknow.com\u002Fbut_how_do_it_know_cpu_model.html\"\u003Eвизуальный симулятор для веба\u003C\u002Fa\u003E: это действительно здорово. Страшно подумать, сколько времени потребовалось, чтобы отследить все состояния схемы!\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ca href=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Ft_\u002Fhm\u002Frp\u002Ft_hmrpg_rrprxwh5uiiybl2jf6w.png\"\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Ft_\u002Fhm\u002Frp\u002Ft_hmrpg_rrprxwh5uiiybl2jf6w.png\"\u002F\u003E\u003C\u002Fa\u003E\u003Cbr\u002F\u003E\r\n\u003Ci\u003E\u003Cfont color=\"gray\"\u003EСхема со всеми компонентам процессора Скотта. Копирайт 2009-2016. Зигберт Фильбингер и Джон Кларк Скотт\u003C\u002Ffont\u003E\u003C\u002Fi\u003E \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nКнига сопровождает вас по маршруту от скромных логических вентилей до битов в памяти и регистров, а затем продолжает наслаивать компоненты, пока вы не получите что-то похожее на схему выше. Очень рекомендую прочитать книгу, даже если вы уже знакомы с концепциями. Только не версию Kindle, потому что диаграммы иногда трудно увеличить и разобрать на экране «читалки». По-моему, это многолетняя проблема Kindle.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nМой компьютер отличается от версии Скотта разве что тем, что я обновил его до 16 бит, чтобы увеличить объём доступной памяти, ведь хранение только глифов для таблицы ASCII занимает большую часть 8-битной машины Скотта, оставляя совсем мало места для полезного кода.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch1\u003EМой процесс разработки\u003C\u002Fh1\u003E\u003Cbr\u002F\u003E\r\nВ целом, разработка шла по такой схеме: чтение текста, изучение диаграмм, а затем попытка реализовать их на языке программирования общего назначения и определённо не использовать никаких специализированных инструментов для проектирования интегральных схем. Я написал симулятор на Go просто потому, что немного знаком с этим языком. Скептики могут сказать: «Болван! Неужели ты не мог изучить \u003Ca href=\"https:\u002F\u002Fen.wikipedia.org\u002Fwiki\u002FVHDL\"\u003EVHDL\u003C\u002Fa\u003E или \u003Ca href=\"https:\u002F\u002Fen.wikipedia.org\u002Fwiki\u002FVerilog\"\u003EVerilog\u003C\u002Fa\u003E, или \u003Ca href=\"http:\u002F\u002Fwww.cburch.com\u002Flogisim\u002F\"\u003ELogSim\u003C\u002Fa\u003E, или ещё что-то. Но к тому моменту я уже написал свои биты, байты и логические вентили и погрузился слишком глубоко. Может, в следующий раз я выучу эти языки и пойму, сколько времени потратил впустую, но это мои проблемы.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВ большой схеме в компьютере просто передаётся куча булевых значений, поэтому подходит любой язык, который дружит с булевой алгеброй.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nНаложение схемы на эти булевы значения помогает нам (программистам) вывести смысл, а самое главное — решить, какой \u003Ca href=\"https:\u002F\u002Fen.wikipedia.org\u002Fwiki\u002FEndianness\"\u003Eпорядок байтов\u003C\u002Fa\u003E будет использовать система, и убедиться, что все компоненты передают данные по шине в правильном порядке.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЭто было очень трудно реализовать. Ради смещения я выбрал представление с обратным порядком байтов, но при тестировании ALU никак не мог понять, почему выходят неправильные цифры. Мой кот услышал много, очень много непечатных выражений.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nРазработка шла не быстро: возможно, она заняла около месяца-двух моего свободного времени. Но когда только процессор успешно выполнил операцию \u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fformulas\u002F7c8\u002F8c0\u002Fca9\u002F7c88c0ca920a1c983f6c9642f6a9aa5e.svg\" alt=\"$2 + 2 = 5$\" data-tex=\"inline\"\u002F\u003E, я был на седьмом небе от счастья.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВсё шло своим чередом, пока дело не дошло до ввода-вывода. Книга предлагала дизайн системы с простой клавиатурой и интерфейсом дисплея, чтобы вводить данные в машину и выводить результат. Ну, \u003Ci\u003Eмы уже зашли так далеко\u003C\u002Fi\u003E, нет смысла останавливаться на полпути. Я поставил цель реализовать набор на клавиатуре и отображение букв на дисплее.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch1\u003EПериферия\u003C\u002Fh1\u003E\u003Cbr\u002F\u003E\r\nВ качестве аппаратного интерфейса между CPU и внешним миром периферийные устройства используют \u003Ca href=\"https:\u002F\u002Fen.wikipedia.org\u002Fwiki\u002FAdapter_pattern\"\u003Eшаблон адаптера\u003C\u002Fa\u003E. Наверное, несложно догадаться, что этот шаблон позаимствован из проектирования программного обеспечения.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ca href=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fdc\u002Fge\u002Fe_\u002Fdcgee_zl9m4i_wrzlkovzh8pnjc.png\"\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fdc\u002Fge\u002Fe_\u002Fdcgee_zl9m4i_wrzlkovzh8pnjc.png\"\u002F\u003E\u003C\u002Fa\u003E\u003Cbr\u002F\u003E\r\n\u003Ci\u003E\u003Cfont color=\"gray\"\u003EКак адаптеры ввода-вывода подключаются к окну GLFW\u003C\u002Ffont\u003E\u003C\u002Fi\u003E \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nС таким разделением оказалось довольно просто подключить клавиатуру и дисплей к окну под управлением GLFW. На самом деле я просто вытащил большую часть кода из своего \u003Ca href=\"https:\u002F\u002Fgithub.com\u002Fdjhworld\u002Fgomeboycolor-glfw\"\u003Eэмулятора\u003C\u002Fa\u003E и немного изменил его, чтобы каналы Go работали как сигналы ввода\u002Fвывода.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch1\u003EЗапускаем компьютер\u003C\u002Fh1\u003E\u003Cbr\u002F\u003E\r\n\u003Cdiv style=\"text-align:center;\"\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fpost_images\u002F6f5\u002Fb5e\u002F3a7\u002F6f5b5e3a7542371fbea370296344369a.gif\"\u002F\u003E\u003C\u002Fdiv\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВероятно, это самая сложная часть, по крайней мере, самая громоздкая. Трудно писать на ассемблере с таким ограниченным набором инструкций, а на моём грубом ассемблере ещё хуже, потому что вы не можете обматерить никого, кроме себя.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nСамой большой проблемой стало жонглирование четырьмя регистрами, отслеживать их, вытаскивая данные из регистров и временно сохраняя их в памяти. В процессе я вспомнил, что у процессора Gameboy есть регистр указателя стека для удобства выгрузки и загрузки регистров. К сожалению, у этого компьютера нет такой роскоши, поэтому приходилось постоянно вручную перемещать данные в память и обратно.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЯ решил потратить время только на одну псевдоинструкцию \u003Ccode\u003ECALL\u003C\u002Fcode\u003E, чтобы вызвать функцию, а затем вернуться к точке. Без этого доступны вызовы только на один уровень в глубину.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nКроме того, поскольку машина не поддерживает прерывания, пришлось реализовать ужасный код опроса состояния клавиатуры. В книге обсуждаются шаги, необходимые для реализации прерываний, но это серьёзно усложняет схему.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nНо хватить ныть, я всё-таки написал \u003Ca href=\"https:\u002F\u002Fgithub.com\u002Fdjhworld\u002Fsimple-computer\u002Fblob\u002Fmaster\u002F_programs\u002FREADME.md\"\u003Eчетыре программы\u003C\u002Fa\u003E, и большинство из них используют какой-то общий код для рендеринга шрифтов, ввода с клавиатуры и т. д. Это не совсем операционная система, но даёт понимание, что делает простая ОС.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЭто было нелегко. Самая сложная часть программы text-writer — правильно рассчитать, когда перейти к новой строке или что происходит, когда вы нажимаете клавишу Enter.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"go\"\u003Emain-getInput:\n\tCALL ROUTINE-io-pollKeyboard\n\tCALL ROUTINE-io-drawFontCharacter\n\tJMP main-getInput\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Ci\u003E\u003Cfont color=\"gray\"\u003EОсновной цикл программы text-writer\u003C\u002Ffont\u003E\u003C\u002Fi\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЯ не удосужился реализовать клавишу Backspace и клавиши-модификаторы. Зато понял, сколько труда требует разработка текстовых редакторов и насколько это утомительно.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch1\u003EВыводы\u003C\u002Fh1\u003E\u003Cbr\u002F\u003E\r\nЭто был весёлый и очень полезный для меня проект. В разгар программирования на ассемблере я почти забыл о логических вентилях, работающих внизу. Я поднялся на верхние уровни абстракции.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nХотя этот процессор очень прост и далёк от CPU в моём ноутбуке, но мне кажется, что проект многому меня научил, в частности:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003EКак биты перемещаются по шине между всеми компонентами.\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003Cli\u003EКак работает \u003Ci\u003Eпростой\u003C\u002Fi\u003E ALU.\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003Cli\u003EКак выглядит \u003Ci\u003Eпростой\u003C\u002Fi\u003E цикл Fetch-Decode-Execute.\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003Cli\u003EЧто машина без регистра указателя стека и концепции стека — отстой.\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003Cli\u003EЧто машина без прерываний тоже отстой.\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003Cli\u003EЧто такое ассемблер и что он делает.\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003Cli\u003EКак периферийные устройства взаимодействуют с простым процессором.\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003Cli\u003EКак работают \u003Ci\u003Eпростые\u003C\u002Fi\u003E шрифты и как отображать их на дисплее.\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003Cli\u003EКак может выглядеть \u003Ci\u003Eпростая\u003C\u002Fi\u003E операционная система.\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\nТак что дальше? В книге говорится, что никто не производил таких компьютеров с 1952 года. Это значит, что мне придётся изучить материал за последние 67 лет. Это займёт меня на какое-то время. Я вижу, что \u003Ca href=\"https:\u002F\u002Fsoftware.intel.com\u002Fsites\u002Fdefault\u002Ffiles\u002Fmanaged\u002F39\u002Fc5\u002F325462-sdm-vol-1-2abcd-3abcd.pdf\"\u003Eруководство по x86 составляет 4800 страниц\u003C\u002Fa\u003E: вполне достаточно для приятного, лёгкого чтения перед сном.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nМожет, я немного побалуюсь с операционной системой, языком C, убью вечер с \u003Ca href=\"https:\u002F\u002Fobsolescence.wixsite.com\u002Fobsolescence\u002Fpidp-11\"\u003Eнабором для сборки PiDP-11\u003C\u002Fa\u003E и паяльником, а потом заброшу это дело. Не знаю, посмотрим.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЕсли серьёзно, то я думаю исследовать архитектуру RISC, возможно, RISC-V. Вероятно, лучше начать с ранних процессоров RISC, чтобы понять их происхождение. У современных процессоров гораздо больше функций: кэши и прочее, я хочу разобраться в них. Там нужно многое изучить.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПригодятся ли эти знания на моей основной работе? Возможно, пригодятся, хотя вряд ли. В любом случае, мне это нравится, так что неважно. Спасибо за чтение!\u003C\u002Fdiv\u003E","tags":[{"titleHtml":"CPU"},{"titleHtml":"ALU"},{"titleHtml":"устройство процессора"},{"titleHtml":"булева алгебра"},{"titleHtml":"логические вентили"},{"titleHtml":"NAND"},{"titleHtml":"ассемблер"},{"titleHtml":"периферийные устройства"}],"metadata":{"stylesUrls":[],"scriptUrls":[],"shareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F453158\u002F1faae1cc0da07c772c27e76e1112cd4c\u002F","shareImageWidth":1200,"shareImageHeight":630,"vkShareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F453158\u002F1faae1cc0da07c772c27e76e1112cd4c\u002F?format=vk","schemaJsonLd":"{\"@context\":\"http:\\\u002F\\\u002Fschema.org\",\"@type\":\"Article\",\"mainEntityOfPage\":{\"@type\":\"WebPage\",\"@id\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fru\\\u002Fpost\\\u002F453158\\\u002F\"},\"headline\":\"Я не знал, как работают процессоры, поэтому написал программный симулятор\",\"datePublished\":\"2019-05-23T17:05:02+03:00\",\"dateModified\":\"2019-05-24T10:44:38+03:00\",\"author\":{\"@type\":\"Person\",\"name\":\"Анатолий Ализар\"},\"publisher\":{\"@type\":\"Organization\",\"name\":\"Habr\",\"logo\":{\"@type\":\"ImageObject\",\"url\":\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fa_\\\u002Flk\\\u002F9m\\\u002Fa_lk9mjkccjox-zccjrpfolmkmq.png\"}},\"description\":\"Несколько месяцев назад меня вдруг поразила мысль, что я понятия не имею о принципах работы компьютерного железа. Я до сих пор не знаю, как работают современные...\",\"url\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fru\\\u002Fpost\\\u002F453158\\\u002F#post-content-body\",\"about\":[\"h_system_programming\",\"h_go\",\"h_electronics\",\"h_cpu\",\"h_easyelectronics\",\"f_develop\",\"f_popsci\"],\"image\":[\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fgetpro\\\u002Fhabr\\\u002Fpost_images\\\u002F805\\\u002Fdcf\\\u002Ff99\\\u002F805dcff99a150856f08b3cb14a12cc4e.gif\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fgetpro\\\u002Fhabr\\\u002Fpost_images\\\u002Fa52\\\u002F981\\\u002F08a\\\u002Fa5298108a34383e40dab633f35692384.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fgetpro\\\u002Fhabr\\\u002Fpost_images\\\u002Fa01\\\u002F36e\\\u002Fe40\\\u002Fa0136ee405bb5172cf8a048a03d2cb9f.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fgetpro\\\u002Fhabr\\\u002Fpost_images\\\u002F361\\\u002F245\\\u002F937\\\u002F361245937fcf63ef06c17d6380061b81.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Ft_\\\u002Fhm\\\u002Frp\\\u002Ft_hmrpg_rrprxwh5uiiybl2jf6w.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fgetpro\\\u002Fhabr\\\u002Fformulas\\\u002F7c8\\\u002F8c0\\\u002Fca9\\\u002F7c88c0ca920a1c983f6c9642f6a9aa5e.svg\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fdc\\\u002Fge\\\u002Fe_\\\u002Fdcgee_zl9m4i_wrzlkovzh8pnjc.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fgetpro\\\u002Fhabr\\\u002Fpost_images\\\u002F6f5\\\u002Fb5e\\\u002F3a7\\\u002F6f5b5e3a7542371fbea370296344369a.gif\"]}","metaDescription":"Несколько месяцев назад меня вдруг поразила мысль, что я понятия не имею о принципах работы компьютерного железа. Я до сих пор не знаю, как работают современные компьютеры.\r\n\r\nЯ прочитал книгу «Но...","mainImageUrl":null,"amp":false},"polls":[],"commentsEnabled":true,"rulesRemindEnabled":false,"votesEnabled":true,"status":"published","plannedPublishTime":null,"checked":null,"isEditorial":false}},"articlesIds":{},"isLoading":false,"pagesCount":{},"route":{},"reasonsList":null,"view":"cards","lastVisitedRoute":{},"ssrCommentsArticleIds":[""],"karma":{}},"authorContribution":{"authors":{}},"betaTest":{"currentAnnouncement":null,"announcements":{},"announcementCards":null,"announcementComments":{},"announcementCommentThreads":{},"announcementCommentingStatuses":{},"archivedList":[]},"authorStatistics":{"articleRefs":{},"articleIds":{},"pagesCount":{},"route":{},"viewsCount":[],"maxStatsCount":{}},"career":{"seoLandings":[{"title":"Go разработчик","vacanciesCount":113,"itemUrl":"https:\u002F\u002Fcareer.habr.com\u002Fvacancies\u002Fgo_razrabotchik","itemHubs":["go"]}],"hubs":"system_programming,go,electronics,cpu,easyelectronics"},"comments":{"articleComments":{},"searchCommentsResults":null,"previewComment":null,"pagesCount":null,"commentAccess":{},"scrollParents":{},"pageArticleComments":{"lastViewedComment":0,"postId":null,"lastCommentTimestamp":"","moderated":[],"moderatedIds":[],"commentRoute":""}},"companies":{"companyRefs":{},"companyIds":{},"companyTopIds":{},"pagesCount":{},"companyProfiles":{},"companiesCategories":[],"companiesCategoriesTotalCount":0,"companiesWidgets":{},"companiesWorkers":{},"companiesFans":{},"route":{},"isLoading":false,"companyWorkersLoading":false,"companyFansLoading":false,"vacancies":{}},"companiesContribution":{"hubs":{},"flows":{},"companyRefs":{}},"companyHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"conversation":{"messages":[],"respondent":null,"isLoadMore":false},"conversations":{"conversations":[],"unreadCount":0,"pagesCount":0,"isLoadMore":false},"desktopState":{"desktopFl":null,"desktopHl":null,"isChecked":false,"isLoginDemanded":false},"dfp":{"slotsDict":{}},"docs":{"menu":{},"articles":{},"mainMenu":[],"loading":{"main":false,"dropdown":false,"article":false}},"feature":{"isProbablyVisible":"true"},"flows":{"flows":[{"alias":"develop","id":1,"route":{"name":"FLOW_PAGE","params":{"flowName":"develop"}}},{"alias":"admin","id":6,"route":{"name":"FLOW_PAGE","params":{"flowName":"admin"}}},{"alias":"design","id":2,"route":{"name":"FLOW_PAGE","params":{"flowName":"design"}}},{"alias":"management","id":3,"route":{"name":"FLOW_PAGE","params":{"flowName":"management"}}},{"alias":"marketing","id":4,"route":{"name":"FLOW_PAGE","params":{"flowName":"marketing"}}},{"alias":"popsci","id":7,"route":{"name":"FLOW_PAGE","params":{"flowName":"popsci"}}}]},"global":{"isPwa":false,"device":"desktop","isHabrCom":true},"hubs":{"hubRefs":{},"hubIds":{},"pagesCount":{},"isLoading":false,"route":{}},"hubsBlock":{"hubRefs":{},"hubIds":{}},"i18n":{"fl":"ru","hl":"ru"},"info":{"infoPage":{},"isLoading":true},"location":{"urlStruct":{"protocol":null,"slashes":null,"auth":null,"host":null,"port":null,"hostname":null,"hash":null,"search":null,"query":{},"pathname":null,"path":null,"href":""},"searchQuery":null},"me":{"user":null,"ppgDemanded":false,"karmaResetInfo":{"canReincarnate":null,"wasReincarnated":null,"currentScore":null},"notes":null},"mostReadingList":{"mostReadingListIds":[],"mostReadingListRefs":null,"promoPost":null},"pinnedPost":{"pinnedPost":null},"ppa":{"articles":{},"card":null,"transactions":null,"totalTransactions":null,"isAccessible":null},"projectsBlocks":{"activeBlocks":{}},"pullRefresh":{"shouldRefresh":false},"sandbox":{"articleIds":[],"articleRefs":{},"pagesCount":null,"route":{},"lastVisitedRoute":{},"isLoading":false},"settingsOther":{"inputs":{"uiLang":{"errors":[],"ref":null,"value":""},"articlesLangEnglish":{"errors":[],"ref":null,"value":false},"articlesLangRussian":{"errors":[],"ref":null,"value":false},"agreement":{"errors":[],"ref":null,"value":false},"email":{"errors":[],"ref":null,"value":true},"digest":{"errors":[],"ref":null,"value":true}}},"similarList":{"similarListIds":[],"similarListRefs":null},"ssr":{"error":null,"isDataLoaded":false,"isDataLoading":false,"isHydrationFailed":false,"isServer":false},"userHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"userInvites":{"availableInvites":0,"usedInvitesIds":[],"usedInvitesRefs":{},"usedInvitesPagesCount":0,"unusedInvitesIds":[],"unusedInvitesRefs":{},"unusedInvitesPagesCount":0},"users":{"authorRefs":{},"authorIds":{},"pagesCount":{},"authorProfiles":{},"userHubs":{},"userInvitations":{},"authorFollowers":{},"authorFollowed":{},"karmaStats":[],"statistics":null,"isLoading":false,"authorFollowersLoading":false,"authorFollowedLoading":false,"userHubsLoading":false,"userInvitationsLoading":false,"route":{}},"viewport":{"prevScrollY":{},"scrollY":0,"width":0},"tracker":{"items":{},"pagesCache":{},"markedViewedSilently":{},"markedRead":{},"unreadCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null},"unviewedCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null}}};(function(){var s;(s=document.currentScript||document.scripts[document.scripts.length-1]).parentNode.removeChild(s);}());</script>
+<script src="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" defer></script><script src="https://assets.habr.com/habr-web/js/app.c0af73e7.js" defer></script>
+
+
+
+    <script>
+      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+        (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+        m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+      })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+    </script>
+  
+  <script type="text/javascript" >
+    (function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+    m[i].l=1*new Date();k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})
+    (window, document, "script", "https://mc.yandex.ru/metrika/tag.js", "ym");
+
+    ym(24049213, "init", {
+      defer:true,
+      trackLinks:true,
+      accurateTrackBounce:true,
+      webvisor:false,
+    });
+  </script>
+  <noscript>
+    <div>
+      <img src="https://mc.yandex.ru/watch/24049213" style="position:absolute; left:-9999px;" alt="" />
+    </div>
+  </noscript>
+  
+    <script type="text/javascript">
+      window.addEventListener('load', function () {
+        setTimeout(() => {
+          const img = new Image();
+          img.src = 'https://vk.com/rtrg?p=VK-RTRG-421343-57vKE';
+        }, 0);
+      });
+    </script>
+  
+</body>
+</html>

@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="ru" data-vue-meta="%7B%22lang%22:%7B%22ssr%22:%22ru%22%7D%7D">
+<head >
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
+  <title>Использование Golang для создания микросервисов в The Economist: ретроспектива / Хабр</title>
+  <style>
+    /* cyrillic-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSxf6TF0.woff2) format('woff2');
+      unicode-range: U+0460-052F, U+1C80-1C88, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+    }
+
+    /* cyrillic */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveQhf6TF0.woff2) format('woff2');
+      unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+    }
+
+    /* latin-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSBf6TF0.woff2) format('woff2');
+      unicode-range: U+0100-024F, U+0259, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20CF, U+2113, U+2C60-2C7F, U+A720-A7FF;
+    }
+
+    /* latin */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveRhf6.woff2) format('woff2');
+      unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+    }
+  </style>
+  <link rel="preload" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" as="script"><link rel="preload" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/app.c0af73e7.js" as="script">
+  <link rel="stylesheet" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css"><link rel="stylesheet" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css">
+  <script>window.i18nFetch = new Promise((res, rej) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open('GET', '/js/i18n/ru-compiled.85eb77f0b17c8235e7b64b9f81ea5ec2.json');
+          xhr.responseType = 'json';
+          xhr.onload = function(e) {
+            if (this.status === 200) {
+              res({ru: xhr.response});
+            } else {
+              rej(e);
+            }
+          };
+          xhr.send();
+        });</script>
+  
+  <script data-vue-meta="ssr" src="/js/ads.js" onload="window['zhY4i4nJ9K'] = true" data-vmid="checkad"></script><script data-vue-meta="ssr" type="application/ld+json" data-vmid="ldjson-schema">{"@context":"http:\/\/schema.org","@type":"Article","mainEntityOfPage":{"@type":"WebPage","@id":"https:\/\/habr.com\/ru\/company\/otus\/blog\/451760\/"},"headline":"Использование Golang для создания микросервисов в The Economist: ретроспектива","datePublished":"2019-05-15T12:04:06+03:00","dateModified":"2019-05-15T12:44:42+03:00","author":{"@type":"Person","name":"OTUS"},"publisher":{"@type":"Organization","name":"Habr","logo":{"@type":"ImageObject","url":"https:\/\/habrastorage.org\/webt\/a_\/lk\/9m\/a_lk9mjkccjox-zccjrpfolmkmq.png"}},"description":"Всем привет! Уже 28 мая мы запускаем первую группу по курсу &laquo;Разработчик Golang&raquo;. И сегодня делимся с вами первой публикацией приуроченной к запуску этого курсу.","url":"https:\/\/habr.com\/ru\/company\/otus\/blog\/451760\/#post-content-body","about":["c_otus","h_programming","h_go","h_microservices","f_develop"],"image":["https:\/\/habrastorage.org\/webt\/3r\/wa\/jy\/3rwajyps3se5vmahtiv_ioninq0.png"]}</script>
+  <script src="//www.googletagservices.com/tag/js/gpt.js" async></script>
+  <style>.grecaptcha-badge{visibility: hidden;}</style>
+  <meta name="habr-version" content="2.49.0">
+  
+  <meta data-vue-meta="ssr" property="fb:app_id" content="444736788986613"><meta data-vue-meta="ssr" property="fb:pages" content="472597926099084"><meta data-vue-meta="ssr" name="twitter:card" content="summary_large_image"><meta data-vue-meta="ssr" name="twitter:site" content="@habr_eng"><meta data-vue-meta="ssr" property="og:title" content="Использование Golang для создания микросервисов в The Economist: ретроспектива" data-vmid="og:title"><meta data-vue-meta="ssr" name="twitter:title" content="Использование Golang для создания микросервисов в The Economist: ретроспектива" data-vmid="twitter:title"><meta data-vue-meta="ssr" name="aiturec:title" content="Использование Golang для создания микросервисов в The Economist: ретроспектива" data-vmid="aiturec:title"><meta data-vue-meta="ssr" name="description" content="Всем привет! Уже 28 мая мы запускаем первую группу по курсу «Разработчик Golang». И сегодня делимся с вами первой публикацией приуроченной к запуску этого курсу. Поехали.
+
+
+
+Ключевые..." data-vmid="description"><meta data-vue-meta="ssr" itemprop="description" content="Всем привет! Уже 28 мая мы запускаем первую группу по курсу «Разработчик Golang». И сегодня делимся с вами первой публикацией приуроченной к запуску этого курсу. Поехали.
+
+
+
+Ключевые..." data-vmid="description:itemprop"><meta data-vue-meta="ssr" property="og:description" content="Всем привет! Уже 28 мая мы запускаем первую группу по курсу «Разработчик Golang». И сегодня делимся с вами первой публикацией приуроченной к запуску этого курсу. Поехали.
+
+
+
+Ключевые..." data-vmid="og:description"><meta data-vue-meta="ssr" name="twitter:description" content="Всем привет! Уже 28 мая мы запускаем первую группу по курсу «Разработчик Golang». И сегодня делимся с вами первой публикацией приуроченной к запуску этого курсу. Поехали.
+
+
+
+Ключевые..." data-vmid="twitter:description"><meta data-vue-meta="ssr" property="aiturec:description" content="Всем привет! Уже 28 мая мы запускаем первую группу по курсу «Разработчик Golang». И сегодня делимся с вами первой публикацией приуроченной к запуску этого курсу. Поехали.
+
+
+
+Ключевые..." data-vmid="aiturec:description"><meta data-vue-meta="ssr" itemprop="image" content="https://habr.com/share/publication/451760/53347f381b126a63f80a887538c3abc7/" data-vmid="image:itemprop"><meta data-vue-meta="ssr" property="og:image" content="https://habr.com/share/publication/451760/53347f381b126a63f80a887538c3abc7/" data-vmid="og:image"><meta data-vue-meta="ssr" property="aiturec:image" content="https://habr.com/share/publication/451760/53347f381b126a63f80a887538c3abc7/" data-vmid="aiturec:image"><meta data-vue-meta="ssr" name="twitter:image" content="https://habr.com/share/publication/451760/53347f381b126a63f80a887538c3abc7/" data-vmid="twitter:image"><meta data-vue-meta="ssr" property="vk:image" content="https://habr.com/share/publication/451760/53347f381b126a63f80a887538c3abc7/" data-vmid="vk:image"><meta data-vue-meta="ssr" property="aiturec:item_id" content="451760" data-vmid="aiturec:item_id"><meta data-vue-meta="ssr" property="aiturec:datetime" content="2019-05-15T09:04:06.000Z" data-vmid="aiturec:datetime"><meta data-vue-meta="ssr" property="og:type" content="article" data-vmid="og:type"><meta data-vue-meta="ssr" property="og:locale" content="ru_RU" data-vmid="og:locale"><meta data-vue-meta="ssr" property="og:image:width" content="1200" data-vmid="og:image:width"><meta data-vue-meta="ssr" property="og:image:height" content="630" data-vmid="og:image:height">
+  <link data-vue-meta="ssr" href="https://habr.com/ru/rss/post/451760/?fl=ru" type="application/rss+xml" title="" rel="alternate" name="rss"><link data-vue-meta="ssr" href="https://habr.com/ru/company/otus/blog/451760/" rel="canonical" data-vmid="canonical"><link data-vue-meta="ssr" data-vmid="hreflang"><link data-vue-meta="ssr" image_src="image" href="https://habr.com/share/publication/451760/53347f381b126a63f80a887538c3abc7/" data-vmid="image:href">
+  <meta name="apple-mobile-web-app-status-bar-style" content="#303b44">
+  <meta name="msapplication-TileColor" content="#629FBC">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="16x16"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-16.png"
+  >
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="32x32"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-32.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="76x76"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-76.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="120x120"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="152x152"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-152.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="180x180"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-180.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="256x256"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-256.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1136x640.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2436x1125.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1792x828.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_828x1792.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1334x750.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2208x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1125x2436.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2208.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2732x2048.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2688x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2224x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_750x1334.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x2732.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2388x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2224.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_640x1136.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2388.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x1536.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1536x2048.png"
+  >
+  <link
+    rel="mask-icon"
+    color="#77a2b6"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.svg"
+  >
+  <link
+    crossorigin="use-credentials"
+    href="/manifest.webmanifest"
+    rel="manifest"
+  >
+</head>
+<body>
+
+
+<div id="app" data-server-rendered="true" data-async-called="true"><div class="tm-layout__wrapper"><!----> <div></div> <!----> <header class="tm-header"><div class="tm-page-width"><div class="tm-header__container"><!----> <span class="tm-header__logo-wrap"><a href="/ru/" class="tm-header__logo tm-header__logo_ru"><svg height="16" width="16" class="tm-svg-img tm-header__icon"><title>Хабр</title> <use xlink:href="/img/habr-logo-ru.svg#logo"></use></svg></a> <span class="tm-header__beta-sign" style="display:none;">β</span></span> <div class="tm-dropdown tm-header__projects"><div class="tm-dropdown__head"><button class="tm-header__dropdown-toggle"><svg height="16" width="16" class="tm-svg-img tm-header__icon tm-header__icon_dropdown"><title>Открыть список</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#arrow-down"></use></svg></button></div> <!----></div> <a href="/ru/sandbox/start/" class="tm-header__become-author-btn">
+            Как стать автором
+          </a> <div class="tm-feature tm-header__feature tm-feature_variant-inline"><!----></div> <!----> <!----></div></div></header> <div class="tm-layout"><div class="tm-page-progress-bar"></div> <div data-menu-sticky="true" class="tm-base-layout__header tm-base-layout__header_is-sticky"><div class="tm-page-width"><div class="tm-base-layout__header-wrapper"><div class="tm-main-menu"><div class="tm-main-menu__section"><nav class="tm-main-menu__section-content"><!----> <a href="/ru/all/" class="tm-main-menu__item">
+        Все потоки
+      </a> <a href="/ru/flows/develop/" class="tm-main-menu__item">
+          Разработка
+        </a><a href="/ru/flows/admin/" class="tm-main-menu__item">
+          Администрирование
+        </a><a href="/ru/flows/design/" class="tm-main-menu__item">
+          Дизайн
+        </a><a href="/ru/flows/management/" class="tm-main-menu__item">
+          Менеджмент
+        </a><a href="/ru/flows/marketing/" class="tm-main-menu__item">
+          Маркетинг
+        </a><a href="/ru/flows/popsci/" class="tm-main-menu__item">
+          Научпоп
+        </a></nav></div></div> <div class="tm-header-user-menu tm-base-layout__user-menu"><a href="/ru/search/" class="tm-header-user-menu__item tm-header-user-menu__search"><svg height="24" width="24" class="tm-svg-img tm-header-user-menu__icon tm-header-user-menu__icon_search tm-header-user-menu__icon_dark"><title>Поиск</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#search"></use></svg></a> <!----> <!----> <!----> <div class="tm-header-user-menu__item tm-header-user-menu__user_desktop"><div class="tm-dropdown"><div class="tm-dropdown__head"><svg height="24" width="24" data-test-id="menu-toggle-guest" class="tm-svg-img tm-header-user-menu__icon"><title>Профиль</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#header-user"></use></svg> <!----></div> <!----></div> <!----></div> <!----></div></div></div></div> <!----> <div class="tm-page-width"></div> <main class="tm-layout__container"><div hl="ru" companyName="otus" data-async-called="true" class="tm-page"><div class="tm-page-width"><div class="tm-page__header"><!----></div> <div class="tm-page__wrapper"><div class="tm-page__main tm-page__main_has-sidebar"><div class="pull-down"><div class="pull-down__header" style="height:0px;"><div class="pull-down__content" style="bottom:10px;"><svg height="24" width="24" class="tm-svg-img pull-down__arrow"><title>Обновить</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#pull-arrow"></use></svg></div></div> <div class="tm-article-presenter"><div class="tm-company-card tm-company-article__company-card"><div class="tm-company-card__info"><div class="tm-company-card__header"><a href="/ru/company/otus/profile/" class="tm-company-card__avatar"><div class="tm-entity-image"><img alt="" height="48" src="//habrastorage.org/getpro/habr/company/968/422/761/968422761136a38a89fc391fd927f903.jpg" width="48" class="tm-entity-image__pic"></div></a> <!----> <div class="tm-rating tm-company-card__rating"><div class="tm-rating__header"> <div class="tm-rating__counter">418.61</div></div> <div class="tm-rating__text">
+    Рейтинг
+  </div></div></div> <div class="tm-company-card__info"><a href="/ru/company/otus/profile/" class="tm-company-card__name">
+        OTUS
+      </a> <div class="tm-company-card__description">Цифровые навыки от ведущих экспертов</div></div></div> <div class="tm-company-card__buttons"><!----> <!----></div></div> <div class="tm-article-presenter__body"><div class="tm-misprint-area"><div class="tm-misprint-area__wrapper"><article class="tm-article-presenter__content tm-article-presenter__content_narrow"><div class="tm-article-presenter__header"> <div class="tm-article-snippet tm-article-presenter__snippet"><div class="tm-article-snippet__meta-container"><div class="tm-article-snippet__meta"><span class="tm-user-info tm-article-snippet__author"><a href="/ru/users/MaxRokatansky/" title="MaxRokatansky" class="tm-user-info__userpic"><div class="tm-entity-image"><img alt="" height="24" loading="lazy" src="//habrastorage.org/r/w32/getpro/habr/avatars/b9f/baf/5f9/b9fbaf5f96ae52973706a0716bd9216e.jpg" width="24" class="tm-entity-image__pic"></div></a> <span class="tm-user-info__user"><a href="/ru/users/MaxRokatansky/" class="tm-user-info__username">
+      MaxRokatansky
+    </a> </span></span> <span class="tm-article-snippet__datetime-published"><time datetime="2019-05-15T09:04:06.000Z" title="2019-05-15, 12:04">15  мая  2019 в 12:04</time></span></div> <!----></div> <h1 lang="ru" class="tm-article-snippet__title tm-article-snippet__title_h1"><span>Использование Golang для создания микросервисов в The Economist: ретроспектива</span></h1> <div class="tm-article-snippet__hubs"><span class="tm-article-snippet__hubs-item"><a href="/ru/company/otus/blog/" class="tm-article-snippet__hubs-item-link router-link-active"><span>Блог компании OTUS</span> <!----></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/programming/" class="tm-article-snippet__hubs-item-link"><span>Программирование</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/go/" class="tm-article-snippet__hubs-item-link"><span>Go</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/microservices/" class="tm-article-snippet__hubs-item-link"><span>Микросервисы</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span></div> <div class="tm-article-snippet__labels"><div class="tm-article-snippet__label"><span>
+        Перевод
+      </span></div></div> <!----> <!----></div></div> <div class="tm-article-presenter__origin"><a href="https://www.infoq.com/articles/golang-the-economist" target="_blank" class="tm-article-presenter__origin-link">
+                Автор оригинала:
+                <span>
+                  https://www.infoq.com/profile/K-Jonas
+                </span></a></div> <div data-gallery-root="" lang="ru" class="tm-article-body"><div id="post-content-body" class="article-formatted-body article-formatted-body_version-1"><div xmlns="http://www.w3.org/1999/xhtml">Всем привет! Уже 28 мая мы запускаем первую группу по курсу <a href="https://otus.pw/1zoS/">«Разработчик Golang»</a>. И сегодня делимся с вами первой публикацией приуроченной к запуску этого курсу. Поехали.<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/3r/wa/jy/3rwajyps3se5vmahtiv_ioninq0.png"/><br/>
+<br/>
+<b>Ключевые выдержки</b><br/>
+<br/>
+<ul>
+<li>The Economist требовалось больше гибкости для распространения контента на все более разнообразные цифровые каналы. Для достижения этой цели и поддержания высокого уровня производительности и надежности, платформа перешла от монолитной к микросервисной архитектуре.</li>
+<li>Средства, написанные на Go, были ключевым компонентом новой системы, которая позволила The Economist предоставлять масштабируемые, высокопроизводительные сервисы и быстро создавать новые продукты.</li>
+<li>Go, нацеленный на параллелизм и поддержку API, вместе с его конструкцией статического компилируемого языка, облегчал разработку распределенных систем обработки событий которые могли бы масштабироваться. Поддержка тестирования также была плюсом.</li>
+<li>В целом, опыт работы команды The Economist с Go был положительным, и это был один из решающих факторов, которые позволили масштабировать Content Platform.</li>
+<li>Go не всегда будет являться подходящим инструментом, и это нормально. The Economist обладает платформой-полиглотом и использует разные языки там, где это имеет смысл.</li>
+</ul><a name="habracut"></a><br/>
+Я присоединился к команде разработчиков <a href="https://www.economist.com/&amp;sa=D&amp;ust=1544454327566000">The Economist</a> как Drupal разработчик. Однако моя настоящая задача заключалась в том, чтобы участвовать в проекте, который коренным образом изменил бы технологию доставки контента Economist. Первые несколько месяцев я потратил на изучение Go, несколько месяцев работал с внешним консультантом над созданием MVP (minimum viable product — минимально жизнеспособный продукт), а затем снова присоединился к команде, чтобы курировать их погружение в Go.<br/>
+Этот сдвиг в технологии был вызван миссией The Economist по расширению цифровой аудитории, поскольку потребление новостей отходило в сторону от печатных изданий. The Economist требовалось больше гибкости для доставки контента на все более разнообразные цифровые каналы. Для достижения этой цели и поддержания высокого уровня производительности и надежности, платформа перешла от монолитной к микросервисной архитектуре. Средства, написанные на Go, были ключевым компонентом новой системы, которая позволила The Economist предоставлять масштабируемые, высокопроизводительные сервисы и быстро создавать новые продукты.<br/>
+<br/>
+Внедрение Go в The Economist:<br/>
+<br/>
+<ul>
+<li>Позволило инженерам быстро разрабатывать и внедрять новый функционал.</li>
+<li>Утвердило лучшие практики для fast-failing сервисов с интеллектуальной обработкой ошибок.</li>
+<li>Обеспечило надежную поддержку параллелизма и работы в сети в распределенной системе.</li>
+<li>Проявило недостаток зрелости и поддержки в некоторых областях, необходимых для контента и медиа.</li>
+<li>Облегчило платформу, которая могла бы масштабироваться для цифровой публикации.</li>
+</ul><br/>
+<b>Почему The Economist выбрал Go?</b><br/>
+<br/>
+Чтобы ответить на этот вопрос, будет полезным осветить общую архитектуру новой платформы. Платформа, называемая Content Platform, является системой обработки событий. Она реагирует на события с разных платформ авторинга контента и запускает поток процессов, исполняемых в отдельно работающих микросервисах. Эти службы выполняют такие функции, как стандартизация данных, анализ семантических тегов, индексация в ElasticSearch и отправка контента на внешние платформы, такие как Apple News или Facebook. Платформа также имеет RESTful API, который в сочетании с GraphQL является основной точкой входа для интерфейсных клиентов и продуктов.<br/>
+<br/>
+При разработке общей архитектуры команда исследовала, какие языки будут соответствовать потребностям платформы. Go сравнивали с Python, Ruby, Node, PHP и Java. В то время как у каждого языка есть свои сильные стороны, Go лучше всего соответствует архитектуре платформы. Go, нацеленный на параллелизм и поддержку API, вместе с его конструкцией статического компилируемого языка, облегчал разработку распределенных систем обработки событий которые могли бы масштабироваться. Кроме того, относительно простой синтаксис Go позволял легко включится в разработку и начать писать рабочий код, что сулило немедленную выгоду для команды, переживающей столь большой технологический переход. В целом было определено, что Go — это язык, наиболее подходящий для удобства использования и эффективности в распределенной облачной системе.<br/>
+<br/>
+<b>Три года спустя: соответствовал ли Go этим амбициозным целям?</b><br/>
+<br/>
+Некоторые элементы дизайна платформы были хорошо согласованы с языком Go. Failing Fast был критически важной частью системы, поскольку он состоял из распределенных независимых сервисов. В соответствии с принципами Twelve-Factor App («12-факторное приложение»), приложения должны были быстро запускаться и быстро отказывать (fast fail). Конструкция Go как статического, скомпилированного языка обеспечивает быстрое время запуска, а производительность компилятора постоянно улучшается и никогда не была проблемой для проектирования или развертывания. Кроме того, дизайн обработки ошибок Go позволил приложениям отказывать не только быстрее, но так же умнее.<br/>
+<br/>
+<b>Обработка ошибок</b><br/>
+<br/>
+Особенность, которую инженеры быстро замечают в Go, заключается в том, что он имеет тип Error, нежели систему исключений. В Go все ошибки являются значениями. Тип Error предопределен и является интерфейсом. Интерфейс в Go по сути является именованной коллекцией методов, и любой другой пользовательский тип может удовлетворять интерфейсу, если он имеет те же методы. Тип Error — это интерфейс, который может описывать себя строкой.<br/>
+<br/>
+<pre><code class="go">type error interface {
+    Error() string
+}</code></pre><br/>
+Это предоставляет инженерам больший контроль и функциональность при обработке ошибок. Добавив Error-метод, который возвращает строку, в любом пользовательском модуле, вы можете создавать собственные ошибки и генерировать их, например, с помощью функции New, представленной ниже, которая поставляется из пакета Errors.<br/>
+<br/>
+<pre><code class="go">type errorString struct {
+    s string
+}
+func (e *errorString) Error() string {
+    return e.s
+}</code></pre><br/>
+Что это значит на практике? В Go функции допускают множественные возвращаемые значения, поэтому, если ваша функция может не сработать, она, скорее всего, вернет значение ошибки. Язык поощряет вас явно проверять наличие ошибок там, где они возникают (в отличие от генерирования и перехвата исключения), поэтому в вашем коде обычно должна присутствовать проверка «if err! = Nil». Поначалу эта частая обработка ошибок может показаться монотонной. Однако, ошибка как значение позволяет вам использовать Error, чтобы упростить обработку ошибок. Например, в распределенной системе можно легко реализовать попытки повторных запросов, обернув ошибки.<br/>
+<br/>
+Сетевые проблемы всегда будут встречаться в системе, будь то отправка данных другим внутренним службам или передача сторонним инструментам. В этом примере из пакета Net показано, как можно использовать ошибку как тип, чтобы отличить временные сетевые ошибки от постоянных. Команда Economist использовала аналогичную обертку ошибок для создания инкрементальных повторных попыток при отправке контента во внешние API.<br/>
+<br/>
+<pre><code class="go">package net
+
+type Error interface {
+    error
+    Timeout() bool   // Is the error a timeout?
+    Temporary() bool // Is the error temporary?
+}
+
+if nerr, ok := err.(net.Error); ok &amp;&amp; nerr.Temporary() {
+    time.Sleep(1e9)
+    continue
+}
+
+if err != nil {
+    log.Fatal(err)
+}</code></pre><br/>
+Авторы Go считают, что не все исключения являются исключительными. Инженеров направляют скорее к разумному восстановлению после ошибок, нежели к сбою приложения. Кроме того, обработка ошибок Go позволяет вам лучше контролировать ошибки, что может улучшить такие аспекты, как отладка или юзабилити ошибок. В рамках Content Platform эта конструктивная особенность Go позволила разработчикам принимать взвешенные решения в отношении ошибок, что привело к повышению надежности системы в целом.<br/>
+<br/>
+<b>Согласованность данных</b><br/>
+<br/>
+Согласованность данных является критическим фактором в Content Platform. В The Economist контент является основой бизнеса, и цель Content Platform — обеспечить, чтобы контент мог быть опубликован единожды и доступен везде. Поэтому важно, чтобы каждый продукт и потребитель имели согласованность данных с API Content Platform. Продукты в основном используют GraphQL для запросов API, который требует статичной схемы, которая служит неким контрактом между потребителями и платформой. Контент, обрабатываемый Платформой, должен согласовываться с этой схемой. Статический язык помог реализовать это и позволил легко добиться согласованности данных.<br/>
+<br/>
+<b>Тестирование с Go</b><br/>
+<br/>
+Еще одна особенность, способствующая согласованности, — это пакет тестирования Go. Быстрое время компиляции Go в сочетании с первоклассным тестированием как особенностью языка позволило команде внедрить эффективные методы тестирования в рабочие процессы проектирования и быстрые отказы в конвейерах сборки. Инструменты Go для тестов упрощают их настройку и запуск. Запуск «go test» запустит все тесты в текущем каталоге, а команда test имеет несколько полезных флагов. Флаг «cover» предоставляет подробный отчет о покрытии кода. «bench»-тест запускает бенчмарк-тесты, которые обозначаются путем запуска имени тестовой функции словом «Bench», а не «Test». Функция TestMain предоставляет методы для дополнительной настройки теста, такие как фиктивный сервер аутентификации.<br/>
+<br/>
+Кроме того, Go имеет возможность создавать табличные тесты с анонимными структурами и заглушками с интерфейсами, улучшая охват тестов. Хотя тестирование не является чем-то новым с точки зрения языковых фич, Go позволяет легко создавать надежные тесты и легко встраивать их в рабочие процессы. С самого начала инженеры The Economist смогли запускать тесты как часть конвейеров сборки без специальной настройки и даже добавили Git Hooks для запуска тестов перед пушем кода в Github. <br/>
+<br/>
+Тем не менее, проект не обошелся без усилий в достижении согласованности данных. Первой серьезной проблемой для платформы было управление динамическим контентом из непредсказуемых бэкэндов. Платформа потребляет контент из исходных систем CMS в основном через JSON-эндпоинты, где структура и типы данных не гарантированы. Это означало, что платформа не может использовать стандартный пакет Go для интерпретации json, который поддерживает десериализацию JSON в структуры, но бьет тревогу, если типы полей struct и input data не совпадают.<br/>
+<br/>
+Чтобы преодолеть эту проблему, потребовался специальный метод для сопоставления серверной части со стандартным форматом. После нескольких итераций избранного подхода команда внедрила собственный процесс десериализации. Хотя такой подход немного напоминал переработку стандартного библиотечного пакета, он предоставил инженерам полный контроль над обработкой исходных данных.<br/>
+<br/>
+<b>Сетевая поддержка</b><br/>
+<br/>
+Масштабируемость была во главе угла новой платформы, и это обеспечивалось стандартными библиотеками Go для работы в сети и с API. В Go вы можете быстро реализовать масштабируемые HTTP-эндпоинты без необходимости в фреймворках. В приведенном ниже примере пакет стандартной библиотеки net/http используется для настройки обработчика, который принимает средство записи запросов и ответов. Когда API Content Platform была впервые реализована, она использовал API-фреймворк. В конечном итоге он был заменен стандартной библиотекой, так как команда признала, что она отвечает всем их сетевым потребностям без дополнительных ненужный компромиссов. HTTP-обработчики Golang масштабируются, потому что каждый запрос к обработчику выполняется параллельно в Goroutine, легковесном потоке без необходимости кастомизаций.<br/>
+<br/>
+<pre><code class="go">package main
+
+import (
+    "fmt"
+    "log"
+    "net/http"
+)
+
+func handler(w http.ResponseWriter, r *http.Request) {
+    fmt.Fprintf(w, "Hello World!")
+}
+
+func main() {
+    http.HandleFunc("/", handler)
+    log.Fatal(http.ListenAndServe(":8080", nil))
+}</code></pre><br/>
+<b>Модель параллелизма</b><br/>
+<br/>
+Модель параллелизма Go обеспечила множественную выгоду в повышении производительности на всей платформе. Работа с распределенными данными подразумевает возню с гарантиями, обещанными потребителям. Согласно теореме CAP, невозможно одновременно предоставить более двух из следующих трех гарантий: Согласованность данных. Доступность. Устойчивость к разделению. В платформе The Economist была принята согласованность в конечном счёте, что означает, что чтение из источников данных в конечном итоге будет согласованным, и допустимы умеренные задержки во всех источниках данных, достигающих согласованного состояния. Одним из способов минимизации этого разрыва является использование Goroutines.<br/>
+<br/>
+Goroutines — это легкие потоки, управляемые средой выполнения Go для предотвращения их (потоков) исчерпания. Goroutines позволили оптимизировать на платформе асинхронные задачи. Например, одним из хранилищ данных Платформы является Elasticsearch. Когда содержимое обновляется в системе, содержимое, ссылающееся на этот элемент в Elasticsearch, обновляется и переиндексируется. Благодаря внедрению Goroutines время обработки было сокращено, что обеспечило быструю согласованность элементов. В этом примере показано, как элементы, подходящие для повторной обработки, повторно обрабатываются в Goroutine.<br/>
+<br/>
+<pre><code class="go">func reprocess(searchResult *http.Response) (int, error) {
+	responses := make([]response, len(searchResult.Hits))	
+	var wg sync.WaitGroup
+	wg.Add(len(responses))
+	
+	for i, hit := range searchResult.Hits {
+		wg.Add(1)
+		go func(i int, item elastic.SearchHit) {
+			defer wg.Done()
+			code, err := reprocessItem(item)
+			responses[i].code = code
+			responses[i].err = err
+		}(i, *hit)
+	}
+	wg.Wait
+
+	return http.StatusOK, nil
+}</code></pre><br/>
+Проектирование систем — это больше, чем просто программирование. Инженеры должны понимать, какие инструменты где и когда уместны. В то время как Go был мощным инструментом для большинства потребностей The Economist’s Content Platform, некоторые ограничения требовали других решений.<br/>
+<br/>
+<b>Управление зависимостями</b><br/>
+<br/>
+Когда Go был только выпущен, у него не было системы управления зависимостями. В рамках сообщества было разработано несколько инструментов для удовлетворения этой потребности. The Economist использовал сабмодули Git, что имело смысл в то время, когда сообщество активно продвигало стандартный инструмент управления зависимостями. На сегодняшний день, хотя сообщество уже намного ближе к согласованному подходу к управлению зависимостями, его еще нет. В The Economist подход с использованием сабмодулей не создавал серьезных проблем, но он был сложноват для других разработчиков Go, а это следует учитывать при переходе на Go.<br/>
+<br/>
+Существовали также требования к платформе, для которых функции или дизайн Go не были лучшим решением. Поскольку Платформа добавила поддержку обработки аудио, инструменты Go для извлечения метаданных в то время были ограничены, и поэтому команда выбрала вместо этого Exiftool Python. Службы платформы работают в докер-контейнерах, что позволило установить Exiftool и запустить его из приложения Go.<br/>
+<br/>
+<pre><code class="go">func runExif(args []string) ([]byte, error) {
+	cmdOut, err := exec.Command("exiftool", args...).Output()
+	if err != nil {
+		return nil, err
+	}
+	return cmdOut, nil
+}</code></pre><br/>
+Другим распространенным сценарием для платформы является прием нерабочего HTML-кода из исходных систем CMS, анализ HTML-кода на корректность и санация HTML-кода. Изначально для этого процесса использовался Go, но поскольку стандартная HTML-библиотека Go требует корректного HTML, перед обработкой требовалось большое количество кастомного кода для анализа HTML. Этот код быстро стал хрупким и пропускал пограничные случаи, поэтому было реализовано новое решение в Javascript. Javascript обеспечил большую гибкость и адаптивность для управления процессом проверки и санации HTML.<br/>
+<br/>
+Javascript также был распространенным выбором для фильтрации и маршрутизации событий в Платформе. События фильтруются с помощью AWS Lambdas, которые являются легковесными функциями, запускаемыми только при вызове. Одним из вариантов использования является фильтрация событий на разных полосах, таких как быстрая и медленная. Эта фильтрация выполняется на основе единственного поля метаданных в JSON-объекте оболочки обработчика событий. В реализации фильтрации использовался пакет указателей JSON Javascript для захвата элемента в JSON-объекте. Этот подход был гораздо более эффективным по сравнению с полным демонтажем JSON, который потребовался бы для Go. В то время как функциональность такого типа могла быть достигнута и с помощью Go, использование Javascript было проще для инженеров и обеспечивало более простые лямбды.<br/>
+<br/>
+<b>Ретроспектива Go</b><br/>
+<br/>
+После внедрения Contact Platform и поддержки его в производстве, если бы я должен был провести ретроспективу Go и Content Platform, мой отзыв был бы следующим:<br/>
+<br/>
+Что уже хорошо?<br/>
+<br/>
+<ul>
+<li>Ключевые элементы дизайна языка для распределенных систем.</li>
+<li>Модель параллелизма, которую относительно легко реализовать.</li>
+<li>Приятное написание кода и веселое сообщество.</li>
+</ul><br/>
+Что можно улучшить?<br/>
+<br/>
+<ul>
+<li>Дальнейшее продвижение по стандартам управления версиями и вендоринга.</li>
+<li>Не хватает зрелости в некоторых областях.</li>
+<li>Подробности для определенных юзкейсов.</li>
+</ul><br/>
+В целом, это был положительный опыт, и Go является одним из важнейших элементов, которые позволили масштабировать Content Platform. Go не всегда будет подходящим инструментом, и это нормально. The Economist обладает платформой-полиглотом и использует разные языки там, где это имеет смысл. Go, вероятно, никогда не будет лучшим выбором, когда необходимо возиться с текстовыми объектами и динамическим содержимым, поэтому Javascript все таки находится в наборе инструментов. Тем не менее, сильные стороны Go являются основой, которая позволяет системе масштабироваться и развиваться.<br/>
+При рассмотрении вопроса о том, подойдет ли вам Go, задумайтесь над ключевыми вопросами проектирования системы:<br/>
+<br/>
+<ul>
+<li>Каковы задачи вашей системы?</li>
+<li>Какие гарантии вы предоставляете своим потребителям?</li>
+<li>Какая архитектура и шаблоны подходят для вашей системы?</li>
+<li>Как ваша система должна масштабироваться?</li>
+</ul><br/>
+Если вы разрабатываете систему, которая направлена на решение проблем распределенных данных, асинхронных рабочих процессов, а также высокой производительности и масштабирования, я рекомендую вам рассмотреть Go и его возможности ускорить достижение ваших системных целей.<br/>
+<br/>
+Друзья, ждем ваши комментарии и приглашаем всех желающих на <a href="https://otus.pw/a01P/">открытый вебинар</a>, который 16 числа проведет старший разработчик в Yandex и, по совместительству, наш преподаватель — <a href="https://otus.pw/mmdz/">Дмитрий Смаль</a>.</div></div> <!----> <!----></div> <div class="tm-article-presenter__meta"><div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Теги:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bgo%5D" class="tm-tags-list__link">go</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bgolang%5D" class="tm-tags-list__link">golang</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5B%D0%BF%D1%80%D0%BE%D0%B3%D1%80%D0%B0%D0%BC%D0%BC%D0%B8%D1%80%D0%BE%D0%B2%D0%B0%D0%BD%D0%B8%D0%B5%5D" class="tm-tags-list__link">программирование</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5B%D0%BC%D0%B8%D0%BA%D1%80%D0%BE%D1%81%D0%B5%D1%80%D0%B2%D0%B8%D1%81%D1%8B%5D" class="tm-tags-list__link">микросервисы</a></li></ul></div> <div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Хабы:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/company/otus/blog/" class="tm-hubs-list__link router-link-active">
+    Блог компании OTUS
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/programming/" class="tm-hubs-list__link">
+    Программирование
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/go/" class="tm-hubs-list__link">
+    Go
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/microservices/" class="tm-hubs-list__link">
+    Микросервисы
+  </a></li></ul></div></div></article></div> <!----></div> <div class="tm-article-sticky-panel"><div class="tm-data-icons tm-article-sticky-panel__icons"><div class="tm-article-rating tm-data-icons__item"><div class="tm-votes-meter tm-article-rating__votes-switcher"><svg height="16" width="16" class="tm-svg-img tm-votes-meter__icon tm-votes-meter__icon_medium"><title>Всего голосов 17: ↑14 и ↓3</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-rating"></use></svg> <span title="Всего голосов 17: ↑14 и ↓3" class="tm-votes-meter__value tm-votes-meter__value_positive tm-votes-meter__value_medium">+11</span></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----> <span title="Количество просмотров" class="tm-icon-counter tm-data-icons__item"><svg height="16" width="16" class="tm-svg-img tm-icon-counter__icon"><title>Просмотры</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-views"></use></svg> <span class="tm-icon-counter__value">5.8K</span></span> <button title="Добавить в закладки" type="button" class="bookmarks-button tm-data-icons__item"><span title="Добавить в закладки" class="tm-svg-icon__wrapper bookmarks-button__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Добавить в закладки</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-favorite"></use></svg></span> <span title="Количество пользователей, добавивших публикацию в закладки" class="bookmarks-button__counter">
+    49
+  </span></button> <!----> <div title="Поделиться" class="tm-sharing tm-data-icons__item"><button type="button" class="tm-sharing__button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="tm-sharing__icon"><path fill="currentColor" d="M10.33.275l9.047 7.572a.2.2 0 010 .306l-9.048 7.572a.2.2 0 01-.328-.153V11c-8 0-9.94 6-9.94 6S-1 5 10 5V.428a.2.2 0 01.328-.153z"></path></svg></button> <!----></div> <DIV class="v-portal" style="display:none;"></DIV></div> </div></div> <!----> <!----> <div class="tm-article-presenter__footer"><div class="tm-article-blocks"><!----> <section class="tm-block tm-block_spacing-bottom"><!----> <div class="tm-block__body tm-block__body_variant-balanced"><div class="tm-article-author"><div class="tm-article-author__company"><div class="tm-article-author__company-card"><div class="tm-company-snippet"><a href="/ru/company/otus/profile/" class="tm-company-snippet__logo-link"><div class="tm-entity-image"><img alt="" height="40" src="//habrastorage.org/getpro/habr/company/968/422/761/968422761136a38a89fc391fd927f903.jpg" width="40" class="tm-entity-image__pic"></div></a> <div class="tm-company-snippet__info"><a href="/ru/company/otus/profile/" class="tm-company-snippet__title">OTUS</a> <div class="tm-company-snippet__description">Цифровые навыки от ведущих экспертов</div></div></div> <div class="tm-article-author__buttons"><!----> <!----></div></div> <div class="tm-article-author__company-contacts"><a href="https://otus.ru" rel="noopener" target="_blank" class="tm-article-author__contact">
+      Сайт
+    </a><a href="https://facebook.com/otus.ru" rel="noopener" target="_blank" class="tm-article-author__contact">
+      Facebook
+    </a><a href="https://vk.com/club145052891" rel="noopener" target="_blank" class="tm-article-author__contact">
+      ВКонтакте
+    </a><a href="https://telegram.me/Otusjava" rel="noopener" target="_blank" class="tm-article-author__contact">
+      Telegram
+    </a></div> <div class="tm-article-author__separator"></div></div> <div class="tm-user-card tm-article-author__user-card tm-user-card_variant-article"><div class="tm-user-card__info-container"><div class="tm-user-card__header"><div class="tm-user-card__header-data"><a href="/ru/users/MaxRokatansky/" class="tm-user-card__userpic tm-user-card__userpic_size-40"><div class="tm-entity-image"><img alt="" src="//habrastorage.org/getpro/habr/avatars/b9f/baf/5f9/b9fbaf5f96ae52973706a0716bd9216e.jpg" class="tm-entity-image__pic"></div></a> <div class="tm-user-card__meta"><div title=" 659 голосов " class="tm-karma tm-user-card__karma"><div class="tm-karma__votes tm-karma__votes_positive">
+    26.7
+  </div> <div class="tm-karma__text">
+    Карма
+  </div></div> <div title="Рейтинг пользователя" class="tm-rating tm-user-card__rating"><div class="tm-rating__header"> <div class="tm-rating__counter">-29.4</div></div> <div class="tm-rating__text">
+    Рейтинг
+  </div></div></div></div></div> <div class="tm-user-card__info tm-user-card__info_variant-article"><div class="tm-user-card__title tm-user-card__title_variant-article"><span class="tm-user-card__name tm-user-card__name_variant-article">OTUS</span> <a href="/ru/users/MaxRokatansky/" class="tm-user-card__nickname tm-user-card__nickname_variant-article">
+          @MaxRokatansky
+        </a> <!----></div> <p class="tm-user-card__short-info tm-user-card__short-info_variant-article">Редактор</p></div></div> <div class="tm-user-card__buttons tm-user-card__buttons_variant-article"><!----> <!----> <!----> <!----> <!----></div></div> <!----></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----></section> <div class="tm-article-blocks__comments"><div class="tm-article-page-comments"><div class="tm-article-comments-counter-link tm-article-comments-counter-button"><a href="/ru/company/otus/blog/451760/comments/" class="tm-article-comments-counter-link__link tm-article-comments-counter-link__link_button-style"><svg height="16" width="16" class="tm-svg-img tm-article-comments-counter-link__icon tm-article-comments-counter-link__icon_contrasted"><title>Комментарии</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-comments"></use></svg> <span class="tm-article-comments-counter-link__value tm-article-comments-counter-link__value_contrasted">
+       Комментарии 9 
+    </span></a> <!----></div></div></div>  <!---->  <!----> <!----></div></div></div></div></div> <div class="tm-page__sidebar"><div class="tm-layout-sidebar"><div class="tm-layout-sidebar__placeholder_initial"></div> <div class="tm-sexy-sidebar tm-sexy-sidebar_initial" style="margin-top:0px;"><!----> <section class="tm-block tm-block_spacing-bottom"><header class="tm-block__header"><h2 class="tm-block__title">Информация</h2> <!----></header> <div class="tm-block__body"><div class="tm-company-basic-info"><dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Дата основания</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><time datetime="2017-03-31T21:00:00.000Z" title="2017-04-01, 00:00">1  апреля  2017</time></dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Местоположение</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap">
+    Россия
+  </dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Сайт</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><a href="https://otus.ru" target="_blank" class="tm-company-basic-info__link">
+      otus.ru
+    </a></dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Численность</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap">
+    51–100 человек
+  </dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Дата регистрации</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><time datetime="2017-03-22T08:17:26.000Z" title="2017-03-22, 11:17">22  марта  2017</time></dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Представитель</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><a href="/ru/users/MaxRokatansky/" class="tm-company-basic-info__link">
+      OTUS
+    </a></dd></dl></div></div> <!----></section> <div class="tm-company-widgets"></div> <!----></div></div></div></div></div></div></main> <!----></div> <div class="tm-footer-menu"><div class="tm-page-width"><div class="tm-footer-menu__container"><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Ваш аккаунт
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr/?back=/ru/company/otus/blog/451760/&amp;hl=ru" rel="nofollow" target="_self">
+                Войти
+              </a></li><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr-register/?back=/ru/company/otus/blog/451760/&amp;hl=ru" rel="nofollow" target="_self">
+                Регистрация
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Разделы
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/" class="footer-menu__item-link router-link-active">
+                Публикации
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/news/" class="footer-menu__item-link">
+                Новости
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/hubs/" class="footer-menu__item-link">
+                Хабы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/companies/" class="footer-menu__item-link">
+                Компании
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/users/" class="footer-menu__item-link">
+                Авторы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/sandbox/" class="footer-menu__item-link">
+                Песочница
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Информация
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/docs/help/" class="footer-menu__item-link">
+                Устройство сайта
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/authors/codex/" class="footer-menu__item-link">
+                Для авторов
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/companies/corpblogs/" class="footer-menu__item-link">
+                Для компаний
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/docs/transparency/" class="footer-menu__item-link">
+                Документы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/agreement" target="_blank">
+                Соглашение
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/confidential/" target="_blank">
+                Конфиденциальность
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Услуги
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQLwRfQmXibiUlWaRg-BAc38s7oM3lJiaPju7qmdJsp8ysIvZ_G-Npem0njJLMozE2bPHMpDqiI5hhy/pub?start=false&amp;loop=false&amp;delayms=60000&amp;slide=id.g91a03369cd_4_297" target="_blank">
+                Реклама
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://habrastorage.org/storage/stuff/habr/service_price.pdf" target="_blank">
+                Тарифы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQJJds8-Di7BQSP_guHxICN7woVYoN5NP_22ra-BIo4bqnTT9FR6fB-Ku2P0AoRpX0Ds-LRkDeAoD8F/pub?start=false&amp;loop=false&amp;delayms=60000" target="_blank">
+                Контент
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://tmtm.timepad.ru/" target="_blank">
+                Семинары
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/megaprojects/" class="footer-menu__item-link">
+                Мегапроекты
+              </a></li></ul></div></div></div></div></div> <div class="tm-footer"><div class="tm-page-width"><div class="tm-footer__container"><!----> <div class="tm-footer__social"><a href="https://www.facebook.com/habrahabr.ru" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Facebook</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-facebook"></use></svg></a><a href="https://twitter.com/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Twitter</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-twitter"></use></svg></a><a href="https://vk.com/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>VK</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-vkontakte"></use></svg></a><a href="https://telegram.me/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Telegram</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-telegram"></use></svg></a><a href="https://www.youtube.com/channel/UCd_sTwKqVrweTt4oAKY5y4w" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Youtube</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-youtube"></use></svg></a><a href="https://zen.yandex.ru/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Яндекс Дзен</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-zen"></use></svg></a></div> <DIV class="v-portal" style="display:none;"></DIV> <button class="tm-footer__link"><!---->
+        Настройка языка
+      </button> <a href="/ru/about" class="tm-footer__link">
+        О сайте
+      </a> <a href="/ru/feedback/" class="tm-footer__link">
+        Техническая поддержка
+      </a> <!----> <a href="/berserk-mode-nope" class="tm-footer__link">
+        Вернуться на старую версию
+      </a> <div class="tm-footer-copyright"><span class="tm-copyright"><span class="tm-copyright__years">© 2006–2021 </span> <span class="tm-copyright__name">«<a href="https://company.habr.com/" rel="noopener" target="_blank" class="tm-copyright__link">Habr</a>»</span></span></div></div></div></div> <!----> <!----></div> <div class="vue-portal-target"></div></div>
+<script>window.__INITIAL_STATE__={"adblock":{"hasAcceptableAdsFilter":false,"hasAdblock":false},"articlesList":{"articlesList":{"451760":{"id":"451760","timePublished":"2019-05-15T09:04:06+00:00","isCorporative":true,"lang":"ru","titleHtml":"Использование Golang для создания микросервисов в The Economist: ретроспектива","leadData":{"textHtml":"Всем привет! Уже 28 мая мы запускаем первую группу по курсу \u003Ca href=\"https:\u002F\u002Fotus.pw\u002F1zoS\u002F\"\u003E«Разработчик Golang»\u003C\u002Fa\u003E. И сегодня делимся с вами первой публикацией приуроченной к запуску этого курсу. Поехали.\u003Cbr\u003E\r\n\u003Cbr\u003E\r\n\u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002F3r\u002Fwa\u002Fjy\u002F3rwajyps3se5vmahtiv_ioninq0.png\"\u003E\u003Cbr\u003E\r\n\u003Cbr\u003E\r\n\u003Cb\u003EКлючевые выдержки\u003C\u002Fb\u003E\u003Cbr\u003E\r\n\u003Cbr\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003EThe Economist требовалось больше гибкости для распространения контента на все более разнообразные цифровые каналы. Для достижения этой цели и поддержания высокого уровня производительности и надежности, платформа перешла от монолитной к микросервисной архитектуре.\u003C\u002Fli\u003E\r\n\u003Cli\u003EСредства, написанные на Go, были ключевым компонентом новой системы, которая позволила The Economist предоставлять масштабируемые, высокопроизводительные сервисы и быстро создавать новые продукты.\u003C\u002Fli\u003E\r\n\u003Cli\u003EGo, нацеленный на параллелизм и поддержку API, вместе с его конструкцией статического компилируемого языка, облегчал разработку распределенных систем обработки событий которые могли бы масштабироваться. Поддержка тестирования также была плюсом.\u003C\u002Fli\u003E\r\n\u003Cli\u003EВ целом, опыт работы команды The Economist с Go был положительным, и это был один из решающих факторов, которые позволили масштабировать Content Platform.\u003C\u002Fli\u003E\r\n\u003Cli\u003EGo не всегда будет являться подходящим инструментом, и это нормально. The Economist обладает платформой-полиглотом и использует разные языки там, где это имеет смысл.\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E","imageUrl":null,"buttonTextHtml":"Читать дальше →","image":null},"editorVersion":"1.0","postType":"article","postLabels":[{"type":"translation","data":{"originalAuthorName":"https:\u002F\u002Fwww.infoq.com\u002Fprofile\u002FK-Jonas","originalUrl":"https:\u002F\u002Fwww.infoq.com\u002Farticles\u002Fgolang-the-economist"}}],"author":{"scoreStats":{"score":26.7,"votesCount":659},"rating":-29.4,"relatedData":null,"contacts":[],"authorContacts":[],"paymentDetails":{"paymentYandexMoney":null,"paymentPayPalMe":null,"paymentWebmoney":null},"id":"1547287","alias":"MaxRokatansky","fullname":"OTUS","avatarUrl":"\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Favatars\u002Fb9f\u002Fbaf\u002F5f9\u002Fb9fbaf5f96ae52973706a0716bd9216e.jpg","speciality":"Редактор"},"statistics":{"commentsCount":9,"favoritesCount":49,"readingCount":5827,"score":11,"votesCount":17},"hubs":[{"relatedData":null,"id":"21052","alias":"otus","type":"corporative","title":"Блог компании OTUS","titleHtml":"Блог компании OTUS","isProfiled":false},{"relatedData":null,"id":"359","alias":"programming","type":"collective","title":"Программирование","titleHtml":"Программирование","isProfiled":true},{"relatedData":null,"id":"17748","alias":"go","type":"collective","title":"Go","titleHtml":"Go","isProfiled":true},{"relatedData":null,"id":"22115","alias":"microservices","type":"collective","title":"Микросервисы","titleHtml":"Микросервисы","isProfiled":true}],"flows":[{"id":"1","alias":"develop","title":"Разработка"}],"relatedData":null,"textHtml":"\u003Cdiv xmlns=\"http:\u002F\u002Fwww.w3.org\u002F1999\u002Fxhtml\"\u003EВсем привет! Уже 28 мая мы запускаем первую группу по курсу \u003Ca href=\"https:\u002F\u002Fotus.pw\u002F1zoS\u002F\"\u003E«Разработчик Golang»\u003C\u002Fa\u003E. И сегодня делимся с вами первой публикацией приуроченной к запуску этого курсу. Поехали.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002F3r\u002Fwa\u002Fjy\u002F3rwajyps3se5vmahtiv_ioninq0.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cb\u003EКлючевые выдержки\u003C\u002Fb\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003EThe Economist требовалось больше гибкости для распространения контента на все более разнообразные цифровые каналы. Для достижения этой цели и поддержания высокого уровня производительности и надежности, платформа перешла от монолитной к микросервисной архитектуре.\u003C\u002Fli\u003E\r\n\u003Cli\u003EСредства, написанные на Go, были ключевым компонентом новой системы, которая позволила The Economist предоставлять масштабируемые, высокопроизводительные сервисы и быстро создавать новые продукты.\u003C\u002Fli\u003E\r\n\u003Cli\u003EGo, нацеленный на параллелизм и поддержку API, вместе с его конструкцией статического компилируемого языка, облегчал разработку распределенных систем обработки событий которые могли бы масштабироваться. Поддержка тестирования также была плюсом.\u003C\u002Fli\u003E\r\n\u003Cli\u003EВ целом, опыт работы команды The Economist с Go был положительным, и это был один из решающих факторов, которые позволили масштабировать Content Platform.\u003C\u002Fli\u003E\r\n\u003Cli\u003EGo не всегда будет являться подходящим инструментом, и это нормально. The Economist обладает платформой-полиглотом и использует разные языки там, где это имеет смысл.\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Ca name=\"habracut\"\u003E\u003C\u002Fa\u003E\u003Cbr\u002F\u003E\r\nЯ присоединился к команде разработчиков \u003Ca href=\"https:\u002F\u002Fwww.economist.com\u002F&amp;sa=D&amp;ust=1544454327566000\"\u003EThe Economist\u003C\u002Fa\u003E как Drupal разработчик. Однако моя настоящая задача заключалась в том, чтобы участвовать в проекте, который коренным образом изменил бы технологию доставки контента Economist. Первые несколько месяцев я потратил на изучение Go, несколько месяцев работал с внешним консультантом над созданием MVP (minimum viable product — минимально жизнеспособный продукт), а затем снова присоединился к команде, чтобы курировать их погружение в Go.\u003Cbr\u002F\u003E\r\nЭтот сдвиг в технологии был вызван миссией The Economist по расширению цифровой аудитории, поскольку потребление новостей отходило в сторону от печатных изданий. The Economist требовалось больше гибкости для доставки контента на все более разнообразные цифровые каналы. Для достижения этой цели и поддержания высокого уровня производительности и надежности, платформа перешла от монолитной к микросервисной архитектуре. Средства, написанные на Go, были ключевым компонентом новой системы, которая позволила The Economist предоставлять масштабируемые, высокопроизводительные сервисы и быстро создавать новые продукты.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВнедрение Go в The Economist:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003EПозволило инженерам быстро разрабатывать и внедрять новый функционал.\u003C\u002Fli\u003E\r\n\u003Cli\u003EУтвердило лучшие практики для fast-failing сервисов с интеллектуальной обработкой ошибок.\u003C\u002Fli\u003E\r\n\u003Cli\u003EОбеспечило надежную поддержку параллелизма и работы в сети в распределенной системе.\u003C\u002Fli\u003E\r\n\u003Cli\u003EПроявило недостаток зрелости и поддержки в некоторых областях, необходимых для контента и медиа.\u003C\u002Fli\u003E\r\n\u003Cli\u003EОблегчило платформу, которая могла бы масштабироваться для цифровой публикации.\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\n\u003Cb\u003EПочему The Economist выбрал Go?\u003C\u002Fb\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЧтобы ответить на этот вопрос, будет полезным осветить общую архитектуру новой платформы. Платформа, называемая Content Platform, является системой обработки событий. Она реагирует на события с разных платформ авторинга контента и запускает поток процессов, исполняемых в отдельно работающих микросервисах. Эти службы выполняют такие функции, как стандартизация данных, анализ семантических тегов, индексация в ElasticSearch и отправка контента на внешние платформы, такие как Apple News или Facebook. Платформа также имеет RESTful API, который в сочетании с GraphQL является основной точкой входа для интерфейсных клиентов и продуктов.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПри разработке общей архитектуры команда исследовала, какие языки будут соответствовать потребностям платформы. Go сравнивали с Python, Ruby, Node, PHP и Java. В то время как у каждого языка есть свои сильные стороны, Go лучше всего соответствует архитектуре платформы. Go, нацеленный на параллелизм и поддержку API, вместе с его конструкцией статического компилируемого языка, облегчал разработку распределенных систем обработки событий которые могли бы масштабироваться. Кроме того, относительно простой синтаксис Go позволял легко включится в разработку и начать писать рабочий код, что сулило немедленную выгоду для команды, переживающей столь большой технологический переход. В целом было определено, что Go — это язык, наиболее подходящий для удобства использования и эффективности в распределенной облачной системе.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cb\u003EТри года спустя: соответствовал ли Go этим амбициозным целям?\u003C\u002Fb\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nНекоторые элементы дизайна платформы были хорошо согласованы с языком Go. Failing Fast был критически важной частью системы, поскольку он состоял из распределенных независимых сервисов. В соответствии с принципами Twelve-Factor App («12-факторное приложение»), приложения должны были быстро запускаться и быстро отказывать (fast fail). Конструкция Go как статического, скомпилированного языка обеспечивает быстрое время запуска, а производительность компилятора постоянно улучшается и никогда не была проблемой для проектирования или развертывания. Кроме того, дизайн обработки ошибок Go позволил приложениям отказывать не только быстрее, но так же умнее.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cb\u003EОбработка ошибок\u003C\u002Fb\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nОсобенность, которую инженеры быстро замечают в Go, заключается в том, что он имеет тип Error, нежели систему исключений. В Go все ошибки являются значениями. Тип Error предопределен и является интерфейсом. Интерфейс в Go по сути является именованной коллекцией методов, и любой другой пользовательский тип может удовлетворять интерфейсу, если он имеет те же методы. Тип Error — это интерфейс, который может описывать себя строкой.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"go\"\u003Etype error interface {\n    Error() string\n}\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nЭто предоставляет инженерам больший контроль и функциональность при обработке ошибок. Добавив Error-метод, который возвращает строку, в любом пользовательском модуле, вы можете создавать собственные ошибки и генерировать их, например, с помощью функции New, представленной ниже, которая поставляется из пакета Errors.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"go\"\u003Etype errorString struct {\n    s string\n}\nfunc (e *errorString) Error() string {\n    return e.s\n}\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nЧто это значит на практике? В Go функции допускают множественные возвращаемые значения, поэтому, если ваша функция может не сработать, она, скорее всего, вернет значение ошибки. Язык поощряет вас явно проверять наличие ошибок там, где они возникают (в отличие от генерирования и перехвата исключения), поэтому в вашем коде обычно должна присутствовать проверка «if err! = Nil». Поначалу эта частая обработка ошибок может показаться монотонной. Однако, ошибка как значение позволяет вам использовать Error, чтобы упростить обработку ошибок. Например, в распределенной системе можно легко реализовать попытки повторных запросов, обернув ошибки.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nСетевые проблемы всегда будут встречаться в системе, будь то отправка данных другим внутренним службам или передача сторонним инструментам. В этом примере из пакета Net показано, как можно использовать ошибку как тип, чтобы отличить временные сетевые ошибки от постоянных. Команда Economist использовала аналогичную обертку ошибок для создания инкрементальных повторных попыток при отправке контента во внешние API.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"go\"\u003Epackage net\n\ntype Error interface {\n    error\n    Timeout() bool   \u002F\u002F Is the error a timeout?\n    Temporary() bool \u002F\u002F Is the error temporary?\n}\n\nif nerr, ok := err.(net.Error); ok &amp;&amp; nerr.Temporary() {\n    time.Sleep(1e9)\n    continue\n}\n\nif err != nil {\n    log.Fatal(err)\n}\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nАвторы Go считают, что не все исключения являются исключительными. Инженеров направляют скорее к разумному восстановлению после ошибок, нежели к сбою приложения. Кроме того, обработка ошибок Go позволяет вам лучше контролировать ошибки, что может улучшить такие аспекты, как отладка или юзабилити ошибок. В рамках Content Platform эта конструктивная особенность Go позволила разработчикам принимать взвешенные решения в отношении ошибок, что привело к повышению надежности системы в целом.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cb\u003EСогласованность данных\u003C\u002Fb\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nСогласованность данных является критическим фактором в Content Platform. В The Economist контент является основой бизнеса, и цель Content Platform — обеспечить, чтобы контент мог быть опубликован единожды и доступен везде. Поэтому важно, чтобы каждый продукт и потребитель имели согласованность данных с API Content Platform. Продукты в основном используют GraphQL для запросов API, который требует статичной схемы, которая служит неким контрактом между потребителями и платформой. Контент, обрабатываемый Платформой, должен согласовываться с этой схемой. Статический язык помог реализовать это и позволил легко добиться согласованности данных.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cb\u003EТестирование с Go\u003C\u002Fb\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЕще одна особенность, способствующая согласованности, — это пакет тестирования Go. Быстрое время компиляции Go в сочетании с первоклассным тестированием как особенностью языка позволило команде внедрить эффективные методы тестирования в рабочие процессы проектирования и быстрые отказы в конвейерах сборки. Инструменты Go для тестов упрощают их настройку и запуск. Запуск «go test» запустит все тесты в текущем каталоге, а команда test имеет несколько полезных флагов. Флаг «cover» предоставляет подробный отчет о покрытии кода. «bench»-тест запускает бенчмарк-тесты, которые обозначаются путем запуска имени тестовой функции словом «Bench», а не «Test». Функция TestMain предоставляет методы для дополнительной настройки теста, такие как фиктивный сервер аутентификации.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nКроме того, Go имеет возможность создавать табличные тесты с анонимными структурами и заглушками с интерфейсами, улучшая охват тестов. Хотя тестирование не является чем-то новым с точки зрения языковых фич, Go позволяет легко создавать надежные тесты и легко встраивать их в рабочие процессы. С самого начала инженеры The Economist смогли запускать тесты как часть конвейеров сборки без специальной настройки и даже добавили Git Hooks для запуска тестов перед пушем кода в Github. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nТем не менее, проект не обошелся без усилий в достижении согласованности данных. Первой серьезной проблемой для платформы было управление динамическим контентом из непредсказуемых бэкэндов. Платформа потребляет контент из исходных систем CMS в основном через JSON-эндпоинты, где структура и типы данных не гарантированы. Это означало, что платформа не может использовать стандартный пакет Go для интерпретации json, который поддерживает десериализацию JSON в структуры, но бьет тревогу, если типы полей struct и input data не совпадают.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЧтобы преодолеть эту проблему, потребовался специальный метод для сопоставления серверной части со стандартным форматом. После нескольких итераций избранного подхода команда внедрила собственный процесс десериализации. Хотя такой подход немного напоминал переработку стандартного библиотечного пакета, он предоставил инженерам полный контроль над обработкой исходных данных.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cb\u003EСетевая поддержка\u003C\u002Fb\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nМасштабируемость была во главе угла новой платформы, и это обеспечивалось стандартными библиотеками Go для работы в сети и с API. В Go вы можете быстро реализовать масштабируемые HTTP-эндпоинты без необходимости в фреймворках. В приведенном ниже примере пакет стандартной библиотеки net\u002Fhttp используется для настройки обработчика, который принимает средство записи запросов и ответов. Когда API Content Platform была впервые реализована, она использовал API-фреймворк. В конечном итоге он был заменен стандартной библиотекой, так как команда признала, что она отвечает всем их сетевым потребностям без дополнительных ненужный компромиссов. HTTP-обработчики Golang масштабируются, потому что каждый запрос к обработчику выполняется параллельно в Goroutine, легковесном потоке без необходимости кастомизаций.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"go\"\u003Epackage main\n\nimport (\n    \"fmt\"\n    \"log\"\n    \"net\u002Fhttp\"\n)\n\nfunc handler(w http.ResponseWriter, r *http.Request) {\n    fmt.Fprintf(w, \"Hello World!\")\n}\n\nfunc main() {\n    http.HandleFunc(\"\u002F\", handler)\n    log.Fatal(http.ListenAndServe(\":8080\", nil))\n}\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cb\u003EМодель параллелизма\u003C\u002Fb\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nМодель параллелизма Go обеспечила множественную выгоду в повышении производительности на всей платформе. Работа с распределенными данными подразумевает возню с гарантиями, обещанными потребителям. Согласно теореме CAP, невозможно одновременно предоставить более двух из следующих трех гарантий: Согласованность данных. Доступность. Устойчивость к разделению. В платформе The Economist была принята согласованность в конечном счёте, что означает, что чтение из источников данных в конечном итоге будет согласованным, и допустимы умеренные задержки во всех источниках данных, достигающих согласованного состояния. Одним из способов минимизации этого разрыва является использование Goroutines.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nGoroutines — это легкие потоки, управляемые средой выполнения Go для предотвращения их (потоков) исчерпания. Goroutines позволили оптимизировать на платформе асинхронные задачи. Например, одним из хранилищ данных Платформы является Elasticsearch. Когда содержимое обновляется в системе, содержимое, ссылающееся на этот элемент в Elasticsearch, обновляется и переиндексируется. Благодаря внедрению Goroutines время обработки было сокращено, что обеспечило быструю согласованность элементов. В этом примере показано, как элементы, подходящие для повторной обработки, повторно обрабатываются в Goroutine.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"go\"\u003Efunc reprocess(searchResult *http.Response) (int, error) {\n\tresponses := make([]response, len(searchResult.Hits))\t\n\tvar wg sync.WaitGroup\n\twg.Add(len(responses))\n\t\n\tfor i, hit := range searchResult.Hits {\n\t\twg.Add(1)\n\t\tgo func(i int, item elastic.SearchHit) {\n\t\t\tdefer wg.Done()\n\t\t\tcode, err := reprocessItem(item)\n\t\t\tresponses[i].code = code\n\t\t\tresponses[i].err = err\n\t\t}(i, *hit)\n\t}\n\twg.Wait\n\n\treturn http.StatusOK, nil\n}\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nПроектирование систем — это больше, чем просто программирование. Инженеры должны понимать, какие инструменты где и когда уместны. В то время как Go был мощным инструментом для большинства потребностей The Economist’s Content Platform, некоторые ограничения требовали других решений.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cb\u003EУправление зависимостями\u003C\u002Fb\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nКогда Go был только выпущен, у него не было системы управления зависимостями. В рамках сообщества было разработано несколько инструментов для удовлетворения этой потребности. The Economist использовал сабмодули Git, что имело смысл в то время, когда сообщество активно продвигало стандартный инструмент управления зависимостями. На сегодняшний день, хотя сообщество уже намного ближе к согласованному подходу к управлению зависимостями, его еще нет. В The Economist подход с использованием сабмодулей не создавал серьезных проблем, но он был сложноват для других разработчиков Go, а это следует учитывать при переходе на Go.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nСуществовали также требования к платформе, для которых функции или дизайн Go не были лучшим решением. Поскольку Платформа добавила поддержку обработки аудио, инструменты Go для извлечения метаданных в то время были ограничены, и поэтому команда выбрала вместо этого Exiftool Python. Службы платформы работают в докер-контейнерах, что позволило установить Exiftool и запустить его из приложения Go.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"go\"\u003Efunc runExif(args []string) ([]byte, error) {\n\tcmdOut, err := exec.Command(\"exiftool\", args...).Output()\n\tif err != nil {\n\t\treturn nil, err\n\t}\n\treturn cmdOut, nil\n}\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nДругим распространенным сценарием для платформы является прием нерабочего HTML-кода из исходных систем CMS, анализ HTML-кода на корректность и санация HTML-кода. Изначально для этого процесса использовался Go, но поскольку стандартная HTML-библиотека Go требует корректного HTML, перед обработкой требовалось большое количество кастомного кода для анализа HTML. Этот код быстро стал хрупким и пропускал пограничные случаи, поэтому было реализовано новое решение в Javascript. Javascript обеспечил большую гибкость и адаптивность для управления процессом проверки и санации HTML.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nJavascript также был распространенным выбором для фильтрации и маршрутизации событий в Платформе. События фильтруются с помощью AWS Lambdas, которые являются легковесными функциями, запускаемыми только при вызове. Одним из вариантов использования является фильтрация событий на разных полосах, таких как быстрая и медленная. Эта фильтрация выполняется на основе единственного поля метаданных в JSON-объекте оболочки обработчика событий. В реализации фильтрации использовался пакет указателей JSON Javascript для захвата элемента в JSON-объекте. Этот подход был гораздо более эффективным по сравнению с полным демонтажем JSON, который потребовался бы для Go. В то время как функциональность такого типа могла быть достигнута и с помощью Go, использование Javascript было проще для инженеров и обеспечивало более простые лямбды.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cb\u003EРетроспектива Go\u003C\u002Fb\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПосле внедрения Contact Platform и поддержки его в производстве, если бы я должен был провести ретроспективу Go и Content Platform, мой отзыв был бы следующим:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЧто уже хорошо?\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003EКлючевые элементы дизайна языка для распределенных систем.\u003C\u002Fli\u003E\r\n\u003Cli\u003EМодель параллелизма, которую относительно легко реализовать.\u003C\u002Fli\u003E\r\n\u003Cli\u003EПриятное написание кода и веселое сообщество.\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\nЧто можно улучшить?\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003EДальнейшее продвижение по стандартам управления версиями и вендоринга.\u003C\u002Fli\u003E\r\n\u003Cli\u003EНе хватает зрелости в некоторых областях.\u003C\u002Fli\u003E\r\n\u003Cli\u003EПодробности для определенных юзкейсов.\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\nВ целом, это был положительный опыт, и Go является одним из важнейших элементов, которые позволили масштабировать Content Platform. Go не всегда будет подходящим инструментом, и это нормально. The Economist обладает платформой-полиглотом и использует разные языки там, где это имеет смысл. Go, вероятно, никогда не будет лучшим выбором, когда необходимо возиться с текстовыми объектами и динамическим содержимым, поэтому Javascript все таки находится в наборе инструментов. Тем не менее, сильные стороны Go являются основой, которая позволяет системе масштабироваться и развиваться.\u003Cbr\u002F\u003E\r\nПри рассмотрении вопроса о том, подойдет ли вам Go, задумайтесь над ключевыми вопросами проектирования системы:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003EКаковы задачи вашей системы?\u003C\u002Fli\u003E\r\n\u003Cli\u003EКакие гарантии вы предоставляете своим потребителям?\u003C\u002Fli\u003E\r\n\u003Cli\u003EКакая архитектура и шаблоны подходят для вашей системы?\u003C\u002Fli\u003E\r\n\u003Cli\u003EКак ваша система должна масштабироваться?\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\nЕсли вы разрабатываете систему, которая направлена на решение проблем распределенных данных, асинхронных рабочих процессов, а также высокой производительности и масштабирования, я рекомендую вам рассмотреть Go и его возможности ускорить достижение ваших системных целей.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nДрузья, ждем ваши комментарии и приглашаем всех желающих на \u003Ca href=\"https:\u002F\u002Fotus.pw\u002Fa01P\u002F\"\u003Eоткрытый вебинар\u003C\u002Fa\u003E, который 16 числа проведет старший разработчик в Yandex и, по совместительству, наш преподаватель — \u003Ca href=\"https:\u002F\u002Fotus.pw\u002Fmmdz\u002F\"\u003EДмитрий Смаль\u003C\u002Fa\u003E.\u003C\u002Fdiv\u003E","tags":[{"titleHtml":"go"},{"titleHtml":"golang"},{"titleHtml":"программирование"},{"titleHtml":"микросервисы"}],"metadata":{"stylesUrls":[],"scriptUrls":[],"shareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F451760\u002F53347f381b126a63f80a887538c3abc7\u002F","shareImageWidth":1200,"shareImageHeight":630,"vkShareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F451760\u002F53347f381b126a63f80a887538c3abc7\u002F?format=vk","schemaJsonLd":"{\"@context\":\"http:\\\u002F\\\u002Fschema.org\",\"@type\":\"Article\",\"mainEntityOfPage\":{\"@type\":\"WebPage\",\"@id\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fru\\\u002Fcompany\\\u002Fotus\\\u002Fblog\\\u002F451760\\\u002F\"},\"headline\":\"Использование Golang для создания микросервисов в The Economist: ретроспектива\",\"datePublished\":\"2019-05-15T12:04:06+03:00\",\"dateModified\":\"2019-05-15T12:44:42+03:00\",\"author\":{\"@type\":\"Person\",\"name\":\"OTUS\"},\"publisher\":{\"@type\":\"Organization\",\"name\":\"Habr\",\"logo\":{\"@type\":\"ImageObject\",\"url\":\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fa_\\\u002Flk\\\u002F9m\\\u002Fa_lk9mjkccjox-zccjrpfolmkmq.png\"}},\"description\":\"Всем привет! Уже 28 мая мы запускаем первую группу по курсу &laquo;Разработчик Golang&raquo;. И сегодня делимся с вами первой публикацией приуроченной к запуску этого курсу.\",\"url\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fru\\\u002Fcompany\\\u002Fotus\\\u002Fblog\\\u002F451760\\\u002F#post-content-body\",\"about\":[\"c_otus\",\"h_programming\",\"h_go\",\"h_microservices\",\"f_develop\"],\"image\":[\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002F3r\\\u002Fwa\\\u002Fjy\\\u002F3rwajyps3se5vmahtiv_ioninq0.png\"]}","metaDescription":"Всем привет! Уже 28 мая мы запускаем первую группу по курсу «Разработчик Golang». И сегодня делимся с вами первой публикацией приуроченной к запуску этого курсу. Поехали.\r\n\r\n\r\n\r\nКлючевые...","mainImageUrl":null,"amp":false},"polls":[],"commentsEnabled":true,"rulesRemindEnabled":false,"votesEnabled":true,"status":"published","plannedPublishTime":null,"checked":null,"isEditorial":false}},"articlesIds":{},"isLoading":false,"pagesCount":{},"route":{},"reasonsList":null,"view":"cards","lastVisitedRoute":{},"ssrCommentsArticleIds":[""],"karma":{}},"authorContribution":{"authors":{}},"betaTest":{"currentAnnouncement":null,"announcements":{},"announcementCards":null,"announcementComments":{},"announcementCommentThreads":{},"announcementCommentingStatuses":{},"archivedList":[]},"authorStatistics":{"articleRefs":{},"articleIds":{},"pagesCount":{},"route":{},"viewsCount":[],"maxStatsCount":{}},"career":{"seoLandings":[],"hubs":""},"comments":{"articleComments":{},"searchCommentsResults":null,"previewComment":null,"pagesCount":null,"commentAccess":{},"scrollParents":{},"pageArticleComments":{"lastViewedComment":0,"postId":null,"lastCommentTimestamp":"","moderated":[],"moderatedIds":[],"commentRoute":""}},"companies":{"companyRefs":{"otus":{"alias":"otus","imageUrl":"\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fcompany\u002F968\u002F422\u002F761\u002F968422761136a38a89fc391fd927f903.jpg","titleHtml":"OTUS","descriptionHtml":"Цифровые навыки от ведущих экспертов","relatedData":null,"statistics":{"postsCount":1478,"newsCount":2,"vacanciesCount":1,"employeesCount":46,"careerRating":null,"subscribersCount":66497,"rating":418.61,"invest":null},"foundationDate":{"year":"2017","month":"04","day":"01"},"location":{"city":{"id":"447159","title":"Москва"},"region":{"id":"1885","title":"Москва и Московская обл."},"country":{"id":"168","title":"Россия"}},"siteUrl":"https:\u002F\u002Fotus.ru","staffNumber":"51–100 человек","registrationDate":"2017-03-22T08:17:26+00:00","representativeUser":{"alias":"MaxRokatansky","fullname":"OTUS"},"contacts":[{"title":"Сайт","url":"https:\u002F\u002Fotus.ru"},{"title":"Facebook","url":"https:\u002F\u002Ffacebook.com\u002Fotus.ru"},{"title":"ВКонтакте","url":"https:\u002F\u002Fvk.com\u002Fclub145052891"},{"title":"Telegram","url":"https:\u002F\u002Ftelegram.me\u002FOtusjava"}],"settings":{"analyticsSettings":[],"branding":null,"status":"active"},"metadata":{"titleHtml":"OTUS, Москва - Цифровые навыки от ведущих экспертов с 1 апреля 2017 г.","title":"OTUS, Москва - Цифровые навыки от ведущих экспертов с 1 апреля 2017 г.","keywords":["Программирование","Python","Java","Информационная безопасность","JavaScript"],"descriptionHtml":"1 478 статей от авторов компании OTUS","description":"1 478 статей от авторов компании OTUS"},"aDeskSettings":null,"careerAlias":"otus","maxCustomTrackerLinks":0}},"companyIds":{},"companyTopIds":{},"pagesCount":{},"companyProfiles":{},"companiesCategories":[],"companiesCategoriesTotalCount":0,"companiesWidgets":{},"companiesWorkers":{},"companiesFans":{},"route":{},"isLoading":false,"companyWorkersLoading":false,"companyFansLoading":false,"vacancies":{}},"companiesContribution":{"hubs":{},"flows":{},"companyRefs":{}},"companyHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"conversation":{"messages":[],"respondent":null,"isLoadMore":false},"conversations":{"conversations":[],"unreadCount":0,"pagesCount":0,"isLoadMore":false},"desktopState":{"desktopFl":null,"desktopHl":null,"isChecked":false,"isLoginDemanded":false},"dfp":{"slotsDict":{}},"docs":{"menu":{},"articles":{},"mainMenu":[],"loading":{"main":false,"dropdown":false,"article":false}},"feature":{"isProbablyVisible":"true"},"flows":{"flows":[{"alias":"develop","id":1,"route":{"name":"FLOW_PAGE","params":{"flowName":"develop"}}},{"alias":"admin","id":6,"route":{"name":"FLOW_PAGE","params":{"flowName":"admin"}}},{"alias":"design","id":2,"route":{"name":"FLOW_PAGE","params":{"flowName":"design"}}},{"alias":"management","id":3,"route":{"name":"FLOW_PAGE","params":{"flowName":"management"}}},{"alias":"marketing","id":4,"route":{"name":"FLOW_PAGE","params":{"flowName":"marketing"}}},{"alias":"popsci","id":7,"route":{"name":"FLOW_PAGE","params":{"flowName":"popsci"}}}]},"global":{"isPwa":false,"device":"desktop","isHabrCom":true},"hubs":{"hubRefs":{},"hubIds":{},"pagesCount":{},"isLoading":false,"route":{}},"hubsBlock":{"hubRefs":{},"hubIds":{}},"i18n":{"fl":"ru","hl":"ru"},"info":{"infoPage":{},"isLoading":true},"location":{"urlStruct":{"protocol":null,"slashes":null,"auth":null,"host":null,"port":null,"hostname":null,"hash":null,"search":null,"query":{},"pathname":null,"path":null,"href":""},"searchQuery":null},"me":{"user":null,"ppgDemanded":false,"karmaResetInfo":{"canReincarnate":null,"wasReincarnated":null,"currentScore":null},"notes":null},"mostReadingList":{"mostReadingListIds":[],"mostReadingListRefs":null,"promoPost":null},"pinnedPost":{"pinnedPost":null},"ppa":{"articles":{},"card":null,"transactions":null,"totalTransactions":null,"isAccessible":null},"projectsBlocks":{"activeBlocks":{}},"pullRefresh":{"shouldRefresh":false},"sandbox":{"articleIds":[],"articleRefs":{},"pagesCount":null,"route":{},"lastVisitedRoute":{},"isLoading":false},"settingsOther":{"inputs":{"uiLang":{"errors":[],"ref":null,"value":""},"articlesLangEnglish":{"errors":[],"ref":null,"value":false},"articlesLangRussian":{"errors":[],"ref":null,"value":false},"agreement":{"errors":[],"ref":null,"value":false},"email":{"errors":[],"ref":null,"value":true},"digest":{"errors":[],"ref":null,"value":true}}},"similarList":{"similarListIds":[],"similarListRefs":null},"ssr":{"error":null,"isDataLoaded":false,"isDataLoading":false,"isHydrationFailed":false,"isServer":false},"userHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"userInvites":{"availableInvites":0,"usedInvitesIds":[],"usedInvitesRefs":{},"usedInvitesPagesCount":0,"unusedInvitesIds":[],"unusedInvitesRefs":{},"unusedInvitesPagesCount":0},"users":{"authorRefs":{},"authorIds":{},"pagesCount":{},"authorProfiles":{},"userHubs":{},"userInvitations":{},"authorFollowers":{},"authorFollowed":{},"karmaStats":[],"statistics":null,"isLoading":false,"authorFollowersLoading":false,"authorFollowedLoading":false,"userHubsLoading":false,"userInvitationsLoading":false,"route":{}},"viewport":{"prevScrollY":{},"scrollY":0,"width":0},"tracker":{"items":{},"pagesCache":{},"markedViewedSilently":{},"markedRead":{},"unreadCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null},"unviewedCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null}}};(function(){var s;(s=document.currentScript||document.scripts[document.scripts.length-1]).parentNode.removeChild(s);}());</script>
+<script src="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" defer></script><script src="https://assets.habr.com/habr-web/js/app.c0af73e7.js" defer></script>
+
+
+
+    <script>
+      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+        (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+        m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+      })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+    </script>
+  
+  <script type="text/javascript" >
+    (function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+    m[i].l=1*new Date();k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})
+    (window, document, "script", "https://mc.yandex.ru/metrika/tag.js", "ym");
+
+    ym(24049213, "init", {
+      defer:true,
+      trackLinks:true,
+      accurateTrackBounce:true,
+      webvisor:false,
+    });
+  </script>
+  <noscript>
+    <div>
+      <img src="https://mc.yandex.ru/watch/24049213" style="position:absolute; left:-9999px;" alt="" />
+    </div>
+  </noscript>
+  
+    <script type="text/javascript">
+      window.addEventListener('load', function () {
+        setTimeout(() => {
+          const img = new Image();
+          img.src = 'https://vk.com/rtrg?p=VK-RTRG-421343-57vKE';
+        }, 0);
+      });
+    </script>
+  
+</body>
+</html>

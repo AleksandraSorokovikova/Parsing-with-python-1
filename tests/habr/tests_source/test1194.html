@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="ru" data-vue-meta="%7B%22lang%22:%7B%22ssr%22:%22ru%22%7D%7D">
+<head >
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
+  <title>Nextcloud внутри, а снаружи OpenLiteSpeed: настраиваем обратное проксирование / Хабр</title>
+  <style>
+    /* cyrillic-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSxf6TF0.woff2) format('woff2');
+      unicode-range: U+0460-052F, U+1C80-1C88, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+    }
+
+    /* cyrillic */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveQhf6TF0.woff2) format('woff2');
+      unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+    }
+
+    /* latin-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSBf6TF0.woff2) format('woff2');
+      unicode-range: U+0100-024F, U+0259, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20CF, U+2113, U+2C60-2C7F, U+A720-A7FF;
+    }
+
+    /* latin */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveRhf6.woff2) format('woff2');
+      unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+    }
+  </style>
+  <link rel="preload" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" as="script"><link rel="preload" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/app.c0af73e7.js" as="script">
+  <link rel="stylesheet" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css"><link rel="stylesheet" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css">
+  <script>window.i18nFetch = new Promise((res, rej) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open('GET', '/js/i18n/ru-compiled.85eb77f0b17c8235e7b64b9f81ea5ec2.json');
+          xhr.responseType = 'json';
+          xhr.onload = function(e) {
+            if (this.status === 200) {
+              res({ru: xhr.response});
+            } else {
+              rej(e);
+            }
+          };
+          xhr.send();
+        });</script>
+  
+  <script data-vue-meta="ssr" src="/js/ads.js" onload="window['zhY4i4nJ9K'] = true" data-vmid="checkad"></script><script data-vue-meta="ssr" type="application/ld+json" data-vmid="ldjson-schema">{"@context":"http:\/\/schema.org","@type":"Article","mainEntityOfPage":{"@type":"WebPage","@id":"https:\/\/habr.com\/ru\/post\/452750\/"},"headline":"Nextcloud внутри, а снаружи OpenLiteSpeed: настраиваем обратное проксирование","datePublished":"2019-05-21T13:17:20+03:00","dateModified":"2019-05-21T13:56:16+03:00","author":{"@type":"Person","name":"Егор"},"publisher":{"@type":"Organization","name":"Habr","logo":{"@type":"ImageObject","url":"https:\/\/habrastorage.org\/webt\/a_\/lk\/9m\/a_lk9mjkccjox-zccjrpfolmkmq.png"}},"description":"Как настроить OpenLiteSpeed на обратное проксирование в Nextcloud, находящийся во внутренней сети? Удивительно, но поиск на Хабре по запросу OpenLiteSpeed не даё...","url":"https:\/\/habr.com\/ru\/post\/452750\/#post-content-body","about":["h_hosting","h_sys_admin","h_it-infrastructure","h_nix","h_cloud_services","f_admin"],"image":["https:\/\/habrastorage.org\/webt\/ex\/pr\/ai\/expraidfnnddzqcw-222w5tbbto.png","https:\/\/habrastorage.org\/webt\/pt\/iw\/dk\/ptiwdkww_5xiebu_7rzjk1q_nn4.png","https:\/\/habrastorage.org\/webt\/cw\/1w\/he\/cw1whegtkiqtmeolcucdy5poqci.png","https:\/\/habrastorage.org\/webt\/yo\/_0\/-p\/yo_0-p7xc0c80x4bdaswadf1fpg.png","https:\/\/habrastorage.org\/webt\/eo\/7j\/m_\/eo7jm_yuk5x5plv6cimesnxxbso.png","https:\/\/habrastorage.org\/webt\/ls\/_k\/9q\/ls_k9qnq-b83jduewm-euwucaku.png","https:\/\/habrastorage.org\/webt\/lc\/aj\/ah\/lcajahhbytgrbchjugfl5nz0hoq.png","https:\/\/habrastorage.org\/webt\/mj\/mq\/yg\/mjmqyg_hy4gsxza_dcjb-sc1ldu.png","https:\/\/habrastorage.org\/webt\/km\/e_\/x9\/kme_x90yobopk29vt86fymdc7uu.png","https:\/\/habrastorage.org\/webt\/qw\/vr\/bl\/qwvrblflsbimg6ya16ay29m_pus.png","https:\/\/habrastorage.org\/webt\/1f\/z_\/p5\/1fz_p5uigm1ef5sdx3vrvptniic.png","https:\/\/habrastorage.org\/webt\/ou\/1q\/mf\/ou1qmfazgmggv1wwo1alxxtpxl8.png","https:\/\/habrastorage.org\/webt\/tr\/xg\/c0\/trxgc0tcpnnca9f53yvvpk2_5hq.png","https:\/\/habrastorage.org\/webt\/-0\/y9\/2b\/-0y92bbvfhdefzynyjuoipouwea.png","https:\/\/habrastorage.org\/webt\/us\/ap\/7z\/usap7zccpjkyyko7llyawrkkz7g.png","https:\/\/habrastorage.org\/webt\/ki\/rn\/xq\/kirnxqm_dendpov7gniojwnsk7q.png","https:\/\/habrastorage.org\/webt\/k3\/za\/ji\/k3zajihurrtkg4ddc8eabk_njuq.png","https:\/\/habrastorage.org\/webt\/c5\/cb\/pl\/c5cbplov4zgqtonzcw8x6bb0poy.png","https:\/\/habrastorage.org\/webt\/nn\/vo\/_d\/nnvo_dsr_qk_pzkv0j6xoixedve.png","https:\/\/habrastorage.org\/webt\/ow\/62\/kd\/ow62kdr0pbvhfqgcrj-04yvicfi.png","https:\/\/habrastorage.org\/webt\/ln\/wk\/ty\/lnwktyhkca3giakan3fqnk0v7ji.png"]}</script>
+  <script src="//www.googletagservices.com/tag/js/gpt.js" async></script>
+  <style>.grecaptcha-badge{visibility: hidden;}</style>
+  <meta name="habr-version" content="2.49.0">
+  
+  <meta data-vue-meta="ssr" property="fb:app_id" content="444736788986613"><meta data-vue-meta="ssr" property="fb:pages" content="472597926099084"><meta data-vue-meta="ssr" name="twitter:card" content="summary_large_image"><meta data-vue-meta="ssr" name="twitter:site" content="@habr_eng"><meta data-vue-meta="ssr" property="og:title" content="Nextcloud внутри, а снаружи OpenLiteSpeed: настраиваем обратное проксирование" data-vmid="og:title"><meta data-vue-meta="ssr" name="twitter:title" content="Nextcloud внутри, а снаружи OpenLiteSpeed: настраиваем обратное проксирование" data-vmid="twitter:title"><meta data-vue-meta="ssr" name="aiturec:title" content="Nextcloud внутри, а снаружи OpenLiteSpeed: настраиваем обратное проксирование" data-vmid="aiturec:title"><meta data-vue-meta="ssr" name="description" content="Как настроить OpenLiteSpeed на обратное проксирование в Nextcloud, находящийся во внутренней сети?
+Удивительно, но поиск на Хабре по запросу OpenLiteSpeed не даёт ничего! Спешу исправить эту..." data-vmid="description"><meta data-vue-meta="ssr" itemprop="description" content="Как настроить OpenLiteSpeed на обратное проксирование в Nextcloud, находящийся во внутренней сети?
+Удивительно, но поиск на Хабре по запросу OpenLiteSpeed не даёт ничего! Спешу исправить эту..." data-vmid="description:itemprop"><meta data-vue-meta="ssr" property="og:description" content="Как настроить OpenLiteSpeed на обратное проксирование в Nextcloud, находящийся во внутренней сети?
+Удивительно, но поиск на Хабре по запросу OpenLiteSpeed не даёт ничего! Спешу исправить эту..." data-vmid="og:description"><meta data-vue-meta="ssr" name="twitter:description" content="Как настроить OpenLiteSpeed на обратное проксирование в Nextcloud, находящийся во внутренней сети?
+Удивительно, но поиск на Хабре по запросу OpenLiteSpeed не даёт ничего! Спешу исправить эту..." data-vmid="twitter:description"><meta data-vue-meta="ssr" property="aiturec:description" content="Как настроить OpenLiteSpeed на обратное проксирование в Nextcloud, находящийся во внутренней сети?
+Удивительно, но поиск на Хабре по запросу OpenLiteSpeed не даёт ничего! Спешу исправить эту..." data-vmid="aiturec:description"><meta data-vue-meta="ssr" itemprop="image" content="https://habr.com/share/publication/452750/9aeb8b3770dbfdf0f61667b3c316ac70/" data-vmid="image:itemprop"><meta data-vue-meta="ssr" property="og:image" content="https://habr.com/share/publication/452750/9aeb8b3770dbfdf0f61667b3c316ac70/" data-vmid="og:image"><meta data-vue-meta="ssr" property="aiturec:image" content="https://habr.com/share/publication/452750/9aeb8b3770dbfdf0f61667b3c316ac70/" data-vmid="aiturec:image"><meta data-vue-meta="ssr" name="twitter:image" content="https://habr.com/share/publication/452750/9aeb8b3770dbfdf0f61667b3c316ac70/" data-vmid="twitter:image"><meta data-vue-meta="ssr" property="vk:image" content="https://habr.com/share/publication/452750/9aeb8b3770dbfdf0f61667b3c316ac70/" data-vmid="vk:image"><meta data-vue-meta="ssr" property="aiturec:item_id" content="452750" data-vmid="aiturec:item_id"><meta data-vue-meta="ssr" property="aiturec:datetime" content="2019-05-21T10:17:20.000Z" data-vmid="aiturec:datetime"><meta data-vue-meta="ssr" property="og:type" content="article" data-vmid="og:type"><meta data-vue-meta="ssr" property="og:locale" content="ru_RU" data-vmid="og:locale"><meta data-vue-meta="ssr" property="og:image:width" content="1200" data-vmid="og:image:width"><meta data-vue-meta="ssr" property="og:image:height" content="630" data-vmid="og:image:height">
+  <link data-vue-meta="ssr" href="https://habr.com/ru/rss/post/452750/?fl=ru" type="application/rss+xml" title="" rel="alternate" name="rss"><link data-vue-meta="ssr" href="https://habr.com/ru/post/452750/" rel="canonical" data-vmid="canonical"><link data-vue-meta="ssr" data-vmid="hreflang"><link data-vue-meta="ssr" image_src="image" href="https://habr.com/share/publication/452750/9aeb8b3770dbfdf0f61667b3c316ac70/" data-vmid="image:href"><link data-vue-meta="ssr" rel="amphtml" href="https://habr.com/ru/amp/post/452750/">
+  <meta name="apple-mobile-web-app-status-bar-style" content="#303b44">
+  <meta name="msapplication-TileColor" content="#629FBC">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="16x16"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-16.png"
+  >
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="32x32"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-32.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="76x76"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-76.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="120x120"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="152x152"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-152.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="180x180"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-180.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="256x256"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-256.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1136x640.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2436x1125.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1792x828.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_828x1792.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1334x750.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2208x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1125x2436.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2208.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2732x2048.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2688x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2224x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_750x1334.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x2732.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2388x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2224.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_640x1136.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2388.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x1536.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1536x2048.png"
+  >
+  <link
+    rel="mask-icon"
+    color="#77a2b6"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.svg"
+  >
+  <link
+    crossorigin="use-credentials"
+    href="/manifest.webmanifest"
+    rel="manifest"
+  >
+</head>
+<body>
+
+
+<div id="app" data-server-rendered="true" data-async-called="true"><div class="tm-layout__wrapper"><!----> <div></div> <!----> <header class="tm-header"><div class="tm-page-width"><div class="tm-header__container"><!----> <span class="tm-header__logo-wrap"><a href="/ru/" class="tm-header__logo tm-header__logo_ru"><svg height="16" width="16" class="tm-svg-img tm-header__icon"><title>Хабр</title> <use xlink:href="/img/habr-logo-ru.svg#logo"></use></svg></a> <span class="tm-header__beta-sign" style="display:none;">β</span></span> <div class="tm-dropdown tm-header__projects"><div class="tm-dropdown__head"><button class="tm-header__dropdown-toggle"><svg height="16" width="16" class="tm-svg-img tm-header__icon tm-header__icon_dropdown"><title>Открыть список</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#arrow-down"></use></svg></button></div> <!----></div> <a href="/ru/sandbox/start/" class="tm-header__become-author-btn">
+            Как стать автором
+          </a> <div class="tm-feature tm-header__feature tm-feature_variant-inline"><!----></div> <!----> <!----></div></div></header> <div class="tm-layout"><div class="tm-page-progress-bar"></div> <div data-menu-sticky="true" class="tm-base-layout__header tm-base-layout__header_is-sticky"><div class="tm-page-width"><div class="tm-base-layout__header-wrapper"><div class="tm-main-menu"><div class="tm-main-menu__section"><nav class="tm-main-menu__section-content"><!----> <a href="/ru/all/" class="tm-main-menu__item">
+        Все потоки
+      </a> <a href="/ru/flows/develop/" class="tm-main-menu__item">
+          Разработка
+        </a><a href="/ru/flows/admin/" class="tm-main-menu__item">
+          Администрирование
+        </a><a href="/ru/flows/design/" class="tm-main-menu__item">
+          Дизайн
+        </a><a href="/ru/flows/management/" class="tm-main-menu__item">
+          Менеджмент
+        </a><a href="/ru/flows/marketing/" class="tm-main-menu__item">
+          Маркетинг
+        </a><a href="/ru/flows/popsci/" class="tm-main-menu__item">
+          Научпоп
+        </a></nav></div></div> <div class="tm-header-user-menu tm-base-layout__user-menu"><a href="/ru/search/" class="tm-header-user-menu__item tm-header-user-menu__search"><svg height="24" width="24" class="tm-svg-img tm-header-user-menu__icon tm-header-user-menu__icon_search tm-header-user-menu__icon_dark"><title>Поиск</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#search"></use></svg></a> <!----> <!----> <!----> <div class="tm-header-user-menu__item tm-header-user-menu__user_desktop"><div class="tm-dropdown"><div class="tm-dropdown__head"><svg height="24" width="24" data-test-id="menu-toggle-guest" class="tm-svg-img tm-header-user-menu__icon"><title>Профиль</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#header-user"></use></svg> <!----></div> <!----></div> <!----></div> <!----></div></div></div></div> <!----> <div class="tm-page-width"></div> <main class="tm-layout__container"><div hl="ru" data-async-called="true" class="tm-page"><div class="tm-page-width"><!----> <div class="tm-page__wrapper"><div class="tm-page__main tm-page__main_has-sidebar"><div class="pull-down"><div class="pull-down__header" style="height:0px;"><div class="pull-down__content" style="bottom:10px;"><svg height="24" width="24" class="tm-svg-img pull-down__arrow"><title>Обновить</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#pull-arrow"></use></svg></div></div> <div class="tm-article-presenter"> <div class="tm-article-presenter__body"><div class="tm-misprint-area"><div class="tm-misprint-area__wrapper"><article class="tm-article-presenter__content tm-article-presenter__content_narrow"><div class="tm-article-presenter__header"> <div class="tm-article-snippet tm-article-presenter__snippet"><div class="tm-article-snippet__meta-container"><div class="tm-article-snippet__meta"><span class="tm-user-info tm-article-snippet__author"><a href="/ru/users/Yogson/" title="Yogson" class="tm-user-info__userpic"><div class="tm-entity-image"><img alt="" height="24" loading="lazy" src="//habrastorage.org/r/w32/getpro/habr/avatars/122/f2c/5ae/122f2c5aef8765d8c6b83cfd075a80fc.png" width="24" class="tm-entity-image__pic"></div></a> <span class="tm-user-info__user"><a href="/ru/users/Yogson/" class="tm-user-info__username">
+      Yogson
+    </a> </span></span> <span class="tm-article-snippet__datetime-published"><time datetime="2019-05-21T10:17:20.000Z" title="2019-05-21, 13:17">21  мая  2019 в 13:17</time></span></div> <!----></div> <h1 lang="ru" class="tm-article-snippet__title tm-article-snippet__title_h1"><span>Nextcloud внутри, а снаружи OpenLiteSpeed: настраиваем обратное проксирование</span></h1> <div class="tm-article-snippet__hubs"><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/hosting/" class="tm-article-snippet__hubs-item-link"><span>Хостинг</span> <!----></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/sys_admin/" class="tm-article-snippet__hubs-item-link"><span>Системное администрирование</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/it-infrastructure/" class="tm-article-snippet__hubs-item-link"><span>IT-инфраструктура</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/nix/" class="tm-article-snippet__hubs-item-link"><span>*nix</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/cloud_services/" class="tm-article-snippet__hubs-item-link"><span>Облачные сервисы</span> <!----></a></span></div> <div class="tm-article-snippet__labels"><div class="tm-article-snippet__label"><span>
+        Tutorial
+      </span></div></div> <!----> <!----></div></div> <!----> <div data-gallery-root="" lang="ru" class="tm-article-body"><div id="post-content-body" class="article-formatted-body article-formatted-body_version-1"><div xmlns="http://www.w3.org/1999/xhtml"><h3>Как настроить OpenLiteSpeed на обратное проксирование в Nextcloud, находящийся во внутренней сети?</h3><br/>
+<p>Удивительно, но поиск на Хабре по запросу OpenLiteSpeed не даёт ничего! Спешу исправить эту несправедливость, ведь LSWS – достойный веб-сервер. Я люблю его за скорость и модный веб-интерфейс администрирования:</p><br/>
+<p><img src="/img/image-loader.svg" alt="image" data-src="https://habrastorage.org/webt/ex/pr/ai/expraidfnnddzqcw-222w5tbbto.png"/></p><br/>
+<p>Несмотря на то, что OpenLiteSpeed наиболее знаменит как «ускоритель» вордпреса, в сегодняшней статье я покажу довольно специфичное его применение. А именно обратное проксирование запросов (reverse proxy). Вы скажете, что для этого привычнее использовать nginx? Я соглашусь. Но больно уж нам полюбился LSWS!</p><br/>
+<p>Проксирование ок, но куда? В не менее замечательный сервис – Nextcloud. Мы используем Nextcloud для создания частных «файлообменных облаков». Для каждого клиента мы выделяем отдельную VM с Nextcloud, и не хотим выставлять их «наружу». Вместо этого мы проксируем запросы через общий reverse proxy. Это решение позволяет: </p><br/>
+<ol>
+<li>убрать сервер, на котором хранятся данные клиента, из интернета и </li>
+<li>сэкономить ip-адреса.</li>
+</ol><br/>
+<p>Схема выглядит так:</p><br/>
+<p><img src="/img/image-loader.svg" alt="image" data-src="https://habrastorage.org/webt/pt/iw/dk/ptiwdkww_5xiebu_7rzjk1q_nn4.png"/></p><br/>
+<p>Понятно, что схема упрощена, т.к. организация инфраструктуры веб-сервисов – не тема сегодняшней статьи. </p><br/>
+<p>Также в данной статье я опущу установку и базовую настройку некстклауда, тем более что на Хабре есть посвящённые этой теме материалы. Но обязательно покажу настройки, без которых Nextcloud не будет работать за прокси.</p><a name="habracut"></a><br/>
+<p>Дано: Nextcloud установлен на хосте 1 и настроен на работу по http (без SSL), имеет только локальный сетевой интерфейс и «серый» IP-адрес 172.16.22.110.</p><br/>
+<p>Настроим OpenLiteSpeed на хосте 2. У него два интерфейса, внешний (смотрит в интернет) и внутренний с IP-адресом в сети 172.16.22.0/24</p><br/>
+<p>На IP-адрес внешнего интерфейса хоста 2 ведет DNS-имя cloud.connect.link</p><br/>
+<p>Задача: попадать из интернета по ссылке '<a href="https://cloud.connect.link">https://cloud.connect.link</a>' (SSL) на Nextcloud во внутренней сети.</p><br/>
+<ul>
+<li>Устанавливаем OpenLiteSpeed на Ubuntu 18.04.2.</li>
+</ul><br/>
+<p>Добавим репозиторий:</p><br/>
+<blockquote>wget -O — <a href="http://rpms.litespeedtech.com/debian/enable_lst_debain_repo.sh">http://rpms.litespeedtech.com/debian/enable_lst_debain_repo.sh</a> |sudo bash<br/>
+sudo apt-get update</blockquote><p>ставим, запускаем:</p><br/>
+<blockquote>sudo apt-get install openlitespeed<br/>
+sudo /usr/local/lsws/bin/lswsctrl start</blockquote><br/>
+<ul>
+<li>Минимально настроим файрволл.<br/>
+<blockquote>sudo ufw allow ssh<br/>
+sudo ufw default allow outgoing<br/>
+sudo ufw default deny incoming<br/>
+sudo ufw allow http<br/>
+sudo ufw allow https<br/>
+sudo ufw allow from <em>ваш хост управления</em> to any port 7080<br/>
+sudo ufw enable<br/>
+</blockquote></li>
+<li>Настроим OpenLiteSpeed as a reverse proxy.<br/>
+Создадим директории под виртуалхост.<br/>
+<blockquote>cd /usr/local/lsws/<br/>
+sudo mkdirc cloud.connect.link<br/>
+cd cloud.connect.link/<br/>
+sudo mkdir {conf,html,logs}<br/>
+sudo chown lsadm:lsadm ./conf/<br/>
+</blockquote></li>
+</ul><br/>
+<p>Настроим виртуалхост из веб-интерфейса LSWS.<br/>
+Открываем менеджмент урл <a href="http://cloud.connect.link:7080">http://cloud.connect.link:7080</a><br/>
+Дефолтный логин/пароль: admin/123456</p><br/>
+<p><img src="/img/image-loader.svg" alt="image" data-src="https://habrastorage.org/webt/cw/1w/he/cw1whegtkiqtmeolcucdy5poqci.png"/></p><br/>
+<p>Добавляем виртуалхост (Virtual Hosts > Add). </p><br/>
+<p>При добавлении появится сообщение об ошибке – отсутствии конфигурационного файла. Это нормально, решается нажатием Click to create.</p><br/>
+<p><img src="/img/image-loader.svg" alt="image" data-src="https://habrastorage.org/webt/yo/_0/-p/yo_0-p7xc0c80x4bdaswadf1fpg.png"/></p><br/>
+<p>Во вкладке General укажем Document Root (хоть он и не понадобится, без него конфиг не взлетит). Domain Name, если его не указывать, будет взят из Virtual Host Name, который мы назвали именем нашего домена.</p><br/>
+<p><img src="/img/image-loader.svg" alt="image" data-src="https://habrastorage.org/webt/eo/7j/m_/eo7jm_yuk5x5plv6cimesnxxbso.png"/></p><br/>
+<p>Теперь пора вспомнить, что у нас не просто веб-сервер, а reverse proxy. Следующие настройки укажут LSWS, что проксировать и куда. В настройках виртуалхоста открываем вкладку External App и добавляем новую аппликацию типа Web server:</p><br/>
+<p><img src="/img/image-loader.svg" alt="image" data-src="https://habrastorage.org/webt/ls/_k/9q/ls_k9qnq-b83jduewm-euwucaku.png"/></p><br/>
+<p>Указываем имя и адрес. Имя можно указать произвольное, но его надо запомнить, пригодится на следующих шагах. Адрес – тот, где живёт Nextcloud во внутренней сети:</p><br/>
+<p><img src="/img/image-loader.svg" alt="image" data-src="https://habrastorage.org/webt/lc/aj/ah/lcajahhbytgrbchjugfl5nz0hoq.png"/></p><br/>
+<p>В тех же настройках виртуалхоста открываем вкладку Context и создаём новый контекст типа Proxy:</p><br/>
+<p><img src="/img/image-loader.svg" alt="image" data-src="https://habrastorage.org/webt/mj/mq/yg/mjmqyg_hy4gsxza_dcjb-sc1ldu.png"/></p><br/>
+<p>Указываем параметры: URI = /, Web server = nextcloud_1 (имя из предыдущего шага)</p><br/>
+<p><img src="/img/image-loader.svg" alt="image" data-src="https://habrastorage.org/webt/km/e_/x9/kme_x90yobopk29vt86fymdc7uu.png"/></p><br/>
+<p>Перезапускаем LSWS. Это делается одним кликом из веб-интерфейса, чудеса! (во мне говорит потомственный мышевоз)</p><br/>
+<p><img src="/img/image-loader.svg" alt="image" data-src="https://habrastorage.org/webt/qw/vr/bl/qwvrblflsbimg6ya16ay29m_pus.png"/></p><br/>
+<p><img src="/img/image-loader.svg" alt="image" data-src="https://habrastorage.org/webt/1f/z_/p5/1fz_p5uigm1ef5sdx3vrvptniic.png"/></p><br/>
+<ul>
+<li>Ставим сертификат, настраиваем https.<br/>
+<a href="https://certbot.eff.org/docs/using.html#standalone">Процедуру получения сертификата</a> мы опустим, договоримся что он у нас уже есть и лежит вместе с ключом в директории /etc/letsencrypt/live/cloud.connect.link.</li>
+</ul><br/>
+<p>Создадим «слушателя» (Listeners > Add), назовём его «https». Укажем ему на 443 порт и отметим, что он будет Secure:</p><br/>
+<p><img src="/img/image-loader.svg" alt="image" data-src="https://habrastorage.org/webt/ou/1q/mf/ou1qmfazgmggv1wwo1alxxtpxl8.png"/></p><br/>
+<p>Во вкладке SSL укажем путь до ключа и сертификата:</p><br/>
+<p><img src="/img/image-loader.svg" alt="image" data-src="https://habrastorage.org/webt/tr/xg/c0/trxgc0tcpnnca9f53yvvpk2_5hq.png"/></p><br/>
+<p>«Слушатель» создан, теперь в разделе Virtual Host Mappings добавим к нему наш виртуалхост:</p><br/>
+<p><img src="/img/image-loader.svg" alt="image" data-src="https://habrastorage.org/webt/-0/y9/2b/-0y92bbvfhdefzynyjuoipouwea.png"/></p><br/>
+<p>Если LSWS будет проксировать только до одного сервиса, настройку можно заканчивать. Но мы планируем использовать его для передачи запросов в разные «инстанции» в зависимости от доменного имени. И у всех доменов будут свои сертификаты. Поэтому надо пойти в конфиг виртуалхоста и снова указать во вкладке SSL его ключ и сертификат. В будущем это надо делать для каждого нового виртуалхоста.</p><br/>
+<p><img src="/img/image-loader.svg" alt="image" data-src="https://habrastorage.org/webt/us/ap/7z/usap7zccpjkyyko7llyawrkkz7g.png"/></p><br/>
+<p>Осталось настроить перезапись url, чтобы http-запросы адресовались на https. </p><br/>
+<p><i>(Кстати, когда уже это кончится? Пора уже браузерам и прочему софту по умолчанию ходить на https, а пересылку на no-SSL делать вручную при необходимости).</i><br/>
+Включаем Enable Rewrite и записываем Rewrite Rules:</p><br/>
+<blockquote>RewriteCond %{SERVER_PORT} 80<br/>
+RewriteRule ^(.*)$ <a href="https://%%7BSERVER_NAME%7D%%7BREQUEST_URI">https://%{SERVER_NAME}%{REQUEST_URI</a>} [R=301,L]</blockquote><p><img src="/img/image-loader.svg" alt="image" data-src="https://habrastorage.org/webt/ki/rn/xq/kirnxqm_dendpov7gniojwnsk7q.png"/></p><br/>
+<p>Применить Rewrite rules привычным Graceful restart по странному недоразумению нельзя. Поэтому перезапустим LSWS не изящно, а грубо и эффективно:</p><br/>
+<blockquote>sudo systemctl restart lsws.service</blockquote><p>Чтобы сервер слушал и 80-й порт, создадим ещё один Listener. Назовём его http, укажем 80-й порт и то, что он будет не-Secure:</p><br/>
+<p><img src="/img/image-loader.svg" alt="image" data-src="https://habrastorage.org/webt/k3/za/ji/k3zajihurrtkg4ddc8eabk_njuq.png"/></p><br/>
+<p>По аналогии с настройкой https listener, примапим к нему наш виртуалхост.</p><br/>
+<p>Теперь LSWS будет слушать 80-й порт и направлять с него запросы на 443, переписывая url.<br/>
+В завершение рекомендую снизить уровень логирования LSWS, который по умолчанию установлен как Debug. В таком режиме логи размножаются молниеносно! Для большинства случаев достаточно уровня Warning. Идём в Server Configuration > Log:</p><br/>
+<p><img src="/img/image-loader.svg" alt="image" data-src="https://habrastorage.org/webt/c5/cb/pl/c5cbplov4zgqtonzcw8x6bb0poy.png"/></p><br/>
+<p>На этом настройка OpenLiteSpeed в качестве обратного прокси завершена. В очередной раз перезапускаем LSWS, идём по ссылке <a href="https://cloud.connect.link">https://cloud.connect.link</a> и видим:</p><br/>
+<p><img src="/img/image-loader.svg" alt="image" data-src="https://habrastorage.org/webt/nn/vo/_d/nnvo_dsr_qk_pzkv0j6xoixedve.png"/></p><br/>
+<p>Чтобы Nextcloud пустил нас, необходимо внести домен cloud.connect.link в список доверенных. Идём править config.php. Nextcloud я ставил автоматически при установке Ubuntu и конфиг находится тут: /var/snap/nextcloud/current/nextcloud/config. </p><br/>
+<p>Ключу trusted_domains добавляем параметр 'cloud.connect.link':</p><br/>
+<blockquote>'trusted_domains' =><br/>
+array (<br/>
+0 => '172.16.22.110',<br/>
+1 => 'cloud.connect.link',<br/>
+),</blockquote><p><img src="/img/image-loader.svg" alt="image" data-src="https://habrastorage.org/webt/ow/62/kd/ow62kdr0pbvhfqgcrj-04yvicfi.png"/></p><br/>
+<p>Далее, в том же конфиге надо указать IP-адрес нашего прокси. Обращаю внимание, что адрес надо указать тот, который виден серверу Nextcloud, т.е. IP локального интерфейса LSWS. Без этого шага работает веб-интерфейс Nextcloud, но не авторизуются приложения.</p><br/>
+<blockquote>'trusted_proxies' =><br/>
+array (<br/>
+0 => '172.16.22.100',<br/>
+),</blockquote><p>Отлично, после этого мы можем попасть в интерфейс авторизации:</p><br/>
+<p><img src="/img/image-loader.svg" alt="image" data-src="https://habrastorage.org/webt/ln/wk/ty/lnwktyhkca3giakan3fqnk0v7ji.png"/></p><br/>
+<p>Задача решена! Теперь каждый клиент может безопасно пользоваться «файловым облаком» по своему персональному url, сервер с файлами отделён от интернета, будущие клиенты получат всё тоже самое и ни один дополнительный IP-адрес не пострадает.<br/>
+Дополнительно можно использовать reverse proxy для доставки статического контента, но в случае Nextcloud это не даст ощутимого прироста скорости. Так что это опционально и по желанию.</p><br/>
+<p>Рад поделиться этой историей, надеюсь кому-нибудь будет полезно. Если вы знаете более изящные и эффективные методы решения поставленной задачи – буду благодарен за комментарии!</p></div></div> <!----> <!----></div> <div class="tm-article-presenter__meta"><div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Теги:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bopenlitespeed%5D" class="tm-tags-list__link">openlitespeed</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bnextcloud%5D" class="tm-tags-list__link">nextcloud</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Breverse%20proxy%5D" class="tm-tags-list__link">reverse proxy</a></li></ul></div> <div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Хабы:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/hub/hosting/" class="tm-hubs-list__link">
+    Хостинг
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/sys_admin/" class="tm-hubs-list__link">
+    Системное администрирование
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/it-infrastructure/" class="tm-hubs-list__link">
+    IT-инфраструктура
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/nix/" class="tm-hubs-list__link">
+    *nix
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/cloud_services/" class="tm-hubs-list__link">
+    Облачные сервисы
+  </a></li></ul></div></div></article></div> <!----></div> <div class="tm-article-sticky-panel"><div class="tm-data-icons tm-article-sticky-panel__icons"><div class="tm-article-rating tm-data-icons__item"><div class="tm-votes-meter tm-article-rating__votes-switcher"><svg height="16" width="16" class="tm-svg-img tm-votes-meter__icon tm-votes-meter__icon_medium"><title>Всего голосов 9: ↑9 и ↓0</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-rating"></use></svg> <span title="Всего голосов 9: ↑9 и ↓0" class="tm-votes-meter__value tm-votes-meter__value_positive tm-votes-meter__value_medium">+9</span></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----> <span title="Количество просмотров" class="tm-icon-counter tm-data-icons__item"><svg height="16" width="16" class="tm-svg-img tm-icon-counter__icon"><title>Просмотры</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-views"></use></svg> <span class="tm-icon-counter__value">5.7K</span></span> <button title="Добавить в закладки" type="button" class="bookmarks-button tm-data-icons__item"><span title="Добавить в закладки" class="tm-svg-icon__wrapper bookmarks-button__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Добавить в закладки</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-favorite"></use></svg></span> <span title="Количество пользователей, добавивших публикацию в закладки" class="bookmarks-button__counter">
+    47
+  </span></button> <!----> <div title="Поделиться" class="tm-sharing tm-data-icons__item"><button type="button" class="tm-sharing__button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="tm-sharing__icon"><path fill="currentColor" d="M10.33.275l9.047 7.572a.2.2 0 010 .306l-9.048 7.572a.2.2 0 01-.328-.153V11c-8 0-9.94 6-9.94 6S-1 5 10 5V.428a.2.2 0 01.328-.153z"></path></svg></button> <!----></div> <DIV class="v-portal" style="display:none;"></DIV></div> </div></div> <!----> <!----> <div class="tm-article-presenter__footer"><div class="tm-article-blocks"><!----> <section class="tm-block tm-block_spacing-bottom"><!----> <div class="tm-block__body tm-block__body_variant-balanced"><div class="tm-article-author"> <div class="tm-user-card tm-article-author__user-card tm-user-card_variant-article"><div class="tm-user-card__info-container"><div class="tm-user-card__header"><div class="tm-user-card__header-data"><a href="/ru/users/Yogson/" class="tm-user-card__userpic tm-user-card__userpic_size-40"><div class="tm-entity-image"><img alt="" src="//habrastorage.org/getpro/habr/avatars/122/f2c/5ae/122f2c5aef8765d8c6b83cfd075a80fc.png" class="tm-entity-image__pic"></div></a> <div class="tm-user-card__meta"><div title=" 20 голосов " class="tm-karma tm-user-card__karma"><div class="tm-karma__votes tm-karma__votes_positive">
+    12
+  </div> <div class="tm-karma__text">
+    Карма
+  </div></div> <div title="Рейтинг пользователя" class="tm-rating tm-user-card__rating"><div class="tm-rating__header"> <div class="tm-rating__counter">0</div></div> <div class="tm-rating__text">
+    Рейтинг
+  </div></div></div></div></div> <div class="tm-user-card__info tm-user-card__info_variant-article"><div class="tm-user-card__title tm-user-card__title_variant-article"><span class="tm-user-card__name tm-user-card__name_variant-article">Егор</span> <a href="/ru/users/Yogson/" class="tm-user-card__nickname tm-user-card__nickname_variant-article">
+          @Yogson
+        </a> <!----></div> <p class="tm-user-card__short-info tm-user-card__short-info_variant-article">Пользователь</p></div></div> <div class="tm-user-card__buttons tm-user-card__buttons_variant-article"><!----> <!----> <!----> <!----> <!----></div></div> <!----></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----></section> <div class="tm-article-blocks__comments"><div class="tm-article-page-comments"><div class="tm-article-comments-counter-link tm-article-comments-counter-button"><a href="/ru/post/452750/comments/" class="tm-article-comments-counter-link__link tm-article-comments-counter-link__link_button-style"><svg height="16" width="16" class="tm-svg-img tm-article-comments-counter-link__icon tm-article-comments-counter-link__icon_contrasted"><title>Комментарии</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-comments"></use></svg> <span class="tm-article-comments-counter-link__value tm-article-comments-counter-link__value_contrasted">
+       Комментарии 2 
+    </span></a> <!----></div></div></div> <div class="tm-ad-banner__container tm-page-article__banner"><!----> <div id="articleBottomBanner" class="tm-ad-banner"></div></div> <!----> <!----> <!----> <!----> </div></div></div></div></div> <div class="tm-page__sidebar"><div class="tm-layout-sidebar"><div class="tm-layout-sidebar__ads tm-layout-sidebar__ads_initial"><div class="tm-ad-banner__container tm-layout-sidebar__banner"><!----> <div id="sidebarBanner" class="tm-ad-banner"></div></div></div> <div class="tm-sexy-sidebar tm-sexy-sidebar_initial" style="margin-top:0px;"><!----> <!----></div></div></div></div></div></div></main> <!----></div> <div class="tm-footer-menu"><div class="tm-page-width"><div class="tm-footer-menu__container"><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Ваш аккаунт
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr/?back=/ru/post/452750/&amp;hl=ru" rel="nofollow" target="_self">
+                Войти
+              </a></li><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr-register/?back=/ru/post/452750/&amp;hl=ru" rel="nofollow" target="_self">
+                Регистрация
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Разделы
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/" class="footer-menu__item-link router-link-active">
+                Публикации
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/news/" class="footer-menu__item-link">
+                Новости
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/hubs/" class="footer-menu__item-link">
+                Хабы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/companies/" class="footer-menu__item-link">
+                Компании
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/users/" class="footer-menu__item-link">
+                Авторы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/sandbox/" class="footer-menu__item-link">
+                Песочница
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Информация
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/docs/help/" class="footer-menu__item-link">
+                Устройство сайта
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/authors/codex/" class="footer-menu__item-link">
+                Для авторов
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/companies/corpblogs/" class="footer-menu__item-link">
+                Для компаний
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/docs/transparency/" class="footer-menu__item-link">
+                Документы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/agreement" target="_blank">
+                Соглашение
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/confidential/" target="_blank">
+                Конфиденциальность
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Услуги
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQLwRfQmXibiUlWaRg-BAc38s7oM3lJiaPju7qmdJsp8ysIvZ_G-Npem0njJLMozE2bPHMpDqiI5hhy/pub?start=false&amp;loop=false&amp;delayms=60000&amp;slide=id.g91a03369cd_4_297" target="_blank">
+                Реклама
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://habrastorage.org/storage/stuff/habr/service_price.pdf" target="_blank">
+                Тарифы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQJJds8-Di7BQSP_guHxICN7woVYoN5NP_22ra-BIo4bqnTT9FR6fB-Ku2P0AoRpX0Ds-LRkDeAoD8F/pub?start=false&amp;loop=false&amp;delayms=60000" target="_blank">
+                Контент
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://tmtm.timepad.ru/" target="_blank">
+                Семинары
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/megaprojects/" class="footer-menu__item-link">
+                Мегапроекты
+              </a></li></ul></div></div></div></div></div> <div class="tm-footer"><div class="tm-page-width"><div class="tm-footer__container"><!----> <div class="tm-footer__social"><a href="https://www.facebook.com/habrahabr.ru" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Facebook</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-facebook"></use></svg></a><a href="https://twitter.com/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Twitter</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-twitter"></use></svg></a><a href="https://vk.com/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>VK</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-vkontakte"></use></svg></a><a href="https://telegram.me/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Telegram</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-telegram"></use></svg></a><a href="https://www.youtube.com/channel/UCd_sTwKqVrweTt4oAKY5y4w" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Youtube</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-youtube"></use></svg></a><a href="https://zen.yandex.ru/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Яндекс Дзен</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-zen"></use></svg></a></div> <DIV class="v-portal" style="display:none;"></DIV> <button class="tm-footer__link"><!---->
+        Настройка языка
+      </button> <a href="/ru/about" class="tm-footer__link">
+        О сайте
+      </a> <a href="/ru/feedback/" class="tm-footer__link">
+        Техническая поддержка
+      </a> <!----> <a href="/berserk-mode-nope" class="tm-footer__link">
+        Вернуться на старую версию
+      </a> <div class="tm-footer-copyright"><span class="tm-copyright"><span class="tm-copyright__years">© 2006–2021 </span> <span class="tm-copyright__name">«<a href="https://company.habr.com/" rel="noopener" target="_blank" class="tm-copyright__link">Habr</a>»</span></span></div></div></div></div> <!----> <!----></div> <div class="vue-portal-target"></div></div>
+<script>window.__INITIAL_STATE__={"adblock":{"hasAcceptableAdsFilter":false,"hasAdblock":false},"articlesList":{"articlesList":{"452750":{"id":"452750","timePublished":"2019-05-21T10:17:20+00:00","isCorporative":false,"lang":"ru","titleHtml":"Nextcloud внутри, а снаружи OpenLiteSpeed: настраиваем обратное проксирование","leadData":{"textHtml":"\u003Ch3\u003EКак настроить OpenLiteSpeed на обратное проксирование в Nextcloud, находящийся во внутренней сети?\u003C\u002Fh3\u003E\u003Cbr\u003E\r\n\u003Cp\u003EУдивительно, но поиск на Хабре по запросу OpenLiteSpeed не даёт ничего! Спешу исправить эту несправедливость, ведь LSWS – достойный веб-сервер. Я люблю его за скорость и модный веб-интерфейс администрирования:\u003C\u002Fp\u003E\u003Cbr\u003E\r\n\u003Cp\u003E\u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fex\u002Fpr\u002Fai\u002Fexpraidfnnddzqcw-222w5tbbto.png\" alt=\"image\"\u003E\u003C\u002Fp\u003E\u003Cbr\u003E\r\n\u003Cp\u003EНесмотря на то, что OpenLiteSpeed наиболее знаменит как «ускоритель» вордпреса, в сегодняшней статье я покажу довольно специфичное его применение. А именно обратное проксирование запросов (reverse proxy). Вы скажете, что для этого привычнее использовать nginx? Я соглашусь. Но больно уж нам полюбился LSWS!\u003C\u002Fp\u003E\u003Cbr\u003E\r\n\u003Cp\u003EПроксирование ок, но куда? В не менее замечательный сервис – Nextcloud. Мы используем Nextcloud для создания частных «файлообменных облаков». Для каждого клиента мы выделяем отдельную VM с Nextcloud, и не хотим выставлять их «наружу». Вместо этого мы проксируем запросы через общий reverse proxy. Это решение позволяет: \u003C\u002Fp\u003E\u003Cbr\u003E\r\n\u003Col\u003E\r\n\u003Cli\u003Eубрать сервер, на котором хранятся данные клиента, из интернета и \u003C\u002Fli\u003E\r\n\u003Cli\u003Eсэкономить ip-адреса.\u003C\u002Fli\u003E\r\n\u003C\u002Fol\u003E\u003Cbr\u003E\r\n\u003Cp\u003EСхема выглядит так:\u003C\u002Fp\u003E\u003Cbr\u003E\r\n\u003Cp\u003E\u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fpt\u002Fiw\u002Fdk\u002Fptiwdkww_5xiebu_7rzjk1q_nn4.png\" alt=\"image\"\u003E\u003C\u002Fp\u003E\u003Cbr\u003E\r\n\u003Cp\u003EПонятно, что схема упрощена, т.к. организация инфраструктуры веб-сервисов – не тема сегодняшней статьи. \u003C\u002Fp\u003E\u003Cbr\u003E\r\n\u003Cp\u003EТакже в данной статье я опущу установку и базовую настройку некстклауда, тем более что на Хабре есть посвящённые этой теме материалы. Но обязательно покажу настройки, без которых Nextcloud не будет работать за прокси.\u003C\u002Fp\u003E","imageUrl":null,"buttonTextHtml":"Читать дальше →","image":null},"editorVersion":"1.0","postType":"article","postLabels":[{"type":"tutorial","data":null}],"author":{"scoreStats":{"score":12,"votesCount":20},"rating":0,"relatedData":null,"contacts":[],"authorContacts":[],"paymentDetails":{"paymentYandexMoney":null,"paymentPayPalMe":null,"paymentWebmoney":null},"id":"411822","alias":"Yogson","fullname":"Егор","avatarUrl":"\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Favatars\u002F122\u002Ff2c\u002F5ae\u002F122f2c5aef8765d8c6b83cfd075a80fc.png","speciality":"Пользователь"},"statistics":{"commentsCount":2,"favoritesCount":47,"readingCount":5651,"score":9,"votesCount":9},"hubs":[{"relatedData":null,"id":"20","alias":"hosting","type":"collective","title":"Хостинг","titleHtml":"Хостинг","isProfiled":false},{"relatedData":null,"id":"221","alias":"sys_admin","type":"collective","title":"Системное администрирование","titleHtml":"Системное администрирование","isProfiled":true},{"relatedData":null,"id":"6398","alias":"it-infrastructure","type":"collective","title":"IT-инфраструктура","titleHtml":"IT-инфраструктура","isProfiled":true},{"relatedData":null,"id":"7289","alias":"nix","type":"collective","title":"*nix","titleHtml":"*nix","isProfiled":true},{"relatedData":null,"id":"21470","alias":"cloud_services","type":"collective","title":"Облачные сервисы","titleHtml":"Облачные сервисы","isProfiled":false}],"flows":[{"id":"6","alias":"admin","title":"Администрирование"}],"relatedData":null,"textHtml":"\u003Cdiv xmlns=\"http:\u002F\u002Fwww.w3.org\u002F1999\u002Fxhtml\"\u003E\u003Ch3\u003EКак настроить OpenLiteSpeed на обратное проксирование в Nextcloud, находящийся во внутренней сети?\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EУдивительно, но поиск на Хабре по запросу OpenLiteSpeed не даёт ничего! Спешу исправить эту несправедливость, ведь LSWS – достойный веб-сервер. Я люблю его за скорость и модный веб-интерфейс администрирования:\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" alt=\"image\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fex\u002Fpr\u002Fai\u002Fexpraidfnnddzqcw-222w5tbbto.png\"\u002F\u003E\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EНесмотря на то, что OpenLiteSpeed наиболее знаменит как «ускоритель» вордпреса, в сегодняшней статье я покажу довольно специфичное его применение. А именно обратное проксирование запросов (reverse proxy). Вы скажете, что для этого привычнее использовать nginx? Я соглашусь. Но больно уж нам полюбился LSWS!\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EПроксирование ок, но куда? В не менее замечательный сервис – Nextcloud. Мы используем Nextcloud для создания частных «файлообменных облаков». Для каждого клиента мы выделяем отдельную VM с Nextcloud, и не хотим выставлять их «наружу». Вместо этого мы проксируем запросы через общий reverse proxy. Это решение позволяет: \u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Col\u003E\r\n\u003Cli\u003Eубрать сервер, на котором хранятся данные клиента, из интернета и \u003C\u002Fli\u003E\r\n\u003Cli\u003Eсэкономить ip-адреса.\u003C\u002Fli\u003E\r\n\u003C\u002Fol\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EСхема выглядит так:\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" alt=\"image\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fpt\u002Fiw\u002Fdk\u002Fptiwdkww_5xiebu_7rzjk1q_nn4.png\"\u002F\u003E\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EПонятно, что схема упрощена, т.к. организация инфраструктуры веб-сервисов – не тема сегодняшней статьи. \u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EТакже в данной статье я опущу установку и базовую настройку некстклауда, тем более что на Хабре есть посвящённые этой теме материалы. Но обязательно покажу настройки, без которых Nextcloud не будет работать за прокси.\u003C\u002Fp\u003E\u003Ca name=\"habracut\"\u003E\u003C\u002Fa\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EДано: Nextcloud установлен на хосте 1 и настроен на работу по http (без SSL), имеет только локальный сетевой интерфейс и «серый» IP-адрес 172.16.22.110.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EНастроим OpenLiteSpeed на хосте 2. У него два интерфейса, внешний (смотрит в интернет) и внутренний с IP-адресом в сети 172.16.22.0\u002F24\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EНа IP-адрес внешнего интерфейса хоста 2 ведет DNS-имя cloud.connect.link\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EЗадача: попадать из интернета по ссылке '\u003Ca href=\"https:\u002F\u002Fcloud.connect.link\"\u003Ehttps:\u002F\u002Fcloud.connect.link\u003C\u002Fa\u003E' (SSL) на Nextcloud во внутренней сети.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003EУстанавливаем OpenLiteSpeed на Ubuntu 18.04.2.\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EДобавим репозиторий:\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cblockquote\u003Ewget -O — \u003Ca href=\"http:\u002F\u002Frpms.litespeedtech.com\u002Fdebian\u002Fenable_lst_debain_repo.sh\"\u003Ehttp:\u002F\u002Frpms.litespeedtech.com\u002Fdebian\u002Fenable_lst_debain_repo.sh\u003C\u002Fa\u003E |sudo bash\u003Cbr\u002F\u003E\r\nsudo apt-get update\u003C\u002Fblockquote\u003E\u003Cp\u003Eставим, запускаем:\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cblockquote\u003Esudo apt-get install openlitespeed\u003Cbr\u002F\u003E\r\nsudo \u002Fusr\u002Flocal\u002Flsws\u002Fbin\u002Flswsctrl start\u003C\u002Fblockquote\u003E\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003EМинимально настроим файрволл.\u003Cbr\u002F\u003E\r\n\u003Cblockquote\u003Esudo ufw allow ssh\u003Cbr\u002F\u003E\r\nsudo ufw default allow outgoing\u003Cbr\u002F\u003E\r\nsudo ufw default deny incoming\u003Cbr\u002F\u003E\r\nsudo ufw allow http\u003Cbr\u002F\u003E\r\nsudo ufw allow https\u003Cbr\u002F\u003E\r\nsudo ufw allow from \u003Cem\u003Eваш хост управления\u003C\u002Fem\u003E to any port 7080\u003Cbr\u002F\u003E\r\nsudo ufw enable\u003Cbr\u002F\u003E\r\n\u003C\u002Fblockquote\u003E\u003C\u002Fli\u003E\r\n\u003Cli\u003EНастроим OpenLiteSpeed as a reverse proxy.\u003Cbr\u002F\u003E\r\nСоздадим директории под виртуалхост.\u003Cbr\u002F\u003E\r\n\u003Cblockquote\u003Ecd \u002Fusr\u002Flocal\u002Flsws\u002F\u003Cbr\u002F\u003E\r\nsudo mkdirc cloud.connect.link\u003Cbr\u002F\u003E\r\ncd cloud.connect.link\u002F\u003Cbr\u002F\u003E\r\nsudo mkdir {conf,html,logs}\u003Cbr\u002F\u003E\r\nsudo chown lsadm:lsadm .\u002Fconf\u002F\u003Cbr\u002F\u003E\r\n\u003C\u002Fblockquote\u003E\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EНастроим виртуалхост из веб-интерфейса LSWS.\u003Cbr\u002F\u003E\r\nОткрываем менеджмент урл \u003Ca href=\"http:\u002F\u002Fcloud.connect.link:7080\"\u003Ehttp:\u002F\u002Fcloud.connect.link:7080\u003C\u002Fa\u003E\u003Cbr\u002F\u003E\r\nДефолтный логин\u002Fпароль: admin\u002F123456\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" alt=\"image\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fcw\u002F1w\u002Fhe\u002Fcw1whegtkiqtmeolcucdy5poqci.png\"\u002F\u003E\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EДобавляем виртуалхост (Virtual Hosts \u003E Add). \u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EПри добавлении появится сообщение об ошибке – отсутствии конфигурационного файла. Это нормально, решается нажатием Click to create.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" alt=\"image\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fyo\u002F_0\u002F-p\u002Fyo_0-p7xc0c80x4bdaswadf1fpg.png\"\u002F\u003E\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EВо вкладке General укажем Document Root (хоть он и не понадобится, без него конфиг не взлетит). Domain Name, если его не указывать, будет взят из Virtual Host Name, который мы назвали именем нашего домена.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" alt=\"image\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Feo\u002F7j\u002Fm_\u002Feo7jm_yuk5x5plv6cimesnxxbso.png\"\u002F\u003E\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EТеперь пора вспомнить, что у нас не просто веб-сервер, а reverse proxy. Следующие настройки укажут LSWS, что проксировать и куда. В настройках виртуалхоста открываем вкладку External App и добавляем новую аппликацию типа Web server:\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" alt=\"image\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fls\u002F_k\u002F9q\u002Fls_k9qnq-b83jduewm-euwucaku.png\"\u002F\u003E\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EУказываем имя и адрес. Имя можно указать произвольное, но его надо запомнить, пригодится на следующих шагах. Адрес – тот, где живёт Nextcloud во внутренней сети:\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" alt=\"image\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Flc\u002Faj\u002Fah\u002Flcajahhbytgrbchjugfl5nz0hoq.png\"\u002F\u003E\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EВ тех же настройках виртуалхоста открываем вкладку Context и создаём новый контекст типа Proxy:\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" alt=\"image\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fmj\u002Fmq\u002Fyg\u002Fmjmqyg_hy4gsxza_dcjb-sc1ldu.png\"\u002F\u003E\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EУказываем параметры: URI = \u002F, Web server = nextcloud_1 (имя из предыдущего шага)\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" alt=\"image\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fkm\u002Fe_\u002Fx9\u002Fkme_x90yobopk29vt86fymdc7uu.png\"\u002F\u003E\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EПерезапускаем LSWS. Это делается одним кликом из веб-интерфейса, чудеса! (во мне говорит потомственный мышевоз)\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" alt=\"image\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fqw\u002Fvr\u002Fbl\u002Fqwvrblflsbimg6ya16ay29m_pus.png\"\u002F\u003E\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" alt=\"image\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002F1f\u002Fz_\u002Fp5\u002F1fz_p5uigm1ef5sdx3vrvptniic.png\"\u002F\u003E\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003EСтавим сертификат, настраиваем https.\u003Cbr\u002F\u003E\r\n\u003Ca href=\"https:\u002F\u002Fcertbot.eff.org\u002Fdocs\u002Fusing.html#standalone\"\u003EПроцедуру получения сертификата\u003C\u002Fa\u003E мы опустим, договоримся что он у нас уже есть и лежит вместе с ключом в директории \u002Fetc\u002Fletsencrypt\u002Flive\u002Fcloud.connect.link.\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EСоздадим «слушателя» (Listeners \u003E Add), назовём его «https». Укажем ему на 443 порт и отметим, что он будет Secure:\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" alt=\"image\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fou\u002F1q\u002Fmf\u002Fou1qmfazgmggv1wwo1alxxtpxl8.png\"\u002F\u003E\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EВо вкладке SSL укажем путь до ключа и сертификата:\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" alt=\"image\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Ftr\u002Fxg\u002Fc0\u002Ftrxgc0tcpnnca9f53yvvpk2_5hq.png\"\u002F\u003E\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003E«Слушатель» создан, теперь в разделе Virtual Host Mappings добавим к нему наш виртуалхост:\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" alt=\"image\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002F-0\u002Fy9\u002F2b\u002F-0y92bbvfhdefzynyjuoipouwea.png\"\u002F\u003E\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EЕсли LSWS будет проксировать только до одного сервиса, настройку можно заканчивать. Но мы планируем использовать его для передачи запросов в разные «инстанции» в зависимости от доменного имени. И у всех доменов будут свои сертификаты. Поэтому надо пойти в конфиг виртуалхоста и снова указать во вкладке SSL его ключ и сертификат. В будущем это надо делать для каждого нового виртуалхоста.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" alt=\"image\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fus\u002Fap\u002F7z\u002Fusap7zccpjkyyko7llyawrkkz7g.png\"\u002F\u003E\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EОсталось настроить перезапись url, чтобы http-запросы адресовались на https. \u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003E\u003Ci\u003E(Кстати, когда уже это кончится? Пора уже браузерам и прочему софту по умолчанию ходить на https, а пересылку на no-SSL делать вручную при необходимости).\u003C\u002Fi\u003E\u003Cbr\u002F\u003E\r\nВключаем Enable Rewrite и записываем Rewrite Rules:\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cblockquote\u003ERewriteCond %{SERVER_PORT} 80\u003Cbr\u002F\u003E\r\nRewriteRule ^(.*)$ \u003Ca href=\"https:\u002F\u002F%%7BSERVER_NAME%7D%%7BREQUEST_URI\"\u003Ehttps:\u002F\u002F%{SERVER_NAME}%{REQUEST_URI\u003C\u002Fa\u003E} [R=301,L]\u003C\u002Fblockquote\u003E\u003Cp\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" alt=\"image\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fki\u002Frn\u002Fxq\u002Fkirnxqm_dendpov7gniojwnsk7q.png\"\u002F\u003E\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EПрименить Rewrite rules привычным Graceful restart по странному недоразумению нельзя. Поэтому перезапустим LSWS не изящно, а грубо и эффективно:\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cblockquote\u003Esudo systemctl restart lsws.service\u003C\u002Fblockquote\u003E\u003Cp\u003EЧтобы сервер слушал и 80-й порт, создадим ещё один Listener. Назовём его http, укажем 80-й порт и то, что он будет не-Secure:\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" alt=\"image\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fk3\u002Fza\u002Fji\u002Fk3zajihurrtkg4ddc8eabk_njuq.png\"\u002F\u003E\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EПо аналогии с настройкой https listener, примапим к нему наш виртуалхост.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EТеперь LSWS будет слушать 80-й порт и направлять с него запросы на 443, переписывая url.\u003Cbr\u002F\u003E\r\nВ завершение рекомендую снизить уровень логирования LSWS, который по умолчанию установлен как Debug. В таком режиме логи размножаются молниеносно! Для большинства случаев достаточно уровня Warning. Идём в Server Configuration \u003E Log:\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" alt=\"image\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fc5\u002Fcb\u002Fpl\u002Fc5cbplov4zgqtonzcw8x6bb0poy.png\"\u002F\u003E\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EНа этом настройка OpenLiteSpeed в качестве обратного прокси завершена. В очередной раз перезапускаем LSWS, идём по ссылке \u003Ca href=\"https:\u002F\u002Fcloud.connect.link\"\u003Ehttps:\u002F\u002Fcloud.connect.link\u003C\u002Fa\u003E и видим:\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" alt=\"image\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fnn\u002Fvo\u002F_d\u002Fnnvo_dsr_qk_pzkv0j6xoixedve.png\"\u002F\u003E\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EЧтобы Nextcloud пустил нас, необходимо внести домен cloud.connect.link в список доверенных. Идём править config.php. Nextcloud я ставил автоматически при установке Ubuntu и конфиг находится тут: \u002Fvar\u002Fsnap\u002Fnextcloud\u002Fcurrent\u002Fnextcloud\u002Fconfig. \u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EКлючу trusted_domains добавляем параметр 'cloud.connect.link':\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cblockquote\u003E'trusted_domains' =\u003E\u003Cbr\u002F\u003E\r\narray (\u003Cbr\u002F\u003E\r\n0 =\u003E '172.16.22.110',\u003Cbr\u002F\u003E\r\n1 =\u003E 'cloud.connect.link',\u003Cbr\u002F\u003E\r\n),\u003C\u002Fblockquote\u003E\u003Cp\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" alt=\"image\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fow\u002F62\u002Fkd\u002Fow62kdr0pbvhfqgcrj-04yvicfi.png\"\u002F\u003E\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EДалее, в том же конфиге надо указать IP-адрес нашего прокси. Обращаю внимание, что адрес надо указать тот, который виден серверу Nextcloud, т.е. IP локального интерфейса LSWS. Без этого шага работает веб-интерфейс Nextcloud, но не авторизуются приложения.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cblockquote\u003E'trusted_proxies' =\u003E\u003Cbr\u002F\u003E\r\narray (\u003Cbr\u002F\u003E\r\n0 =\u003E '172.16.22.100',\u003Cbr\u002F\u003E\r\n),\u003C\u002Fblockquote\u003E\u003Cp\u003EОтлично, после этого мы можем попасть в интерфейс авторизации:\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" alt=\"image\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fln\u002Fwk\u002Fty\u002Flnwktyhkca3giakan3fqnk0v7ji.png\"\u002F\u003E\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EЗадача решена! Теперь каждый клиент может безопасно пользоваться «файловым облаком» по своему персональному url, сервер с файлами отделён от интернета, будущие клиенты получат всё тоже самое и ни один дополнительный IP-адрес не пострадает.\u003Cbr\u002F\u003E\r\nДополнительно можно использовать reverse proxy для доставки статического контента, но в случае Nextcloud это не даст ощутимого прироста скорости. Так что это опционально и по желанию.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EРад поделиться этой историей, надеюсь кому-нибудь будет полезно. Если вы знаете более изящные и эффективные методы решения поставленной задачи – буду благодарен за комментарии!\u003C\u002Fp\u003E\u003C\u002Fdiv\u003E","tags":[{"titleHtml":"openlitespeed"},{"titleHtml":"nextcloud"},{"titleHtml":"reverse proxy"}],"metadata":{"stylesUrls":[],"scriptUrls":[],"shareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F452750\u002F9aeb8b3770dbfdf0f61667b3c316ac70\u002F","shareImageWidth":1200,"shareImageHeight":630,"vkShareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F452750\u002F9aeb8b3770dbfdf0f61667b3c316ac70\u002F?format=vk","schemaJsonLd":"{\"@context\":\"http:\\\u002F\\\u002Fschema.org\",\"@type\":\"Article\",\"mainEntityOfPage\":{\"@type\":\"WebPage\",\"@id\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fru\\\u002Fpost\\\u002F452750\\\u002F\"},\"headline\":\"Nextcloud внутри, а снаружи OpenLiteSpeed: настраиваем обратное проксирование\",\"datePublished\":\"2019-05-21T13:17:20+03:00\",\"dateModified\":\"2019-05-21T13:56:16+03:00\",\"author\":{\"@type\":\"Person\",\"name\":\"Егор\"},\"publisher\":{\"@type\":\"Organization\",\"name\":\"Habr\",\"logo\":{\"@type\":\"ImageObject\",\"url\":\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fa_\\\u002Flk\\\u002F9m\\\u002Fa_lk9mjkccjox-zccjrpfolmkmq.png\"}},\"description\":\"Как настроить OpenLiteSpeed на обратное проксирование в Nextcloud, находящийся во внутренней сети? Удивительно, но поиск на Хабре по запросу OpenLiteSpeed не даё...\",\"url\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fru\\\u002Fpost\\\u002F452750\\\u002F#post-content-body\",\"about\":[\"h_hosting\",\"h_sys_admin\",\"h_it-infrastructure\",\"h_nix\",\"h_cloud_services\",\"f_admin\"],\"image\":[\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fex\\\u002Fpr\\\u002Fai\\\u002Fexpraidfnnddzqcw-222w5tbbto.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fpt\\\u002Fiw\\\u002Fdk\\\u002Fptiwdkww_5xiebu_7rzjk1q_nn4.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fcw\\\u002F1w\\\u002Fhe\\\u002Fcw1whegtkiqtmeolcucdy5poqci.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fyo\\\u002F_0\\\u002F-p\\\u002Fyo_0-p7xc0c80x4bdaswadf1fpg.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Feo\\\u002F7j\\\u002Fm_\\\u002Feo7jm_yuk5x5plv6cimesnxxbso.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fls\\\u002F_k\\\u002F9q\\\u002Fls_k9qnq-b83jduewm-euwucaku.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Flc\\\u002Faj\\\u002Fah\\\u002Flcajahhbytgrbchjugfl5nz0hoq.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fmj\\\u002Fmq\\\u002Fyg\\\u002Fmjmqyg_hy4gsxza_dcjb-sc1ldu.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fkm\\\u002Fe_\\\u002Fx9\\\u002Fkme_x90yobopk29vt86fymdc7uu.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fqw\\\u002Fvr\\\u002Fbl\\\u002Fqwvrblflsbimg6ya16ay29m_pus.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002F1f\\\u002Fz_\\\u002Fp5\\\u002F1fz_p5uigm1ef5sdx3vrvptniic.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fou\\\u002F1q\\\u002Fmf\\\u002Fou1qmfazgmggv1wwo1alxxtpxl8.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Ftr\\\u002Fxg\\\u002Fc0\\\u002Ftrxgc0tcpnnca9f53yvvpk2_5hq.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002F-0\\\u002Fy9\\\u002F2b\\\u002F-0y92bbvfhdefzynyjuoipouwea.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fus\\\u002Fap\\\u002F7z\\\u002Fusap7zccpjkyyko7llyawrkkz7g.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fki\\\u002Frn\\\u002Fxq\\\u002Fkirnxqm_dendpov7gniojwnsk7q.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fk3\\\u002Fza\\\u002Fji\\\u002Fk3zajihurrtkg4ddc8eabk_njuq.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fc5\\\u002Fcb\\\u002Fpl\\\u002Fc5cbplov4zgqtonzcw8x6bb0poy.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fnn\\\u002Fvo\\\u002F_d\\\u002Fnnvo_dsr_qk_pzkv0j6xoixedve.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fow\\\u002F62\\\u002Fkd\\\u002Fow62kdr0pbvhfqgcrj-04yvicfi.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fln\\\u002Fwk\\\u002Fty\\\u002Flnwktyhkca3giakan3fqnk0v7ji.png\"]}","metaDescription":"Как настроить OpenLiteSpeed на обратное проксирование в Nextcloud, находящийся во внутренней сети?\r\nУдивительно, но поиск на Хабре по запросу OpenLiteSpeed не даёт ничего! Спешу исправить эту...","mainImageUrl":null,"amp":true},"polls":[],"commentsEnabled":true,"rulesRemindEnabled":false,"votesEnabled":true,"status":"published","plannedPublishTime":null,"checked":null,"isEditorial":false}},"articlesIds":{},"isLoading":false,"pagesCount":{},"route":{},"reasonsList":null,"view":"cards","lastVisitedRoute":{},"ssrCommentsArticleIds":[""],"karma":{}},"authorContribution":{"authors":{}},"betaTest":{"currentAnnouncement":null,"announcements":{},"announcementCards":null,"announcementComments":{},"announcementCommentThreads":{},"announcementCommentingStatuses":{},"archivedList":[]},"authorStatistics":{"articleRefs":{},"articleIds":{},"pagesCount":{},"route":{},"viewsCount":[],"maxStatsCount":{}},"career":{"seoLandings":[],"hubs":"hosting,sys_admin,it-infrastructure,nix,cloud_services"},"comments":{"articleComments":{},"searchCommentsResults":null,"previewComment":null,"pagesCount":null,"commentAccess":{},"scrollParents":{},"pageArticleComments":{"lastViewedComment":0,"postId":null,"lastCommentTimestamp":"","moderated":[],"moderatedIds":[],"commentRoute":""}},"companies":{"companyRefs":{},"companyIds":{},"companyTopIds":{},"pagesCount":{},"companyProfiles":{},"companiesCategories":[],"companiesCategoriesTotalCount":0,"companiesWidgets":{},"companiesWorkers":{},"companiesFans":{},"route":{},"isLoading":false,"companyWorkersLoading":false,"companyFansLoading":false,"vacancies":{}},"companiesContribution":{"hubs":{},"flows":{},"companyRefs":{}},"companyHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"conversation":{"messages":[],"respondent":null,"isLoadMore":false},"conversations":{"conversations":[],"unreadCount":0,"pagesCount":0,"isLoadMore":false},"desktopState":{"desktopFl":null,"desktopHl":null,"isChecked":false,"isLoginDemanded":false},"dfp":{"slotsDict":{}},"docs":{"menu":{},"articles":{},"mainMenu":[],"loading":{"main":false,"dropdown":false,"article":false}},"feature":{"isProbablyVisible":"true"},"flows":{"flows":[{"alias":"develop","id":1,"route":{"name":"FLOW_PAGE","params":{"flowName":"develop"}}},{"alias":"admin","id":6,"route":{"name":"FLOW_PAGE","params":{"flowName":"admin"}}},{"alias":"design","id":2,"route":{"name":"FLOW_PAGE","params":{"flowName":"design"}}},{"alias":"management","id":3,"route":{"name":"FLOW_PAGE","params":{"flowName":"management"}}},{"alias":"marketing","id":4,"route":{"name":"FLOW_PAGE","params":{"flowName":"marketing"}}},{"alias":"popsci","id":7,"route":{"name":"FLOW_PAGE","params":{"flowName":"popsci"}}}]},"global":{"isPwa":false,"device":"desktop","isHabrCom":true},"hubs":{"hubRefs":{},"hubIds":{},"pagesCount":{},"isLoading":false,"route":{}},"hubsBlock":{"hubRefs":{},"hubIds":{}},"i18n":{"fl":"ru","hl":"ru"},"info":{"infoPage":{},"isLoading":true},"location":{"urlStruct":{"protocol":null,"slashes":null,"auth":null,"host":null,"port":null,"hostname":null,"hash":null,"search":null,"query":{},"pathname":null,"path":null,"href":""},"searchQuery":null},"me":{"user":null,"ppgDemanded":false,"karmaResetInfo":{"canReincarnate":null,"wasReincarnated":null,"currentScore":null},"notes":null},"mostReadingList":{"mostReadingListIds":[],"mostReadingListRefs":null,"promoPost":null},"pinnedPost":{"pinnedPost":null},"ppa":{"articles":{},"card":null,"transactions":null,"totalTransactions":null,"isAccessible":null},"projectsBlocks":{"activeBlocks":{}},"pullRefresh":{"shouldRefresh":false},"sandbox":{"articleIds":[],"articleRefs":{},"pagesCount":null,"route":{},"lastVisitedRoute":{},"isLoading":false},"settingsOther":{"inputs":{"uiLang":{"errors":[],"ref":null,"value":""},"articlesLangEnglish":{"errors":[],"ref":null,"value":false},"articlesLangRussian":{"errors":[],"ref":null,"value":false},"agreement":{"errors":[],"ref":null,"value":false},"email":{"errors":[],"ref":null,"value":true},"digest":{"errors":[],"ref":null,"value":true}}},"similarList":{"similarListIds":[],"similarListRefs":null},"ssr":{"error":null,"isDataLoaded":false,"isDataLoading":false,"isHydrationFailed":false,"isServer":false},"userHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"userInvites":{"availableInvites":0,"usedInvitesIds":[],"usedInvitesRefs":{},"usedInvitesPagesCount":0,"unusedInvitesIds":[],"unusedInvitesRefs":{},"unusedInvitesPagesCount":0},"users":{"authorRefs":{},"authorIds":{},"pagesCount":{},"authorProfiles":{},"userHubs":{},"userInvitations":{},"authorFollowers":{},"authorFollowed":{},"karmaStats":[],"statistics":null,"isLoading":false,"authorFollowersLoading":false,"authorFollowedLoading":false,"userHubsLoading":false,"userInvitationsLoading":false,"route":{}},"viewport":{"prevScrollY":{},"scrollY":0,"width":0},"tracker":{"items":{},"pagesCache":{},"markedViewedSilently":{},"markedRead":{},"unreadCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null},"unviewedCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null}}};(function(){var s;(s=document.currentScript||document.scripts[document.scripts.length-1]).parentNode.removeChild(s);}());</script>
+<script src="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" defer></script><script src="https://assets.habr.com/habr-web/js/app.c0af73e7.js" defer></script>
+
+
+
+    <script>
+      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+        (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+        m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+      })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+    </script>
+  
+  <script type="text/javascript" >
+    (function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+    m[i].l=1*new Date();k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})
+    (window, document, "script", "https://mc.yandex.ru/metrika/tag.js", "ym");
+
+    ym(24049213, "init", {
+      defer:true,
+      trackLinks:true,
+      accurateTrackBounce:true,
+      webvisor:false,
+    });
+  </script>
+  <noscript>
+    <div>
+      <img src="https://mc.yandex.ru/watch/24049213" style="position:absolute; left:-9999px;" alt="" />
+    </div>
+  </noscript>
+  
+    <script type="text/javascript">
+      window.addEventListener('load', function () {
+        setTimeout(() => {
+          const img = new Image();
+          img.src = 'https://vk.com/rtrg?p=VK-RTRG-421343-57vKE';
+        }, 0);
+      });
+    </script>
+  
+</body>
+</html>

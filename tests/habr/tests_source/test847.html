@@ -1,0 +1,1417 @@
+<!DOCTYPE html>
+<html lang="ru" data-vue-meta="%7B%22lang%22:%7B%22ssr%22:%22ru%22%7D%7D">
+<head >
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
+  <title>Ищем уязвимости в UC Browser / Хабр</title>
+  <style>
+    /* cyrillic-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSxf6TF0.woff2) format('woff2');
+      unicode-range: U+0460-052F, U+1C80-1C88, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+    }
+
+    /* cyrillic */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveQhf6TF0.woff2) format('woff2');
+      unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+    }
+
+    /* latin-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSBf6TF0.woff2) format('woff2');
+      unicode-range: U+0100-024F, U+0259, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20CF, U+2113, U+2C60-2C7F, U+A720-A7FF;
+    }
+
+    /* latin */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveRhf6.woff2) format('woff2');
+      unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+    }
+  </style>
+  <link rel="preload" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" as="script"><link rel="preload" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/app.c0af73e7.js" as="script">
+  <link rel="stylesheet" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css"><link rel="stylesheet" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css">
+  <script>window.i18nFetch = new Promise((res, rej) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open('GET', '/js/i18n/ru-compiled.85eb77f0b17c8235e7b64b9f81ea5ec2.json');
+          xhr.responseType = 'json';
+          xhr.onload = function(e) {
+            if (this.status === 200) {
+              res({ru: xhr.response});
+            } else {
+              rej(e);
+            }
+          };
+          xhr.send();
+        });</script>
+  
+  <script data-vue-meta="ssr" src="/js/ads.js" onload="window['zhY4i4nJ9K'] = true" data-vmid="checkad"></script><script data-vue-meta="ssr" type="application/ld+json" data-vmid="ldjson-schema">{"@context":"http:\/\/schema.org","@type":"Article","mainEntityOfPage":{"@type":"WebPage","@id":"https:\/\/habr.com\/ru\/company\/drweb\/blog\/451936\/"},"headline":"Ищем уязвимости в UC Browser","datePublished":"2019-05-15T13:44:55+03:00","dateModified":"2019-05-15T15:43:16+03:00","author":{"@type":"Person","name":"doctorweb"},"publisher":{"@type":"Organization","name":"Habr","logo":{"@type":"ImageObject","url":"https:\/\/habrastorage.org\/webt\/a_\/lk\/9m\/a_lk9mjkccjox-zccjrpfolmkmq.png"}},"description":"Введение В конце марта мы сообщали, что обнаружили скрытую возможность загрузки и запуска непроверенного кода в UC Browser. Сегодня разберём подробно, как эта з...","url":"https:\/\/habr.com\/ru\/company\/drweb\/blog\/451936\/#post-content-body","about":["c_drweb","h_infosecurity","h_virus","h_web_analytics","f_develop","f_marketing","f_admin"],"image":["https:\/\/habrastorage.org\/webt\/-f\/na\/kn\/-fnaknrx70xmfiflvfa6ijw1pys.jpeg","https:\/\/habrastorage.org\/webt\/j0\/i1\/c1\/j0i1c1n_nwf_gnauzbudnqor5oi.png","https:\/\/habrastorage.org\/webt\/go\/tj\/tz\/gotjtzkpg2owfmk8jrnznox_vdg.jpeg","https:\/\/habrastorage.org\/webt\/g5\/7k\/iv\/g57kivkwrysmcqvptmhclqzzipq.png","https:\/\/habrastorage.org\/webt\/6r\/lt\/ns\/6rltnsrtyd-_5ekwis68qn-vydc.png","https:\/\/habrastorage.org\/webt\/_k\/bz\/5c\/_kbz5cbedw6g1jnsj047rtqudli.jpeg","https:\/\/habrastorage.org\/webt\/2y\/xh\/vk\/2yxhvksp30f016gfyhrlfh0pklc.jpeg","https:\/\/habrastorage.org\/webt\/m6\/dp\/iw\/m6dpiwaonfuyri-jg8thppcfgqe.jpeg","https:\/\/habrastorage.org\/webt\/eq\/wp\/p3\/eqwpp3exmqnybi7r_tdvvan4jls.png","https:\/\/habrastorage.org\/webt\/bo\/9b\/rn\/bo9brnkfvauy3ntm2dnucnsxqhs.png","https:\/\/habrastorage.org\/webt\/nz\/95\/4x\/nz954xqtjmky6tnpaqeejhvecus.png","https:\/\/habrastorage.org\/webt\/52\/rf\/fx\/52rffxhzmtrfdhfrznsr8dovfim.png","https:\/\/habrastorage.org\/webt\/ct\/d9\/kv\/ctd9kvewm9l1blmw3pqipi8mnqm.png","https:\/\/habrastorage.org\/webt\/o7\/wi\/4-\/o7wi4-imrothkr6qpkbrklj40aw.png","https:\/\/habrastorage.org\/webt\/ev\/hb\/a8\/evhba8ty8dtnv8niuxyfue0nkfk.png","https:\/\/habrastorage.org\/webt\/lv\/mp\/oo\/lvmpoow5agndjnbbl-t3imyaisq.jpeg","https:\/\/habrastorage.org\/webt\/dk\/nn\/rw\/dknnrwaye18zzz0xipny0_gdqfq.png","https:\/\/habrastorage.org\/webt\/fn\/bw\/uz\/fnbwuzpo3qw1hp3vd9rvr2xfq1k.jpeg","https:\/\/habrastorage.org\/webt\/tm\/fq\/yo\/tmfqyogtdhbje0atjckosbrgide.jpeg","https:\/\/habrastorage.org\/webt\/xg\/jk\/l1\/xgjkl1uhzmibo-nhmha3kpivf5a.png","https:\/\/habrastorage.org\/webt\/7i\/fx\/86\/7ifx86mr4yph41jsxukpjqvxmfa.png","https:\/\/habrastorage.org\/webt\/fa\/62\/6j\/fa626jaylcaaewtslff_-byaseo.jpeg","https:\/\/habrastorage.org\/webt\/co\/rk\/s1\/corks1o2dp75elfvdsxjimrohuo.png","https:\/\/habrastorage.org\/webt\/36\/uu\/xn\/36uuxnabf3xesptr8qisxzzfutk.jpeg","https:\/\/habrastorage.org\/webt\/-d\/pt\/3a\/-dpt3akb_yckinmdheczkktzlem.jpeg","https:\/\/habrastorage.org\/webt\/rn\/_1\/i4\/rn_1i4avl8oki83hslk5u19ygoe.jpeg","https:\/\/habrastorage.org\/webt\/hy\/lk\/qr\/hylkqrhqgyei6qjdj6ayvgivpqu.jpeg","https:\/\/habrastorage.org\/webt\/68\/ss\/kf\/68sskfcymjorl_flpf8mg9wwej4.png","https:\/\/habrastorage.org\/webt\/d1\/yt\/iz\/d1ytiz_jx7byflntqxxec2nece0.jpeg","https:\/\/habrastorage.org\/webt\/me\/vy\/kz\/mevykztpkcwdr6xkpnenauxqccs.jpeg","https:\/\/habrastorage.org\/webt\/9k\/m7\/un\/9km7unymy_ybx1lwnflfbqd36ke.png","https:\/\/habrastorage.org\/webt\/e2\/-v\/ua\/e2-vuahng86h0bt0vm84f3xhqrg.png"]}</script>
+  <script src="//www.googletagservices.com/tag/js/gpt.js" async></script>
+  <style>.grecaptcha-badge{visibility: hidden;}</style>
+  <meta name="habr-version" content="2.49.0">
+  
+  <meta data-vue-meta="ssr" property="fb:app_id" content="444736788986613"><meta data-vue-meta="ssr" property="fb:pages" content="472597926099084"><meta data-vue-meta="ssr" name="twitter:card" content="summary_large_image"><meta data-vue-meta="ssr" name="twitter:site" content="@habr_eng"><meta data-vue-meta="ssr" property="og:title" content="Ищем уязвимости в UC Browser" data-vmid="og:title"><meta data-vue-meta="ssr" name="twitter:title" content="Ищем уязвимости в UC Browser" data-vmid="twitter:title"><meta data-vue-meta="ssr" name="aiturec:title" content="Ищем уязвимости в UC Browser" data-vmid="aiturec:title"><meta data-vue-meta="ssr" name="description" content="Введение
+В конце марта мы сообщали, что обнаружили скрытую возможность загрузки и запуска непроверенного кода в UC Browser. Сегодня разберём подробно, как эта загрузка происходит и как хакеры могут..." data-vmid="description"><meta data-vue-meta="ssr" itemprop="description" content="Введение
+В конце марта мы сообщали, что обнаружили скрытую возможность загрузки и запуска непроверенного кода в UC Browser. Сегодня разберём подробно, как эта загрузка происходит и как хакеры могут..." data-vmid="description:itemprop"><meta data-vue-meta="ssr" property="og:description" content="Введение
+В конце марта мы сообщали, что обнаружили скрытую возможность загрузки и запуска непроверенного кода в UC Browser. Сегодня разберём подробно, как эта загрузка происходит и как хакеры могут..." data-vmid="og:description"><meta data-vue-meta="ssr" name="twitter:description" content="Введение
+В конце марта мы сообщали, что обнаружили скрытую возможность загрузки и запуска непроверенного кода в UC Browser. Сегодня разберём подробно, как эта загрузка происходит и как хакеры могут..." data-vmid="twitter:description"><meta data-vue-meta="ssr" property="aiturec:description" content="Введение
+В конце марта мы сообщали, что обнаружили скрытую возможность загрузки и запуска непроверенного кода в UC Browser. Сегодня разберём подробно, как эта загрузка происходит и как хакеры могут..." data-vmid="aiturec:description"><meta data-vue-meta="ssr" itemprop="image" content="https://habr.com/share/publication/451936/f40fc4af5c73742d3110c6d2c9146904/" data-vmid="image:itemprop"><meta data-vue-meta="ssr" property="og:image" content="https://habr.com/share/publication/451936/f40fc4af5c73742d3110c6d2c9146904/" data-vmid="og:image"><meta data-vue-meta="ssr" property="aiturec:image" content="https://habr.com/share/publication/451936/f40fc4af5c73742d3110c6d2c9146904/" data-vmid="aiturec:image"><meta data-vue-meta="ssr" name="twitter:image" content="https://habr.com/share/publication/451936/f40fc4af5c73742d3110c6d2c9146904/" data-vmid="twitter:image"><meta data-vue-meta="ssr" property="vk:image" content="https://habr.com/share/publication/451936/f40fc4af5c73742d3110c6d2c9146904/" data-vmid="vk:image"><meta data-vue-meta="ssr" property="aiturec:item_id" content="451936" data-vmid="aiturec:item_id"><meta data-vue-meta="ssr" property="aiturec:datetime" content="2019-05-15T10:44:55.000Z" data-vmid="aiturec:datetime"><meta data-vue-meta="ssr" property="og:type" content="article" data-vmid="og:type"><meta data-vue-meta="ssr" property="og:locale" content="ru_RU" data-vmid="og:locale"><meta data-vue-meta="ssr" property="og:image:width" content="1200" data-vmid="og:image:width"><meta data-vue-meta="ssr" property="og:image:height" content="630" data-vmid="og:image:height">
+  <link data-vue-meta="ssr" href="https://habr.com/ru/rss/post/451936/?fl=ru" type="application/rss+xml" title="" rel="alternate" name="rss"><link data-vue-meta="ssr" href="https://habr.com/ru/company/drweb/blog/451936/" rel="canonical" data-vmid="canonical"><link data-vue-meta="ssr" data-vmid="hreflang"><link data-vue-meta="ssr" image_src="image" href="https://habr.com/share/publication/451936/f40fc4af5c73742d3110c6d2c9146904/" data-vmid="image:href">
+  <meta name="apple-mobile-web-app-status-bar-style" content="#303b44">
+  <meta name="msapplication-TileColor" content="#629FBC">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="16x16"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-16.png"
+  >
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="32x32"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-32.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="76x76"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-76.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="120x120"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="152x152"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-152.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="180x180"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-180.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="256x256"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-256.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1136x640.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2436x1125.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1792x828.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_828x1792.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1334x750.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2208x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1125x2436.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2208.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2732x2048.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2688x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2224x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_750x1334.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x2732.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2388x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2224.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_640x1136.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2388.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x1536.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1536x2048.png"
+  >
+  <link
+    rel="mask-icon"
+    color="#77a2b6"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.svg"
+  >
+  <link
+    crossorigin="use-credentials"
+    href="/manifest.webmanifest"
+    rel="manifest"
+  >
+</head>
+<body>
+
+
+<div id="app" data-server-rendered="true" data-async-called="true"><div class="tm-layout__wrapper"><!----> <div></div> <!----> <header class="tm-header"><div class="tm-page-width"><div class="tm-header__container"><!----> <span class="tm-header__logo-wrap"><a href="/ru/" class="tm-header__logo tm-header__logo_ru"><svg height="16" width="16" class="tm-svg-img tm-header__icon"><title>Хабр</title> <use xlink:href="/img/habr-logo-ru.svg#logo"></use></svg></a> <span class="tm-header__beta-sign" style="display:none;">β</span></span> <div class="tm-dropdown tm-header__projects"><div class="tm-dropdown__head"><button class="tm-header__dropdown-toggle"><svg height="16" width="16" class="tm-svg-img tm-header__icon tm-header__icon_dropdown"><title>Открыть список</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#arrow-down"></use></svg></button></div> <!----></div> <a href="/ru/sandbox/start/" class="tm-header__become-author-btn">
+            Как стать автором
+          </a> <div class="tm-feature tm-header__feature tm-feature_variant-inline"><!----></div> <!----> <!----></div></div></header> <div class="tm-layout"><div class="tm-page-progress-bar"></div> <div data-menu-sticky="true" class="tm-base-layout__header tm-base-layout__header_is-sticky"><div class="tm-page-width"><div class="tm-base-layout__header-wrapper"><div class="tm-main-menu"><div class="tm-main-menu__section"><nav class="tm-main-menu__section-content"><!----> <a href="/ru/all/" class="tm-main-menu__item">
+        Все потоки
+      </a> <a href="/ru/flows/develop/" class="tm-main-menu__item">
+          Разработка
+        </a><a href="/ru/flows/admin/" class="tm-main-menu__item">
+          Администрирование
+        </a><a href="/ru/flows/design/" class="tm-main-menu__item">
+          Дизайн
+        </a><a href="/ru/flows/management/" class="tm-main-menu__item">
+          Менеджмент
+        </a><a href="/ru/flows/marketing/" class="tm-main-menu__item">
+          Маркетинг
+        </a><a href="/ru/flows/popsci/" class="tm-main-menu__item">
+          Научпоп
+        </a></nav></div></div> <div class="tm-header-user-menu tm-base-layout__user-menu"><a href="/ru/search/" class="tm-header-user-menu__item tm-header-user-menu__search"><svg height="24" width="24" class="tm-svg-img tm-header-user-menu__icon tm-header-user-menu__icon_search tm-header-user-menu__icon_dark"><title>Поиск</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#search"></use></svg></a> <!----> <!----> <!----> <div class="tm-header-user-menu__item tm-header-user-menu__user_desktop"><div class="tm-dropdown"><div class="tm-dropdown__head"><svg height="24" width="24" data-test-id="menu-toggle-guest" class="tm-svg-img tm-header-user-menu__icon"><title>Профиль</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#header-user"></use></svg> <!----></div> <!----></div> <!----></div> <!----></div></div></div></div> <!----> <div class="tm-page-width"></div> <main class="tm-layout__container"><div hl="ru" companyName="drweb" data-async-called="true" class="tm-page"><div class="tm-page-width"><div class="tm-page__header"><!----></div> <div class="tm-page__wrapper"><div class="tm-page__main tm-page__main_has-sidebar"><div class="pull-down"><div class="pull-down__header" style="height:0px;"><div class="pull-down__content" style="bottom:10px;"><svg height="24" width="24" class="tm-svg-img pull-down__arrow"><title>Обновить</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#pull-arrow"></use></svg></div></div> <div class="tm-article-presenter"><div class="tm-company-card tm-company-article__company-card"><div class="tm-company-card__info"><div class="tm-company-card__header"><a href="/ru/company/drweb/profile/" class="tm-company-card__avatar"><div class="tm-entity-image"><img alt="" height="48" src="//habrastorage.org/getpro/habr/company/002/8a7/c16/0028a7c16cc021fea7f86c13e082f507.gif" width="48" class="tm-entity-image__pic"></div></a> <!----> <div class="tm-rating tm-company-card__rating"><div class="tm-rating__header"> <div class="tm-rating__counter">53.82</div></div> <div class="tm-rating__text">
+    Рейтинг
+  </div></div></div> <div class="tm-company-card__info"><a href="/ru/company/drweb/profile/" class="tm-company-card__name">
+        Доктор Веб
+      </a> <div class="tm-company-card__description"></div></div></div> <div class="tm-company-card__buttons"><!----> <!----></div></div> <div class="tm-article-presenter__body"><div class="tm-misprint-area"><div class="tm-misprint-area__wrapper"><article class="tm-article-presenter__content tm-article-presenter__content_narrow"><div class="tm-article-presenter__header"> <div class="tm-article-snippet tm-article-presenter__snippet"><div class="tm-article-snippet__meta-container"><div class="tm-article-snippet__meta"><span class="tm-user-info tm-article-snippet__author"><a href="/ru/users/doctorweb/" title="doctorweb" class="tm-user-info__userpic"><div class="tm-entity-image"><img alt="" height="24" loading="lazy" src="//habrastorage.org/r/w32/getpro/habr/avatars/3c5/026/15b/3c502615b845bc7d9a930778c9e7f1da.jpg" width="24" class="tm-entity-image__pic"></div></a> <span class="tm-user-info__user"><a href="/ru/users/doctorweb/" class="tm-user-info__username">
+      doctorweb
+    </a> </span></span> <span class="tm-article-snippet__datetime-published"><time datetime="2019-05-15T10:44:55.000Z" title="2019-05-15, 13:44">15  мая  2019 в 13:44</time></span></div> <!----></div> <h1 lang="ru" class="tm-article-snippet__title tm-article-snippet__title_h1"><span>Ищем уязвимости в UC Browser</span></h1> <div class="tm-article-snippet__hubs"><span class="tm-article-snippet__hubs-item"><a href="/ru/company/drweb/blog/" class="tm-article-snippet__hubs-item-link router-link-active"><span>Блог компании Доктор Веб</span> <!----></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/infosecurity/" class="tm-article-snippet__hubs-item-link"><span>Информационная безопасность</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/virus/" class="tm-article-snippet__hubs-item-link"><span>Антивирусная защита</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/web_analytics/" class="tm-article-snippet__hubs-item-link"><span>Веб-аналитика</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span></div> <!----> <!----> <!----></div></div> <!----> <div data-gallery-root="" lang="ru" class="tm-article-body"><div id="post-content-body" class="article-formatted-body article-formatted-body_version-1"><div xmlns="http://www.w3.org/1999/xhtml"><div style="text-align:center;"><img src="https://habrastorage.org/r/w780q1/webt/-f/na/kn/-fnaknrx70xmfiflvfa6ijw1pys.jpeg" data-src="https://habrastorage.org/webt/-f/na/kn/-fnaknrx70xmfiflvfa6ijw1pys.jpeg" data-blurred="true"/></div><br/>
+<h3>Введение</h3><br/>
+В конце марта мы <a href="https://news.drweb.ru/show/?i=13176">сообщали</a>, что обнаружили скрытую возможность загрузки и запуска непроверенного кода в UC Browser. Сегодня разберём подробно, как эта загрузка происходит и как хакеры могут использовать её в своих целях.<br/>
+<br/>
+Некоторое время назад UC Browser рекламировали и распространяли очень агрессивно: его устанавливали на устройства пользователей с помощью вредоносных программ, распространяли с различных сайтов под видом видеофайлов (т. е. пользователи думали, что качают, например, порноролик, а получали вместо него APK с этим браузером), использовали пугающие баннеры с сообщениями о том, что браузер устарел, уязвим и всё в таком духе. В официальной группе UC Browser в VK есть <a href="https://vk.com/topic-27170131_31448404?offset=0">тема</a>, в которой пользователи могут пожаловаться на недобросовестную рекламу, там много примеров. В 2016 году была даже <a href="https://www.youtube.com/watch?v=VRFOl7k5axc">видеореклама</a> на русском языке (да, реклама браузера, блокирующего рекламу).<br/>
+<br/>
+На момент написания статьи у UC Browser набралось более 500 000 000 установок в Google Play. Это впечатляет — больше только у Google Chrome. Среди отзывов можно увидеть достаточно много жалоб на рекламу и редиректы на какие-то приложения в Google Play. Это и стало поводом к исследованию: мы решили посмотреть, не делает ли UC Browser что-то нехорошее. И оказалось, что таки делает! <br/>
+<a name="habracut"></a><br/>
+В коде приложения обнаружилась возможность загрузки и запуска исполняемого кода, <a href="https://play.google.com/about/privacy-security-deception/malicious-behavior/">что противоречит правилам публикации приложений</a> в Google Play. Помимо того, что UC Browser загружает исполняемый код, он делает это небезопасно, что можно использовать для проведения MitM-атаки. Посмотрим, получится ли у нас такую атаку провести.<br/>
+<br/>
+Всё, что написано далее, актуально для версии UC Browser, которая присутствовала в Google Play на момент проведения исследования:<br/>
+<br/>
+<pre><code class="plaintext">package: com.UCMobile.intl
+versionName: 12.10.8.1172
+versionCode: 10598
+sha1 APK-файла: f5edb2243413c777172f6362876041eb0c3a928c</code></pre><br/>
+<h3>Вектор атаки</h3><br/>
+В манифесте UC Browser можно обнаружить сервис с говорящим названием <i>com.uc.deployment.UpgradeDeployService</i>.<br/>
+<br/>
+<pre><code class="plaintext">    &lt;service android:exported="false" android:name="com.uc.deployment.UpgradeDeployService" android:process=":deploy" />
+</code></pre><br/>
+При запуске этого сервиса браузер выполняет POST-запрос к <i><a href="http://puds.ucweb.com/upgrade/index.xhtml">puds.ucweb.com/upgrade/index.xhtml</a></i>, который можно заметить в трафике через некоторое время после старта. В ответ он может получить команду на загрузку какого-либо обновления или нового модуля. В процессе анализа сервер таких команд не давал, но мы заметили, что при попытке открыть в браузере PDF тот делает повторный запрос по указанному выше адресу, после чего скачивает нативную библиотеку. Для проведения атаки мы решили использовать эту особенность UC Browser: способность открывать PDF с помощью нативной библиотеки, которой нет в APK и которую он при необходимости подгружает из Интернета. Стоит отметить, что теоретически UC Browser можно заставить что-то скачать и без взаимодействия с пользователем – если отдать правильно сформированный ответ на запрос, который выполняется после запуска браузера. Но для этого нужно более детально изучать протокол взаимодействия с сервером, поэтому мы решили, что проще отредактировать перехваченный ответ и подменить библиотеку для работы с PDF.<br/>
+<br/>
+Итак, когда пользователь хочет открыть PDF прямо в браузере, в трафике можно увидеть следующие запросы:<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/j0/i1/c1/j0i1c1n_nwf_gnauzbudnqor5oi.png"/><br/>
+<br/>
+Сначала идёт POST-запрос к <i><a href="http://puds.ucweb.com/upgrade/index.xhtml">puds.ucweb.com/upgrade/index.xhtml</a></i>, после чего<br/>
+скачивается архив с библиотекой для просмотра PDF и офисных форматов. Логично предположить, что в первом запросе передаётся информация о системе (как минимум, архитектура, чтобы отдать нужную библиотеку), а в ответ на него браузер получает некую информацию о библиотеке, которую нужно скачать: адрес и, возможно, что-то ещё. Проблема в том, что запрос этот зашифрован.<br/>
+<br/>
+<div class="scrollable-table"><table>
+<tr>
+<td> Фрагмент запроса<br/>
+<br/>
+</td>
+<td> Фрагмент ответа<br/>
+<br/>
+</td>
+</tr>
+<tr>
+<td><img src="https://habrastorage.org/r/w780q1/webt/go/tj/tz/gotjtzkpg2owfmk8jrnznox_vdg.jpeg" data-src="https://habrastorage.org/webt/go/tj/tz/gotjtzkpg2owfmk8jrnznox_vdg.jpeg" data-blurred="true"/><br/>
+<br/>
+</td>
+<td><img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/g5/7k/iv/g57kivkwrysmcqvptmhclqzzipq.png"/><br/>
+<br/>
+</td>
+</tr>
+</table></div><br/>
+<br/>
+Сама библиотека упакована в ZIP и не зашифрована.<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/6r/lt/ns/6rltnsrtyd-_5ekwis68qn-vydc.png"/><br/>
+<br/>
+<h3>Поиск кода расшифровки трафика</h3><br/>
+<br/>
+Попробуем расшифровать ответ сервера. Смотрим код класса <i>com.uc.deployment.UpgradeDeployService</i>: из метода <i>onStartCommand</i> переходим в <i>com.uc.deployment.b.x</i>, а из него в <i>com.uc.browser.core.d.c.f.e</i>:<br/>
+<br/>
+<pre><code class="java">    public final void e(l arg9) {
+        int v4_5;
+        String v3_1;
+        byte[] v3;
+        byte[] v1 = null;
+        if(arg9 == null) {
+            v3 = v1;
+        }
+        else {
+            v3_1 = arg9.iGX.ipR;
+            StringBuilder v4 = new StringBuilder("[");
+            v4.append(v3_1);
+            v4.append("]product:");
+            v4.append(arg9.iGX.ipR);
+            v4 = new StringBuilder("[");
+            v4.append(v3_1);
+            v4.append("]version:");
+            v4.append(arg9.iGX.iEn);
+            v4 = new StringBuilder("[");
+            v4.append(v3_1);
+            v4.append("]upgrade_type:");
+            v4.append(arg9.iGX.mMode);
+            v4 = new StringBuilder("[");
+            v4.append(v3_1);
+            v4.append("]force_flag:");
+            v4.append(arg9.iGX.iEo);
+            v4 = new StringBuilder("[");
+            v4.append(v3_1);
+            v4.append("]silent_mode:");
+            v4.append(arg9.iGX.iDQ);
+            v4 = new StringBuilder("[");
+            v4.append(v3_1);
+            v4.append("]silent_type:");
+            v4.append(arg9.iGX.iEr);
+            v4 = new StringBuilder("[");
+            v4.append(v3_1);
+            v4.append("]silent_state:");
+            v4.append(arg9.iGX.iEp);
+            v4 = new StringBuilder("[");
+            v4.append(v3_1);
+            v4.append("]silent_file:");
+            v4.append(arg9.iGX.iEq);
+            v4 = new StringBuilder("[");
+            v4.append(v3_1);
+            v4.append("]apk_md5:");
+            v4.append(arg9.iGX.iEl);
+            v4 = new StringBuilder("[");
+            v4.append(v3_1);
+            v4.append("]download_type:");
+            v4.append(arg9.mDownloadType);
+            v4 = new StringBuilder("[");
+            v4.append(v3_1);
+            v4.append("]download_group:");
+            v4.append(arg9.mDownloadGroup);
+            v4 = new StringBuilder("[");
+            v4.append(v3_1);
+            v4.append("]download_path:");
+            v4.append(arg9.iGH);
+            v4 = new StringBuilder("[");
+            v4.append(v3_1);
+            v4.append("]apollo_child_version:");
+            v4.append(arg9.iGX.iEx);
+            v4 = new StringBuilder("[");
+            v4.append(v3_1);
+            v4.append("]apollo_series:");
+            v4.append(arg9.iGX.iEw);
+            v4 = new StringBuilder("[");
+            v4.append(v3_1);
+            v4.append("]apollo_cpu_arch:");
+            v4.append(arg9.iGX.iEt);
+            v4 = new StringBuilder("[");
+            v4.append(v3_1);
+            v4.append("]apollo_cpu_vfp3:");
+            v4.append(arg9.iGX.iEv);
+            v4 = new StringBuilder("[");
+            v4.append(v3_1);
+            v4.append("]apollo_cpu_vfp:");
+            v4.append(arg9.iGX.iEu);
+            ArrayList v3_2 = arg9.iGX.iEz;
+            if(v3_2 != null &amp;&amp; v3_2.size() != 0) {
+                Iterator v3_3 = v3_2.iterator();
+                while(v3_3.hasNext()) {
+                    Object v4_1 = v3_3.next();
+                    StringBuilder v5 = new StringBuilder("[");
+                    v5.append(((au)v4_1).getName());
+                    v5.append("]component_name:");
+                    v5.append(((au)v4_1).getName());
+                    v5 = new StringBuilder("[");
+                    v5.append(((au)v4_1).getName());
+                    v5.append("]component_ver_name:");
+                    v5.append(((au)v4_1).aDA());
+                    v5 = new StringBuilder("[");
+                    v5.append(((au)v4_1).getName());
+                    v5.append("]component_ver_code:");
+                    v5.append(((au)v4_1).gBl);
+                    v5 = new StringBuilder("[");
+                    v5.append(((au)v4_1).getName());
+                    v5.append("]component_req_type:");
+                    v5.append(((au)v4_1).gBq);
+                }
+            }
+ 
+            j v3_4 = new j();
+            m.b(v3_4);
+            h v4_2 = new h();
+            m.b(v4_2);
+            ay v5_1 = new ay();
+            v3_4.hS("");
+            v3_4.setImsi("");
+            v3_4.hV("");
+            v5_1.bPQ = v3_4;
+            v5_1.bPP = v4_2;
+            v5_1.yr(arg9.iGX.ipR);
+            v5_1.gBF = arg9.iGX.mMode;
+            v5_1.gBI = arg9.iGX.iEz;
+            v3_2 = v5_1.gAr;
+            c.aBh();
+            v3_2.add(g.fs("os_ver", c.getRomInfo()));
+            v3_2.add(g.fs("processor_arch", com.uc.b.a.a.c.getCpuArch()));
+            v3_2.add(g.fs("cpu_arch", com.uc.b.a.a.c.Pb()));
+            String v4_3 = com.uc.b.a.a.c.Pd();
+            v3_2.add(g.fs("cpu_vfp", v4_3));
+            v3_2.add(g.fs("net_type", String.valueOf(com.uc.base.system.a.Jo())));
+            v3_2.add(g.fs("fromhost", arg9.iGX.iEm));
+            v3_2.add(g.fs("plugin_ver", arg9.iGX.iEn));
+            v3_2.add(g.fs("target_lang", arg9.iGX.iEs));
+            v3_2.add(g.fs("vitamio_cpu_arch", arg9.iGX.iEt));
+            v3_2.add(g.fs("vitamio_vfp", arg9.iGX.iEu));
+            v3_2.add(g.fs("vitamio_vfp3", arg9.iGX.iEv));
+            v3_2.add(g.fs("plugin_child_ver", arg9.iGX.iEx));
+            v3_2.add(g.fs("ver_series", arg9.iGX.iEw));
+            v3_2.add(g.fs("child_ver", r.aVw()));
+            v3_2.add(g.fs("cur_ver_md5", arg9.iGX.iEl));
+            v3_2.add(g.fs("cur_ver_signature", SystemHelper.getUCMSignature()));
+            v3_2.add(g.fs("upgrade_log", i.bjt()));
+            v3_2.add(g.fs("silent_install", String.valueOf(arg9.iGX.iDQ)));
+            v3_2.add(g.fs("silent_state", String.valueOf(arg9.iGX.iEp)));
+            v3_2.add(g.fs("silent_file", arg9.iGX.iEq));
+            v3_2.add(g.fs("silent_type", String.valueOf(arg9.iGX.iEr)));
+            v3_2.add(g.fs("cpu_archit", com.uc.b.a.a.c.Pc()));
+            v3_2.add(g.fs("cpu_set", SystemHelper.getCpuInstruction()));
+            boolean v4_4 = v4_3 == null || !v4_3.contains("neon") ? false : true;
+            v3_2.add(g.fs("neon", String.valueOf(v4_4)));
+            v3_2.add(g.fs("cpu_cores", String.valueOf(com.uc.b.a.a.c.Jl())));
+            v3_2.add(g.fs("ram_1", String.valueOf(com.uc.b.a.a.h.Po())));
+            v3_2.add(g.fs("totalram", String.valueOf(com.uc.b.a.a.h.OL())));
+            c.aBh();
+            v3_2.add(g.fs("rom_1", c.getRomInfo()));
+            v4_5 = e.getScreenWidth();
+            int v6 = e.getScreenHeight();
+            StringBuilder v7 = new StringBuilder();
+            v7.append(v4_5);
+            v7.append("*");
+            v7.append(v6);
+            v3_2.add(g.fs("ss", v7.toString()));
+            v3_2.add(g.fs("api_level", String.valueOf(Build$VERSION.SDK_INT)));
+            v3_2.add(g.fs("uc_apk_list", SystemHelper.getUCMobileApks()));
+            Iterator v4_6 = arg9.iGX.iEA.entrySet().iterator();
+            while(v4_6.hasNext()) {
+                Object v6_1 = v4_6.next();
+                v3_2.add(g.fs(((Map$Entry)v6_1).getKey(), ((Map$Entry)v6_1).getValue()));
+            }
+ 
+            v3 = v5_1.toByteArray();
+        }
+ 
+        if(v3 == null) {
+            this.iGY.iGI.a(arg9, "up_encode", "yes", "fail");
+            return;
+        }
+ 
+        v4_5 = this.iGY.iGw ? 0x1F : 0;
+        if(v3 == null) {
+        }
+        else {
+            v3 = g.i(v4_5, v3);
+            if(v3 == null) {
+            }
+            else {
+                v1 = new byte[v3.length + 16];
+                byte[] v6_2 = new byte[16];
+                Arrays.fill(v6_2, 0);
+                v6_2[0] = 0x5F;
+                v6_2[1] = 0;
+                v6_2[2] = ((byte)v4_5);
+                v6_2[3] = -50;
+                System.arraycopy(v6_2, 0, v1, 0, 16);
+                System.arraycopy(v3, 0, v1, 16, v3.length);
+            }
+        }
+ 
+        if(v1 == null) {
+            this.iGY.iGI.a(arg9, "up_encrypt", "yes", "fail");
+            return;
+        }
+ 
+        if(TextUtils.isEmpty(this.iGY.mUpgradeUrl)) {
+            this.iGY.iGI.a(arg9, "up_url", "yes", "fail");
+            return;
+        }
+ 
+        StringBuilder v0 = new StringBuilder("[");
+        v0.append(arg9.iGX.ipR);
+        v0.append("]url:");
+        v0.append(this.iGY.mUpgradeUrl);
+        com.uc.browser.core.d.c.i v0_1 = this.iGY.iGI;
+        v3_1 = this.iGY.mUpgradeUrl;
+        com.uc.base.net.e v0_2 = new com.uc.base.net.e(new com.uc.browser.core.d.c.i$a(v0_1, arg9));
+        v3_1 = v3_1.contains("?") ? v3_1 + "&amp;dataver=pb" : v3_1 + "?dataver=pb";
+        n v3_5 = v0_2.uc(v3_1);
+        m.b(v3_5, false);
+        v3_5.setMethod("POST");
+        v3_5.setBodyProvider(v1);
+        v0_2.b(v3_5);
+        this.iGY.iGI.a(arg9, "up_null", "yes", "success");
+        this.iGY.iGI.b(arg9);
+    }</code></pre><br/>
+Видим тут формирование POST-запроса. Обращаем внимание на создание массива из 16 байт и его заполнение: 0x5F, 0, 0x1F, -50 (=0xCE). Совпадает с тем, что мы видели в запросе выше.<br/>
+<br/>
+В этом же классе можно заметить вложенный класс, в котором есть другой интересный метод:<br/>
+<br/>
+<pre><code class="java">        public final void a(l arg10, byte[] arg11) {
+            f v0 = this.iGQ;
+            StringBuilder v1 = new StringBuilder("[");
+            v1.append(arg10.iGX.ipR);
+            v1.append("]:UpgradeSuccess");
+            byte[] v1_1 = null;
+            if(arg11 == null) {
+            }
+            else if(arg11.length &lt; 16) {
+            }
+            else {
+                if(arg11[0] != 0x60 &amp;&amp; arg11[3] != 0xFFFFFFD0) {
+                    goto label_57;
+                }
+                int v3 = 1;
+                int v5 = arg11[1] == 1 ? 1 : 0;
+                if(arg11[2] != 1 &amp;&amp; arg11[2] != 11) {
+                    if(arg11[2] == 0x1F) {
+                    }
+                    else {
+                        v3 = 0;
+                    }
+                }
+                byte[] v7 = new byte[arg11.length - 16];
+                System.arraycopy(arg11, 16, v7, 0, v7.length);
+                if(v3 != 0) {
+                    v7 = g.j(arg11[2], v7);
+                }
+                if(v7 == null) {
+                    goto label_57;
+                }
+                if(v5 != 0) {
+                    v1_1 = g.P(v7);
+                    goto label_57;
+                }
+                v1_1 = v7;
+            }
+        label_57:
+            if(v1_1 == null) {
+                v0.iGY.iGI.a(arg10, "up_decrypt", "yes", "fail");
+                return;
+            }
+            q v11 = g.b(arg10, v1_1);
+            if(v11 == null) {
+                v0.iGY.iGI.a(arg10, "up_decode", "yes", "fail");
+                return;
+            }
+            if(v0.iGY.iGt) {
+                v0.d(arg10);
+            }
+            if(v0.iGY.iGo != null) {
+                v0.iGY.iGo.a(0, ((o)v11));
+            }
+            if(v0.iGY.iGs) {
+                v0.iGY.a(((o)v11));
+                v0.iGY.iGI.a(v11, "up_silent", "yes", "success");
+                v0.iGY.iGI.a(v11);
+                return;
+            }
+            v0.iGY.iGI.a(v11, "up_silent", "no", "success");
+        }
+    }</code></pre><br/>
+Метод получает на вход массив байтов и проверяет, что нулевой байт равен 0x60 или третий байт равен 0xD0, а второй байт — 1, 11 или 0x1F. Смотрим ответ от сервера: нулевой байт — 0x60, второй — 0x1F, третий — 0x60. Похоже на то, что нам нужно. Судя по строчкам («up_decrypt», например), тут должен вызываться метод, который расшифрует ответ сервера.<br/>
+Переходим к методу <i>g.j</i>. Заметим, что в качестве первого аргумента в него передаётся байт по смещению 2 (т. е. 0x1F в нашем случае), а в качестве второго — ответ сервера без<br/>
+первых 16 байт.<br/>
+<br/>
+<pre><code class="java">     public static byte[] j(int arg1, byte[] arg2) {
+        if(arg1 == 1) {
+            arg2 = c.c(arg2, c.adu);
+        }
+        else if(arg1 == 11) {
+            arg2 = m.aF(arg2);
+        }
+        else if(arg1 != 0x1F) {
+        }
+        else {
+            arg2 = EncryptHelper.decrypt(arg2);
+        }
+        return arg2;
+    }</code></pre><br/>
+Очевидно, тут происходит выбор алгоритма расшифровки, и тот самый байт, который в нашем<br/>
+случае равен 0x1F, обозначает один из трёх возможных вариантов.<br/>
+<br/>
+Продолжаем анализ кода. После пары прыжков попадаем в метод с говорящим названием <i>decryptBytesByKey</i>.<br/>
+<br/>
+Тут от нашего ответа отделяется ещё два байта, и из них получается строка. Понятно, что таким способом выбирается ключ для расшифровки сообщения.<br/>
+<br/>
+<pre><code class="java">    private static byte[] decryptBytesByKey(byte[] bytes) {
+        byte[] v0 = null;
+        if(bytes != null) {
+            try {
+                if(bytes.length &lt; EncryptHelper.PREFIX_BYTES_SIZE) {
+                }
+                else if(bytes.length == EncryptHelper.PREFIX_BYTES_SIZE) {
+                    return v0;
+                }
+                else {
+                    byte[] prefix = new byte[EncryptHelper.PREFIX_BYTES_SIZE];  // 2 байта
+                    System.arraycopy(bytes, 0, prefix, 0, prefix.length);
+                    String keyId = c.ayR().d(ByteBuffer.wrap(prefix).getShort()); // Выбор ключа
+                    if(keyId == null) {
+                        return v0;
+                    }
+                    else {
+                        a v2 = EncryptHelper.ayL();
+                        if(v2 == null) {
+                            return v0;
+                        }
+                        else {
+                            byte[] enrypted = new byte[bytes.length - EncryptHelper.PREFIX_BYTES_SIZE];
+                            System.arraycopy(bytes, EncryptHelper.PREFIX_BYTES_SIZE, enrypted, 0, enrypted.length);
+                            return v2.l(keyId, enrypted);
+                        }
+                    }
+                }
+            }
+            catch(SecException v7_1) {
+                EncryptHelper.handleDecryptException(((Throwable)v7_1), v7_1.getErrorCode());
+                return v0;
+            }
+            catch(Throwable v7) {
+                EncryptHelper.handleDecryptException(v7, 2);
+                return v0;
+            }
+        }
+ 
+        return v0;
+    }</code></pre><br/>
+Забегая вперёд, отметим, что на этом этапе получается ещё не ключ, а только его «идентификатор». С получением ключа всё немного сложнее.<br/>
+<br/>
+В следующем методе к имеющимся параметрам добавляется ещё два, и их становится четыре: волшебное число 16, идентификатор ключа, зашифрованные данные и непонятная строка (в нашем случае пустая).<br/>
+<br/>
+<pre><code class="java">    public final byte[] l(String keyId, byte[] encrypted) throws SecException {
+        return this.ayJ().staticBinarySafeDecryptNoB64(16, keyId, encrypted, "");
+    }</code></pre><br/>
+После серии переходов приходим к методу <i>staticBinarySafeDecryptNoB64</i> интерфейса <i>com.alibaba.wireless.security.open.staticdataencrypt.IStaticDataEncryptComponent.</i> В основном коде приложения нет классов, реализующих этот интерфейс. Такой класс есть в файле <i>lib/armeabi-v7a/libsgmain.so</i>, который на самом деле не .so, а .jar. Интересующий нас метод реализован следующим образом:<br/>
+<br/>
+<pre><code class="java">package com.alibaba.wireless.security.a.i;
+ 
+// ...
+ 
+public class a implements IStaticDataEncryptComponent {
+    private ISecurityGuardPlugin a;
+// ...
+    private byte[] a(int mode, int magicInt, int xzInt, String keyId, byte[] encrypted, String magicString) {
+        return this.a.getRouter().doCommand(10601, new Object[]{Integer.valueOf(mode), Integer.valueOf(magicInt), Integer.valueOf(xzInt), keyId, encrypted, magicString});
+    }
+// ...
+    private byte[] b(int magicInt, String keyId, byte[] encrypted, String magicString) {
+        return this.a(2, magicInt, 0, keyId, encrypted, magicString);
+    }
+// ...
+    public byte[] staticBinarySafeDecryptNoB64(int magicInt, String keyId, byte[] encrypted, String magicString) throws SecException {
+        if(keyId != null &amp;&amp; keyId.length() > 0 &amp;&amp; magicInt >= 0 &amp;&amp; magicInt &lt; 19 &amp;&amp; encrypted != null &amp;&amp; encrypted.length > 0) {
+            return this.b(magicInt, keyId, encrypted, magicString);
+        }
+ 
+        throw new SecException("", 301);
+    }
+//...
+}</code></pre><br/>
+Тут наш список параметров дополняется ещё двумя целыми числами: 2 и 0. Судя по<br/>
+всему, 2 означает расшифровку, как в методе <i>doFinal</i> системного класса <i>javax.crypto.Cipher</i>. И всё это передаётся в некий Router с числом 10601 — это, видимо, номер команды.<br/>
+<br/>
+После очередной цепочки переходов находим класс, который реализует интерфейс <i>IRouterComponent</i> и метод <i>doCommand</i>:<br/>
+<br/>
+<pre><code class="java">package com.alibaba.wireless.security.mainplugin;
+
+import com.alibaba.wireless.security.framework.IRouterComponent;
+import com.taobao.wireless.security.adapter.JNICLibrary;
+ 
+public class a implements IRouterComponent {
+    public a() {
+        super();
+    }
+    public Object doCommand(int arg2, Object[] arg3) {
+        return JNICLibrary.doCommandNative(arg2, arg3);
+    }
+}</code></pre><br/>
+А также класс <i>JNICLibrary</i>, в котором объявлен нативный метод <i>doCommandNative</i>:<br/>
+<br/>
+<pre><code class="java">package com.taobao.wireless.security.adapter;
+ 
+public class JNICLibrary {
+    public static native Object doCommandNative(int arg0, Object[] arg1);
+}</code></pre><br/>
+Значит, нам нужно в нативном коде найти метод <i>doCommandNative</i>. И тут начинается самое веселье.<br/>
+<br/>
+<h3>Обфускация машинного кода</h3><br/>
+В файле <i>libsgmain.so</i> (который на самом деле .jar и в котором мы чуть выше нашли реализацию некоторых интерфейсов, связанных с шифрованием) есть одна нативная библиотека: <i>libsgmainso-6.4.36.so</i>. Открываем её в IDA и получаем кучу диалоговых окон с ошибками. Проблема в том, что таблица секций (section header table) – невалидная. Это сделано специально, чтобы усложнить анализ.<br/>
+<br/>
+<img src="https://habrastorage.org/r/w780q1/webt/_k/bz/5c/_kbz5cbedw6g1jnsj047rtqudli.jpeg" data-src="https://habrastorage.org/webt/_k/bz/5c/_kbz5cbedw6g1jnsj047rtqudli.jpeg" data-blurred="true"/><br/>
+<br/>
+Но она и не нужна: чтобы корректно загрузить ELF-файл и проанализировать его, вполне достаточно таблицы сегментов (program header table). Поэтому просто удаляем таблицу секций, зануляя соответствующие поля в заголовке.<br/>
+<br/>
+<img src="https://habrastorage.org/r/w780q1/webt/2y/xh/vk/2yxhvksp30f016gfyhrlfh0pklc.jpeg" data-src="https://habrastorage.org/webt/2y/xh/vk/2yxhvksp30f016gfyhrlfh0pklc.jpeg" data-blurred="true"/><br/>
+<br/>
+Снова открываем файл в IDA.<br/>
+<br/>
+Есть два способа сообщить виртуальной Java-машине, где именно в нативной библиотеке находится реализация метода, объявленного в Java-коде как native. Первый — дать ему имя вида <i>Java_имя_пакета_ИмяКласса_имяМетода</i>.<br/>
+<br/>
+Второй — зарегистрировать его при загрузке библиотеки (в функции <i>JNI_OnLoad</i>)<br/>
+с помощью вызова функции <i>RegisterNatives</i>.<br/>
+<br/>
+В нашем случае, если использовать первый способ, имя должно быть таким: <i>Java_com_taobao_wireless_security_adapter_JNICLibrary_doCommandNative</i>.<br/>
+<br/>
+Среди экспортируемых функций такой нет, значит, нужно искать вызов <i>RegisterNatives</i>.<br/>
+Идём в функцию <i>JNI_OnLoad</i> и видим такую картину:<br/>
+<br/>
+<img src="https://habrastorage.org/r/w780q1/webt/m6/dp/iw/m6dpiwaonfuyri-jg8thppcfgqe.jpeg" data-src="https://habrastorage.org/webt/m6/dp/iw/m6dpiwaonfuyri-jg8thppcfgqe.jpeg" data-blurred="true"/><br/>
+<br/>
+Что тут происходит? На первый взгляд, начало и конец функции типичны для архитектуры ARM. Первой инструкцией в стек сохраняется содержимое регистров, которые функция будет использовать в своей работе (в данном случае R0, R1 и R2), а также содержимое регистра LR, в котором находится адрес возврата из функции. Последней инструкцией сохранённые регистры восстанавливаются, причём адрес возврата сразу помещается в регистр PC — таким образом происходит возврат из функции. Но если присмотреться, можно заметить, что предпоследняя инструкция изменяет адрес возврата, сохранённый в стеке. Вычислим, каким он будет после<br/>
+выполнения кода. В R1 загружается некий адрес 0xB130, из него вычитается 5, затем он перекладывается в R0 и к нему прибавляется 0x10. Получается 0xB13B. Таким образом, IDA думает, что в последней инструкции происходит обычный возврат из функции, а на самом деле происходит переход по вычисленному адресу 0xB13B.<br/>
+<br/>
+Тут стоит напомнить, что у процессоров ARM есть два режима и два набора инструкций: ARM и Thumb. Младший бит адреса говорит процессору, какой набор инструкций используется. Т. е. адрес на самом деле 0xB13A, а единица в младшем бите обозначает режим Thumb.<br/>
+<br/>
+В начало каждой функции в этой библиотеке добавлен подобный «переходник» и<br/>
+мусорный код. Далее не будем подробно на них останавливаться – просто помним,<br/>
+что настоящее начало почти всех функций находится чуть дальше.<br/>
+<br/>
+Так как в коде нет явного перехода на 0xB13A, IDA сама не опознала, что в этом месте находится код. По этой же причине большую часть кода в библиотеке она не опознаёт как код, что несколько затрудняет анализ. Говорим IDA, что тут код, и вот что получается:<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/eq/wp/p3/eqwpp3exmqnybi7r_tdvvan4jls.png"/><br/>
+<br/>
+На 0xB144 явно начинается таблица. А что в sub_494C?<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/bo/9b/rn/bo9brnkfvauy3ntm2dnucnsxqhs.png"/><br/>
+<br/>
+При вызове этой функции в регистре LR получим адрес упомянутой ранее таблицы (0xB144). В R0 — индекс в этой таблице. Т. е. берётся значение из таблицы, прибавляется к LR и получается<br/>
+адрес, по которому нужно перейти. Попробуем его вычислить: 0xB144 + [0xB144 + 8* 4] = 0xB144 + 0x120 = 0xB264. Переходим по полученному адресу и видим буквально пару полезных инструкций и опять переход на 0xB140:<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/nz/95/4x/nz954xqtjmky6tnpaqeejhvecus.png"/><br/>
+<br/>
+Теперь будет переход по смещению с индексом 0x20 из таблицы.<br/>
+<br/>
+Судя по размеру таблицы, таких переходов в коде встретится много. Возникает вопрос, можно ли как-то с этим бороться более автоматизированно, без ручного вычисления адресов. И на помощь нам приходят скрипты и возможность патчить код в IDA:<br/>
+<br/>
+<pre><code class="python">def put_unconditional_branch(source, destination):
+    offset = (destination - source - 4) >> 1
+    if offset > 2097151 or offset &lt; -2097152:
+        raise RuntimeError("Invalid offset")
+    if offset > 1023 or offset &lt; -1024:
+        instruction1 = 0xf000 | ((offset >> 11) &amp; 0x7ff)
+        instruction2 = 0xb800 | (offset &amp; 0x7ff)
+        patch_word(source, instruction1)
+        patch_word(source + 2, instruction2)
+    else:
+        instruction = 0xe000 | (offset &amp; 0x7ff)
+        patch_word(source, instruction)
+ 
+ 
+ea = here()
+if get_wide_word(ea) == 0xb503: #PUSH {R0,R1,LR}
+    ea1 = ea + 2
+    if get_wide_word(ea1) == 0xbf00: #NOP
+        ea1 += 2
+    if get_operand_type(ea1, 0) == 1 and get_operand_value(ea1, 0) == 0 and get_operand_type(ea1, 1) == 2:
+        index = get_wide_dword(get_operand_value(ea1, 1))
+        print "index =", hex(index)
+        ea1 += 2
+        if get_operand_type(ea1, 0) == 7:
+            table = get_operand_value(ea1, 0) + 4
+        elif get_operand_type(ea1, 1) == 2:
+            table = get_operand_value(ea1, 1) + 4
+        else:
+            print "Wrong operand type on", hex(ea1), "-", get_operand_type(ea1, 0), get_operand_type(ea1, 1)
+            table = None
+        if table is None:
+            print "Unable to find table"
+        else:
+            print "table =", hex(table)
+            offset = get_wide_dword(table + (index &lt;&lt; 2))
+            put_unconditional_branch(ea, table + offset)
+    else:
+        print "Unknown code", get_operand_type(ea1, 0), get_operand_value(ea1, 0), get_operand_type(ea1, 1) == 2
+else:
+    print "Unable to detect first instruction"</code></pre><br/>
+Ставим курсор на строчку 0xB26A, запускаем скрипт и видим переход на 0xB4B0:<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/52/rf/fx/52rffxhzmtrfdhfrznsr8dovfim.png"/><br/>
+<br/>
+IDA опять не опознала этот участок как код. Помогаем ей и видим там другую конструкцию:<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/ct/d9/kv/ctd9kvewm9l1blmw3pqipi8mnqm.png"/><br/>
+<br/>
+Инструкции после BLX выглядят не очень осмысленными, это больше похоже на какое-то смещение. Смотрим в sub_4964:<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/o7/wi/4-/o7wi4-imrothkr6qpkbrklj40aw.png"/><br/>
+<br/>
+И действительно, тут берётся dword по адресу, лежащему в LR, прибавляется к этому адресу, после чего берётся значение по полученному адресу и кладётся в стек. Также к LR прибавляется 4, чтобы после возврата из функции перескочить это самое смещение. После чего команда POP {R1} достаёт полученное значение из стека. Если посмотреть, что находится по адресу 0xB4BA + 0xEA = 0xB5A4, то можно увидеть нечто похожее на таблицу адресов:<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/ev/hb/a8/evhba8ty8dtnv8niuxyfue0nkfk.png"/><br/>
+<br/>
+Чтобы пропатчить эту конструкцию, потребуется получить два параметра из кода: смещение и номер регистра, в который нужно положить результат. Для каждого возможного регистра придётся заранее подготовить кусочек кода.<br/>
+<br/>
+<pre><code class="python">patches = {}
+patches[0] = (0x00, 0xbf, 0x01, 0x48, 0x00, 0x68, 0x02, 0xe0)
+patches[1] = (0x00, 0xbf, 0x01, 0x49, 0x09, 0x68, 0x02, 0xe0)
+patches[2] = (0x00, 0xbf, 0x01, 0x4a, 0x12, 0x68, 0x02, 0xe0)
+patches[3] = (0x00, 0xbf, 0x01, 0x4b, 0x1b, 0x68, 0x02, 0xe0)
+patches[4] = (0x00, 0xbf, 0x01, 0x4c, 0x24, 0x68, 0x02, 0xe0)
+patches[5] = (0x00, 0xbf, 0x01, 0x4d, 0x2d, 0x68, 0x02, 0xe0)
+patches[8] = (0x00, 0xbf, 0xdf, 0xf8, 0x06, 0x80, 0xd8, 0xf8, 0x00, 0x80, 0x01, 0xe0)
+patches[9] = (0x00, 0xbf, 0xdf, 0xf8, 0x06, 0x90, 0xd9, 0xf8, 0x00, 0x90, 0x01, 0xe0)
+patches[10] = (0x00, 0xbf, 0xdf, 0xf8, 0x06, 0xa0, 0xda, 0xf8, 0x00, 0xa0, 0x01, 0xe0)
+patches[11] = (0x00, 0xbf, 0xdf, 0xf8, 0x06, 0xb0, 0xdb, 0xf8, 0x00, 0xb0, 0x01, 0xe0)
+ 
+ea = here()
+if (get_wide_word(ea) == 0xb082 #SUB SP, SP, #8
+        and get_wide_word(ea + 2) == 0xb503): #PUSH {R0,R1,LR}
+    if get_operand_type(ea + 4, 0) == 7:
+        pop = get_bytes(ea + 12, 4, 0)
+        if pop[1] == '\xbc':
+            register = -1
+            r = get_wide_byte(ea + 12)
+            for i in range(8):
+                if r == (1 &lt;&lt; i):
+                    register = i
+                    break
+            if register == -1:
+                print "Unable to detect register"
+            else:
+                address = get_wide_dword(ea + 8) + ea + 8
+                for b in patches[register]:
+                    patch_byte(ea, b)
+                    ea += 1
+                if ea % 4 != 0:
+                    ea += 2
+                patch_dword(ea, address)
+        elif pop[:3] == '\x5d\xf8\x04':
+            register = ord(pop[3]) >> 4
+            if register in patches:
+                address = get_wide_dword(ea + 8) + ea + 8
+                for b in patches[register]:
+                    patch_byte(ea, b)
+                    ea += 1
+                patch_dword(ea, address)
+        else:
+            print "POP instruction not found"
+    else:
+        print "Wrong operand type on +4:", get_operand_type(ea + 4, 0)
+else:
+    print "Unable to detect first instructions"</code></pre><br/>
+Ставим курсор на начало конструкции, которую хотим заменить — 0xB4B2 — и запускаем скрипт:<br/>
+<br/>
+<img src="https://habrastorage.org/r/w780q1/webt/lv/mp/oo/lvmpoow5agndjnbbl-t3imyaisq.jpeg" data-src="https://habrastorage.org/webt/lv/mp/oo/lvmpoow5agndjnbbl-t3imyaisq.jpeg" data-blurred="true"/><br/>
+<br/>
+Помимо уже названных конструкций в коде также попадаются вот такие:<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/dk/nn/rw/dknnrwaye18zzz0xipny0_gdqfq.png"/><br/>
+<br/>
+Как и в предыдущем случае, после инструкции BLX идёт смещение:<br/>
+<br/>
+<img src="https://habrastorage.org/r/w780q1/webt/fn/bw/uz/fnbwuzpo3qw1hp3vd9rvr2xfq1k.jpeg" data-src="https://habrastorage.org/webt/fn/bw/uz/fnbwuzpo3qw1hp3vd9rvr2xfq1k.jpeg" data-blurred="true"/><br/>
+<br/>
+Берём смещение по адресу из LR, прибавляем его к LR и переходим туда. 0x72044 + 0xC = 0x72050. Скрипт для этой конструкции совсем простой:<br/>
+<br/>
+<pre><code class="python">def put_unconditional_branch(source, destination):
+    offset = (destination - source - 4) >> 1
+    if offset > 2097151 or offset &lt; -2097152:
+        raise RuntimeError("Invalid offset")
+    if offset > 1023 or offset &lt; -1024:
+        instruction1 = 0xf000 | ((offset >> 11) &amp; 0x7ff)
+        instruction2 = 0xb800 | (offset &amp; 0x7ff)
+        patch_word(source, instruction1)
+        patch_word(source + 2, instruction2)
+    else:
+        instruction = 0xe000 | (offset &amp; 0x7ff)
+        patch_word(source, instruction)
+ 
+ 
+ea = here()
+if get_wide_word(ea) == 0xb503: #PUSH {R0,R1,LR}
+    ea1 = ea + 6
+    if get_wide_word(ea + 2) == 0xbf00: #NOP
+        ea1 += 2
+    offset = get_wide_dword(ea1)
+    put_unconditional_branch(ea, (ea1 + offset) &amp; 0xffffffff)
+else:
+    print "Unable to detect first instruction"</code></pre><br/>
+Результат выполнения скрипта:<br/>
+<br/>
+<img src="https://habrastorage.org/r/w780q1/webt/tm/fq/yo/tmfqyogtdhbje0atjckosbrgide.jpeg" data-src="https://habrastorage.org/webt/tm/fq/yo/tmfqyogtdhbje0atjckosbrgide.jpeg" data-blurred="true"/><br/>
+<br/>
+После того как в функции всё пропатчено, можно указать IDA на её настоящее начало. Она соберёт весь код функции по кусочкам, и его можно будет декомпилировать с помощью HexRays.<br/>
+<br/>
+<h3>Расшифровка строк</h3><br/>
+Мы научились бороться с обфускацией машинного кода в библиотеке <i>libsgmainso-6.4.36.so</i> из UC Browser и получили код функции <i>JNI_OnLoad</i>.<br/>
+<br/>
+<pre><code class="cpp">int __fastcall real_JNI_OnLoad(JavaVM *vm)
+{
+  int result; // r0
+  jclass clazz; // r0 MAPDST
+  int v4; // r0
+  JNIEnv *env; // r4
+  int v6; // [sp-40h] [bp-5Ch]
+  int v7; // [sp+Ch] [bp-10h]
+  v7 = *(_DWORD *)off_8AC00;
+  if ( !vm )
+    goto LABEL_39;
+  sub_7C4F4();
+  env = (JNIEnv *)sub_7C5B0(0);
+  if ( !env )
+    goto LABEL_39;
+  v4 = sub_72CCC();
+  sub_73634(v4);
+  sub_73E24(&amp;unk_83EA6, &amp;v6, 49);
+  clazz = (jclass)((int (__fastcall *)(JNIEnv *, int *))(*env)->FindClass)(env, &amp;v6);
+  if ( clazz
+    &amp;&amp; (sub_9EE4(),
+        sub_71D68(env),
+        sub_E7DC(env) >= 0
+     &amp;&amp; sub_69D68(env) >= 0
+     &amp;&amp; sub_197B4(env, clazz) >= 0
+     &amp;&amp; sub_E240(env, clazz) >= 0
+     &amp;&amp; sub_B8B0(env, clazz) >= 0
+     &amp;&amp; sub_5F0F4(env, clazz) >= 0
+     &amp;&amp; sub_70640(env, clazz) >= 0
+     &amp;&amp; sub_11F3C(env) >= 0
+     &amp;&amp; sub_21C3C(env, clazz) >= 0
+     &amp;&amp; sub_2148C(env, clazz) >= 0
+     &amp;&amp; sub_210E0(env, clazz) >= 0
+     &amp;&amp; sub_41B58(env, clazz) >= 0
+     &amp;&amp; sub_27920(env, clazz) >= 0
+     &amp;&amp; sub_293E8(env, clazz) >= 0
+     &amp;&amp; sub_208F4(env, clazz) >= 0) )
+  {
+    result = (sub_B7B0(env, clazz) >> 31) | 0x10004;
+  }
+  else
+  {
+LABEL_39:
+    result = -1;
+  }
+  return result;
+}</code></pre><br/>
+Рассмотрим внимательнее следующие строчки:<br/>
+<br/>
+<pre><code class="cpp">  sub_73E24(&amp;unk_83EA6, &amp;v6, 49);
+  clazz = (jclass)((int (__fastcall *)(JNIEnv *, int *))(*env)->FindClass)(env, &amp;v6);</code></pre><br/>
+В функции <i>sub_73E24</i> явно происходит расшифровка имени класса. В качестве параметров этой функции передаётся указатель на данные, похожие на зашифрованные, некий буфер и число. Очевидно, что после вызова функции в буфере будет расшифрованная строчка, т. к. он передаётся функции <i>FindClass</i>, которая принимает вторым параметром имя класса. Стало быть, число — это размер буфера или длина строки. Попробуем расшифровать имя класса, оно должно указать нам, в правильном ли направлении мы идём. Рассмотрим подробнее, что происходит в <i>sub_73E24.</i><br/>
+<br/>
+<pre><code class="cpp">int __fastcall sub_73E56(unsigned __int8 *in, unsigned __int8 *out, size_t size)
+{
+  int v4; // r6
+  int v7; // r11
+  int v8; // r9
+  int v9; // r4
+  size_t v10; // r5
+  int v11; // r0
+  struc_1 v13; // [sp+0h] [bp-30h]
+  int v14; // [sp+1Ch] [bp-14h]
+  int v15; // [sp+20h] [bp-10h]
+  v4 = 0;
+  v15 = *(_DWORD *)off_8AC00;
+  v14 = 0;
+  v7 = sub_7AF78(17);
+  v8 = sub_7AF78(size);
+  if ( !v7 )
+  {
+    v9 = 0;
+    goto LABEL_12;
+  }
+  (*(void (__fastcall **)(int, const char *, int))(v7 + 12))(v7, "DcO/lcK+h?m3c*q@", 16);
+  if ( !v8 )
+  {
+LABEL_9:
+    v4 = 0;
+    goto LABEL_10;
+  }
+  v4 = 0;
+  if ( !in )
+  {
+LABEL_10:
+    v9 = 0;
+    goto LABEL_11;
+  }
+  v9 = 0;
+  if ( out )
+  {
+    memset(out, 0, size);
+    v10 = size - 1;
+    (*(void (__fastcall **)(int, unsigned __int8 *, size_t))(v8 + 12))(v8, in, v10);
+    memset(&amp;v13, 0, 0x14u);
+    v13.field_4 = 3;
+    v13.field_10 = v7;
+    v13.field_14 = v8;
+    v11 = sub_6115C(&amp;v13, &amp;v14);
+    v9 = v11;
+    if ( v11 )
+    {
+      if ( *(_DWORD *)(v11 + 4) == v10 )
+      {
+        qmemcpy(out, *(const void **)v11, v10);
+        v4 = *(_DWORD *)(v9 + 4);
+      }
+      else
+      {
+        v4 = 0;
+      }
+      goto LABEL_11;
+    }
+    goto LABEL_9;
+  }
+LABEL_11:
+  sub_7B148(v7);
+LABEL_12:
+  if ( v8 )
+    sub_7B148(v8);
+  if ( v9 )
+    sub_7B148(v9);
+  return v4;
+}</code></pre><br/>
+Функция <i>sub_7AF78</i> создаёт экземпляр контейнера для байтовых массивов указанного размера (не будем подробно останавливаться на этих контейнерах). Тут создаётся два таких контейнера: в один помещается строчка <i>«DcO/lcK+h?m3c*q@»</i> (нетрудно догадаться, что это ключ), в другой — зашифрованные данные. Далее оба объекта помещаются в некую структуру, которая передаётся функции <i>sub_6115C</i>. Также отметим в этой структуре поле со значением 3. Посмотрим, что происходит с этой структурой дальше.<br/>
+<br/>
+<pre><code class="cpp">int __fastcall sub_611B4(struc_1 *a1, _DWORD *a2)
+{
+  int v3; // lr
+  unsigned int v4; // r1
+  int v5; // r0
+  int v6; // r1
+  int result; // r0
+  int v8; // r0
+  *a2 = 820000;
+  if ( a1 )
+  {
+    v3 = a1->field_14;
+    if ( v3 )
+    {
+      v4 = a1->field_4;
+      if ( v4 &lt; 0x19 )
+      {
+        switch ( v4 )
+        {
+          case 0u:
+            v8 = sub_6419C(a1->field_0, a1->field_10, v3);
+            goto LABEL_17;
+          case 3u:
+            v8 = sub_6364C(a1->field_0, a1->field_10, v3);
+            goto LABEL_17;
+          case 0x10u:
+          case 0x11u:
+          case 0x12u:
+            v8 = sub_612F4(
+                   a1->field_0,
+                   v4,
+                   *(_QWORD *)&amp;a1->field_8,
+                   *(_QWORD *)&amp;a1->field_8 >> 32,
+                   a1->field_10,
+                   v3,
+                   a2);
+            goto LABEL_17;
+          case 0x14u:
+            v8 = sub_63A28(a1->field_0, v3);
+            goto LABEL_17;
+          case 0x15u:
+            sub_61A60(a1->field_0, v3, a2);
+            return result;
+          case 0x16u:
+            v8 = sub_62440(a1->field_14);
+            goto LABEL_17;
+          case 0x17u:
+            v8 = sub_6226C(a1->field_10, v3);
+            goto LABEL_17;
+          case 0x18u:
+            v8 = sub_63530(a1->field_14);
+LABEL_17:
+            v6 = 0;
+            if ( v8 )
+            {
+              *a2 = 0;
+              v6 = v8;
+            }
+            return v6;
+          default:
+            LOWORD(v5) = 28032;
+            goto LABEL_5;
+        }
+      }
+    }
+  }
+  LOWORD(v5) = -27504;
+LABEL_5:
+  HIWORD(v5) = 13;
+  v6 = 0;
+  *a2 = v5;
+  return v6;
+}</code></pre><br/>
+В качестве параметра switch передаётся поле структуры, которому ранее было присвоено значение 3. Смотрим case 3: в функцию <i>sub_6364C</i> передаются параметры из структуры, которые были сложены туда в предыдущей функции, т. е. ключ и зашифрованные данные. Если внимательно посмотреть на <i>sub_6364C</i>, можно узнать в ней алгоритм RC4.<br/>
+<br/>
+У нас есть алгоритм и ключ. Попробуем расшифровать имя класса. Вот что получилось: <i>com/taobao/wireless/security/adapter/JNICLibrary</i>. Отлично! Мы на правильном пути.<br/>
+<br/>
+<h3>Дерево команд</h3><br/>
+Теперь нужно найти вызов <i>RegisterNatives</i>, который укажет нам на функцию <i>doCommandNative</i>. Просматриваем функции, вызываемые из <i>JNI_OnLoad,</i> и находим его в <i>sub_B7B0</i>:<br/>
+<br/>
+<pre><code class="cpp">int __fastcall sub_B7F6(JNIEnv *env, jclass clazz)
+{
+  char signature[41]; // [sp+7h] [bp-55h]
+  char name[16]; // [sp+30h] [bp-2Ch]
+  JNINativeMethod method; // [sp+40h] [bp-1Ch]
+  int v8; // [sp+4Ch] [bp-10h]
+ 
+  v8 = *(_DWORD *)off_8AC00;
+  decryptString((unsigned __int8 *)&amp;unk_83ED9, (unsigned __int8 *)name, 0x10u);// doCommandNative
+  decryptString((unsigned __int8 *)&amp;unk_83EEA, (unsigned __int8 *)signature, 0x29u);// (I[Ljava/lang/Object;)Ljava/lang/Object;
+  method.name = name;
+  method.signature = signature;
+  method.fnPtr = sub_B69C;
+  return ((int (__fastcall *)(JNIEnv *, jclass, JNINativeMethod *, int))(*env)->RegisterNatives)(env, clazz, &amp;method, 1) >> 31;
+}</code></pre><br/>
+И действительно, тут регистрируется нативный метод с именем <i>doCommandNative</i>. Теперь мы знаем его адрес. Посмотрим, что он делает.<br/>
+<br/>
+<pre><code class="cpp">int __fastcall doCommandNative(JNIEnv *env, jobject obj, int command, jarray args)
+{
+  int v5; // r5
+  struc_2 *a5; // r6
+  int v9; // r1
+  int v11; // [sp+Ch] [bp-14h]
+  int v12; // [sp+10h] [bp-10h]
+  v5 = 0;
+  v12 = *(_DWORD *)off_8AC00;
+  v11 = 0;
+  a5 = (struc_2 *)malloc(0x14u);
+  if ( a5 )
+  {
+    a5->field_0 = 0;
+    a5->field_4 = 0;
+    a5->field_8 = 0;
+    a5->field_C = 0;
+    v9 = command % 10000 / 100;
+    a5->field_0 = command / 10000;
+    a5->field_4 = v9;
+    a5->field_8 = command % 100;
+    a5->field_C = env;
+    a5->field_10 = args;
+    v5 = sub_9D60(command / 10000, v9, command % 100, 1, (int)a5, &amp;v11);
+  }
+  free(a5);
+  if ( !v5 &amp;&amp; v11 )
+    sub_7CF34(env, v11, &amp;byte_83ED7);
+  return v5;
+}</code></pre><br/>
+По названию можно догадаться, что здесь находится точка входа всех функций, которые разработчики решили перенести в нативную библиотеку. Нас интересует функция с номером 10601.<br/>
+<br/>
+По коду можно увидеть, что из номера команды получается три числа: <i>command / 10000</i>, <i>command % 10000 / 100</i> и <i>command % 10</i>, т. е., в нашем случае, 1, 6 и 1. Эти три числа, а также указатель на <i>JNIEnv</i> и аргументы, переданные функции, складываются в структуру и передаются дальше. С помощью полученных трёх чисел (обозначим их N1, N2 и N3) строится дерево команд.<br/>
+<br/>
+Примерно такое:<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/xg/jk/l1/xgjkl1uhzmibo-nhmha3kpivf5a.png"/><br/>
+<br/>
+Дерево заполняется динамически в <i>JNI_OnLoad</i>.<br/>
+Три числа кодируют путь в дереве. Каждый лист дерева содержит поксоренный адрес соответствующей функции. Ключ — в родительском узле. Найти место в коде, где в дерево добавляется нужная нам функция, не составляет большого труда, если разобраться во всех используемых структурах (их описание не приводим, чтобы не раздувать и без того немаленькую статью).<br/>
+<br/>
+<h3>Ещё обфускация</h3><br/>
+Мы получили адрес функции, которая должна расшифровывать трафик: 0x5F1AC. Но радоваться пока рано: разработчики UC Browser приготовили для нас ещё один сюрприз.<br/>
+<br/>
+После получения параметров из массива, который был сформирован в Java-коде, попадаем<br/>
+в функцию по адресу 0x4D070. И тут нас ждёт ещё один вид обфускации кода.<br/>
+<br/>
+Кладём в R7 и R4 два индекса:<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/7i/fx/86/7ifx86mr4yph41jsxukpjqvxmfa.png"/><br/>
+<br/>
+Перекладываем первый индекс в R11:<br/>
+<br/>
+<img src="https://habrastorage.org/r/w780q1/webt/fa/62/6j/fa626jaylcaaewtslff_-byaseo.jpeg" data-src="https://habrastorage.org/webt/fa/62/6j/fa626jaylcaaewtslff_-byaseo.jpeg" data-blurred="true"/><br/>
+<br/>
+Чтобы получить адрес из таблицы, используем индекс:<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/co/rk/s1/corks1o2dp75elfvdsxjimrohuo.png"/><br/>
+<br/>
+После перехода по первому адресу используется второй индекс, который в R4. В таблице 230 элементов.<br/>
+<br/>
+Что с этим делать? Можно сказать IDA, что это такой switch: Edit -> Other -> Specify switch idiom.<br/>
+<br/>
+<img src="https://habrastorage.org/r/w780q1/webt/36/uu/xn/36uuxnabf3xesptr8qisxzzfutk.jpeg" data-src="https://habrastorage.org/webt/36/uu/xn/36uuxnabf3xesptr8qisxzzfutk.jpeg" data-blurred="true"/><br/>
+<br/>
+Получившийся код страшен. Но, пробираясь через его дебри, можно заметить вызов уже знакомой нам функции <i>sub_6115C</i>:<br/>
+<br/>
+<img src="https://habrastorage.org/r/w780q1/webt/-d/pt/3a/-dpt3akb_yckinmdheczkktzlem.jpeg" data-src="https://habrastorage.org/webt/-d/pt/3a/-dpt3akb_yckinmdheczkktzlem.jpeg" data-blurred="true"/><br/>
+<br/>
+Там был switch, в котором в case 3 находилась расшифровка с использованием алгоритма RC4. А в этом случае передаваемая в функцию структура заполняется из параметров, переданных в <i>doCommandNative</i>. Вспоминаем, что у нас там был <i>magicInt</i> со значением 16. Смотрим соответствующий case – и после нескольких переходов находим код, по которому можно опознать алгоритм.<br/>
+<br/>
+<img src="https://habrastorage.org/r/w780q1/webt/rn/_1/i4/rn_1i4avl8oki83hslk5u19ygoe.jpeg" data-src="https://habrastorage.org/webt/rn/_1/i4/rn_1i4avl8oki83hslk5u19ygoe.jpeg" data-blurred="true"/><br/>
+<br/>
+Это AES!<br/>
+<br/>
+Алгоритм есть, осталось получить его параметры: режим, ключ и, возможно, вектор инициализации (его наличие зависит от режима работы алгоритма AES). Структура с ними должна формироваться где-то перед вызовом функции <i>sub_6115C</i>, но эта часть кода обфусцирована особенно хорошо, поэтому возникает идея пропатчить код, чтобы все параметры функции расшифровки дампились в файл.<br/>
+<br/>
+<h3>Патч</h3><br/>
+Чтобы не писать весь код патча на языке ассемблера вручную, можно запустить Android Studio, написать там функцию, которая получает на вход такие же параметры, как у нашей функции расшифровки, и пишет в файл, после чего скопипастить код, который сгенерирует компилятор.<br/>
+<br/>
+Об удобстве добавления кода наши друзья из команды UC Browser тоже «позаботились». Вспоминаем, что в начале каждой функции у нас мусорный код, который легко можно заменить на любой другой. Очень удобно :) Правда, в начале целевой функции места для кода, который сохраняет все параметры в файл, маловато. Пришлось разделить его на части и использовать мусорные блоки соседних функций. Всего получилось четыре части.<br/>
+<br/>
+Первая часть:<br/>
+<br/>
+<img src="https://habrastorage.org/r/w780q1/webt/hy/lk/qr/hylkqrhqgyei6qjdj6ayvgivpqu.jpeg" data-src="https://habrastorage.org/webt/hy/lk/qr/hylkqrhqgyei6qjdj6ayvgivpqu.jpeg" data-blurred="true"/><br/>
+<br/>
+В архитектуре ARM первые четыре параметра функции передаются через регистры R0-R3, остальные, если они есть — через стек. В регистре LR передаётся адрес возврата. Всё это нужно сохранить для того, чтобы функция могла отработать после того, как мы сдампим её параметры. Также нужно сохранить все регистры, которые мы будем использовать в процессе, поэтому делаем PUSH.W {R0-R10,LR}. В R7 у нас получается адрес списка параметров, переданных функции через стек.<br/>
+<br/>
+С помощью функции <i>fopen</i> откроем файл <i>/data/local/tmp/aes</i> в режиме «ab»,<br/>
+т. е. на добавление. В R0 загружаем адрес имени файла, в R1 — адрес строки с указанием режима. И тут мусорный код заканчивается, поэтому переходим в следующую функцию. Чтобы она продолжала работать, ставим в начало переход на настоящий код функции в обход мусора, а вместо мусора добавляем продолжение патча.<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/68/ss/kf/68sskfcymjorl_flpf8mg9wwej4.png"/><br/>
+<br/>
+Вызываем <i>fopen</i>.<br/>
+<br/>
+Первые три параметра функции <i>aes</i> имеют тип <i>int</i>. Так как мы в начале сохранили регистры в стек, можно просто передать функции <i>fwrite</i> их адреса в стеке.<br/>
+<br/>
+<img src="https://habrastorage.org/r/w780q1/webt/d1/yt/iz/d1ytiz_jx7byflntqxxec2nece0.jpeg" data-src="https://habrastorage.org/webt/d1/yt/iz/d1ytiz_jx7byflntqxxec2nece0.jpeg" data-blurred="true"/><br/>
+<br/>
+Дальше у нас есть три структуры, которые содержат размер данных и указатель на данные для ключа, вектора инициализации и зашифрованных данных.<br/>
+<br/>
+<img src="https://habrastorage.org/r/w780q1/webt/me/vy/kz/mevykztpkcwdr6xkpnenauxqccs.jpeg" data-src="https://habrastorage.org/webt/me/vy/kz/mevykztpkcwdr6xkpnenauxqccs.jpeg" data-blurred="true"/><br/>
+<br/>
+В конце закрываем файл, восстанавливаем регистры и передаём управление настоящей функции <i>aes</i>.<br/>
+<br/>
+Собираем APK с пропатченной библиотекой, подписываем, закидываем на устройство/эмулятор, запускаем. Видим, что наш дамп создаётся, и туда пишется много данных. Браузер использует шифрование не только для трафика, и всё шифрование идёт через рассматриваемую функцию. А нужных данных почему-то нет, и в трафике не видно нужного запроса. Чтобы не ждать, пока UC Browser соизволит сделать нужный запрос, возьмём зашифрованный ответ от сервера, полученный ранее, и пропатчим приложение ещё раз: добавим расшифровку в onCreate главной активити.<br/>
+<br/>
+<pre><code class="plaintext">    const/16 v1, 0x62
+    new-array v1, v1, [B
+    fill-array-data v1, :encrypted_data
+    const/16 v0, 0x1f
+    invoke-static {v0, v1}, Lcom/uc/browser/core/d/c/g;->j(I[B)[B
+    move-result-object v1
+    array-length v2, v1
+    invoke-static {v2}, Ljava/lang/String;->valueOf(I)Ljava/lang/String;
+    move-result-object v2
+    const-string v0, "ololo"
+    invoke-static {v0, v2}, Landroid/util/Log;->d(Ljava/lang/String;Ljava/lang/String;)I</code></pre><br/>
+Собираем, подписываем, устанавливаем, запускаем. Получаем NullPointerException, т. к. метод вернул null.<br/>
+<br/>
+В ходе дальнейшего анализа кода была обнаружена функция, в которой расшифровываются интересные строчки: «META-INF/» и ".RSA". Похоже, приложение проверяет свой сертификат. Или даже генерирует ключи из него. Разбираться с тем, что происходит с сертификатом, совсем не хочется, поэтому просто подсунем ему правильный сертификат. Пропатчим зашифрованную строчку таким образом, чтобы вместо «META-INF/» получилось «BLABLINF/», создадим папку с таким именем в APK и подкинем туда сертификат белкобраузера.<br/>
+<br/>
+Собираем, подписываем, устанавливаем, запускаем. Бинго! Ключ у нас!<br/>
+<br/>
+<h3>MitM</h3><br/>
+Мы получили ключ и вектор инициализации, равный ключу. Попробуем расшифровать ответ сервера в режиме CBC.<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/9k/m7/un/9km7unymy_ybx1lwnflfbqd36ke.png"/><br/>
+<br/>
+Видим URL архива, что-то похожее на MD5, «extract_unzipsize» и число. Проверяем: MD5 архива совпадает, размер распакованной библиотеки совпадает. Пробуем пропатчить эту библиотеку и отдать её браузеру. Чтобы показать, что наша пропатченная библиотека загрузилась, будем запускать Intent на создание СМС с текстом «PWNED!». Подменять будем два ответа от сервера: <i><a href="http://puds.ucweb.com/upgrade/index.xhtml">puds.ucweb.com/upgrade/index.xhtml</a></i> и на скачивание архива. В первом подменяем MD5 (размер после распаковки не меняется), во втором отдаём архив с пропатченной библиотекой.<br/>
+<br/>
+Браузер несколько раз пытается скачать архив, после чего выдаёт ошибку. Видимо, что-то<br/>
+ему не нравится. В результате анализа этого мутного формата выяснилось, что сервер передаёт ещё размер архива:<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/e2/-v/ua/e2-vuahng86h0bt0vm84f3xhqrg.png"/><br/>
+<br/>
+Он закодирован в LEB128. После патча размер архива с библиотекой немного изменился, поэтому браузер посчитал, что архив скачался криво, и после нескольких попыток выдал ошибку.<br/>
+<br/>
+Правим размер архива… И – победа! :) Результат на видео.<br/>
+<br/>
+<a href="https://www.youtube.com/watch?v=Nfns7uH03J8">https://www.youtube.com/watch?v=Nfns7uH03J8</a><br/>
+<br/>
+<h3>Последствия и реакция разработчика</h3><br/>
+Точно таким же образом хакеры могли бы использовать небезопасную функцию UC Browser, чтобы распространять и запускать вредоносные библиотеки. Эти библиотеки будут работать в контексте браузера, поэтому получат все его системные разрешения. Как следствие — возможность показывать фишинговые окна, а также доступ к рабочим файлам оранжевой китайской белки, включая хранящиеся в базе данных логины, пароли и куки.<br/>
+<br/>
+Мы связывались с разработчиками UC Browser и сообщали им о найденной проблеме, пытались указать на уязвимость и её опасность, но обсуждать что-либо с нами они не стали. А тем временем браузер продолжал щеголять с опасной функцией у всех на виду. Но как только мы раскрыли детали уязвимости, игнорировать это, как раньше, уже было нельзя. 27 марта была<br/>
+выпущена новая версия UC Browser 12.10.9.1193, которая обращалась к серверу по HTTPS: <i><a href="https://puds.ucweb.com/upgrade/index.xhtml">puds.ucweb.com/upgrade/index.xhtml</a></i>.<br/>
+<br/>
+Кроме того, после «исправления» и до момента написания статьи попытка открыть в браузере PDF приводила к появлению сообщения об ошибке с текстом «Упс, что-то пошло не так!». Запрос к серверу при попытке открыть PDF не выполнялся, но выполнялся запрос при запуске браузера, что намекает на сохранившуюся возможность загружать исполняемый код в нарушение правил Google Play.</div></div> <!----> <!----></div> <div class="tm-article-presenter__meta"><div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Теги:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Buc%20browser%5D" class="tm-tags-list__link">uc browser</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5B%D0%B2%D1%80%D0%B5%D0%B4%D0%BE%D0%BD%D0%BE%D1%81%D0%BD%D0%BE%D0%B5%20%D0%BF%D0%BE%5D" class="tm-tags-list__link">вредоносное по</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5B%D0%B2%D0%B8%D1%80%D1%83%D1%81%D0%BD%D1%8B%D0%B9%20%D0%B0%D0%BD%D0%B0%D0%BB%D0%B8%D0%B7%5D" class="tm-tags-list__link">вирусный анализ</a></li></ul></div> <div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Хабы:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/company/drweb/blog/" class="tm-hubs-list__link router-link-active">
+    Блог компании Доктор Веб
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/infosecurity/" class="tm-hubs-list__link">
+    Информационная безопасность
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/virus/" class="tm-hubs-list__link">
+    Антивирусная защита
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/web_analytics/" class="tm-hubs-list__link">
+    Веб-аналитика
+  </a></li></ul></div></div></article></div> <!----></div> <div class="tm-article-sticky-panel"><div class="tm-data-icons tm-article-sticky-panel__icons"><div class="tm-article-rating tm-data-icons__item"><div class="tm-votes-meter tm-article-rating__votes-switcher"><svg height="16" width="16" class="tm-svg-img tm-votes-meter__icon tm-votes-meter__icon_medium"><title>Всего голосов 25: ↑23 и ↓2</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-rating"></use></svg> <span title="Всего голосов 25: ↑23 и ↓2" class="tm-votes-meter__value tm-votes-meter__value_positive tm-votes-meter__value_medium">+21</span></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----> <span title="Количество просмотров" class="tm-icon-counter tm-data-icons__item"><svg height="16" width="16" class="tm-svg-img tm-icon-counter__icon"><title>Просмотры</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-views"></use></svg> <span class="tm-icon-counter__value">6.4K</span></span> <button title="Добавить в закладки" type="button" class="bookmarks-button tm-data-icons__item"><span title="Добавить в закладки" class="tm-svg-icon__wrapper bookmarks-button__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Добавить в закладки</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-favorite"></use></svg></span> <span title="Количество пользователей, добавивших публикацию в закладки" class="bookmarks-button__counter">
+    20
+  </span></button> <!----> <div title="Поделиться" class="tm-sharing tm-data-icons__item"><button type="button" class="tm-sharing__button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="tm-sharing__icon"><path fill="currentColor" d="M10.33.275l9.047 7.572a.2.2 0 010 .306l-9.048 7.572a.2.2 0 01-.328-.153V11c-8 0-9.94 6-9.94 6S-1 5 10 5V.428a.2.2 0 01.328-.153z"></path></svg></button> <!----></div> <DIV class="v-portal" style="display:none;"></DIV></div> </div></div> <!----> <!----> <div class="tm-article-presenter__footer"><div class="tm-article-blocks"><!----> <section class="tm-block tm-block_spacing-bottom"><!----> <div class="tm-block__body tm-block__body_variant-balanced"><div class="tm-article-author"><div class="tm-article-author__company"><div class="tm-article-author__company-card"><div class="tm-company-snippet"><a href="/ru/company/drweb/profile/" class="tm-company-snippet__logo-link"><div class="tm-entity-image"><img alt="" height="40" src="//habrastorage.org/getpro/habr/company/002/8a7/c16/0028a7c16cc021fea7f86c13e082f507.gif" width="40" class="tm-entity-image__pic"></div></a> <div class="tm-company-snippet__info"><a href="/ru/company/drweb/profile/" class="tm-company-snippet__title">Доктор Веб</a> <div class="tm-company-snippet__description">Компания</div></div></div> <div class="tm-article-author__buttons"><!----> <!----></div></div> <!----> <div class="tm-article-author__separator"></div></div> <div class="tm-user-card tm-article-author__user-card tm-user-card_variant-article"><div class="tm-user-card__info-container"><div class="tm-user-card__header"><div class="tm-user-card__header-data"><a href="/ru/users/doctorweb/" class="tm-user-card__userpic tm-user-card__userpic_size-40"><div class="tm-entity-image"><img alt="" src="//habrastorage.org/getpro/habr/avatars/3c5/026/15b/3c502615b845bc7d9a930778c9e7f1da.jpg" class="tm-entity-image__pic"></div></a> <div class="tm-user-card__meta"><div title=" 126 голосов " class="tm-karma tm-user-card__karma"><div class="tm-karma__votes tm-karma__votes_positive">
+    28
+  </div> <div class="tm-karma__text">
+    Карма
+  </div></div> <div title="Рейтинг пользователя" class="tm-rating tm-user-card__rating"><div class="tm-rating__header"> <div class="tm-rating__counter">0</div></div> <div class="tm-rating__text">
+    Рейтинг
+  </div></div></div></div></div> <div class="tm-user-card__info tm-user-card__info_variant-article"><div class="tm-user-card__title tm-user-card__title_variant-article"><!----> <a href="/ru/users/doctorweb/" class="tm-user-card__nickname tm-user-card__nickname_variant-article">
+          @doctorweb
+        </a> <!----></div> <p class="tm-user-card__short-info tm-user-card__short-info_variant-article">Пользователь</p></div></div> <div class="tm-user-card__buttons tm-user-card__buttons_variant-article"><!----> <!----> <!----> <!----> <!----></div></div> <!----></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----></section> <div class="tm-article-blocks__comments"><div class="tm-article-page-comments"><div class="tm-article-comments-counter-link tm-article-comments-counter-button"><a href="/ru/company/drweb/blog/451936/comments/" class="tm-article-comments-counter-link__link tm-article-comments-counter-link__link_button-style"><svg height="16" width="16" class="tm-svg-img tm-article-comments-counter-link__icon tm-article-comments-counter-link__icon_contrasted"><title>Комментарии</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-comments"></use></svg> <span class="tm-article-comments-counter-link__value tm-article-comments-counter-link__value_contrasted">
+       Комментарии 7 
+    </span></a> <!----></div></div></div>  <!---->  <!----> <!----></div></div></div></div></div> <div class="tm-page__sidebar"><div class="tm-layout-sidebar"><div class="tm-layout-sidebar__placeholder_initial"></div> <div class="tm-sexy-sidebar tm-sexy-sidebar_initial" style="margin-top:0px;"><!----> <section class="tm-block tm-block_spacing-bottom"><header class="tm-block__header"><h2 class="tm-block__title">Информация</h2> <!----></header> <div class="tm-block__body"><div class="tm-company-basic-info"><dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Дата основания</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><time datetime="2003-12-21T21:00:00.000Z" title="2003-12-22, 00:00">22  декабря  2003</time></dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Местоположение</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap">
+    Россия
+  </dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Сайт</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><a href="http://www.drweb.ru/" target="_blank" class="tm-company-basic-info__link">
+      www.drweb.ru
+    </a></dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Численность</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap">
+    Неизвестно
+  </dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Дата регистрации</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><time datetime="2008-08-09T07:42:52.000Z" title="2008-08-09, 11:42">9  августа  2008</time></dd></dl> <!----></div></div> <!----></section> <div class="tm-company-widgets"></div> <!----></div></div></div></div></div></div></main> <!----></div> <div class="tm-footer-menu"><div class="tm-page-width"><div class="tm-footer-menu__container"><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Ваш аккаунт
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr/?back=/ru/company/drweb/blog/451936/&amp;hl=ru" rel="nofollow" target="_self">
+                Войти
+              </a></li><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr-register/?back=/ru/company/drweb/blog/451936/&amp;hl=ru" rel="nofollow" target="_self">
+                Регистрация
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Разделы
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/" class="footer-menu__item-link router-link-active">
+                Публикации
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/news/" class="footer-menu__item-link">
+                Новости
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/hubs/" class="footer-menu__item-link">
+                Хабы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/companies/" class="footer-menu__item-link">
+                Компании
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/users/" class="footer-menu__item-link">
+                Авторы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/sandbox/" class="footer-menu__item-link">
+                Песочница
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Информация
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/docs/help/" class="footer-menu__item-link">
+                Устройство сайта
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/authors/codex/" class="footer-menu__item-link">
+                Для авторов
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/companies/corpblogs/" class="footer-menu__item-link">
+                Для компаний
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/docs/transparency/" class="footer-menu__item-link">
+                Документы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/agreement" target="_blank">
+                Соглашение
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/confidential/" target="_blank">
+                Конфиденциальность
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Услуги
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQLwRfQmXibiUlWaRg-BAc38s7oM3lJiaPju7qmdJsp8ysIvZ_G-Npem0njJLMozE2bPHMpDqiI5hhy/pub?start=false&amp;loop=false&amp;delayms=60000&amp;slide=id.g91a03369cd_4_297" target="_blank">
+                Реклама
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://habrastorage.org/storage/stuff/habr/service_price.pdf" target="_blank">
+                Тарифы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQJJds8-Di7BQSP_guHxICN7woVYoN5NP_22ra-BIo4bqnTT9FR6fB-Ku2P0AoRpX0Ds-LRkDeAoD8F/pub?start=false&amp;loop=false&amp;delayms=60000" target="_blank">
+                Контент
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://tmtm.timepad.ru/" target="_blank">
+                Семинары
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/megaprojects/" class="footer-menu__item-link">
+                Мегапроекты
+              </a></li></ul></div></div></div></div></div> <div class="tm-footer"><div class="tm-page-width"><div class="tm-footer__container"><!----> <div class="tm-footer__social"><a href="https://www.facebook.com/habrahabr.ru" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Facebook</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-facebook"></use></svg></a><a href="https://twitter.com/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Twitter</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-twitter"></use></svg></a><a href="https://vk.com/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>VK</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-vkontakte"></use></svg></a><a href="https://telegram.me/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Telegram</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-telegram"></use></svg></a><a href="https://www.youtube.com/channel/UCd_sTwKqVrweTt4oAKY5y4w" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Youtube</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-youtube"></use></svg></a><a href="https://zen.yandex.ru/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Яндекс Дзен</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-zen"></use></svg></a></div> <DIV class="v-portal" style="display:none;"></DIV> <button class="tm-footer__link"><!---->
+        Настройка языка
+      </button> <a href="/ru/about" class="tm-footer__link">
+        О сайте
+      </a> <a href="/ru/feedback/" class="tm-footer__link">
+        Техническая поддержка
+      </a> <!----> <a href="/berserk-mode-nope" class="tm-footer__link">
+        Вернуться на старую версию
+      </a> <div class="tm-footer-copyright"><span class="tm-copyright"><span class="tm-copyright__years">© 2006–2021 </span> <span class="tm-copyright__name">«<a href="https://company.habr.com/" rel="noopener" target="_blank" class="tm-copyright__link">Habr</a>»</span></span></div></div></div></div> <!----> <!----></div> <div class="vue-portal-target"></div></div>
+<script>window.__INITIAL_STATE__={"adblock":{"hasAcceptableAdsFilter":false,"hasAdblock":false},"articlesList":{"articlesList":{"451936":{"id":"451936","timePublished":"2019-05-15T10:44:55+00:00","isCorporative":true,"lang":"ru","titleHtml":"Ищем уязвимости в UC Browser","leadData":{"textHtml":"\u003Cdiv style=\"text-align:center;\"\u003E\u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002F-f\u002Fna\u002Fkn\u002F-fnaknrx70xmfiflvfa6ijw1pys.jpeg\"\u003E\u003C\u002Fdiv\u003E\u003Cbr\u003E\r\n\u003Ch3\u003EВведение\u003C\u002Fh3\u003E\u003Cbr\u003E\r\nВ конце марта мы \u003Ca href=\"https:\u002F\u002Fnews.drweb.ru\u002Fshow\u002F?i=13176\"\u003Eсообщали\u003C\u002Fa\u003E, что обнаружили скрытую возможность загрузки и запуска непроверенного кода в UC Browser. Сегодня разберём подробно, как эта загрузка происходит и как хакеры могут использовать её в своих целях.\u003Cbr\u003E\r\n\u003Cbr\u003E\r\nНекоторое время назад UC Browser рекламировали и распространяли очень агрессивно: его устанавливали на устройства пользователей с помощью вредоносных программ, распространяли с различных сайтов под видом видеофайлов (т. е. пользователи думали, что качают, например, порноролик, а получали вместо него APK с этим браузером), использовали пугающие баннеры с сообщениями о том, что браузер устарел, уязвим и всё в таком духе. В официальной группе UC Browser в VK есть \u003Ca href=\"https:\u002F\u002Fvk.com\u002Ftopic-27170131_31448404?offset=0\"\u003Eтема\u003C\u002Fa\u003E, в которой пользователи могут пожаловаться на недобросовестную рекламу, там много примеров. В 2016 году была даже \u003Ca href=\"https:\u002F\u002Fwww.youtube.com\u002Fwatch?v=VRFOl7k5axc\"\u003Eвидеореклама\u003C\u002Fa\u003E на русском языке (да, реклама браузера, блокирующего рекламу).\u003Cbr\u003E\r\n\u003Cbr\u003E\r\nНа момент написания статьи у UC Browser набралось более 500 000 000 установок в Google Play. Это впечатляет — больше только у Google Chrome. Среди отзывов можно увидеть достаточно много жалоб на рекламу и редиректы на какие-то приложения в Google Play. Это и стало поводом к исследованию: мы решили посмотреть, не делает ли UC Browser что-то нехорошее. И оказалось, что таки делает! \u003Cbr\u003E","imageUrl":null,"buttonTextHtml":"Читать дальше →","image":null},"editorVersion":"1.0","postType":"article","postLabels":[],"author":{"scoreStats":{"score":28,"votesCount":126},"rating":0,"relatedData":null,"contacts":[],"authorContacts":[],"paymentDetails":{"paymentYandexMoney":null,"paymentPayPalMe":null,"paymentWebmoney":null},"id":"56752","alias":"doctorweb","fullname":null,"avatarUrl":"\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Favatars\u002F3c5\u002F026\u002F15b\u002F3c502615b845bc7d9a930778c9e7f1da.jpg","speciality":null},"statistics":{"commentsCount":7,"favoritesCount":20,"readingCount":6370,"score":21,"votesCount":25},"hubs":[{"relatedData":null,"id":"5161","alias":"drweb","type":"corporative","title":"Блог компании Доктор Веб","titleHtml":"Блог компании Доктор Веб","isProfiled":false},{"relatedData":null,"id":"50","alias":"infosecurity","type":"collective","title":"Информационная безопасность","titleHtml":"Информационная безопасность","isProfiled":true},{"relatedData":null,"id":"332","alias":"virus","type":"collective","title":"Антивирусная защита","titleHtml":"Антивирусная защита","isProfiled":true},{"relatedData":null,"id":"20698","alias":"web_analytics","type":"collective","title":"Веб-аналитика","titleHtml":"Веб-аналитика","isProfiled":true}],"flows":[{"id":"1","alias":"develop","title":"Разработка"},{"id":"4","alias":"marketing","title":"Маркетинг"},{"id":"6","alias":"admin","title":"Администрирование"}],"relatedData":null,"textHtml":"\u003Cdiv xmlns=\"http:\u002F\u002Fwww.w3.org\u002F1999\u002Fxhtml\"\u003E\u003Cdiv style=\"text-align:center;\"\u003E\u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fr\u002Fw780q1\u002Fwebt\u002F-f\u002Fna\u002Fkn\u002F-fnaknrx70xmfiflvfa6ijw1pys.jpeg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002F-f\u002Fna\u002Fkn\u002F-fnaknrx70xmfiflvfa6ijw1pys.jpeg\" data-blurred=\"true\"\u002F\u003E\u003C\u002Fdiv\u003E\u003Cbr\u002F\u003E\r\n\u003Ch3\u003EВведение\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\nВ конце марта мы \u003Ca href=\"https:\u002F\u002Fnews.drweb.ru\u002Fshow\u002F?i=13176\"\u003Eсообщали\u003C\u002Fa\u003E, что обнаружили скрытую возможность загрузки и запуска непроверенного кода в UC Browser. Сегодня разберём подробно, как эта загрузка происходит и как хакеры могут использовать её в своих целях.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nНекоторое время назад UC Browser рекламировали и распространяли очень агрессивно: его устанавливали на устройства пользователей с помощью вредоносных программ, распространяли с различных сайтов под видом видеофайлов (т. е. пользователи думали, что качают, например, порноролик, а получали вместо него APK с этим браузером), использовали пугающие баннеры с сообщениями о том, что браузер устарел, уязвим и всё в таком духе. В официальной группе UC Browser в VK есть \u003Ca href=\"https:\u002F\u002Fvk.com\u002Ftopic-27170131_31448404?offset=0\"\u003Eтема\u003C\u002Fa\u003E, в которой пользователи могут пожаловаться на недобросовестную рекламу, там много примеров. В 2016 году была даже \u003Ca href=\"https:\u002F\u002Fwww.youtube.com\u002Fwatch?v=VRFOl7k5axc\"\u003Eвидеореклама\u003C\u002Fa\u003E на русском языке (да, реклама браузера, блокирующего рекламу).\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nНа момент написания статьи у UC Browser набралось более 500 000 000 установок в Google Play. Это впечатляет — больше только у Google Chrome. Среди отзывов можно увидеть достаточно много жалоб на рекламу и редиректы на какие-то приложения в Google Play. Это и стало поводом к исследованию: мы решили посмотреть, не делает ли UC Browser что-то нехорошее. И оказалось, что таки делает! \u003Cbr\u002F\u003E\r\n\u003Ca name=\"habracut\"\u003E\u003C\u002Fa\u003E\u003Cbr\u002F\u003E\r\nВ коде приложения обнаружилась возможность загрузки и запуска исполняемого кода, \u003Ca href=\"https:\u002F\u002Fplay.google.com\u002Fabout\u002Fprivacy-security-deception\u002Fmalicious-behavior\u002F\"\u003Eчто противоречит правилам публикации приложений\u003C\u002Fa\u003E в Google Play. Помимо того, что UC Browser загружает исполняемый код, он делает это небезопасно, что можно использовать для проведения MitM-атаки. Посмотрим, получится ли у нас такую атаку провести.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВсё, что написано далее, актуально для версии UC Browser, которая присутствовала в Google Play на момент проведения исследования:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003Epackage: com.UCMobile.intl\nversionName: 12.10.8.1172\nversionCode: 10598\nsha1 APK-файла: f5edb2243413c777172f6362876041eb0c3a928c\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Ch3\u003EВектор атаки\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\nВ манифесте UC Browser можно обнаружить сервис с говорящим названием \u003Ci\u003Ecom.uc.deployment.UpgradeDeployService\u003C\u002Fi\u003E.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E    &lt;service android:exported=\"false\" android:name=\"com.uc.deployment.UpgradeDeployService\" android:process=\":deploy\" \u002F\u003E\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nПри запуске этого сервиса браузер выполняет POST-запрос к \u003Ci\u003E\u003Ca href=\"http:\u002F\u002Fpuds.ucweb.com\u002Fupgrade\u002Findex.xhtml\"\u003Epuds.ucweb.com\u002Fupgrade\u002Findex.xhtml\u003C\u002Fa\u003E\u003C\u002Fi\u003E, который можно заметить в трафике через некоторое время после старта. В ответ он может получить команду на загрузку какого-либо обновления или нового модуля. В процессе анализа сервер таких команд не давал, но мы заметили, что при попытке открыть в браузере PDF тот делает повторный запрос по указанному выше адресу, после чего скачивает нативную библиотеку. Для проведения атаки мы решили использовать эту особенность UC Browser: способность открывать PDF с помощью нативной библиотеки, которой нет в APK и которую он при необходимости подгружает из Интернета. Стоит отметить, что теоретически UC Browser можно заставить что-то скачать и без взаимодействия с пользователем – если отдать правильно сформированный ответ на запрос, который выполняется после запуска браузера. Но для этого нужно более детально изучать протокол взаимодействия с сервером, поэтому мы решили, что проще отредактировать перехваченный ответ и подменить библиотеку для работы с PDF.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nИтак, когда пользователь хочет открыть PDF прямо в браузере, в трафике можно увидеть следующие запросы:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fj0\u002Fi1\u002Fc1\u002Fj0i1c1n_nwf_gnauzbudnqor5oi.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nСначала идёт POST-запрос к \u003Ci\u003E\u003Ca href=\"http:\u002F\u002Fpuds.ucweb.com\u002Fupgrade\u002Findex.xhtml\"\u003Epuds.ucweb.com\u002Fupgrade\u002Findex.xhtml\u003C\u002Fa\u003E\u003C\u002Fi\u003E, после чего\u003Cbr\u002F\u003E\r\nскачивается архив с библиотекой для просмотра PDF и офисных форматов. Логично предположить, что в первом запросе передаётся информация о системе (как минимум, архитектура, чтобы отдать нужную библиотеку), а в ответ на него браузер получает некую информацию о библиотеке, которую нужно скачать: адрес и, возможно, что-то ещё. Проблема в том, что запрос этот зашифрован.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cdiv class=\"scrollable-table\"\u003E\u003Ctable\u003E\r\n\u003Ctr\u003E\r\n\u003Ctd\u003E Фрагмент запроса\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E Фрагмент ответа\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003C\u002Ftd\u003E\r\n\u003C\u002Ftr\u003E\r\n\u003Ctr\u003E\r\n\u003Ctd\u003E\u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fr\u002Fw780q1\u002Fwebt\u002Fgo\u002Ftj\u002Ftz\u002Fgotjtzkpg2owfmk8jrnznox_vdg.jpeg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fgo\u002Ftj\u002Ftz\u002Fgotjtzkpg2owfmk8jrnznox_vdg.jpeg\" data-blurred=\"true\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003C\u002Ftd\u003E\r\n\u003Ctd\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fg5\u002F7k\u002Fiv\u002Fg57kivkwrysmcqvptmhclqzzipq.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003C\u002Ftd\u003E\r\n\u003C\u002Ftr\u003E\r\n\u003C\u002Ftable\u003E\u003C\u002Fdiv\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nСама библиотека упакована в ZIP и не зашифрована.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002F6r\u002Flt\u002Fns\u002F6rltnsrtyd-_5ekwis68qn-vydc.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch3\u003EПоиск кода расшифровки трафика\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПопробуем расшифровать ответ сервера. Смотрим код класса \u003Ci\u003Ecom.uc.deployment.UpgradeDeployService\u003C\u002Fi\u003E: из метода \u003Ci\u003EonStartCommand\u003C\u002Fi\u003E переходим в \u003Ci\u003Ecom.uc.deployment.b.x\u003C\u002Fi\u003E, а из него в \u003Ci\u003Ecom.uc.browser.core.d.c.f.e\u003C\u002Fi\u003E:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"java\"\u003E    public final void e(l arg9) {\n        int v4_5;\n        String v3_1;\n        byte[] v3;\n        byte[] v1 = null;\n        if(arg9 == null) {\n            v3 = v1;\n        }\n        else {\n            v3_1 = arg9.iGX.ipR;\n            StringBuilder v4 = new StringBuilder(\"[\");\n            v4.append(v3_1);\n            v4.append(\"]product:\");\n            v4.append(arg9.iGX.ipR);\n            v4 = new StringBuilder(\"[\");\n            v4.append(v3_1);\n            v4.append(\"]version:\");\n            v4.append(arg9.iGX.iEn);\n            v4 = new StringBuilder(\"[\");\n            v4.append(v3_1);\n            v4.append(\"]upgrade_type:\");\n            v4.append(arg9.iGX.mMode);\n            v4 = new StringBuilder(\"[\");\n            v4.append(v3_1);\n            v4.append(\"]force_flag:\");\n            v4.append(arg9.iGX.iEo);\n            v4 = new StringBuilder(\"[\");\n            v4.append(v3_1);\n            v4.append(\"]silent_mode:\");\n            v4.append(arg9.iGX.iDQ);\n            v4 = new StringBuilder(\"[\");\n            v4.append(v3_1);\n            v4.append(\"]silent_type:\");\n            v4.append(arg9.iGX.iEr);\n            v4 = new StringBuilder(\"[\");\n            v4.append(v3_1);\n            v4.append(\"]silent_state:\");\n            v4.append(arg9.iGX.iEp);\n            v4 = new StringBuilder(\"[\");\n            v4.append(v3_1);\n            v4.append(\"]silent_file:\");\n            v4.append(arg9.iGX.iEq);\n            v4 = new StringBuilder(\"[\");\n            v4.append(v3_1);\n            v4.append(\"]apk_md5:\");\n            v4.append(arg9.iGX.iEl);\n            v4 = new StringBuilder(\"[\");\n            v4.append(v3_1);\n            v4.append(\"]download_type:\");\n            v4.append(arg9.mDownloadType);\n            v4 = new StringBuilder(\"[\");\n            v4.append(v3_1);\n            v4.append(\"]download_group:\");\n            v4.append(arg9.mDownloadGroup);\n            v4 = new StringBuilder(\"[\");\n            v4.append(v3_1);\n            v4.append(\"]download_path:\");\n            v4.append(arg9.iGH);\n            v4 = new StringBuilder(\"[\");\n            v4.append(v3_1);\n            v4.append(\"]apollo_child_version:\");\n            v4.append(arg9.iGX.iEx);\n            v4 = new StringBuilder(\"[\");\n            v4.append(v3_1);\n            v4.append(\"]apollo_series:\");\n            v4.append(arg9.iGX.iEw);\n            v4 = new StringBuilder(\"[\");\n            v4.append(v3_1);\n            v4.append(\"]apollo_cpu_arch:\");\n            v4.append(arg9.iGX.iEt);\n            v4 = new StringBuilder(\"[\");\n            v4.append(v3_1);\n            v4.append(\"]apollo_cpu_vfp3:\");\n            v4.append(arg9.iGX.iEv);\n            v4 = new StringBuilder(\"[\");\n            v4.append(v3_1);\n            v4.append(\"]apollo_cpu_vfp:\");\n            v4.append(arg9.iGX.iEu);\n            ArrayList v3_2 = arg9.iGX.iEz;\n            if(v3_2 != null &amp;&amp; v3_2.size() != 0) {\n                Iterator v3_3 = v3_2.iterator();\n                while(v3_3.hasNext()) {\n                    Object v4_1 = v3_3.next();\n                    StringBuilder v5 = new StringBuilder(\"[\");\n                    v5.append(((au)v4_1).getName());\n                    v5.append(\"]component_name:\");\n                    v5.append(((au)v4_1).getName());\n                    v5 = new StringBuilder(\"[\");\n                    v5.append(((au)v4_1).getName());\n                    v5.append(\"]component_ver_name:\");\n                    v5.append(((au)v4_1).aDA());\n                    v5 = new StringBuilder(\"[\");\n                    v5.append(((au)v4_1).getName());\n                    v5.append(\"]component_ver_code:\");\n                    v5.append(((au)v4_1).gBl);\n                    v5 = new StringBuilder(\"[\");\n                    v5.append(((au)v4_1).getName());\n                    v5.append(\"]component_req_type:\");\n                    v5.append(((au)v4_1).gBq);\n                }\n            }\n \n            j v3_4 = new j();\n            m.b(v3_4);\n            h v4_2 = new h();\n            m.b(v4_2);\n            ay v5_1 = new ay();\n            v3_4.hS(\"\");\n            v3_4.setImsi(\"\");\n            v3_4.hV(\"\");\n            v5_1.bPQ = v3_4;\n            v5_1.bPP = v4_2;\n            v5_1.yr(arg9.iGX.ipR);\n            v5_1.gBF = arg9.iGX.mMode;\n            v5_1.gBI = arg9.iGX.iEz;\n            v3_2 = v5_1.gAr;\n            c.aBh();\n            v3_2.add(g.fs(\"os_ver\", c.getRomInfo()));\n            v3_2.add(g.fs(\"processor_arch\", com.uc.b.a.a.c.getCpuArch()));\n            v3_2.add(g.fs(\"cpu_arch\", com.uc.b.a.a.c.Pb()));\n            String v4_3 = com.uc.b.a.a.c.Pd();\n            v3_2.add(g.fs(\"cpu_vfp\", v4_3));\n            v3_2.add(g.fs(\"net_type\", String.valueOf(com.uc.base.system.a.Jo())));\n            v3_2.add(g.fs(\"fromhost\", arg9.iGX.iEm));\n            v3_2.add(g.fs(\"plugin_ver\", arg9.iGX.iEn));\n            v3_2.add(g.fs(\"target_lang\", arg9.iGX.iEs));\n            v3_2.add(g.fs(\"vitamio_cpu_arch\", arg9.iGX.iEt));\n            v3_2.add(g.fs(\"vitamio_vfp\", arg9.iGX.iEu));\n            v3_2.add(g.fs(\"vitamio_vfp3\", arg9.iGX.iEv));\n            v3_2.add(g.fs(\"plugin_child_ver\", arg9.iGX.iEx));\n            v3_2.add(g.fs(\"ver_series\", arg9.iGX.iEw));\n            v3_2.add(g.fs(\"child_ver\", r.aVw()));\n            v3_2.add(g.fs(\"cur_ver_md5\", arg9.iGX.iEl));\n            v3_2.add(g.fs(\"cur_ver_signature\", SystemHelper.getUCMSignature()));\n            v3_2.add(g.fs(\"upgrade_log\", i.bjt()));\n            v3_2.add(g.fs(\"silent_install\", String.valueOf(arg9.iGX.iDQ)));\n            v3_2.add(g.fs(\"silent_state\", String.valueOf(arg9.iGX.iEp)));\n            v3_2.add(g.fs(\"silent_file\", arg9.iGX.iEq));\n            v3_2.add(g.fs(\"silent_type\", String.valueOf(arg9.iGX.iEr)));\n            v3_2.add(g.fs(\"cpu_archit\", com.uc.b.a.a.c.Pc()));\n            v3_2.add(g.fs(\"cpu_set\", SystemHelper.getCpuInstruction()));\n            boolean v4_4 = v4_3 == null || !v4_3.contains(\"neon\") ? false : true;\n            v3_2.add(g.fs(\"neon\", String.valueOf(v4_4)));\n            v3_2.add(g.fs(\"cpu_cores\", String.valueOf(com.uc.b.a.a.c.Jl())));\n            v3_2.add(g.fs(\"ram_1\", String.valueOf(com.uc.b.a.a.h.Po())));\n            v3_2.add(g.fs(\"totalram\", String.valueOf(com.uc.b.a.a.h.OL())));\n            c.aBh();\n            v3_2.add(g.fs(\"rom_1\", c.getRomInfo()));\n            v4_5 = e.getScreenWidth();\n            int v6 = e.getScreenHeight();\n            StringBuilder v7 = new StringBuilder();\n            v7.append(v4_5);\n            v7.append(\"*\");\n            v7.append(v6);\n            v3_2.add(g.fs(\"ss\", v7.toString()));\n            v3_2.add(g.fs(\"api_level\", String.valueOf(Build$VERSION.SDK_INT)));\n            v3_2.add(g.fs(\"uc_apk_list\", SystemHelper.getUCMobileApks()));\n            Iterator v4_6 = arg9.iGX.iEA.entrySet().iterator();\n            while(v4_6.hasNext()) {\n                Object v6_1 = v4_6.next();\n                v3_2.add(g.fs(((Map$Entry)v6_1).getKey(), ((Map$Entry)v6_1).getValue()));\n            }\n \n            v3 = v5_1.toByteArray();\n        }\n \n        if(v3 == null) {\n            this.iGY.iGI.a(arg9, \"up_encode\", \"yes\", \"fail\");\n            return;\n        }\n \n        v4_5 = this.iGY.iGw ? 0x1F : 0;\n        if(v3 == null) {\n        }\n        else {\n            v3 = g.i(v4_5, v3);\n            if(v3 == null) {\n            }\n            else {\n                v1 = new byte[v3.length + 16];\n                byte[] v6_2 = new byte[16];\n                Arrays.fill(v6_2, 0);\n                v6_2[0] = 0x5F;\n                v6_2[1] = 0;\n                v6_2[2] = ((byte)v4_5);\n                v6_2[3] = -50;\n                System.arraycopy(v6_2, 0, v1, 0, 16);\n                System.arraycopy(v3, 0, v1, 16, v3.length);\n            }\n        }\n \n        if(v1 == null) {\n            this.iGY.iGI.a(arg9, \"up_encrypt\", \"yes\", \"fail\");\n            return;\n        }\n \n        if(TextUtils.isEmpty(this.iGY.mUpgradeUrl)) {\n            this.iGY.iGI.a(arg9, \"up_url\", \"yes\", \"fail\");\n            return;\n        }\n \n        StringBuilder v0 = new StringBuilder(\"[\");\n        v0.append(arg9.iGX.ipR);\n        v0.append(\"]url:\");\n        v0.append(this.iGY.mUpgradeUrl);\n        com.uc.browser.core.d.c.i v0_1 = this.iGY.iGI;\n        v3_1 = this.iGY.mUpgradeUrl;\n        com.uc.base.net.e v0_2 = new com.uc.base.net.e(new com.uc.browser.core.d.c.i$a(v0_1, arg9));\n        v3_1 = v3_1.contains(\"?\") ? v3_1 + \"&amp;dataver=pb\" : v3_1 + \"?dataver=pb\";\n        n v3_5 = v0_2.uc(v3_1);\n        m.b(v3_5, false);\n        v3_5.setMethod(\"POST\");\n        v3_5.setBodyProvider(v1);\n        v0_2.b(v3_5);\n        this.iGY.iGI.a(arg9, \"up_null\", \"yes\", \"success\");\n        this.iGY.iGI.b(arg9);\n    }\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nВидим тут формирование POST-запроса. Обращаем внимание на создание массива из 16 байт и его заполнение: 0x5F, 0, 0x1F, -50 (=0xCE). Совпадает с тем, что мы видели в запросе выше.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВ этом же классе можно заметить вложенный класс, в котором есть другой интересный метод:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"java\"\u003E        public final void a(l arg10, byte[] arg11) {\n            f v0 = this.iGQ;\n            StringBuilder v1 = new StringBuilder(\"[\");\n            v1.append(arg10.iGX.ipR);\n            v1.append(\"]:UpgradeSuccess\");\n            byte[] v1_1 = null;\n            if(arg11 == null) {\n            }\n            else if(arg11.length &lt; 16) {\n            }\n            else {\n                if(arg11[0] != 0x60 &amp;&amp; arg11[3] != 0xFFFFFFD0) {\n                    goto label_57;\n                }\n                int v3 = 1;\n                int v5 = arg11[1] == 1 ? 1 : 0;\n                if(arg11[2] != 1 &amp;&amp; arg11[2] != 11) {\n                    if(arg11[2] == 0x1F) {\n                    }\n                    else {\n                        v3 = 0;\n                    }\n                }\n                byte[] v7 = new byte[arg11.length - 16];\n                System.arraycopy(arg11, 16, v7, 0, v7.length);\n                if(v3 != 0) {\n                    v7 = g.j(arg11[2], v7);\n                }\n                if(v7 == null) {\n                    goto label_57;\n                }\n                if(v5 != 0) {\n                    v1_1 = g.P(v7);\n                    goto label_57;\n                }\n                v1_1 = v7;\n            }\n        label_57:\n            if(v1_1 == null) {\n                v0.iGY.iGI.a(arg10, \"up_decrypt\", \"yes\", \"fail\");\n                return;\n            }\n            q v11 = g.b(arg10, v1_1);\n            if(v11 == null) {\n                v0.iGY.iGI.a(arg10, \"up_decode\", \"yes\", \"fail\");\n                return;\n            }\n            if(v0.iGY.iGt) {\n                v0.d(arg10);\n            }\n            if(v0.iGY.iGo != null) {\n                v0.iGY.iGo.a(0, ((o)v11));\n            }\n            if(v0.iGY.iGs) {\n                v0.iGY.a(((o)v11));\n                v0.iGY.iGI.a(v11, \"up_silent\", \"yes\", \"success\");\n                v0.iGY.iGI.a(v11);\n                return;\n            }\n            v0.iGY.iGI.a(v11, \"up_silent\", \"no\", \"success\");\n        }\n    }\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nМетод получает на вход массив байтов и проверяет, что нулевой байт равен 0x60 или третий байт равен 0xD0, а второй байт — 1, 11 или 0x1F. Смотрим ответ от сервера: нулевой байт — 0x60, второй — 0x1F, третий — 0x60. Похоже на то, что нам нужно. Судя по строчкам («up_decrypt», например), тут должен вызываться метод, который расшифрует ответ сервера.\u003Cbr\u002F\u003E\r\nПереходим к методу \u003Ci\u003Eg.j\u003C\u002Fi\u003E. Заметим, что в качестве первого аргумента в него передаётся байт по смещению 2 (т. е. 0x1F в нашем случае), а в качестве второго — ответ сервера без\u003Cbr\u002F\u003E\r\nпервых 16 байт.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"java\"\u003E     public static byte[] j(int arg1, byte[] arg2) {\n        if(arg1 == 1) {\n            arg2 = c.c(arg2, c.adu);\n        }\n        else if(arg1 == 11) {\n            arg2 = m.aF(arg2);\n        }\n        else if(arg1 != 0x1F) {\n        }\n        else {\n            arg2 = EncryptHelper.decrypt(arg2);\n        }\n        return arg2;\n    }\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nОчевидно, тут происходит выбор алгоритма расшифровки, и тот самый байт, который в нашем\u003Cbr\u002F\u003E\r\nслучае равен 0x1F, обозначает один из трёх возможных вариантов.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПродолжаем анализ кода. После пары прыжков попадаем в метод с говорящим названием \u003Ci\u003EdecryptBytesByKey\u003C\u002Fi\u003E.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nТут от нашего ответа отделяется ещё два байта, и из них получается строка. Понятно, что таким способом выбирается ключ для расшифровки сообщения.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"java\"\u003E    private static byte[] decryptBytesByKey(byte[] bytes) {\n        byte[] v0 = null;\n        if(bytes != null) {\n            try {\n                if(bytes.length &lt; EncryptHelper.PREFIX_BYTES_SIZE) {\n                }\n                else if(bytes.length == EncryptHelper.PREFIX_BYTES_SIZE) {\n                    return v0;\n                }\n                else {\n                    byte[] prefix = new byte[EncryptHelper.PREFIX_BYTES_SIZE];  \u002F\u002F 2 байта\n                    System.arraycopy(bytes, 0, prefix, 0, prefix.length);\n                    String keyId = c.ayR().d(ByteBuffer.wrap(prefix).getShort()); \u002F\u002F Выбор ключа\n                    if(keyId == null) {\n                        return v0;\n                    }\n                    else {\n                        a v2 = EncryptHelper.ayL();\n                        if(v2 == null) {\n                            return v0;\n                        }\n                        else {\n                            byte[] enrypted = new byte[bytes.length - EncryptHelper.PREFIX_BYTES_SIZE];\n                            System.arraycopy(bytes, EncryptHelper.PREFIX_BYTES_SIZE, enrypted, 0, enrypted.length);\n                            return v2.l(keyId, enrypted);\n                        }\n                    }\n                }\n            }\n            catch(SecException v7_1) {\n                EncryptHelper.handleDecryptException(((Throwable)v7_1), v7_1.getErrorCode());\n                return v0;\n            }\n            catch(Throwable v7) {\n                EncryptHelper.handleDecryptException(v7, 2);\n                return v0;\n            }\n        }\n \n        return v0;\n    }\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nЗабегая вперёд, отметим, что на этом этапе получается ещё не ключ, а только его «идентификатор». С получением ключа всё немного сложнее.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВ следующем методе к имеющимся параметрам добавляется ещё два, и их становится четыре: волшебное число 16, идентификатор ключа, зашифрованные данные и непонятная строка (в нашем случае пустая).\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"java\"\u003E    public final byte[] l(String keyId, byte[] encrypted) throws SecException {\n        return this.ayJ().staticBinarySafeDecryptNoB64(16, keyId, encrypted, \"\");\n    }\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nПосле серии переходов приходим к методу \u003Ci\u003EstaticBinarySafeDecryptNoB64\u003C\u002Fi\u003E интерфейса \u003Ci\u003Ecom.alibaba.wireless.security.open.staticdataencrypt.IStaticDataEncryptComponent.\u003C\u002Fi\u003E В основном коде приложения нет классов, реализующих этот интерфейс. Такой класс есть в файле \u003Ci\u003Elib\u002Farmeabi-v7a\u002Flibsgmain.so\u003C\u002Fi\u003E, который на самом деле не .so, а .jar. Интересующий нас метод реализован следующим образом:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"java\"\u003Epackage com.alibaba.wireless.security.a.i;\n \n\u002F\u002F ...\n \npublic class a implements IStaticDataEncryptComponent {\n    private ISecurityGuardPlugin a;\n\u002F\u002F ...\n    private byte[] a(int mode, int magicInt, int xzInt, String keyId, byte[] encrypted, String magicString) {\n        return this.a.getRouter().doCommand(10601, new Object[]{Integer.valueOf(mode), Integer.valueOf(magicInt), Integer.valueOf(xzInt), keyId, encrypted, magicString});\n    }\n\u002F\u002F ...\n    private byte[] b(int magicInt, String keyId, byte[] encrypted, String magicString) {\n        return this.a(2, magicInt, 0, keyId, encrypted, magicString);\n    }\n\u002F\u002F ...\n    public byte[] staticBinarySafeDecryptNoB64(int magicInt, String keyId, byte[] encrypted, String magicString) throws SecException {\n        if(keyId != null &amp;&amp; keyId.length() \u003E 0 &amp;&amp; magicInt \u003E= 0 &amp;&amp; magicInt &lt; 19 &amp;&amp; encrypted != null &amp;&amp; encrypted.length \u003E 0) {\n            return this.b(magicInt, keyId, encrypted, magicString);\n        }\n \n        throw new SecException(\"\", 301);\n    }\n\u002F\u002F...\n}\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nТут наш список параметров дополняется ещё двумя целыми числами: 2 и 0. Судя по\u003Cbr\u002F\u003E\r\nвсему, 2 означает расшифровку, как в методе \u003Ci\u003EdoFinal\u003C\u002Fi\u003E системного класса \u003Ci\u003Ejavax.crypto.Cipher\u003C\u002Fi\u003E. И всё это передаётся в некий Router с числом 10601 — это, видимо, номер команды.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПосле очередной цепочки переходов находим класс, который реализует интерфейс \u003Ci\u003EIRouterComponent\u003C\u002Fi\u003E и метод \u003Ci\u003EdoCommand\u003C\u002Fi\u003E:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"java\"\u003Epackage com.alibaba.wireless.security.mainplugin;\n\nimport com.alibaba.wireless.security.framework.IRouterComponent;\nimport com.taobao.wireless.security.adapter.JNICLibrary;\n \npublic class a implements IRouterComponent {\n    public a() {\n        super();\n    }\n    public Object doCommand(int arg2, Object[] arg3) {\n        return JNICLibrary.doCommandNative(arg2, arg3);\n    }\n}\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nА также класс \u003Ci\u003EJNICLibrary\u003C\u002Fi\u003E, в котором объявлен нативный метод \u003Ci\u003EdoCommandNative\u003C\u002Fi\u003E:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"java\"\u003Epackage com.taobao.wireless.security.adapter;\n \npublic class JNICLibrary {\n    public static native Object doCommandNative(int arg0, Object[] arg1);\n}\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nЗначит, нам нужно в нативном коде найти метод \u003Ci\u003EdoCommandNative\u003C\u002Fi\u003E. И тут начинается самое веселье.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch3\u003EОбфускация машинного кода\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\nВ файле \u003Ci\u003Elibsgmain.so\u003C\u002Fi\u003E (который на самом деле .jar и в котором мы чуть выше нашли реализацию некоторых интерфейсов, связанных с шифрованием) есть одна нативная библиотека: \u003Ci\u003Elibsgmainso-6.4.36.so\u003C\u002Fi\u003E. Открываем её в IDA и получаем кучу диалоговых окон с ошибками. Проблема в том, что таблица секций (section header table) – невалидная. Это сделано специально, чтобы усложнить анализ.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fr\u002Fw780q1\u002Fwebt\u002F_k\u002Fbz\u002F5c\u002F_kbz5cbedw6g1jnsj047rtqudli.jpeg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002F_k\u002Fbz\u002F5c\u002F_kbz5cbedw6g1jnsj047rtqudli.jpeg\" data-blurred=\"true\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nНо она и не нужна: чтобы корректно загрузить ELF-файл и проанализировать его, вполне достаточно таблицы сегментов (program header table). Поэтому просто удаляем таблицу секций, зануляя соответствующие поля в заголовке.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fr\u002Fw780q1\u002Fwebt\u002F2y\u002Fxh\u002Fvk\u002F2yxhvksp30f016gfyhrlfh0pklc.jpeg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002F2y\u002Fxh\u002Fvk\u002F2yxhvksp30f016gfyhrlfh0pklc.jpeg\" data-blurred=\"true\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nСнова открываем файл в IDA.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЕсть два способа сообщить виртуальной Java-машине, где именно в нативной библиотеке находится реализация метода, объявленного в Java-коде как native. Первый — дать ему имя вида \u003Ci\u003EJava_имя_пакета_ИмяКласса_имяМетода\u003C\u002Fi\u003E.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВторой — зарегистрировать его при загрузке библиотеки (в функции \u003Ci\u003EJNI_OnLoad\u003C\u002Fi\u003E)\u003Cbr\u002F\u003E\r\nс помощью вызова функции \u003Ci\u003ERegisterNatives\u003C\u002Fi\u003E.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВ нашем случае, если использовать первый способ, имя должно быть таким: \u003Ci\u003EJava_com_taobao_wireless_security_adapter_JNICLibrary_doCommandNative\u003C\u002Fi\u003E.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nСреди экспортируемых функций такой нет, значит, нужно искать вызов \u003Ci\u003ERegisterNatives\u003C\u002Fi\u003E.\u003Cbr\u002F\u003E\r\nИдём в функцию \u003Ci\u003EJNI_OnLoad\u003C\u002Fi\u003E и видим такую картину:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fr\u002Fw780q1\u002Fwebt\u002Fm6\u002Fdp\u002Fiw\u002Fm6dpiwaonfuyri-jg8thppcfgqe.jpeg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fm6\u002Fdp\u002Fiw\u002Fm6dpiwaonfuyri-jg8thppcfgqe.jpeg\" data-blurred=\"true\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЧто тут происходит? На первый взгляд, начало и конец функции типичны для архитектуры ARM. Первой инструкцией в стек сохраняется содержимое регистров, которые функция будет использовать в своей работе (в данном случае R0, R1 и R2), а также содержимое регистра LR, в котором находится адрес возврата из функции. Последней инструкцией сохранённые регистры восстанавливаются, причём адрес возврата сразу помещается в регистр PC — таким образом происходит возврат из функции. Но если присмотреться, можно заметить, что предпоследняя инструкция изменяет адрес возврата, сохранённый в стеке. Вычислим, каким он будет после\u003Cbr\u002F\u003E\r\nвыполнения кода. В R1 загружается некий адрес 0xB130, из него вычитается 5, затем он перекладывается в R0 и к нему прибавляется 0x10. Получается 0xB13B. Таким образом, IDA думает, что в последней инструкции происходит обычный возврат из функции, а на самом деле происходит переход по вычисленному адресу 0xB13B.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nТут стоит напомнить, что у процессоров ARM есть два режима и два набора инструкций: ARM и Thumb. Младший бит адреса говорит процессору, какой набор инструкций используется. Т. е. адрес на самом деле 0xB13A, а единица в младшем бите обозначает режим Thumb.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВ начало каждой функции в этой библиотеке добавлен подобный «переходник» и\u003Cbr\u002F\u003E\r\nмусорный код. Далее не будем подробно на них останавливаться – просто помним,\u003Cbr\u002F\u003E\r\nчто настоящее начало почти всех функций находится чуть дальше.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nТак как в коде нет явного перехода на 0xB13A, IDA сама не опознала, что в этом месте находится код. По этой же причине большую часть кода в библиотеке она не опознаёт как код, что несколько затрудняет анализ. Говорим IDA, что тут код, и вот что получается:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Feq\u002Fwp\u002Fp3\u002Feqwpp3exmqnybi7r_tdvvan4jls.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nНа 0xB144 явно начинается таблица. А что в sub_494C?\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fbo\u002F9b\u002Frn\u002Fbo9brnkfvauy3ntm2dnucnsxqhs.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПри вызове этой функции в регистре LR получим адрес упомянутой ранее таблицы (0xB144). В R0 — индекс в этой таблице. Т. е. берётся значение из таблицы, прибавляется к LR и получается\u003Cbr\u002F\u003E\r\nадрес, по которому нужно перейти. Попробуем его вычислить: 0xB144 + [0xB144 + 8* 4] = 0xB144 + 0x120 = 0xB264. Переходим по полученному адресу и видим буквально пару полезных инструкций и опять переход на 0xB140:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fnz\u002F95\u002F4x\u002Fnz954xqtjmky6tnpaqeejhvecus.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nТеперь будет переход по смещению с индексом 0x20 из таблицы.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nСудя по размеру таблицы, таких переходов в коде встретится много. Возникает вопрос, можно ли как-то с этим бороться более автоматизированно, без ручного вычисления адресов. И на помощь нам приходят скрипты и возможность патчить код в IDA:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"python\"\u003Edef put_unconditional_branch(source, destination):\n    offset = (destination - source - 4) \u003E\u003E 1\n    if offset \u003E 2097151 or offset &lt; -2097152:\n        raise RuntimeError(\"Invalid offset\")\n    if offset \u003E 1023 or offset &lt; -1024:\n        instruction1 = 0xf000 | ((offset \u003E\u003E 11) &amp; 0x7ff)\n        instruction2 = 0xb800 | (offset &amp; 0x7ff)\n        patch_word(source, instruction1)\n        patch_word(source + 2, instruction2)\n    else:\n        instruction = 0xe000 | (offset &amp; 0x7ff)\n        patch_word(source, instruction)\n \n \nea = here()\nif get_wide_word(ea) == 0xb503: #PUSH {R0,R1,LR}\n    ea1 = ea + 2\n    if get_wide_word(ea1) == 0xbf00: #NOP\n        ea1 += 2\n    if get_operand_type(ea1, 0) == 1 and get_operand_value(ea1, 0) == 0 and get_operand_type(ea1, 1) == 2:\n        index = get_wide_dword(get_operand_value(ea1, 1))\n        print \"index =\", hex(index)\n        ea1 += 2\n        if get_operand_type(ea1, 0) == 7:\n            table = get_operand_value(ea1, 0) + 4\n        elif get_operand_type(ea1, 1) == 2:\n            table = get_operand_value(ea1, 1) + 4\n        else:\n            print \"Wrong operand type on\", hex(ea1), \"-\", get_operand_type(ea1, 0), get_operand_type(ea1, 1)\n            table = None\n        if table is None:\n            print \"Unable to find table\"\n        else:\n            print \"table =\", hex(table)\n            offset = get_wide_dword(table + (index &lt;&lt; 2))\n            put_unconditional_branch(ea, table + offset)\n    else:\n        print \"Unknown code\", get_operand_type(ea1, 0), get_operand_value(ea1, 0), get_operand_type(ea1, 1) == 2\nelse:\n    print \"Unable to detect first instruction\"\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nСтавим курсор на строчку 0xB26A, запускаем скрипт и видим переход на 0xB4B0:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002F52\u002Frf\u002Ffx\u002F52rffxhzmtrfdhfrznsr8dovfim.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nIDA опять не опознала этот участок как код. Помогаем ей и видим там другую конструкцию:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fct\u002Fd9\u002Fkv\u002Fctd9kvewm9l1blmw3pqipi8mnqm.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nИнструкции после BLX выглядят не очень осмысленными, это больше похоже на какое-то смещение. Смотрим в sub_4964:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fo7\u002Fwi\u002F4-\u002Fo7wi4-imrothkr6qpkbrklj40aw.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nИ действительно, тут берётся dword по адресу, лежащему в LR, прибавляется к этому адресу, после чего берётся значение по полученному адресу и кладётся в стек. Также к LR прибавляется 4, чтобы после возврата из функции перескочить это самое смещение. После чего команда POP {R1} достаёт полученное значение из стека. Если посмотреть, что находится по адресу 0xB4BA + 0xEA = 0xB5A4, то можно увидеть нечто похожее на таблицу адресов:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fev\u002Fhb\u002Fa8\u002Fevhba8ty8dtnv8niuxyfue0nkfk.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЧтобы пропатчить эту конструкцию, потребуется получить два параметра из кода: смещение и номер регистра, в который нужно положить результат. Для каждого возможного регистра придётся заранее подготовить кусочек кода.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"python\"\u003Epatches = {}\npatches[0] = (0x00, 0xbf, 0x01, 0x48, 0x00, 0x68, 0x02, 0xe0)\npatches[1] = (0x00, 0xbf, 0x01, 0x49, 0x09, 0x68, 0x02, 0xe0)\npatches[2] = (0x00, 0xbf, 0x01, 0x4a, 0x12, 0x68, 0x02, 0xe0)\npatches[3] = (0x00, 0xbf, 0x01, 0x4b, 0x1b, 0x68, 0x02, 0xe0)\npatches[4] = (0x00, 0xbf, 0x01, 0x4c, 0x24, 0x68, 0x02, 0xe0)\npatches[5] = (0x00, 0xbf, 0x01, 0x4d, 0x2d, 0x68, 0x02, 0xe0)\npatches[8] = (0x00, 0xbf, 0xdf, 0xf8, 0x06, 0x80, 0xd8, 0xf8, 0x00, 0x80, 0x01, 0xe0)\npatches[9] = (0x00, 0xbf, 0xdf, 0xf8, 0x06, 0x90, 0xd9, 0xf8, 0x00, 0x90, 0x01, 0xe0)\npatches[10] = (0x00, 0xbf, 0xdf, 0xf8, 0x06, 0xa0, 0xda, 0xf8, 0x00, 0xa0, 0x01, 0xe0)\npatches[11] = (0x00, 0xbf, 0xdf, 0xf8, 0x06, 0xb0, 0xdb, 0xf8, 0x00, 0xb0, 0x01, 0xe0)\n \nea = here()\nif (get_wide_word(ea) == 0xb082 #SUB SP, SP, #8\n        and get_wide_word(ea + 2) == 0xb503): #PUSH {R0,R1,LR}\n    if get_operand_type(ea + 4, 0) == 7:\n        pop = get_bytes(ea + 12, 4, 0)\n        if pop[1] == '\\xbc':\n            register = -1\n            r = get_wide_byte(ea + 12)\n            for i in range(8):\n                if r == (1 &lt;&lt; i):\n                    register = i\n                    break\n            if register == -1:\n                print \"Unable to detect register\"\n            else:\n                address = get_wide_dword(ea + 8) + ea + 8\n                for b in patches[register]:\n                    patch_byte(ea, b)\n                    ea += 1\n                if ea % 4 != 0:\n                    ea += 2\n                patch_dword(ea, address)\n        elif pop[:3] == '\\x5d\\xf8\\x04':\n            register = ord(pop[3]) \u003E\u003E 4\n            if register in patches:\n                address = get_wide_dword(ea + 8) + ea + 8\n                for b in patches[register]:\n                    patch_byte(ea, b)\n                    ea += 1\n                patch_dword(ea, address)\n        else:\n            print \"POP instruction not found\"\n    else:\n        print \"Wrong operand type on +4:\", get_operand_type(ea + 4, 0)\nelse:\n    print \"Unable to detect first instructions\"\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nСтавим курсор на начало конструкции, которую хотим заменить — 0xB4B2 — и запускаем скрипт:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fr\u002Fw780q1\u002Fwebt\u002Flv\u002Fmp\u002Foo\u002Flvmpoow5agndjnbbl-t3imyaisq.jpeg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Flv\u002Fmp\u002Foo\u002Flvmpoow5agndjnbbl-t3imyaisq.jpeg\" data-blurred=\"true\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПомимо уже названных конструкций в коде также попадаются вот такие:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fdk\u002Fnn\u002Frw\u002Fdknnrwaye18zzz0xipny0_gdqfq.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nКак и в предыдущем случае, после инструкции BLX идёт смещение:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fr\u002Fw780q1\u002Fwebt\u002Ffn\u002Fbw\u002Fuz\u002Ffnbwuzpo3qw1hp3vd9rvr2xfq1k.jpeg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Ffn\u002Fbw\u002Fuz\u002Ffnbwuzpo3qw1hp3vd9rvr2xfq1k.jpeg\" data-blurred=\"true\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nБерём смещение по адресу из LR, прибавляем его к LR и переходим туда. 0x72044 + 0xC = 0x72050. Скрипт для этой конструкции совсем простой:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"python\"\u003Edef put_unconditional_branch(source, destination):\n    offset = (destination - source - 4) \u003E\u003E 1\n    if offset \u003E 2097151 or offset &lt; -2097152:\n        raise RuntimeError(\"Invalid offset\")\n    if offset \u003E 1023 or offset &lt; -1024:\n        instruction1 = 0xf000 | ((offset \u003E\u003E 11) &amp; 0x7ff)\n        instruction2 = 0xb800 | (offset &amp; 0x7ff)\n        patch_word(source, instruction1)\n        patch_word(source + 2, instruction2)\n    else:\n        instruction = 0xe000 | (offset &amp; 0x7ff)\n        patch_word(source, instruction)\n \n \nea = here()\nif get_wide_word(ea) == 0xb503: #PUSH {R0,R1,LR}\n    ea1 = ea + 6\n    if get_wide_word(ea + 2) == 0xbf00: #NOP\n        ea1 += 2\n    offset = get_wide_dword(ea1)\n    put_unconditional_branch(ea, (ea1 + offset) &amp; 0xffffffff)\nelse:\n    print \"Unable to detect first instruction\"\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nРезультат выполнения скрипта:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fr\u002Fw780q1\u002Fwebt\u002Ftm\u002Ffq\u002Fyo\u002Ftmfqyogtdhbje0atjckosbrgide.jpeg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Ftm\u002Ffq\u002Fyo\u002Ftmfqyogtdhbje0atjckosbrgide.jpeg\" data-blurred=\"true\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПосле того как в функции всё пропатчено, можно указать IDA на её настоящее начало. Она соберёт весь код функции по кусочкам, и его можно будет декомпилировать с помощью HexRays.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch3\u003EРасшифровка строк\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\nМы научились бороться с обфускацией машинного кода в библиотеке \u003Ci\u003Elibsgmainso-6.4.36.so\u003C\u002Fi\u003E из UC Browser и получили код функции \u003Ci\u003EJNI_OnLoad\u003C\u002Fi\u003E.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"cpp\"\u003Eint __fastcall real_JNI_OnLoad(JavaVM *vm)\n{\n  int result; \u002F\u002F r0\n  jclass clazz; \u002F\u002F r0 MAPDST\n  int v4; \u002F\u002F r0\n  JNIEnv *env; \u002F\u002F r4\n  int v6; \u002F\u002F [sp-40h] [bp-5Ch]\n  int v7; \u002F\u002F [sp+Ch] [bp-10h]\n  v7 = *(_DWORD *)off_8AC00;\n  if ( !vm )\n    goto LABEL_39;\n  sub_7C4F4();\n  env = (JNIEnv *)sub_7C5B0(0);\n  if ( !env )\n    goto LABEL_39;\n  v4 = sub_72CCC();\n  sub_73634(v4);\n  sub_73E24(&amp;unk_83EA6, &amp;v6, 49);\n  clazz = (jclass)((int (__fastcall *)(JNIEnv *, int *))(*env)-\u003EFindClass)(env, &amp;v6);\n  if ( clazz\n    &amp;&amp; (sub_9EE4(),\n        sub_71D68(env),\n        sub_E7DC(env) \u003E= 0\n     &amp;&amp; sub_69D68(env) \u003E= 0\n     &amp;&amp; sub_197B4(env, clazz) \u003E= 0\n     &amp;&amp; sub_E240(env, clazz) \u003E= 0\n     &amp;&amp; sub_B8B0(env, clazz) \u003E= 0\n     &amp;&amp; sub_5F0F4(env, clazz) \u003E= 0\n     &amp;&amp; sub_70640(env, clazz) \u003E= 0\n     &amp;&amp; sub_11F3C(env) \u003E= 0\n     &amp;&amp; sub_21C3C(env, clazz) \u003E= 0\n     &amp;&amp; sub_2148C(env, clazz) \u003E= 0\n     &amp;&amp; sub_210E0(env, clazz) \u003E= 0\n     &amp;&amp; sub_41B58(env, clazz) \u003E= 0\n     &amp;&amp; sub_27920(env, clazz) \u003E= 0\n     &amp;&amp; sub_293E8(env, clazz) \u003E= 0\n     &amp;&amp; sub_208F4(env, clazz) \u003E= 0) )\n  {\n    result = (sub_B7B0(env, clazz) \u003E\u003E 31) | 0x10004;\n  }\n  else\n  {\nLABEL_39:\n    result = -1;\n  }\n  return result;\n}\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nРассмотрим внимательнее следующие строчки:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"cpp\"\u003E  sub_73E24(&amp;unk_83EA6, &amp;v6, 49);\n  clazz = (jclass)((int (__fastcall *)(JNIEnv *, int *))(*env)-\u003EFindClass)(env, &amp;v6);\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nВ функции \u003Ci\u003Esub_73E24\u003C\u002Fi\u003E явно происходит расшифровка имени класса. В качестве параметров этой функции передаётся указатель на данные, похожие на зашифрованные, некий буфер и число. Очевидно, что после вызова функции в буфере будет расшифрованная строчка, т. к. он передаётся функции \u003Ci\u003EFindClass\u003C\u002Fi\u003E, которая принимает вторым параметром имя класса. Стало быть, число — это размер буфера или длина строки. Попробуем расшифровать имя класса, оно должно указать нам, в правильном ли направлении мы идём. Рассмотрим подробнее, что происходит в \u003Ci\u003Esub_73E24.\u003C\u002Fi\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"cpp\"\u003Eint __fastcall sub_73E56(unsigned __int8 *in, unsigned __int8 *out, size_t size)\n{\n  int v4; \u002F\u002F r6\n  int v7; \u002F\u002F r11\n  int v8; \u002F\u002F r9\n  int v9; \u002F\u002F r4\n  size_t v10; \u002F\u002F r5\n  int v11; \u002F\u002F r0\n  struc_1 v13; \u002F\u002F [sp+0h] [bp-30h]\n  int v14; \u002F\u002F [sp+1Ch] [bp-14h]\n  int v15; \u002F\u002F [sp+20h] [bp-10h]\n  v4 = 0;\n  v15 = *(_DWORD *)off_8AC00;\n  v14 = 0;\n  v7 = sub_7AF78(17);\n  v8 = sub_7AF78(size);\n  if ( !v7 )\n  {\n    v9 = 0;\n    goto LABEL_12;\n  }\n  (*(void (__fastcall **)(int, const char *, int))(v7 + 12))(v7, \"DcO\u002FlcK+h?m3c*q@\", 16);\n  if ( !v8 )\n  {\nLABEL_9:\n    v4 = 0;\n    goto LABEL_10;\n  }\n  v4 = 0;\n  if ( !in )\n  {\nLABEL_10:\n    v9 = 0;\n    goto LABEL_11;\n  }\n  v9 = 0;\n  if ( out )\n  {\n    memset(out, 0, size);\n    v10 = size - 1;\n    (*(void (__fastcall **)(int, unsigned __int8 *, size_t))(v8 + 12))(v8, in, v10);\n    memset(&amp;v13, 0, 0x14u);\n    v13.field_4 = 3;\n    v13.field_10 = v7;\n    v13.field_14 = v8;\n    v11 = sub_6115C(&amp;v13, &amp;v14);\n    v9 = v11;\n    if ( v11 )\n    {\n      if ( *(_DWORD *)(v11 + 4) == v10 )\n      {\n        qmemcpy(out, *(const void **)v11, v10);\n        v4 = *(_DWORD *)(v9 + 4);\n      }\n      else\n      {\n        v4 = 0;\n      }\n      goto LABEL_11;\n    }\n    goto LABEL_9;\n  }\nLABEL_11:\n  sub_7B148(v7);\nLABEL_12:\n  if ( v8 )\n    sub_7B148(v8);\n  if ( v9 )\n    sub_7B148(v9);\n  return v4;\n}\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nФункция \u003Ci\u003Esub_7AF78\u003C\u002Fi\u003E создаёт экземпляр контейнера для байтовых массивов указанного размера (не будем подробно останавливаться на этих контейнерах). Тут создаётся два таких контейнера: в один помещается строчка \u003Ci\u003E«DcO\u002FlcK+h?m3c*q@»\u003C\u002Fi\u003E (нетрудно догадаться, что это ключ), в другой — зашифрованные данные. Далее оба объекта помещаются в некую структуру, которая передаётся функции \u003Ci\u003Esub_6115C\u003C\u002Fi\u003E. Также отметим в этой структуре поле со значением 3. Посмотрим, что происходит с этой структурой дальше.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"cpp\"\u003Eint __fastcall sub_611B4(struc_1 *a1, _DWORD *a2)\n{\n  int v3; \u002F\u002F lr\n  unsigned int v4; \u002F\u002F r1\n  int v5; \u002F\u002F r0\n  int v6; \u002F\u002F r1\n  int result; \u002F\u002F r0\n  int v8; \u002F\u002F r0\n  *a2 = 820000;\n  if ( a1 )\n  {\n    v3 = a1-\u003Efield_14;\n    if ( v3 )\n    {\n      v4 = a1-\u003Efield_4;\n      if ( v4 &lt; 0x19 )\n      {\n        switch ( v4 )\n        {\n          case 0u:\n            v8 = sub_6419C(a1-\u003Efield_0, a1-\u003Efield_10, v3);\n            goto LABEL_17;\n          case 3u:\n            v8 = sub_6364C(a1-\u003Efield_0, a1-\u003Efield_10, v3);\n            goto LABEL_17;\n          case 0x10u:\n          case 0x11u:\n          case 0x12u:\n            v8 = sub_612F4(\n                   a1-\u003Efield_0,\n                   v4,\n                   *(_QWORD *)&amp;a1-\u003Efield_8,\n                   *(_QWORD *)&amp;a1-\u003Efield_8 \u003E\u003E 32,\n                   a1-\u003Efield_10,\n                   v3,\n                   a2);\n            goto LABEL_17;\n          case 0x14u:\n            v8 = sub_63A28(a1-\u003Efield_0, v3);\n            goto LABEL_17;\n          case 0x15u:\n            sub_61A60(a1-\u003Efield_0, v3, a2);\n            return result;\n          case 0x16u:\n            v8 = sub_62440(a1-\u003Efield_14);\n            goto LABEL_17;\n          case 0x17u:\n            v8 = sub_6226C(a1-\u003Efield_10, v3);\n            goto LABEL_17;\n          case 0x18u:\n            v8 = sub_63530(a1-\u003Efield_14);\nLABEL_17:\n            v6 = 0;\n            if ( v8 )\n            {\n              *a2 = 0;\n              v6 = v8;\n            }\n            return v6;\n          default:\n            LOWORD(v5) = 28032;\n            goto LABEL_5;\n        }\n      }\n    }\n  }\n  LOWORD(v5) = -27504;\nLABEL_5:\n  HIWORD(v5) = 13;\n  v6 = 0;\n  *a2 = v5;\n  return v6;\n}\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nВ качестве параметра switch передаётся поле структуры, которому ранее было присвоено значение 3. Смотрим case 3: в функцию \u003Ci\u003Esub_6364C\u003C\u002Fi\u003E передаются параметры из структуры, которые были сложены туда в предыдущей функции, т. е. ключ и зашифрованные данные. Если внимательно посмотреть на \u003Ci\u003Esub_6364C\u003C\u002Fi\u003E, можно узнать в ней алгоритм RC4.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nУ нас есть алгоритм и ключ. Попробуем расшифровать имя класса. Вот что получилось: \u003Ci\u003Ecom\u002Ftaobao\u002Fwireless\u002Fsecurity\u002Fadapter\u002FJNICLibrary\u003C\u002Fi\u003E. Отлично! Мы на правильном пути.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch3\u003EДерево команд\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\nТеперь нужно найти вызов \u003Ci\u003ERegisterNatives\u003C\u002Fi\u003E, который укажет нам на функцию \u003Ci\u003EdoCommandNative\u003C\u002Fi\u003E. Просматриваем функции, вызываемые из \u003Ci\u003EJNI_OnLoad,\u003C\u002Fi\u003E и находим его в \u003Ci\u003Esub_B7B0\u003C\u002Fi\u003E:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"cpp\"\u003Eint __fastcall sub_B7F6(JNIEnv *env, jclass clazz)\n{\n  char signature[41]; \u002F\u002F [sp+7h] [bp-55h]\n  char name[16]; \u002F\u002F [sp+30h] [bp-2Ch]\n  JNINativeMethod method; \u002F\u002F [sp+40h] [bp-1Ch]\n  int v8; \u002F\u002F [sp+4Ch] [bp-10h]\n \n  v8 = *(_DWORD *)off_8AC00;\n  decryptString((unsigned __int8 *)&amp;unk_83ED9, (unsigned __int8 *)name, 0x10u);\u002F\u002F doCommandNative\n  decryptString((unsigned __int8 *)&amp;unk_83EEA, (unsigned __int8 *)signature, 0x29u);\u002F\u002F (I[Ljava\u002Flang\u002FObject;)Ljava\u002Flang\u002FObject;\n  method.name = name;\n  method.signature = signature;\n  method.fnPtr = sub_B69C;\n  return ((int (__fastcall *)(JNIEnv *, jclass, JNINativeMethod *, int))(*env)-\u003ERegisterNatives)(env, clazz, &amp;method, 1) \u003E\u003E 31;\n}\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nИ действительно, тут регистрируется нативный метод с именем \u003Ci\u003EdoCommandNative\u003C\u002Fi\u003E. Теперь мы знаем его адрес. Посмотрим, что он делает.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"cpp\"\u003Eint __fastcall doCommandNative(JNIEnv *env, jobject obj, int command, jarray args)\n{\n  int v5; \u002F\u002F r5\n  struc_2 *a5; \u002F\u002F r6\n  int v9; \u002F\u002F r1\n  int v11; \u002F\u002F [sp+Ch] [bp-14h]\n  int v12; \u002F\u002F [sp+10h] [bp-10h]\n  v5 = 0;\n  v12 = *(_DWORD *)off_8AC00;\n  v11 = 0;\n  a5 = (struc_2 *)malloc(0x14u);\n  if ( a5 )\n  {\n    a5-\u003Efield_0 = 0;\n    a5-\u003Efield_4 = 0;\n    a5-\u003Efield_8 = 0;\n    a5-\u003Efield_C = 0;\n    v9 = command % 10000 \u002F 100;\n    a5-\u003Efield_0 = command \u002F 10000;\n    a5-\u003Efield_4 = v9;\n    a5-\u003Efield_8 = command % 100;\n    a5-\u003Efield_C = env;\n    a5-\u003Efield_10 = args;\n    v5 = sub_9D60(command \u002F 10000, v9, command % 100, 1, (int)a5, &amp;v11);\n  }\n  free(a5);\n  if ( !v5 &amp;&amp; v11 )\n    sub_7CF34(env, v11, &amp;byte_83ED7);\n  return v5;\n}\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nПо названию можно догадаться, что здесь находится точка входа всех функций, которые разработчики решили перенести в нативную библиотеку. Нас интересует функция с номером 10601.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПо коду можно увидеть, что из номера команды получается три числа: \u003Ci\u003Ecommand \u002F 10000\u003C\u002Fi\u003E, \u003Ci\u003Ecommand % 10000 \u002F 100\u003C\u002Fi\u003E и \u003Ci\u003Ecommand % 10\u003C\u002Fi\u003E, т. е., в нашем случае, 1, 6 и 1. Эти три числа, а также указатель на \u003Ci\u003EJNIEnv\u003C\u002Fi\u003E и аргументы, переданные функции, складываются в структуру и передаются дальше. С помощью полученных трёх чисел (обозначим их N1, N2 и N3) строится дерево команд.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПримерно такое:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fxg\u002Fjk\u002Fl1\u002Fxgjkl1uhzmibo-nhmha3kpivf5a.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nДерево заполняется динамически в \u003Ci\u003EJNI_OnLoad\u003C\u002Fi\u003E.\u003Cbr\u002F\u003E\r\nТри числа кодируют путь в дереве. Каждый лист дерева содержит поксоренный адрес соответствующей функции. Ключ — в родительском узле. Найти место в коде, где в дерево добавляется нужная нам функция, не составляет большого труда, если разобраться во всех используемых структурах (их описание не приводим, чтобы не раздувать и без того немаленькую статью).\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch3\u003EЕщё обфускация\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\nМы получили адрес функции, которая должна расшифровывать трафик: 0x5F1AC. Но радоваться пока рано: разработчики UC Browser приготовили для нас ещё один сюрприз.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПосле получения параметров из массива, который был сформирован в Java-коде, попадаем\u003Cbr\u002F\u003E\r\nв функцию по адресу 0x4D070. И тут нас ждёт ещё один вид обфускации кода.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nКладём в R7 и R4 два индекса:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002F7i\u002Ffx\u002F86\u002F7ifx86mr4yph41jsxukpjqvxmfa.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПерекладываем первый индекс в R11:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fr\u002Fw780q1\u002Fwebt\u002Ffa\u002F62\u002F6j\u002Ffa626jaylcaaewtslff_-byaseo.jpeg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Ffa\u002F62\u002F6j\u002Ffa626jaylcaaewtslff_-byaseo.jpeg\" data-blurred=\"true\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЧтобы получить адрес из таблицы, используем индекс:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fco\u002Frk\u002Fs1\u002Fcorks1o2dp75elfvdsxjimrohuo.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПосле перехода по первому адресу используется второй индекс, который в R4. В таблице 230 элементов.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЧто с этим делать? Можно сказать IDA, что это такой switch: Edit -\u003E Other -\u003E Specify switch idiom.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fr\u002Fw780q1\u002Fwebt\u002F36\u002Fuu\u002Fxn\u002F36uuxnabf3xesptr8qisxzzfutk.jpeg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002F36\u002Fuu\u002Fxn\u002F36uuxnabf3xesptr8qisxzzfutk.jpeg\" data-blurred=\"true\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПолучившийся код страшен. Но, пробираясь через его дебри, можно заметить вызов уже знакомой нам функции \u003Ci\u003Esub_6115C\u003C\u002Fi\u003E:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fr\u002Fw780q1\u002Fwebt\u002F-d\u002Fpt\u002F3a\u002F-dpt3akb_yckinmdheczkktzlem.jpeg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002F-d\u002Fpt\u002F3a\u002F-dpt3akb_yckinmdheczkktzlem.jpeg\" data-blurred=\"true\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nТам был switch, в котором в case 3 находилась расшифровка с использованием алгоритма RC4. А в этом случае передаваемая в функцию структура заполняется из параметров, переданных в \u003Ci\u003EdoCommandNative\u003C\u002Fi\u003E. Вспоминаем, что у нас там был \u003Ci\u003EmagicInt\u003C\u002Fi\u003E со значением 16. Смотрим соответствующий case – и после нескольких переходов находим код, по которому можно опознать алгоритм.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fr\u002Fw780q1\u002Fwebt\u002Frn\u002F_1\u002Fi4\u002Frn_1i4avl8oki83hslk5u19ygoe.jpeg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Frn\u002F_1\u002Fi4\u002Frn_1i4avl8oki83hslk5u19ygoe.jpeg\" data-blurred=\"true\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЭто AES!\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nАлгоритм есть, осталось получить его параметры: режим, ключ и, возможно, вектор инициализации (его наличие зависит от режима работы алгоритма AES). Структура с ними должна формироваться где-то перед вызовом функции \u003Ci\u003Esub_6115C\u003C\u002Fi\u003E, но эта часть кода обфусцирована особенно хорошо, поэтому возникает идея пропатчить код, чтобы все параметры функции расшифровки дампились в файл.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch3\u003EПатч\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\nЧтобы не писать весь код патча на языке ассемблера вручную, можно запустить Android Studio, написать там функцию, которая получает на вход такие же параметры, как у нашей функции расшифровки, и пишет в файл, после чего скопипастить код, который сгенерирует компилятор.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nОб удобстве добавления кода наши друзья из команды UC Browser тоже «позаботились». Вспоминаем, что в начале каждой функции у нас мусорный код, который легко можно заменить на любой другой. Очень удобно :) Правда, в начале целевой функции места для кода, который сохраняет все параметры в файл, маловато. Пришлось разделить его на части и использовать мусорные блоки соседних функций. Всего получилось четыре части.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПервая часть:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fr\u002Fw780q1\u002Fwebt\u002Fhy\u002Flk\u002Fqr\u002Fhylkqrhqgyei6qjdj6ayvgivpqu.jpeg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fhy\u002Flk\u002Fqr\u002Fhylkqrhqgyei6qjdj6ayvgivpqu.jpeg\" data-blurred=\"true\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВ архитектуре ARM первые четыре параметра функции передаются через регистры R0-R3, остальные, если они есть — через стек. В регистре LR передаётся адрес возврата. Всё это нужно сохранить для того, чтобы функция могла отработать после того, как мы сдампим её параметры. Также нужно сохранить все регистры, которые мы будем использовать в процессе, поэтому делаем PUSH.W {R0-R10,LR}. В R7 у нас получается адрес списка параметров, переданных функции через стек.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nС помощью функции \u003Ci\u003Efopen\u003C\u002Fi\u003E откроем файл \u003Ci\u003E\u002Fdata\u002Flocal\u002Ftmp\u002Faes\u003C\u002Fi\u003E в режиме «ab»,\u003Cbr\u002F\u003E\r\nт. е. на добавление. В R0 загружаем адрес имени файла, в R1 — адрес строки с указанием режима. И тут мусорный код заканчивается, поэтому переходим в следующую функцию. Чтобы она продолжала работать, ставим в начало переход на настоящий код функции в обход мусора, а вместо мусора добавляем продолжение патча.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002F68\u002Fss\u002Fkf\u002F68sskfcymjorl_flpf8mg9wwej4.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВызываем \u003Ci\u003Efopen\u003C\u002Fi\u003E.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПервые три параметра функции \u003Ci\u003Eaes\u003C\u002Fi\u003E имеют тип \u003Ci\u003Eint\u003C\u002Fi\u003E. Так как мы в начале сохранили регистры в стек, можно просто передать функции \u003Ci\u003Efwrite\u003C\u002Fi\u003E их адреса в стеке.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fr\u002Fw780q1\u002Fwebt\u002Fd1\u002Fyt\u002Fiz\u002Fd1ytiz_jx7byflntqxxec2nece0.jpeg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fd1\u002Fyt\u002Fiz\u002Fd1ytiz_jx7byflntqxxec2nece0.jpeg\" data-blurred=\"true\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nДальше у нас есть три структуры, которые содержат размер данных и указатель на данные для ключа, вектора инициализации и зашифрованных данных.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fr\u002Fw780q1\u002Fwebt\u002Fme\u002Fvy\u002Fkz\u002Fmevykztpkcwdr6xkpnenauxqccs.jpeg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fme\u002Fvy\u002Fkz\u002Fmevykztpkcwdr6xkpnenauxqccs.jpeg\" data-blurred=\"true\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВ конце закрываем файл, восстанавливаем регистры и передаём управление настоящей функции \u003Ci\u003Eaes\u003C\u002Fi\u003E.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nСобираем APK с пропатченной библиотекой, подписываем, закидываем на устройство\u002Fэмулятор, запускаем. Видим, что наш дамп создаётся, и туда пишется много данных. Браузер использует шифрование не только для трафика, и всё шифрование идёт через рассматриваемую функцию. А нужных данных почему-то нет, и в трафике не видно нужного запроса. Чтобы не ждать, пока UC Browser соизволит сделать нужный запрос, возьмём зашифрованный ответ от сервера, полученный ранее, и пропатчим приложение ещё раз: добавим расшифровку в onCreate главной активити.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E    const\u002F16 v1, 0x62\n    new-array v1, v1, [B\n    fill-array-data v1, :encrypted_data\n    const\u002F16 v0, 0x1f\n    invoke-static {v0, v1}, Lcom\u002Fuc\u002Fbrowser\u002Fcore\u002Fd\u002Fc\u002Fg;-\u003Ej(I[B)[B\n    move-result-object v1\n    array-length v2, v1\n    invoke-static {v2}, Ljava\u002Flang\u002FString;-\u003EvalueOf(I)Ljava\u002Flang\u002FString;\n    move-result-object v2\n    const-string v0, \"ololo\"\n    invoke-static {v0, v2}, Landroid\u002Futil\u002FLog;-\u003Ed(Ljava\u002Flang\u002FString;Ljava\u002Flang\u002FString;)I\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nСобираем, подписываем, устанавливаем, запускаем. Получаем NullPointerException, т. к. метод вернул null.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВ ходе дальнейшего анализа кода была обнаружена функция, в которой расшифровываются интересные строчки: «META-INF\u002F» и \".RSA\". Похоже, приложение проверяет свой сертификат. Или даже генерирует ключи из него. Разбираться с тем, что происходит с сертификатом, совсем не хочется, поэтому просто подсунем ему правильный сертификат. Пропатчим зашифрованную строчку таким образом, чтобы вместо «META-INF\u002F» получилось «BLABLINF\u002F», создадим папку с таким именем в APK и подкинем туда сертификат белкобраузера.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nСобираем, подписываем, устанавливаем, запускаем. Бинго! Ключ у нас!\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch3\u003EMitM\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\nМы получили ключ и вектор инициализации, равный ключу. Попробуем расшифровать ответ сервера в режиме CBC.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002F9k\u002Fm7\u002Fun\u002F9km7unymy_ybx1lwnflfbqd36ke.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВидим URL архива, что-то похожее на MD5, «extract_unzipsize» и число. Проверяем: MD5 архива совпадает, размер распакованной библиотеки совпадает. Пробуем пропатчить эту библиотеку и отдать её браузеру. Чтобы показать, что наша пропатченная библиотека загрузилась, будем запускать Intent на создание СМС с текстом «PWNED!». Подменять будем два ответа от сервера: \u003Ci\u003E\u003Ca href=\"http:\u002F\u002Fpuds.ucweb.com\u002Fupgrade\u002Findex.xhtml\"\u003Epuds.ucweb.com\u002Fupgrade\u002Findex.xhtml\u003C\u002Fa\u003E\u003C\u002Fi\u003E и на скачивание архива. В первом подменяем MD5 (размер после распаковки не меняется), во втором отдаём архив с пропатченной библиотекой.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nБраузер несколько раз пытается скачать архив, после чего выдаёт ошибку. Видимо, что-то\u003Cbr\u002F\u003E\r\nему не нравится. В результате анализа этого мутного формата выяснилось, что сервер передаёт ещё размер архива:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fe2\u002F-v\u002Fua\u002Fe2-vuahng86h0bt0vm84f3xhqrg.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nОн закодирован в LEB128. После патча размер архива с библиотекой немного изменился, поэтому браузер посчитал, что архив скачался криво, и после нескольких попыток выдал ошибку.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПравим размер архива… И – победа! :) Результат на видео.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ca href=\"https:\u002F\u002Fwww.youtube.com\u002Fwatch?v=Nfns7uH03J8\"\u003Ehttps:\u002F\u002Fwww.youtube.com\u002Fwatch?v=Nfns7uH03J8\u003C\u002Fa\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch3\u003EПоследствия и реакция разработчика\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\nТочно таким же образом хакеры могли бы использовать небезопасную функцию UC Browser, чтобы распространять и запускать вредоносные библиотеки. Эти библиотеки будут работать в контексте браузера, поэтому получат все его системные разрешения. Как следствие — возможность показывать фишинговые окна, а также доступ к рабочим файлам оранжевой китайской белки, включая хранящиеся в базе данных логины, пароли и куки.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nМы связывались с разработчиками UC Browser и сообщали им о найденной проблеме, пытались указать на уязвимость и её опасность, но обсуждать что-либо с нами они не стали. А тем временем браузер продолжал щеголять с опасной функцией у всех на виду. Но как только мы раскрыли детали уязвимости, игнорировать это, как раньше, уже было нельзя. 27 марта была\u003Cbr\u002F\u003E\r\nвыпущена новая версия UC Browser 12.10.9.1193, которая обращалась к серверу по HTTPS: \u003Ci\u003E\u003Ca href=\"https:\u002F\u002Fpuds.ucweb.com\u002Fupgrade\u002Findex.xhtml\"\u003Epuds.ucweb.com\u002Fupgrade\u002Findex.xhtml\u003C\u002Fa\u003E\u003C\u002Fi\u003E.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nКроме того, после «исправления» и до момента написания статьи попытка открыть в браузере PDF приводила к появлению сообщения об ошибке с текстом «Упс, что-то пошло не так!». Запрос к серверу при попытке открыть PDF не выполнялся, но выполнялся запрос при запуске браузера, что намекает на сохранившуюся возможность загружать исполняемый код в нарушение правил Google Play.\u003C\u002Fdiv\u003E","tags":[{"titleHtml":"uc browser"},{"titleHtml":"вредоносное по"},{"titleHtml":"вирусный анализ"}],"metadata":{"stylesUrls":[],"scriptUrls":[],"shareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F451936\u002Ff40fc4af5c73742d3110c6d2c9146904\u002F","shareImageWidth":1200,"shareImageHeight":630,"vkShareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F451936\u002Ff40fc4af5c73742d3110c6d2c9146904\u002F?format=vk","schemaJsonLd":"{\"@context\":\"http:\\\u002F\\\u002Fschema.org\",\"@type\":\"Article\",\"mainEntityOfPage\":{\"@type\":\"WebPage\",\"@id\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fru\\\u002Fcompany\\\u002Fdrweb\\\u002Fblog\\\u002F451936\\\u002F\"},\"headline\":\"Ищем уязвимости в UC Browser\",\"datePublished\":\"2019-05-15T13:44:55+03:00\",\"dateModified\":\"2019-05-15T15:43:16+03:00\",\"author\":{\"@type\":\"Person\",\"name\":\"doctorweb\"},\"publisher\":{\"@type\":\"Organization\",\"name\":\"Habr\",\"logo\":{\"@type\":\"ImageObject\",\"url\":\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fa_\\\u002Flk\\\u002F9m\\\u002Fa_lk9mjkccjox-zccjrpfolmkmq.png\"}},\"description\":\"Введение В конце марта мы сообщали, что обнаружили скрытую возможность загрузки и запуска непроверенного кода в UC Browser. Сегодня разберём подробно, как эта з...\",\"url\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fru\\\u002Fcompany\\\u002Fdrweb\\\u002Fblog\\\u002F451936\\\u002F#post-content-body\",\"about\":[\"c_drweb\",\"h_infosecurity\",\"h_virus\",\"h_web_analytics\",\"f_develop\",\"f_marketing\",\"f_admin\"],\"image\":[\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002F-f\\\u002Fna\\\u002Fkn\\\u002F-fnaknrx70xmfiflvfa6ijw1pys.jpeg\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fj0\\\u002Fi1\\\u002Fc1\\\u002Fj0i1c1n_nwf_gnauzbudnqor5oi.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fgo\\\u002Ftj\\\u002Ftz\\\u002Fgotjtzkpg2owfmk8jrnznox_vdg.jpeg\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fg5\\\u002F7k\\\u002Fiv\\\u002Fg57kivkwrysmcqvptmhclqzzipq.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002F6r\\\u002Flt\\\u002Fns\\\u002F6rltnsrtyd-_5ekwis68qn-vydc.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002F_k\\\u002Fbz\\\u002F5c\\\u002F_kbz5cbedw6g1jnsj047rtqudli.jpeg\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002F2y\\\u002Fxh\\\u002Fvk\\\u002F2yxhvksp30f016gfyhrlfh0pklc.jpeg\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fm6\\\u002Fdp\\\u002Fiw\\\u002Fm6dpiwaonfuyri-jg8thppcfgqe.jpeg\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Feq\\\u002Fwp\\\u002Fp3\\\u002Feqwpp3exmqnybi7r_tdvvan4jls.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fbo\\\u002F9b\\\u002Frn\\\u002Fbo9brnkfvauy3ntm2dnucnsxqhs.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fnz\\\u002F95\\\u002F4x\\\u002Fnz954xqtjmky6tnpaqeejhvecus.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002F52\\\u002Frf\\\u002Ffx\\\u002F52rffxhzmtrfdhfrznsr8dovfim.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fct\\\u002Fd9\\\u002Fkv\\\u002Fctd9kvewm9l1blmw3pqipi8mnqm.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fo7\\\u002Fwi\\\u002F4-\\\u002Fo7wi4-imrothkr6qpkbrklj40aw.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fev\\\u002Fhb\\\u002Fa8\\\u002Fevhba8ty8dtnv8niuxyfue0nkfk.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Flv\\\u002Fmp\\\u002Foo\\\u002Flvmpoow5agndjnbbl-t3imyaisq.jpeg\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fdk\\\u002Fnn\\\u002Frw\\\u002Fdknnrwaye18zzz0xipny0_gdqfq.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Ffn\\\u002Fbw\\\u002Fuz\\\u002Ffnbwuzpo3qw1hp3vd9rvr2xfq1k.jpeg\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Ftm\\\u002Ffq\\\u002Fyo\\\u002Ftmfqyogtdhbje0atjckosbrgide.jpeg\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fxg\\\u002Fjk\\\u002Fl1\\\u002Fxgjkl1uhzmibo-nhmha3kpivf5a.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002F7i\\\u002Ffx\\\u002F86\\\u002F7ifx86mr4yph41jsxukpjqvxmfa.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Ffa\\\u002F62\\\u002F6j\\\u002Ffa626jaylcaaewtslff_-byaseo.jpeg\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fco\\\u002Frk\\\u002Fs1\\\u002Fcorks1o2dp75elfvdsxjimrohuo.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002F36\\\u002Fuu\\\u002Fxn\\\u002F36uuxnabf3xesptr8qisxzzfutk.jpeg\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002F-d\\\u002Fpt\\\u002F3a\\\u002F-dpt3akb_yckinmdheczkktzlem.jpeg\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Frn\\\u002F_1\\\u002Fi4\\\u002Frn_1i4avl8oki83hslk5u19ygoe.jpeg\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fhy\\\u002Flk\\\u002Fqr\\\u002Fhylkqrhqgyei6qjdj6ayvgivpqu.jpeg\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002F68\\\u002Fss\\\u002Fkf\\\u002F68sskfcymjorl_flpf8mg9wwej4.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fd1\\\u002Fyt\\\u002Fiz\\\u002Fd1ytiz_jx7byflntqxxec2nece0.jpeg\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fme\\\u002Fvy\\\u002Fkz\\\u002Fmevykztpkcwdr6xkpnenauxqccs.jpeg\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002F9k\\\u002Fm7\\\u002Fun\\\u002F9km7unymy_ybx1lwnflfbqd36ke.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fe2\\\u002F-v\\\u002Fua\\\u002Fe2-vuahng86h0bt0vm84f3xhqrg.png\"]}","metaDescription":"Введение\r\nВ конце марта мы сообщали, что обнаружили скрытую возможность загрузки и запуска непроверенного кода в UC Browser. Сегодня разберём подробно, как эта загрузка происходит и как хакеры могут...","mainImageUrl":null,"amp":false},"polls":[],"commentsEnabled":true,"rulesRemindEnabled":false,"votesEnabled":true,"status":"published","plannedPublishTime":null,"checked":null,"isEditorial":false}},"articlesIds":{},"isLoading":false,"pagesCount":{},"route":{},"reasonsList":null,"view":"cards","lastVisitedRoute":{},"ssrCommentsArticleIds":[""],"karma":{}},"authorContribution":{"authors":{}},"betaTest":{"currentAnnouncement":null,"announcements":{},"announcementCards":null,"announcementComments":{},"announcementCommentThreads":{},"announcementCommentingStatuses":{},"archivedList":[]},"authorStatistics":{"articleRefs":{},"articleIds":{},"pagesCount":{},"route":{},"viewsCount":[],"maxStatsCount":{}},"career":{"seoLandings":[],"hubs":""},"comments":{"articleComments":{},"searchCommentsResults":null,"previewComment":null,"pagesCount":null,"commentAccess":{},"scrollParents":{},"pageArticleComments":{"lastViewedComment":0,"postId":null,"lastCommentTimestamp":"","moderated":[],"moderatedIds":[],"commentRoute":""}},"companies":{"companyRefs":{"drweb":{"alias":"drweb","imageUrl":"\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fcompany\u002F002\u002F8a7\u002Fc16\u002F0028a7c16cc021fea7f86c13e082f507.gif","titleHtml":"Доктор Веб","descriptionHtml":null,"relatedData":null,"statistics":{"postsCount":39,"newsCount":1,"vacanciesCount":0,"employeesCount":17,"careerRating":null,"subscribersCount":705,"rating":53.82,"invest":null},"foundationDate":{"year":"2003","month":"12","day":"22"},"location":{"city":null,"region":null,"country":{"id":"168","title":"Россия"}},"siteUrl":"http:\u002F\u002Fwww.drweb.ru\u002F","staffNumber":"Неизвестно","registrationDate":"2008-08-09T07:42:52+00:00","representativeUser":null,"contacts":[],"settings":{"analyticsSettings":[],"branding":null,"status":"active"},"metadata":{"titleHtml":"Доктор Веб, Россия -  с 22 декабря 2003 г.","title":"Доктор Веб, Россия -  с 22 декабря 2003 г.","keywords":["Информационная безопасность","Антивирусная защита","Реверс-инжиниринг","IT-инфраструктура"],"descriptionHtml":"39 статей от авторов компании Доктор Веб","description":"39 статей от авторов компании Доктор Веб"},"aDeskSettings":null,"careerAlias":"drweb","maxCustomTrackerLinks":0}},"companyIds":{},"companyTopIds":{},"pagesCount":{},"companyProfiles":{},"companiesCategories":[],"companiesCategoriesTotalCount":0,"companiesWidgets":{},"companiesWorkers":{},"companiesFans":{},"route":{},"isLoading":false,"companyWorkersLoading":false,"companyFansLoading":false,"vacancies":{}},"companiesContribution":{"hubs":{},"flows":{},"companyRefs":{}},"companyHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"conversation":{"messages":[],"respondent":null,"isLoadMore":false},"conversations":{"conversations":[],"unreadCount":0,"pagesCount":0,"isLoadMore":false},"desktopState":{"desktopFl":null,"desktopHl":null,"isChecked":false,"isLoginDemanded":false},"dfp":{"slotsDict":{}},"docs":{"menu":{},"articles":{},"mainMenu":[],"loading":{"main":false,"dropdown":false,"article":false}},"feature":{"isProbablyVisible":"true"},"flows":{"flows":[{"alias":"develop","id":1,"route":{"name":"FLOW_PAGE","params":{"flowName":"develop"}}},{"alias":"admin","id":6,"route":{"name":"FLOW_PAGE","params":{"flowName":"admin"}}},{"alias":"design","id":2,"route":{"name":"FLOW_PAGE","params":{"flowName":"design"}}},{"alias":"management","id":3,"route":{"name":"FLOW_PAGE","params":{"flowName":"management"}}},{"alias":"marketing","id":4,"route":{"name":"FLOW_PAGE","params":{"flowName":"marketing"}}},{"alias":"popsci","id":7,"route":{"name":"FLOW_PAGE","params":{"flowName":"popsci"}}}]},"global":{"isPwa":false,"device":"desktop","isHabrCom":true},"hubs":{"hubRefs":{},"hubIds":{},"pagesCount":{},"isLoading":false,"route":{}},"hubsBlock":{"hubRefs":{},"hubIds":{}},"i18n":{"fl":"ru","hl":"ru"},"info":{"infoPage":{},"isLoading":true},"location":{"urlStruct":{"protocol":null,"slashes":null,"auth":null,"host":null,"port":null,"hostname":null,"hash":null,"search":null,"query":{},"pathname":null,"path":null,"href":""},"searchQuery":null},"me":{"user":null,"ppgDemanded":false,"karmaResetInfo":{"canReincarnate":null,"wasReincarnated":null,"currentScore":null},"notes":null},"mostReadingList":{"mostReadingListIds":[],"mostReadingListRefs":null,"promoPost":null},"pinnedPost":{"pinnedPost":null},"ppa":{"articles":{},"card":null,"transactions":null,"totalTransactions":null,"isAccessible":null},"projectsBlocks":{"activeBlocks":{}},"pullRefresh":{"shouldRefresh":false},"sandbox":{"articleIds":[],"articleRefs":{},"pagesCount":null,"route":{},"lastVisitedRoute":{},"isLoading":false},"settingsOther":{"inputs":{"uiLang":{"errors":[],"ref":null,"value":""},"articlesLangEnglish":{"errors":[],"ref":null,"value":false},"articlesLangRussian":{"errors":[],"ref":null,"value":false},"agreement":{"errors":[],"ref":null,"value":false},"email":{"errors":[],"ref":null,"value":true},"digest":{"errors":[],"ref":null,"value":true}}},"similarList":{"similarListIds":[],"similarListRefs":null},"ssr":{"error":null,"isDataLoaded":false,"isDataLoading":false,"isHydrationFailed":false,"isServer":false},"userHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"userInvites":{"availableInvites":0,"usedInvitesIds":[],"usedInvitesRefs":{},"usedInvitesPagesCount":0,"unusedInvitesIds":[],"unusedInvitesRefs":{},"unusedInvitesPagesCount":0},"users":{"authorRefs":{},"authorIds":{},"pagesCount":{},"authorProfiles":{},"userHubs":{},"userInvitations":{},"authorFollowers":{},"authorFollowed":{},"karmaStats":[],"statistics":null,"isLoading":false,"authorFollowersLoading":false,"authorFollowedLoading":false,"userHubsLoading":false,"userInvitationsLoading":false,"route":{}},"viewport":{"prevScrollY":{},"scrollY":0,"width":0},"tracker":{"items":{},"pagesCache":{},"markedViewedSilently":{},"markedRead":{},"unreadCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null},"unviewedCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null}}};(function(){var s;(s=document.currentScript||document.scripts[document.scripts.length-1]).parentNode.removeChild(s);}());</script>
+<script src="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" defer></script><script src="https://assets.habr.com/habr-web/js/app.c0af73e7.js" defer></script>
+
+
+
+    <script>
+      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+        (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+        m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+      })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+    </script>
+  
+  <script type="text/javascript" >
+    (function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+    m[i].l=1*new Date();k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})
+    (window, document, "script", "https://mc.yandex.ru/metrika/tag.js", "ym");
+
+    ym(24049213, "init", {
+      defer:true,
+      trackLinks:true,
+      accurateTrackBounce:true,
+      webvisor:false,
+    });
+  </script>
+  <noscript>
+    <div>
+      <img src="https://mc.yandex.ru/watch/24049213" style="position:absolute; left:-9999px;" alt="" />
+    </div>
+  </noscript>
+  
+    <script type="text/javascript">
+      window.addEventListener('load', function () {
+        setTimeout(() => {
+          const img = new Image();
+          img.src = 'https://vk.com/rtrg?p=VK-RTRG-421343-57vKE';
+        }, 0);
+      });
+    </script>
+  
+</body>
+</html>

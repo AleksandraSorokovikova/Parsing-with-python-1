@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="ru" data-vue-meta="%7B%22lang%22:%7B%22ssr%22:%22ru%22%7D%7D">
+<head >
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
+  <title>Windows service. Поиск системных ошибок и отображение их в WinForm C# / Хабр</title>
+  <style>
+    /* cyrillic-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSxf6TF0.woff2) format('woff2');
+      unicode-range: U+0460-052F, U+1C80-1C88, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+    }
+
+    /* cyrillic */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveQhf6TF0.woff2) format('woff2');
+      unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+    }
+
+    /* latin-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSBf6TF0.woff2) format('woff2');
+      unicode-range: U+0100-024F, U+0259, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20CF, U+2113, U+2C60-2C7F, U+A720-A7FF;
+    }
+
+    /* latin */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveRhf6.woff2) format('woff2');
+      unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+    }
+  </style>
+  <link rel="preload" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" as="script"><link rel="preload" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/app.c0af73e7.js" as="script">
+  <link rel="stylesheet" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css"><link rel="stylesheet" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css">
+  <script>window.i18nFetch = new Promise((res, rej) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open('GET', '/js/i18n/ru-compiled.85eb77f0b17c8235e7b64b9f81ea5ec2.json');
+          xhr.responseType = 'json';
+          xhr.onload = function(e) {
+            if (this.status === 200) {
+              res({ru: xhr.response});
+            } else {
+              rej(e);
+            }
+          };
+          xhr.send();
+        });</script>
+  
+  <script data-vue-meta="ssr" src="/js/ads.js" onload="window['zhY4i4nJ9K'] = true" data-vmid="checkad"></script><script data-vue-meta="ssr" type="application/ld+json" data-vmid="ldjson-schema">{"@context":"http:\/\/schema.org","@type":"Article","mainEntityOfPage":{"@type":"WebPage","@id":"https:\/\/habr.com\/ru\/post\/452688\/"},"headline":"Windows service. Поиск системных ошибок и отображение их в WinForm C#","datePublished":"2019-05-20T21:38:54+03:00","dateModified":"2019-05-23T12:16:48+03:00","author":{"@type":"Person","name":"Анжелика"},"publisher":{"@type":"Organization","name":"Habr","logo":{"@type":"ImageObject","url":"https:\/\/habrastorage.org\/webt\/a_\/lk\/9m\/a_lk9mjkccjox-zccjrpfolmkmq.png"}},"description":"В этой статье мы разберем как с нуля создать приложение, которое будет работать со службами windows и отображать системные ошибки в WinForm (C#).   План этой ста...","url":"https:\/\/habr.com\/ru\/post\/452688\/#post-content-body","about":["h_net","h_csharp","f_develop"],"image":["https:\/\/habrastorage.org\/webt\/48\/0y\/wl\/480ywl42i-wkfnuzfqvg0_5qznu.jpeg","https:\/\/habrastorage.org\/webt\/pk\/jp\/nr\/pkjpnr07wztrn15ko5ofzouxov8.jpeg"]}</script>
+  <script src="//www.googletagservices.com/tag/js/gpt.js" async></script>
+  <style>.grecaptcha-badge{visibility: hidden;}</style>
+  <meta name="habr-version" content="2.49.0">
+  
+  <meta data-vue-meta="ssr" property="fb:app_id" content="444736788986613"><meta data-vue-meta="ssr" property="fb:pages" content="472597926099084"><meta data-vue-meta="ssr" name="twitter:card" content="summary_large_image"><meta data-vue-meta="ssr" name="twitter:site" content="@habr_eng"><meta data-vue-meta="ssr" property="og:title" content="Windows service. Поиск системных ошибок и отображение их в WinForm C#" data-vmid="og:title"><meta data-vue-meta="ssr" name="twitter:title" content="Windows service. Поиск системных ошибок и отображение их в WinForm C#" data-vmid="twitter:title"><meta data-vue-meta="ssr" name="aiturec:title" content="Windows service. Поиск системных ошибок и отображение их в WinForm C#" data-vmid="aiturec:title"><meta data-vue-meta="ssr" name="description" content="В этой статье мы разберем как с нуля создать приложение, которое будет работать со службами windows и отображать системные ошибки в WinForm (C#). 
+
+План этой статьи:
+
+
+Создание службы 
+Event..." data-vmid="description"><meta data-vue-meta="ssr" itemprop="description" content="В этой статье мы разберем как с нуля создать приложение, которое будет работать со службами windows и отображать системные ошибки в WinForm (C#). 
+
+План этой статьи:
+
+
+Создание службы 
+Event..." data-vmid="description:itemprop"><meta data-vue-meta="ssr" property="og:description" content="В этой статье мы разберем как с нуля создать приложение, которое будет работать со службами windows и отображать системные ошибки в WinForm (C#). 
+
+План этой статьи:
+
+
+Создание службы 
+Event..." data-vmid="og:description"><meta data-vue-meta="ssr" name="twitter:description" content="В этой статье мы разберем как с нуля создать приложение, которое будет работать со службами windows и отображать системные ошибки в WinForm (C#). 
+
+План этой статьи:
+
+
+Создание службы 
+Event..." data-vmid="twitter:description"><meta data-vue-meta="ssr" property="aiturec:description" content="В этой статье мы разберем как с нуля создать приложение, которое будет работать со службами windows и отображать системные ошибки в WinForm (C#). 
+
+План этой статьи:
+
+
+Создание службы 
+Event..." data-vmid="aiturec:description"><meta data-vue-meta="ssr" itemprop="image" content="https://habr.com/share/publication/452688/fb88623e55e13bcd7eafc191644e792a/" data-vmid="image:itemprop"><meta data-vue-meta="ssr" property="og:image" content="https://habr.com/share/publication/452688/fb88623e55e13bcd7eafc191644e792a/" data-vmid="og:image"><meta data-vue-meta="ssr" property="aiturec:image" content="https://habr.com/share/publication/452688/fb88623e55e13bcd7eafc191644e792a/" data-vmid="aiturec:image"><meta data-vue-meta="ssr" name="twitter:image" content="https://habr.com/share/publication/452688/fb88623e55e13bcd7eafc191644e792a/" data-vmid="twitter:image"><meta data-vue-meta="ssr" property="vk:image" content="https://habr.com/share/publication/452688/fb88623e55e13bcd7eafc191644e792a/" data-vmid="vk:image"><meta data-vue-meta="ssr" property="aiturec:item_id" content="452688" data-vmid="aiturec:item_id"><meta data-vue-meta="ssr" property="aiturec:datetime" content="2019-05-20T18:38:54.000Z" data-vmid="aiturec:datetime"><meta data-vue-meta="ssr" property="og:type" content="article" data-vmid="og:type"><meta data-vue-meta="ssr" property="og:locale" content="ru_RU" data-vmid="og:locale"><meta data-vue-meta="ssr" property="og:image:width" content="1200" data-vmid="og:image:width"><meta data-vue-meta="ssr" property="og:image:height" content="630" data-vmid="og:image:height">
+  <link data-vue-meta="ssr" href="https://habr.com/ru/rss/post/452688/?fl=ru" type="application/rss+xml" title="" rel="alternate" name="rss"><link data-vue-meta="ssr" href="https://habr.com/ru/post/452688/" rel="canonical" data-vmid="canonical"><link data-vue-meta="ssr" data-vmid="hreflang"><link data-vue-meta="ssr" image_src="image" href="https://habr.com/share/publication/452688/fb88623e55e13bcd7eafc191644e792a/" data-vmid="image:href">
+  <meta name="apple-mobile-web-app-status-bar-style" content="#303b44">
+  <meta name="msapplication-TileColor" content="#629FBC">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="16x16"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-16.png"
+  >
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="32x32"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-32.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="76x76"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-76.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="120x120"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="152x152"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-152.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="180x180"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-180.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="256x256"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-256.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1136x640.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2436x1125.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1792x828.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_828x1792.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1334x750.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2208x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1125x2436.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2208.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2732x2048.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2688x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2224x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_750x1334.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x2732.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2388x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2224.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_640x1136.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2388.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x1536.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1536x2048.png"
+  >
+  <link
+    rel="mask-icon"
+    color="#77a2b6"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.svg"
+  >
+  <link
+    crossorigin="use-credentials"
+    href="/manifest.webmanifest"
+    rel="manifest"
+  >
+</head>
+<body>
+
+
+<div id="app" data-server-rendered="true" data-async-called="true"><div class="tm-layout__wrapper"><!----> <div></div> <!----> <header class="tm-header"><div class="tm-page-width"><div class="tm-header__container"><!----> <span class="tm-header__logo-wrap"><a href="/ru/" class="tm-header__logo tm-header__logo_ru"><svg height="16" width="16" class="tm-svg-img tm-header__icon"><title>Хабр</title> <use xlink:href="/img/habr-logo-ru.svg#logo"></use></svg></a> <span class="tm-header__beta-sign" style="display:none;">β</span></span> <div class="tm-dropdown tm-header__projects"><div class="tm-dropdown__head"><button class="tm-header__dropdown-toggle"><svg height="16" width="16" class="tm-svg-img tm-header__icon tm-header__icon_dropdown"><title>Открыть список</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#arrow-down"></use></svg></button></div> <!----></div> <a href="/ru/sandbox/start/" class="tm-header__become-author-btn">
+            Как стать автором
+          </a> <div class="tm-feature tm-header__feature tm-feature_variant-inline"><!----></div> <!----> <!----></div></div></header> <div class="tm-layout"><div class="tm-page-progress-bar"></div> <div data-menu-sticky="true" class="tm-base-layout__header tm-base-layout__header_is-sticky"><div class="tm-page-width"><div class="tm-base-layout__header-wrapper"><div class="tm-main-menu"><div class="tm-main-menu__section"><nav class="tm-main-menu__section-content"><!----> <a href="/ru/all/" class="tm-main-menu__item">
+        Все потоки
+      </a> <a href="/ru/flows/develop/" class="tm-main-menu__item">
+          Разработка
+        </a><a href="/ru/flows/admin/" class="tm-main-menu__item">
+          Администрирование
+        </a><a href="/ru/flows/design/" class="tm-main-menu__item">
+          Дизайн
+        </a><a href="/ru/flows/management/" class="tm-main-menu__item">
+          Менеджмент
+        </a><a href="/ru/flows/marketing/" class="tm-main-menu__item">
+          Маркетинг
+        </a><a href="/ru/flows/popsci/" class="tm-main-menu__item">
+          Научпоп
+        </a></nav></div></div> <div class="tm-header-user-menu tm-base-layout__user-menu"><a href="/ru/search/" class="tm-header-user-menu__item tm-header-user-menu__search"><svg height="24" width="24" class="tm-svg-img tm-header-user-menu__icon tm-header-user-menu__icon_search tm-header-user-menu__icon_dark"><title>Поиск</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#search"></use></svg></a> <!----> <!----> <!----> <div class="tm-header-user-menu__item tm-header-user-menu__user_desktop"><div class="tm-dropdown"><div class="tm-dropdown__head"><svg height="24" width="24" data-test-id="menu-toggle-guest" class="tm-svg-img tm-header-user-menu__icon"><title>Профиль</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#header-user"></use></svg> <!----></div> <!----></div> <!----></div> <!----></div></div></div></div> <!----> <div class="tm-page-width"></div> <main class="tm-layout__container"><div hl="ru" data-async-called="true" class="tm-page"><div class="tm-page-width"><!----> <div class="tm-page__wrapper"><div class="tm-page__main tm-page__main_has-sidebar"><div class="pull-down"><div class="pull-down__header" style="height:0px;"><div class="pull-down__content" style="bottom:10px;"><svg height="24" width="24" class="tm-svg-img pull-down__arrow"><title>Обновить</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#pull-arrow"></use></svg></div></div> <div class="tm-article-presenter"> <div class="tm-article-presenter__body"><div class="tm-misprint-area"><div class="tm-misprint-area__wrapper"><article class="tm-article-presenter__content tm-article-presenter__content_narrow"><div class="tm-article-presenter__header"> <div class="tm-article-snippet tm-article-presenter__snippet"><div class="tm-article-snippet__meta-container"><div class="tm-article-snippet__meta"><span class="tm-user-info tm-article-snippet__author"><a href="/ru/users/LikaKiwi/" title="LikaKiwi" class="tm-user-info__userpic"><div class="tm-entity-image"><img alt="" height="24" loading="lazy" src="//habrastorage.org/r/w32/getpro/habr/avatars/425/68b/3e2/42568b3e24ed75984bfc40bd03cda1ce.jpg" width="24" class="tm-entity-image__pic"></div></a> <span class="tm-user-info__user"><a href="/ru/users/LikaKiwi/" class="tm-user-info__username">
+      LikaKiwi
+    </a> </span></span> <span class="tm-article-snippet__datetime-published"><time datetime="2019-05-20T18:38:54.000Z" title="2019-05-20, 21:38">20  мая  2019 в 21:38</time></span></div> <!----></div> <h1 lang="ru" class="tm-article-snippet__title tm-article-snippet__title_h1"><span>Windows service. Поиск системных ошибок и отображение их в WinForm C#</span></h1> <div class="tm-article-snippet__hubs"><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/net/" class="tm-article-snippet__hubs-item-link"><span>.NET</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/csharp/" class="tm-article-snippet__hubs-item-link"><span>C#</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span></div> <div class="tm-article-snippet__labels"><div class="tm-article-snippet__label"><span>
+        Из песочницы
+      </span></div></div> <!----> <!----></div></div> <!----> <div data-gallery-root="" lang="ru" class="tm-article-body"><div id="post-content-body" class="article-formatted-body article-formatted-body_version-1"><div xmlns="http://www.w3.org/1999/xhtml">В этой статье мы разберем как с нуля создать приложение, которое будет работать со службами windows и отображать системные ошибки в WinForm (C#). <br/>
+<br/>
+План этой статьи:<br/>
+<br/>
+<ul>
+<li>Создание службы </li>
+<li>Event Viewer</li>
+<li>Код службы</li>
+<li>Проверка работы службы(Запуск службы вручную)</li>
+<li>Отображение WinForm</li>
+</ul><br/>
+<h4>Создание службы</h4><br/>
+Открываем Visual Studio. Дальше File → New → Project → (Windows Desktop) → Windows Service (.Net Framework) → Ok. <br/>
+<br/>
+Дальше нужно создать установщик. В открывшемся окне щелкаем ПКМ и выбираем «Add Installer». У вас создастся «ProjectInstaller.cs[Design]» после чего нужно будет перейти к коду «F7» или ПКМ «View Code». Нужно найти строку «InitializeComponent();», поставить на нее курсор и нажать «F12», дальше нужно добавить следующие строки:<br/>
+<br/>
+<pre><code class="cs">this.serviceProcessInstaller1.Account = System.ServiceProcess.ServiceAccount.LocalSystem; //Чтоб не запрашивало имя пользователя и пароль
+this.serviceInstaller1.Description = "Show me system error."; //Описание которое будет видно в списке служб
+this.serviceInstaller1.DisplayName = "GetSystemError"; //Название службы которое будет видно в списке служб</code></pre><br/>
+Но добавлять эти строки нужно только в следующей последовательности и месте. Иначе будет ошибка при установке сервиса.<br/>
+<br/>
+<img src="https://habrastorage.org/r/w780q1/webt/48/0y/wl/480ywl42i-wkfnuzfqvg0_5qznu.jpeg" data-src="https://habrastorage.org/webt/48/0y/wl/480ywl42i-wkfnuzfqvg0_5qznu.jpeg" data-blurred="true"/><br/>
+<a name="habracut"></a><br/>
+<h4>Event Viewer</h4><br/>
+Это нужно для проверки правильной работы нашей программы.<br/>
+<br/>
+Event Viewer — программа для просмотра журнала событий которая есть на каждом компьютере с windows. Каждая программа, которая запускается на компьютере, публикует уведомление в журнале событий до того, как останавливается. Любой доступ к системе, изменение безопасности, подстройка операционной системы, аппаратный сбой и сбой драйвера — все это попадает в журнал событий. Event Viewer сканирует файлы текстового журнала, объединяет их и помещает в интерфейс.<br/>
+<br/>
+Как его открыть? — Пуск → Event Viewer(в поиске) → «Просмотр журналов событий».<br/>
+<br/>
+Дальше «Настраиваемые представления (Custom Views)» → «События управления (Administrative Events)». Тут мы можем увидеть все ошибки, предупреждения и информацию о них.<br/>
+<br/>
+Есть 3 типа журнала: приложение(Application), системные(System) и безопасность(Security). Нам нужен только системный(System). <br/>
+<cut></cut><br/>
+<h4>Код службы</h4><br/>
+Находим файл .cs с названием службы, у меня это «Service1.cs», открываем. В файле должно быть заготовлено 2 переопределенных метода:<br/>
+<br/>
+<ul>
+<li>OnStart(string[] args) — выполняется при запуске службы,</li>
+<li>OnStop() — выполняется при остановке службы.</li>
+</ul><br/>
+Есть так же еще несколько методов но они нам сейчас не потребуются. Найти их можно самостоятельно. <br/>
+<br/>
+Данные которые мы получаем будем хранить в обновляемом текстовом файле, поэтому добавляем <br/>
+<br/>
+<pre><code class="cs">using System.IO;</code></pre><br/>
+Добавляем код в метод OnStart(string[] args):<br/>
+<br/>
+<pre><code class="cs"> 
+EventLog myLog; //Можно читать и записывать элементы журнала событий
+string filepath = AppDomain.CurrentDomain.BaseDirectory +  @"\ServiceLog.txt";; //Хранится путь к файлу
+List&lt;string> list; //Список всех найденных ошибок
+protected override void OnStart(string[] args)
+{
+        myLog = new EventLog();
+        myLog.Log = "System"; //По умолчанию выставлен тип ошибок - приложение(Application), а нам нужны системные(System).
+        myLog.Source = "System Error";
+
+        for (int index = myLog.Entries.Count - 1; index > 0; index--) //Перебираем все системные ошибки от новых к более старым
+        {
+           var errEntry = myLog.Entries[index]; \\Чтение записи из журнала событий
+           if (errEntry.EntryType == EventLogEntryType.Error) \\Проверка ошибка ли это
+           {
+                //Получаем нужные данные из записи
+                var appName = errEntry.Source;
+                list = new List&lt;string>();
+                list.Add("Entry Type: " + Convert.ToString(errEntry.EntryType));
+                list.Add("Event log: " + (string)myLog.Log);
+                list.Add("Machine Name: " + (string)errEntry.MachineName);
+                list.Add("App Name: " + (string)errEntry.Source);
+                list.Add("Message: " + (string)errEntry.Message);
+                list.Add("Time Written: " + errEntry.TimeWritten.ToString());
+                list.Add("-*-");
+
+                WriteToFile(list); //Записываем данные в файл
+            }
+        }
+}
+public void WriteToFile(List&lt;string> list) //Запись в файл
+{
+        using (StreamWriter sw = File.AppendText(filepath))
+        {
+            for (int i = 0; i &lt; list.Count; i++)
+                 sw.WriteLine(list[i]);
+        }
+}</code></pre><br/>
+Дальше нужно собрать решение «Solution» -> «Rebuild Solution». После успешной сборки можно проверять работу.<br/>
+<br/>
+<h4>Проверка работы службы(Запуск службы вручную)</h4><br/>
+Службу windows нельзя запускать как обычное приложение. Можно запустить только через командную строку от имени администратора. <br/>
+<br/>
+Запускаем командную строку от имени администратора. Ввести следующие команды:<br/>
+<br/>
+<pre><code class="plaintext">cd C:\Windows\Microsoft.NET\Framework\v4.0.30319
+InstallUtil.exe  Путь\Имя вашей службы.exe
+(InstallUtil.exe C:\Users\Анжелика\source\repos\WindowsService1\WindowsService1 \bin\Debug\WindowsService1.exe)
+Команда для удаления сервиса: InstallUtil.exe -u Путь\Имя вашей службы.exe </code></pre><br/>
+Дальше нажимаем клавишу Win+R. Вводим «Services.msc». Находим в списке свой сервис, нажимаем на него, и нажимаем «Запустить(Start)». После успешного запуска сформируется файл по указанному в коде пути в котором будет находиться список системных ошибок. <br/>
+Не забываем удалить службу после проверки. <br/>
+<cut></cut><br/>
+<h4>Отображение WinForm</h4><br/>
+Для отображения в консоли если постараться то можно найти статьи, но для отображения в WinForm я так и не нашла, так что вот. По умолчанию проект службы создается типа «Application». Для отображения через консоль этот параметр в настройках нужно поменять, для WinForm оставить как есть. Дальше нужно добавить форму в проект. «WindowsService1» → ПКМ → Add → Windows Form → Add. И делаем примерно следующий дизайн. Дальше меняем файл «Program.cs». <br/>
+<br/>
+Добавляем using:<br/>
+<br/>
+<pre><code class="cs">using System.Windows.Forms;
+using System.Security.Principal;
+using System.ComponentModel;
+using System.Diagnostics;</code></pre><br/>
+И меняем метод Main:<br/>
+<br/>
+<pre><code class="cs">static void Main(string[] args)
+        {
+            WindowsPrincipal windowsPricipal = new WindowsPrincipal(WindowsIdentity.GetCurrent());
+            bool hasAdministrativeRight = windowsPricipal.IsInRole(WindowsBuiltInRole.Administrator);
+
+            if (hasAdministrativeRight == false) //проверка на права администратора
+            {
+                ProcessStartInfo processInfo = new ProcessStartInfo(); //создаем новый процесс
+                processInfo.Verb = "runas"; //процесс должен быть запущен с правами администратора
+                processInfo.FileName = Application.ExecutablePath; 
+                try
+                {
+                    Process.Start(processInfo); //пытаемся запустить процесс
+                }
+                catch (Win32Exception){}
+                Application.Exit();
+            }
+            else
+            {
+                Application.EnableVisualStyles();
+                Application.SetCompatibleTextRenderingDefault(false);
+                Application.Run(new Form1(args)); //Запускаем форму
+            }
+        }</code></pre><br/>
+Добавляем новый класс «SystemError». («WindowsService1» -> ПКМ -> Add -> Class -> Add). Тут мы будем хранить данные об ошибках. Меняем его:<br/>
+<br/>
+<pre><code class="cs">public string EntryType{ get; set; }
+public string EventLog{ get; set; }
+public string MachineName { get; set; }
+public string AppName { get; set; }
+public string Message { get; set; }
+public string TimeWritten { get; set; }</code></pre><br/>
+Дальше в «Service1.cs» добавляем метод «RunFromForm(string[] args)» который запускает службу. <br/>
+<br/>
+<pre><code class="cs">public void RunFromForm(string[] args)
+        {
+            OnStart(args);
+            OnStop();
+        }</code></pre><br/>
+Добавляем новый класс «GetListErrors». («WindowsService1» -> ПКМ -> Add -> Class -> Add). Тут мы будем доставать данные из файла. Добавляем using:<br/>
+<br/>
+<pre><code class="cs">using System.IO;</code></pre><br/>
+Меняем его:<br/>
+<br/>
+<pre><code class="cs">string filepath = AppDomain.CurrentDomain.BaseDirectory + @"\ServiceLog.txt";
+
+        SystemError systemError;
+        public List&lt;SystemError> listSysErrs;
+        public void ReadFile() //Метод чтения из файла и запись в список системных ошибок
+        {
+            systemError = new SystemError();
+            listSysErrs = new List&lt;SystemError>();
+
+            using (StreamReader sr = new StreamReader(filepath))
+            {
+                string line;
+                while ((line = sr.ReadLine()) != null)
+                {
+                    if (line.Contains("-*-"))
+                    {
+                        listSysErrs.Add(systemError);
+                        systemError = new SystemError(); //Создается новый элемент системной ошибки в списке
+                    } 
+                    if (line.Contains("Entry Type"))
+                    {
+                        systemError.EntryType = line.Substring(12);
+                    }
+                    else if (line.Contains("Event log"))
+                    {
+                        systemError.EventLog = line.Substring(11);
+                    }
+                    else if (line.Contains("Machine Name"))
+                    {
+                        systemError.MachineName = line.Substring(14);
+                    }
+                    else if (line.Contains("App Name"))
+                    {
+                        systemError.AppName = line.Substring(10);
+                    }
+                    else if (line.Contains("Message"))
+                    {
+                        systemError.Message = line.Substring(9);
+                    }
+                    else if (line.Contains("Time Written"))
+                    {
+                        systemError.TimeWritten = line.Substring(14);
+                    } 
+                }
+            }
+        }</code></pre><br/>
+Дальше меняем код формы «Form1.cs». Добавляем using:<br/>
+<br/>
+<pre><code class="cs">using System.ServiceProcess;
+using System.Diagnostics;</code></pre><br/>
+Меняем его:<br/>
+<br/>
+<pre><code class="cs">Service1 service = new Service1();
+        List&lt;SystemError> listSysErrs;
+        string[] args;
+        public Form1(string[] args)
+        {
+            InitializeComponent();
+
+            this.args = args;
+            if (Environment.UserInteractive)//Проверяет выполняется ли текущий процесс в режиме взаимодействия с пользователем
+            {
+                service.RunFromForm(args); //Запускаем службу
+                GetListErrors getListErrors = new GetListErrors();
+                getListErrors.ReadFile(); //получаем данные из файла результата службы
+                listSysErrs = getListErrors.listSysErrs;
+                FillDataGridView(); //Отображаем список в таблице
+            }
+            else
+            {
+                    ServiceBase[] ServicesToRun;
+                    ServicesToRun = new ServiceBase[] { service };
+                    ServiceBase.Run(ServicesToRun); 
+               
+            }
+        }
+        public void FillDataGridView() //Заполняет таблицу данными из списка
+        {
+            foreach (SystemError item in listSysErrs)
+            {
+                dataGridView1.Rows.Add(item.AppName, item.Message);
+            }
+        }
+
+        private void dataGridView1_CellClick(object sender, DataGridViewCellEventArgs e) //При нажатии на любую ячейку на панели будут отображаться больше данных именно по ошибке которую нажали
+        {
+            SystemError sys = listSysErrs[dataGridView1.CurrentRow.Index];
+
+            label1.Text = "Entry Type: " + sys.EntryType +
+                "\nEvent log: " + sys.EventLog +
+                "\nMachine Name: " + sys.MachineName +
+                "\nApp Name: " + sys.AppName +
+                "\n\nMessage: " + FormatMessage(sys.Message) +
+                "\n\nTime Written: " + sys.TimeWritten;
+        }
+        private string FormatMessage(string msg) //Так как весь текст не помещается на панель, то нужно подкорректировать строку так чтоб она была видна полностью а не уходила бы в закат
+        {
+            string retMsg = "";
+            int count = 75;
+
+            if (msg.Length > count - 9)
+            {
+                retMsg += msg.Substring(0, count - 9) + "\n";
+                msg = msg.Substring(count - 9);
+            }
+
+            while (msg.Length > count)
+            {
+                retMsg += msg.Substring(0, count) + "\n";
+                msg = msg.Substring(count);
+            }
+            retMsg += msg + "\n";
+            return retMsg;
+        }
+        private void button1_Click(object sender, EventArgs e) //По нажатию на кнопку мы перезапускаем службу как и ранее
+        {
+                if (Environment.UserInteractive)
+                {
+                    while (dataGridView1.Rows.Count != 0)
+                    {
+                        dataGridView1.Rows.Remove(dataGridView1.Rows[dataGridView1.Rows.Count - 1]);
+                    }
+                    service.RunFromForm(args);
+
+                    GetListErrors getListErrors = new GetListErrors();
+                    getListErrors.ReedFile();
+                    listSysErrs = getListErrors.listSysErrs;
+
+                    FillDataGridView();
+                }
+                else
+                {
+                    ServiceBase[] ServicesToRun;
+                    ServicesToRun = new ServiceBase[] { service };
+                    ServiceBase.Run(ServicesToRun);
+                }
+        }
+        private void button2_Click(object sender, EventArgs e)
+        {
+                Process.Start(AppDomain.CurrentDomain.BaseDirectory); //Выбираем файл
+        }</code></pre><br/>
+Теперь можно запускать службу как обычное приложение. Выглядит результат следующим образом:<br/>
+<br/>
+<img src="https://habrastorage.org/r/w780q1/webt/pk/jp/nr/pkjpnr07wztrn15ko5ofzouxov8.jpeg" data-src="https://habrastorage.org/webt/pk/jp/nr/pkjpnr07wztrn15ko5ofzouxov8.jpeg" data-blurred="true"/></div></div> <!----> <!----></div> <div class="tm-article-presenter__meta"><div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Теги:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bc%23%5D" class="tm-tags-list__link">c#</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5B.net%5D" class="tm-tags-list__link">.net</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bwindows%5D" class="tm-tags-list__link">windows</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bservice%5D" class="tm-tags-list__link">service</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bwindows%20service%5D" class="tm-tags-list__link">windows service</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Binstaller%5D" class="tm-tags-list__link">installer</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bwinform%5D" class="tm-tags-list__link">winform</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bsystem%5D" class="tm-tags-list__link">system</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Berror%5D" class="tm-tags-list__link">error</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bevent%20viewer%5D" class="tm-tags-list__link">event viewer</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bevents%5D" class="tm-tags-list__link">events</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Blog%5D" class="tm-tags-list__link">log</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bapplication%5D" class="tm-tags-list__link">application</a></li></ul></div> <div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Хабы:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/hub/net/" class="tm-hubs-list__link">
+    .NET
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/csharp/" class="tm-hubs-list__link">
+    C#
+  </a></li></ul></div></div></article></div> <!----></div> <div class="tm-article-sticky-panel"><div class="tm-data-icons tm-article-sticky-panel__icons"><div class="tm-article-rating tm-data-icons__item"><div class="tm-votes-meter tm-article-rating__votes-switcher"><svg height="16" width="16" class="tm-svg-img tm-votes-meter__icon tm-votes-meter__icon_medium"><title>Всего голосов 24: ↑19 и ↓5</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-rating"></use></svg> <span title="Всего голосов 24: ↑19 и ↓5" class="tm-votes-meter__value tm-votes-meter__value_positive tm-votes-meter__value_medium">+14</span></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----> <span title="Количество просмотров" class="tm-icon-counter tm-data-icons__item"><svg height="16" width="16" class="tm-svg-img tm-icon-counter__icon"><title>Просмотры</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-views"></use></svg> <span class="tm-icon-counter__value">6.5K</span></span> <button title="Добавить в закладки" type="button" class="bookmarks-button tm-data-icons__item"><span title="Добавить в закладки" class="tm-svg-icon__wrapper bookmarks-button__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Добавить в закладки</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-favorite"></use></svg></span> <span title="Количество пользователей, добавивших публикацию в закладки" class="bookmarks-button__counter">
+    39
+  </span></button> <!----> <div title="Поделиться" class="tm-sharing tm-data-icons__item"><button type="button" class="tm-sharing__button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="tm-sharing__icon"><path fill="currentColor" d="M10.33.275l9.047 7.572a.2.2 0 010 .306l-9.048 7.572a.2.2 0 01-.328-.153V11c-8 0-9.94 6-9.94 6S-1 5 10 5V.428a.2.2 0 01.328-.153z"></path></svg></button> <!----></div> <DIV class="v-portal" style="display:none;"></DIV></div> </div></div> <!----> <!----> <div class="tm-article-presenter__footer"><div class="tm-article-blocks"><!----> <section class="tm-block tm-block_spacing-bottom"><!----> <div class="tm-block__body tm-block__body_variant-balanced"><div class="tm-article-author"> <div class="tm-user-card tm-article-author__user-card tm-user-card_variant-article"><div class="tm-user-card__info-container"><div class="tm-user-card__header"><div class="tm-user-card__header-data"><a href="/ru/users/LikaKiwi/" class="tm-user-card__userpic tm-user-card__userpic_size-40"><div class="tm-entity-image"><img alt="" src="//habrastorage.org/getpro/habr/avatars/425/68b/3e2/42568b3e24ed75984bfc40bd03cda1ce.jpg" class="tm-entity-image__pic"></div></a> <div class="tm-user-card__meta"><div title=" 7 голосов " class="tm-karma tm-user-card__karma"><div class="tm-karma__votes tm-karma__votes_positive">
+    5
+  </div> <div class="tm-karma__text">
+    Карма
+  </div></div> <div title="Рейтинг пользователя" class="tm-rating tm-user-card__rating"><div class="tm-rating__header"> <div class="tm-rating__counter">0</div></div> <div class="tm-rating__text">
+    Рейтинг
+  </div></div></div></div></div> <div class="tm-user-card__info tm-user-card__info_variant-article"><div class="tm-user-card__title tm-user-card__title_variant-article"><span class="tm-user-card__name tm-user-card__name_variant-article">Анжелика</span> <a href="/ru/users/LikaKiwi/" class="tm-user-card__nickname tm-user-card__nickname_variant-article">
+          @LikaKiwi
+        </a> <!----></div> <p class="tm-user-card__short-info tm-user-card__short-info_variant-article">Разработчик ПО</p></div></div> <div class="tm-user-card__buttons tm-user-card__buttons_variant-article"><!----> <!----> <!----> <!----> <!----></div></div> <!----></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----></section> <div class="tm-article-blocks__comments"><div class="tm-article-page-comments"><div class="tm-article-comments-counter-link tm-article-comments-counter-button"><a href="/ru/post/452688/comments/" class="tm-article-comments-counter-link__link tm-article-comments-counter-link__link_button-style"><svg height="16" width="16" class="tm-svg-img tm-article-comments-counter-link__icon tm-article-comments-counter-link__icon_contrasted"><title>Комментарии</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-comments"></use></svg> <span class="tm-article-comments-counter-link__value tm-article-comments-counter-link__value_contrasted">
+       Комментарии 15 
+    </span></a> <!----></div></div></div> <div class="tm-ad-banner__container tm-page-article__banner"><!----> <div id="articleBottomBanner" class="tm-ad-banner"></div></div> <!----> <!----> <!----> <!----> </div></div></div></div></div> <div class="tm-page__sidebar"><div class="tm-layout-sidebar"><div class="tm-layout-sidebar__ads tm-layout-sidebar__ads_initial"><div class="tm-ad-banner__container tm-layout-sidebar__banner"><!----> <div id="sidebarBanner" class="tm-ad-banner"></div></div></div> <div class="tm-sexy-sidebar tm-sexy-sidebar_initial" style="margin-top:0px;"><!----> <!----></div></div></div></div></div></div></main> <!----></div> <div class="tm-footer-menu"><div class="tm-page-width"><div class="tm-footer-menu__container"><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Ваш аккаунт
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr/?back=/ru/post/452688/&amp;hl=ru" rel="nofollow" target="_self">
+                Войти
+              </a></li><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr-register/?back=/ru/post/452688/&amp;hl=ru" rel="nofollow" target="_self">
+                Регистрация
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Разделы
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/" class="footer-menu__item-link router-link-active">
+                Публикации
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/news/" class="footer-menu__item-link">
+                Новости
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/hubs/" class="footer-menu__item-link">
+                Хабы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/companies/" class="footer-menu__item-link">
+                Компании
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/users/" class="footer-menu__item-link">
+                Авторы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/sandbox/" class="footer-menu__item-link">
+                Песочница
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Информация
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/docs/help/" class="footer-menu__item-link">
+                Устройство сайта
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/authors/codex/" class="footer-menu__item-link">
+                Для авторов
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/companies/corpblogs/" class="footer-menu__item-link">
+                Для компаний
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/docs/transparency/" class="footer-menu__item-link">
+                Документы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/agreement" target="_blank">
+                Соглашение
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/confidential/" target="_blank">
+                Конфиденциальность
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Услуги
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQLwRfQmXibiUlWaRg-BAc38s7oM3lJiaPju7qmdJsp8ysIvZ_G-Npem0njJLMozE2bPHMpDqiI5hhy/pub?start=false&amp;loop=false&amp;delayms=60000&amp;slide=id.g91a03369cd_4_297" target="_blank">
+                Реклама
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://habrastorage.org/storage/stuff/habr/service_price.pdf" target="_blank">
+                Тарифы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQJJds8-Di7BQSP_guHxICN7woVYoN5NP_22ra-BIo4bqnTT9FR6fB-Ku2P0AoRpX0Ds-LRkDeAoD8F/pub?start=false&amp;loop=false&amp;delayms=60000" target="_blank">
+                Контент
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://tmtm.timepad.ru/" target="_blank">
+                Семинары
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/megaprojects/" class="footer-menu__item-link">
+                Мегапроекты
+              </a></li></ul></div></div></div></div></div> <div class="tm-footer"><div class="tm-page-width"><div class="tm-footer__container"><!----> <div class="tm-footer__social"><a href="https://www.facebook.com/habrahabr.ru" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Facebook</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-facebook"></use></svg></a><a href="https://twitter.com/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Twitter</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-twitter"></use></svg></a><a href="https://vk.com/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>VK</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-vkontakte"></use></svg></a><a href="https://telegram.me/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Telegram</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-telegram"></use></svg></a><a href="https://www.youtube.com/channel/UCd_sTwKqVrweTt4oAKY5y4w" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Youtube</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-youtube"></use></svg></a><a href="https://zen.yandex.ru/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Яндекс Дзен</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-zen"></use></svg></a></div> <DIV class="v-portal" style="display:none;"></DIV> <button class="tm-footer__link"><!---->
+        Настройка языка
+      </button> <a href="/ru/about" class="tm-footer__link">
+        О сайте
+      </a> <a href="/ru/feedback/" class="tm-footer__link">
+        Техническая поддержка
+      </a> <!----> <a href="/berserk-mode-nope" class="tm-footer__link">
+        Вернуться на старую версию
+      </a> <div class="tm-footer-copyright"><span class="tm-copyright"><span class="tm-copyright__years">© 2006–2021 </span> <span class="tm-copyright__name">«<a href="https://company.habr.com/" rel="noopener" target="_blank" class="tm-copyright__link">Habr</a>»</span></span></div></div></div></div> <!----> <!----></div> <div class="vue-portal-target"></div></div>
+<script>window.__INITIAL_STATE__={"adblock":{"hasAcceptableAdsFilter":false,"hasAdblock":false},"articlesList":{"articlesList":{"452688":{"id":"452688","timePublished":"2019-05-20T18:38:54+00:00","isCorporative":false,"lang":"ru","titleHtml":"Windows service. Поиск системных ошибок и отображение их в WinForm C#","leadData":{"textHtml":"В этой статье мы разберем как с нуля создать приложение, которое будет работать со службами windows и отображать системные ошибки в WinForm (C#). \u003Cbr\u003E\r\n\u003Cbr\u003E\r\nПлан этой статьи:\u003Cbr\u003E\r\n\u003Cbr\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003EСоздание службы \u003C\u002Fli\u003E\r\n\u003Cli\u003EEvent Viewer\u003C\u002Fli\u003E\r\n\u003Cli\u003EКод службы\u003C\u002Fli\u003E\r\n\u003Cli\u003EПроверка работы службы(Запуск службы вручную)\u003C\u002Fli\u003E\r\n\u003Cli\u003EОтображение WinForm\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u003E\r\n\u003Ch4\u003EСоздание службы\u003C\u002Fh4\u003E\u003Cbr\u003E\r\nОткрываем Visual Studio. Дальше File → New → Project → (Windows Desktop) → Windows Service (.Net Framework) → Ok. \u003Cbr\u003E\r\n\u003Cbr\u003E\r\nДальше нужно создать установщик. В открывшемся окне щелкаем ПКМ и выбираем «Add Installer». У вас создастся «ProjectInstaller.cs[Design]» после чего нужно будет перейти к коду «F7» или ПКМ «View Code». Нужно найти строку «InitializeComponent();», поставить на нее курсор и нажать «F12», дальше нужно добавить следующие строки:\u003Cbr\u003E\r\n\u003Cbr\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"cs\"\u003Ethis.serviceProcessInstaller1.Account = System.ServiceProcess.ServiceAccount.LocalSystem; \u002F\u002FЧтоб не запрашивало имя пользователя и пароль\nthis.serviceInstaller1.Description = \"Show me system error.\"; \u002F\u002FОписание которое будет видно в списке служб\nthis.serviceInstaller1.DisplayName = \"GetSystemError\"; \u002F\u002FНазвание службы которое будет видно в списке служб\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u003E\r\nНо добавлять эти строки нужно только в следующей последовательности и месте. Иначе будет ошибка при установке сервиса.\u003Cbr\u003E\r\n\u003Cbr\u003E\r\n\u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002F48\u002F0y\u002Fwl\u002F480ywl42i-wkfnuzfqvg0_5qznu.jpeg\"\u003E\u003Cbr\u003E","imageUrl":null,"buttonTextHtml":"Читать дальше →","image":null},"editorVersion":"1.0","postType":"article","postLabels":[{"type":"sandbox","data":null}],"author":{"scoreStats":{"score":5,"votesCount":7},"rating":0,"relatedData":null,"contacts":[],"authorContacts":[],"paymentDetails":{"paymentYandexMoney":null,"paymentPayPalMe":null,"paymentWebmoney":null},"id":"1859127","alias":"LikaKiwi","fullname":"Анжелика","avatarUrl":"\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Favatars\u002F425\u002F68b\u002F3e2\u002F42568b3e24ed75984bfc40bd03cda1ce.jpg","speciality":"Разработчик ПО"},"statistics":{"commentsCount":15,"favoritesCount":39,"readingCount":6479,"score":14,"votesCount":24},"hubs":[{"relatedData":null,"id":"546","alias":"net","type":"collective","title":".NET","titleHtml":".NET","isProfiled":true},{"relatedData":null,"id":"17718","alias":"csharp","type":"collective","title":"C#","titleHtml":"C#","isProfiled":true}],"flows":[{"id":"1","alias":"develop","title":"Разработка"}],"relatedData":null,"textHtml":"\u003Cdiv xmlns=\"http:\u002F\u002Fwww.w3.org\u002F1999\u002Fxhtml\"\u003EВ этой статье мы разберем как с нуля создать приложение, которое будет работать со службами windows и отображать системные ошибки в WinForm (C#). \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПлан этой статьи:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003EСоздание службы \u003C\u002Fli\u003E\r\n\u003Cli\u003EEvent Viewer\u003C\u002Fli\u003E\r\n\u003Cli\u003EКод службы\u003C\u002Fli\u003E\r\n\u003Cli\u003EПроверка работы службы(Запуск службы вручную)\u003C\u002Fli\u003E\r\n\u003Cli\u003EОтображение WinForm\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\n\u003Ch4\u003EСоздание службы\u003C\u002Fh4\u003E\u003Cbr\u002F\u003E\r\nОткрываем Visual Studio. Дальше File → New → Project → (Windows Desktop) → Windows Service (.Net Framework) → Ok. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nДальше нужно создать установщик. В открывшемся окне щелкаем ПКМ и выбираем «Add Installer». У вас создастся «ProjectInstaller.cs[Design]» после чего нужно будет перейти к коду «F7» или ПКМ «View Code». Нужно найти строку «InitializeComponent();», поставить на нее курсор и нажать «F12», дальше нужно добавить следующие строки:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"cs\"\u003Ethis.serviceProcessInstaller1.Account = System.ServiceProcess.ServiceAccount.LocalSystem; \u002F\u002FЧтоб не запрашивало имя пользователя и пароль\nthis.serviceInstaller1.Description = \"Show me system error.\"; \u002F\u002FОписание которое будет видно в списке служб\nthis.serviceInstaller1.DisplayName = \"GetSystemError\"; \u002F\u002FНазвание службы которое будет видно в списке служб\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nНо добавлять эти строки нужно только в следующей последовательности и месте. Иначе будет ошибка при установке сервиса.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fr\u002Fw780q1\u002Fwebt\u002F48\u002F0y\u002Fwl\u002F480ywl42i-wkfnuzfqvg0_5qznu.jpeg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002F48\u002F0y\u002Fwl\u002F480ywl42i-wkfnuzfqvg0_5qznu.jpeg\" data-blurred=\"true\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Ca name=\"habracut\"\u003E\u003C\u002Fa\u003E\u003Cbr\u002F\u003E\r\n\u003Ch4\u003EEvent Viewer\u003C\u002Fh4\u003E\u003Cbr\u002F\u003E\r\nЭто нужно для проверки правильной работы нашей программы.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nEvent Viewer — программа для просмотра журнала событий которая есть на каждом компьютере с windows. Каждая программа, которая запускается на компьютере, публикует уведомление в журнале событий до того, как останавливается. Любой доступ к системе, изменение безопасности, подстройка операционной системы, аппаратный сбой и сбой драйвера — все это попадает в журнал событий. Event Viewer сканирует файлы текстового журнала, объединяет их и помещает в интерфейс.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nКак его открыть? — Пуск → Event Viewer(в поиске) → «Просмотр журналов событий».\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nДальше «Настраиваемые представления (Custom Views)» → «События управления (Administrative Events)». Тут мы можем увидеть все ошибки, предупреждения и информацию о них.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЕсть 3 типа журнала: приложение(Application), системные(System) и безопасность(Security). Нам нужен только системный(System). \u003Cbr\u002F\u003E\r\n\u003Ccut\u003E\u003C\u002Fcut\u003E\u003Cbr\u002F\u003E\r\n\u003Ch4\u003EКод службы\u003C\u002Fh4\u003E\u003Cbr\u002F\u003E\r\nНаходим файл .cs с названием службы, у меня это «Service1.cs», открываем. В файле должно быть заготовлено 2 переопределенных метода:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003EOnStart(string[] args) — выполняется при запуске службы,\u003C\u002Fli\u003E\r\n\u003Cli\u003EOnStop() — выполняется при остановке службы.\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\nЕсть так же еще несколько методов но они нам сейчас не потребуются. Найти их можно самостоятельно. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nДанные которые мы получаем будем хранить в обновляемом текстовом файле, поэтому добавляем \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"cs\"\u003Eusing System.IO;\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nДобавляем код в метод OnStart(string[] args):\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"cs\"\u003E \nEventLog myLog; \u002F\u002FМожно читать и записывать элементы журнала событий\nstring filepath = AppDomain.CurrentDomain.BaseDirectory +  @\"\\ServiceLog.txt\";; \u002F\u002FХранится путь к файлу\nList&lt;string\u003E list; \u002F\u002FСписок всех найденных ошибок\nprotected override void OnStart(string[] args)\n{\n        myLog = new EventLog();\n        myLog.Log = \"System\"; \u002F\u002FПо умолчанию выставлен тип ошибок - приложение(Application), а нам нужны системные(System).\n        myLog.Source = \"System Error\";\n\n        for (int index = myLog.Entries.Count - 1; index \u003E 0; index--) \u002F\u002FПеребираем все системные ошибки от новых к более старым\n        {\n           var errEntry = myLog.Entries[index]; \\\\Чтение записи из журнала событий\n           if (errEntry.EntryType == EventLogEntryType.Error) \\\\Проверка ошибка ли это\n           {\n                \u002F\u002FПолучаем нужные данные из записи\n                var appName = errEntry.Source;\n                list = new List&lt;string\u003E();\n                list.Add(\"Entry Type: \" + Convert.ToString(errEntry.EntryType));\n                list.Add(\"Event log: \" + (string)myLog.Log);\n                list.Add(\"Machine Name: \" + (string)errEntry.MachineName);\n                list.Add(\"App Name: \" + (string)errEntry.Source);\n                list.Add(\"Message: \" + (string)errEntry.Message);\n                list.Add(\"Time Written: \" + errEntry.TimeWritten.ToString());\n                list.Add(\"-*-\");\n\n                WriteToFile(list); \u002F\u002FЗаписываем данные в файл\n            }\n        }\n}\npublic void WriteToFile(List&lt;string\u003E list) \u002F\u002FЗапись в файл\n{\n        using (StreamWriter sw = File.AppendText(filepath))\n        {\n            for (int i = 0; i &lt; list.Count; i++)\n                 sw.WriteLine(list[i]);\n        }\n}\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nДальше нужно собрать решение «Solution» -\u003E «Rebuild Solution». После успешной сборки можно проверять работу.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch4\u003EПроверка работы службы(Запуск службы вручную)\u003C\u002Fh4\u003E\u003Cbr\u002F\u003E\r\nСлужбу windows нельзя запускать как обычное приложение. Можно запустить только через командную строку от имени администратора. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЗапускаем командную строку от имени администратора. Ввести следующие команды:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003Ecd C:\\Windows\\Microsoft.NET\\Framework\\v4.0.30319\nInstallUtil.exe  Путь\\Имя вашей службы.exe\n(InstallUtil.exe C:\\Users\\Анжелика\\source\\repos\\WindowsService1\\WindowsService1 \\bin\\Debug\\WindowsService1.exe)\nКоманда для удаления сервиса: InstallUtil.exe -u Путь\\Имя вашей службы.exe \u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nДальше нажимаем клавишу Win+R. Вводим «Services.msc». Находим в списке свой сервис, нажимаем на него, и нажимаем «Запустить(Start)». После успешного запуска сформируется файл по указанному в коде пути в котором будет находиться список системных ошибок. \u003Cbr\u002F\u003E\r\nНе забываем удалить службу после проверки. \u003Cbr\u002F\u003E\r\n\u003Ccut\u003E\u003C\u002Fcut\u003E\u003Cbr\u002F\u003E\r\n\u003Ch4\u003EОтображение WinForm\u003C\u002Fh4\u003E\u003Cbr\u002F\u003E\r\nДля отображения в консоли если постараться то можно найти статьи, но для отображения в WinForm я так и не нашла, так что вот. По умолчанию проект службы создается типа «Application». Для отображения через консоль этот параметр в настройках нужно поменять, для WinForm оставить как есть. Дальше нужно добавить форму в проект. «WindowsService1» → ПКМ → Add → Windows Form → Add. И делаем примерно следующий дизайн. Дальше меняем файл «Program.cs». \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nДобавляем using:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"cs\"\u003Eusing System.Windows.Forms;\nusing System.Security.Principal;\nusing System.ComponentModel;\nusing System.Diagnostics;\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nИ меняем метод Main:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"cs\"\u003Estatic void Main(string[] args)\n        {\n            WindowsPrincipal windowsPricipal = new WindowsPrincipal(WindowsIdentity.GetCurrent());\n            bool hasAdministrativeRight = windowsPricipal.IsInRole(WindowsBuiltInRole.Administrator);\n\n            if (hasAdministrativeRight == false) \u002F\u002Fпроверка на права администратора\n            {\n                ProcessStartInfo processInfo = new ProcessStartInfo(); \u002F\u002Fсоздаем новый процесс\n                processInfo.Verb = \"runas\"; \u002F\u002Fпроцесс должен быть запущен с правами администратора\n                processInfo.FileName = Application.ExecutablePath; \n                try\n                {\n                    Process.Start(processInfo); \u002F\u002Fпытаемся запустить процесс\n                }\n                catch (Win32Exception){}\n                Application.Exit();\n            }\n            else\n            {\n                Application.EnableVisualStyles();\n                Application.SetCompatibleTextRenderingDefault(false);\n                Application.Run(new Form1(args)); \u002F\u002FЗапускаем форму\n            }\n        }\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nДобавляем новый класс «SystemError». («WindowsService1» -\u003E ПКМ -\u003E Add -\u003E Class -\u003E Add). Тут мы будем хранить данные об ошибках. Меняем его:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"cs\"\u003Epublic string EntryType{ get; set; }\npublic string EventLog{ get; set; }\npublic string MachineName { get; set; }\npublic string AppName { get; set; }\npublic string Message { get; set; }\npublic string TimeWritten { get; set; }\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nДальше в «Service1.cs» добавляем метод «RunFromForm(string[] args)» который запускает службу. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"cs\"\u003Epublic void RunFromForm(string[] args)\n        {\n            OnStart(args);\n            OnStop();\n        }\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nДобавляем новый класс «GetListErrors». («WindowsService1» -\u003E ПКМ -\u003E Add -\u003E Class -\u003E Add). Тут мы будем доставать данные из файла. Добавляем using:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"cs\"\u003Eusing System.IO;\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nМеняем его:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"cs\"\u003Estring filepath = AppDomain.CurrentDomain.BaseDirectory + @\"\\ServiceLog.txt\";\n\n        SystemError systemError;\n        public List&lt;SystemError\u003E listSysErrs;\n        public void ReadFile() \u002F\u002FМетод чтения из файла и запись в список системных ошибок\n        {\n            systemError = new SystemError();\n            listSysErrs = new List&lt;SystemError\u003E();\n\n            using (StreamReader sr = new StreamReader(filepath))\n            {\n                string line;\n                while ((line = sr.ReadLine()) != null)\n                {\n                    if (line.Contains(\"-*-\"))\n                    {\n                        listSysErrs.Add(systemError);\n                        systemError = new SystemError(); \u002F\u002FСоздается новый элемент системной ошибки в списке\n                    } \n                    if (line.Contains(\"Entry Type\"))\n                    {\n                        systemError.EntryType = line.Substring(12);\n                    }\n                    else if (line.Contains(\"Event log\"))\n                    {\n                        systemError.EventLog = line.Substring(11);\n                    }\n                    else if (line.Contains(\"Machine Name\"))\n                    {\n                        systemError.MachineName = line.Substring(14);\n                    }\n                    else if (line.Contains(\"App Name\"))\n                    {\n                        systemError.AppName = line.Substring(10);\n                    }\n                    else if (line.Contains(\"Message\"))\n                    {\n                        systemError.Message = line.Substring(9);\n                    }\n                    else if (line.Contains(\"Time Written\"))\n                    {\n                        systemError.TimeWritten = line.Substring(14);\n                    } \n                }\n            }\n        }\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nДальше меняем код формы «Form1.cs». Добавляем using:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"cs\"\u003Eusing System.ServiceProcess;\nusing System.Diagnostics;\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nМеняем его:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"cs\"\u003EService1 service = new Service1();\n        List&lt;SystemError\u003E listSysErrs;\n        string[] args;\n        public Form1(string[] args)\n        {\n            InitializeComponent();\n\n            this.args = args;\n            if (Environment.UserInteractive)\u002F\u002FПроверяет выполняется ли текущий процесс в режиме взаимодействия с пользователем\n            {\n                service.RunFromForm(args); \u002F\u002FЗапускаем службу\n                GetListErrors getListErrors = new GetListErrors();\n                getListErrors.ReadFile(); \u002F\u002Fполучаем данные из файла результата службы\n                listSysErrs = getListErrors.listSysErrs;\n                FillDataGridView(); \u002F\u002FОтображаем список в таблице\n            }\n            else\n            {\n                    ServiceBase[] ServicesToRun;\n                    ServicesToRun = new ServiceBase[] { service };\n                    ServiceBase.Run(ServicesToRun); \n               \n            }\n        }\n        public void FillDataGridView() \u002F\u002FЗаполняет таблицу данными из списка\n        {\n            foreach (SystemError item in listSysErrs)\n            {\n                dataGridView1.Rows.Add(item.AppName, item.Message);\n            }\n        }\n\n        private void dataGridView1_CellClick(object sender, DataGridViewCellEventArgs e) \u002F\u002FПри нажатии на любую ячейку на панели будут отображаться больше данных именно по ошибке которую нажали\n        {\n            SystemError sys = listSysErrs[dataGridView1.CurrentRow.Index];\n\n            label1.Text = \"Entry Type: \" + sys.EntryType +\n                \"\\nEvent log: \" + sys.EventLog +\n                \"\\nMachine Name: \" + sys.MachineName +\n                \"\\nApp Name: \" + sys.AppName +\n                \"\\n\\nMessage: \" + FormatMessage(sys.Message) +\n                \"\\n\\nTime Written: \" + sys.TimeWritten;\n        }\n        private string FormatMessage(string msg) \u002F\u002FТак как весь текст не помещается на панель, то нужно подкорректировать строку так чтоб она была видна полностью а не уходила бы в закат\n        {\n            string retMsg = \"\";\n            int count = 75;\n\n            if (msg.Length \u003E count - 9)\n            {\n                retMsg += msg.Substring(0, count - 9) + \"\\n\";\n                msg = msg.Substring(count - 9);\n            }\n\n            while (msg.Length \u003E count)\n            {\n                retMsg += msg.Substring(0, count) + \"\\n\";\n                msg = msg.Substring(count);\n            }\n            retMsg += msg + \"\\n\";\n            return retMsg;\n        }\n        private void button1_Click(object sender, EventArgs e) \u002F\u002FПо нажатию на кнопку мы перезапускаем службу как и ранее\n        {\n                if (Environment.UserInteractive)\n                {\n                    while (dataGridView1.Rows.Count != 0)\n                    {\n                        dataGridView1.Rows.Remove(dataGridView1.Rows[dataGridView1.Rows.Count - 1]);\n                    }\n                    service.RunFromForm(args);\n\n                    GetListErrors getListErrors = new GetListErrors();\n                    getListErrors.ReedFile();\n                    listSysErrs = getListErrors.listSysErrs;\n\n                    FillDataGridView();\n                }\n                else\n                {\n                    ServiceBase[] ServicesToRun;\n                    ServicesToRun = new ServiceBase[] { service };\n                    ServiceBase.Run(ServicesToRun);\n                }\n        }\n        private void button2_Click(object sender, EventArgs e)\n        {\n                Process.Start(AppDomain.CurrentDomain.BaseDirectory); \u002F\u002FВыбираем файл\n        }\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nТеперь можно запускать службу как обычное приложение. Выглядит результат следующим образом:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fr\u002Fw780q1\u002Fwebt\u002Fpk\u002Fjp\u002Fnr\u002Fpkjpnr07wztrn15ko5ofzouxov8.jpeg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fpk\u002Fjp\u002Fnr\u002Fpkjpnr07wztrn15ko5ofzouxov8.jpeg\" data-blurred=\"true\"\u002F\u003E\u003C\u002Fdiv\u003E","tags":[{"titleHtml":"c#"},{"titleHtml":".net"},{"titleHtml":"windows"},{"titleHtml":"service"},{"titleHtml":"windows service"},{"titleHtml":"installer"},{"titleHtml":"winform"},{"titleHtml":"system"},{"titleHtml":"error"},{"titleHtml":"event viewer"},{"titleHtml":"events"},{"titleHtml":"log"},{"titleHtml":"application"}],"metadata":{"stylesUrls":[],"scriptUrls":[],"shareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F452688\u002Ffb88623e55e13bcd7eafc191644e792a\u002F","shareImageWidth":1200,"shareImageHeight":630,"vkShareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F452688\u002Ffb88623e55e13bcd7eafc191644e792a\u002F?format=vk","schemaJsonLd":"{\"@context\":\"http:\\\u002F\\\u002Fschema.org\",\"@type\":\"Article\",\"mainEntityOfPage\":{\"@type\":\"WebPage\",\"@id\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fru\\\u002Fpost\\\u002F452688\\\u002F\"},\"headline\":\"Windows service. Поиск системных ошибок и отображение их в WinForm C#\",\"datePublished\":\"2019-05-20T21:38:54+03:00\",\"dateModified\":\"2019-05-23T12:16:48+03:00\",\"author\":{\"@type\":\"Person\",\"name\":\"Анжелика\"},\"publisher\":{\"@type\":\"Organization\",\"name\":\"Habr\",\"logo\":{\"@type\":\"ImageObject\",\"url\":\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fa_\\\u002Flk\\\u002F9m\\\u002Fa_lk9mjkccjox-zccjrpfolmkmq.png\"}},\"description\":\"В этой статье мы разберем как с нуля создать приложение, которое будет работать со службами windows и отображать системные ошибки в WinForm (C#).   План этой ста...\",\"url\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fru\\\u002Fpost\\\u002F452688\\\u002F#post-content-body\",\"about\":[\"h_net\",\"h_csharp\",\"f_develop\"],\"image\":[\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002F48\\\u002F0y\\\u002Fwl\\\u002F480ywl42i-wkfnuzfqvg0_5qznu.jpeg\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fpk\\\u002Fjp\\\u002Fnr\\\u002Fpkjpnr07wztrn15ko5ofzouxov8.jpeg\"]}","metaDescription":"В этой статье мы разберем как с нуля создать приложение, которое будет работать со службами windows и отображать системные ошибки в WinForm (C#). \r\n\r\nПлан этой статьи:\r\n\r\n\r\nСоздание службы \r\nEvent...","mainImageUrl":null,"amp":false},"polls":[],"commentsEnabled":true,"rulesRemindEnabled":false,"votesEnabled":true,"status":"published","plannedPublishTime":null,"checked":null,"isEditorial":false}},"articlesIds":{},"isLoading":false,"pagesCount":{},"route":{},"reasonsList":null,"view":"cards","lastVisitedRoute":{},"ssrCommentsArticleIds":[""],"karma":{}},"authorContribution":{"authors":{}},"betaTest":{"currentAnnouncement":null,"announcements":{},"announcementCards":null,"announcementComments":{},"announcementCommentThreads":{},"announcementCommentingStatuses":{},"archivedList":[]},"authorStatistics":{"articleRefs":{},"articleIds":{},"pagesCount":{},"route":{},"viewsCount":[],"maxStatsCount":{}},"career":{"seoLandings":[],"hubs":"net,csharp"},"comments":{"articleComments":{},"searchCommentsResults":null,"previewComment":null,"pagesCount":null,"commentAccess":{},"scrollParents":{},"pageArticleComments":{"lastViewedComment":0,"postId":null,"lastCommentTimestamp":"","moderated":[],"moderatedIds":[],"commentRoute":""}},"companies":{"companyRefs":{},"companyIds":{},"companyTopIds":{},"pagesCount":{},"companyProfiles":{},"companiesCategories":[],"companiesCategoriesTotalCount":0,"companiesWidgets":{},"companiesWorkers":{},"companiesFans":{},"route":{},"isLoading":false,"companyWorkersLoading":false,"companyFansLoading":false,"vacancies":{}},"companiesContribution":{"hubs":{},"flows":{},"companyRefs":{}},"companyHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"conversation":{"messages":[],"respondent":null,"isLoadMore":false},"conversations":{"conversations":[],"unreadCount":0,"pagesCount":0,"isLoadMore":false},"desktopState":{"desktopFl":null,"desktopHl":null,"isChecked":false,"isLoginDemanded":false},"dfp":{"slotsDict":{}},"docs":{"menu":{},"articles":{},"mainMenu":[],"loading":{"main":false,"dropdown":false,"article":false}},"feature":{"isProbablyVisible":"true"},"flows":{"flows":[{"alias":"develop","id":1,"route":{"name":"FLOW_PAGE","params":{"flowName":"develop"}}},{"alias":"admin","id":6,"route":{"name":"FLOW_PAGE","params":{"flowName":"admin"}}},{"alias":"design","id":2,"route":{"name":"FLOW_PAGE","params":{"flowName":"design"}}},{"alias":"management","id":3,"route":{"name":"FLOW_PAGE","params":{"flowName":"management"}}},{"alias":"marketing","id":4,"route":{"name":"FLOW_PAGE","params":{"flowName":"marketing"}}},{"alias":"popsci","id":7,"route":{"name":"FLOW_PAGE","params":{"flowName":"popsci"}}}]},"global":{"isPwa":false,"device":"desktop","isHabrCom":true},"hubs":{"hubRefs":{},"hubIds":{},"pagesCount":{},"isLoading":false,"route":{}},"hubsBlock":{"hubRefs":{},"hubIds":{}},"i18n":{"fl":"ru","hl":"ru"},"info":{"infoPage":{},"isLoading":true},"location":{"urlStruct":{"protocol":null,"slashes":null,"auth":null,"host":null,"port":null,"hostname":null,"hash":null,"search":null,"query":{},"pathname":null,"path":null,"href":""},"searchQuery":null},"me":{"user":null,"ppgDemanded":false,"karmaResetInfo":{"canReincarnate":null,"wasReincarnated":null,"currentScore":null},"notes":null},"mostReadingList":{"mostReadingListIds":[],"mostReadingListRefs":null,"promoPost":null},"pinnedPost":{"pinnedPost":null},"ppa":{"articles":{},"card":null,"transactions":null,"totalTransactions":null,"isAccessible":null},"projectsBlocks":{"activeBlocks":{}},"pullRefresh":{"shouldRefresh":false},"sandbox":{"articleIds":[],"articleRefs":{},"pagesCount":null,"route":{},"lastVisitedRoute":{},"isLoading":false},"settingsOther":{"inputs":{"uiLang":{"errors":[],"ref":null,"value":""},"articlesLangEnglish":{"errors":[],"ref":null,"value":false},"articlesLangRussian":{"errors":[],"ref":null,"value":false},"agreement":{"errors":[],"ref":null,"value":false},"email":{"errors":[],"ref":null,"value":true},"digest":{"errors":[],"ref":null,"value":true}}},"similarList":{"similarListIds":[],"similarListRefs":null},"ssr":{"error":null,"isDataLoaded":false,"isDataLoading":false,"isHydrationFailed":false,"isServer":false},"userHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"userInvites":{"availableInvites":0,"usedInvitesIds":[],"usedInvitesRefs":{},"usedInvitesPagesCount":0,"unusedInvitesIds":[],"unusedInvitesRefs":{},"unusedInvitesPagesCount":0},"users":{"authorRefs":{},"authorIds":{},"pagesCount":{},"authorProfiles":{},"userHubs":{},"userInvitations":{},"authorFollowers":{},"authorFollowed":{},"karmaStats":[],"statistics":null,"isLoading":false,"authorFollowersLoading":false,"authorFollowedLoading":false,"userHubsLoading":false,"userInvitationsLoading":false,"route":{}},"viewport":{"prevScrollY":{},"scrollY":0,"width":0},"tracker":{"items":{},"pagesCache":{},"markedViewedSilently":{},"markedRead":{},"unreadCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null},"unviewedCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null}}};(function(){var s;(s=document.currentScript||document.scripts[document.scripts.length-1]).parentNode.removeChild(s);}());</script>
+<script src="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" defer></script><script src="https://assets.habr.com/habr-web/js/app.c0af73e7.js" defer></script>
+
+
+
+    <script>
+      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+        (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+        m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+      })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+    </script>
+  
+  <script type="text/javascript" >
+    (function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+    m[i].l=1*new Date();k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})
+    (window, document, "script", "https://mc.yandex.ru/metrika/tag.js", "ym");
+
+    ym(24049213, "init", {
+      defer:true,
+      trackLinks:true,
+      accurateTrackBounce:true,
+      webvisor:false,
+    });
+  </script>
+  <noscript>
+    <div>
+      <img src="https://mc.yandex.ru/watch/24049213" style="position:absolute; left:-9999px;" alt="" />
+    </div>
+  </noscript>
+  
+    <script type="text/javascript">
+      window.addEventListener('load', function () {
+        setTimeout(() => {
+          const img = new Image();
+          img.src = 'https://vk.com/rtrg?p=VK-RTRG-421343-57vKE';
+        }, 0);
+      });
+    </script>
+  
+</body>
+</html>

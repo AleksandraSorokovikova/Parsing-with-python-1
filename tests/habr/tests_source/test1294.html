@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="ru" data-vue-meta="%7B%22lang%22:%7B%22ssr%22:%22ru%22%7D%7D">
+<head >
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
+  <title>Интеграция Kubernetes Dashboard и пользователей GitLab / Хабр</title>
+  <style>
+    /* cyrillic-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSxf6TF0.woff2) format('woff2');
+      unicode-range: U+0460-052F, U+1C80-1C88, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+    }
+
+    /* cyrillic */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveQhf6TF0.woff2) format('woff2');
+      unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+    }
+
+    /* latin-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSBf6TF0.woff2) format('woff2');
+      unicode-range: U+0100-024F, U+0259, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20CF, U+2113, U+2C60-2C7F, U+A720-A7FF;
+    }
+
+    /* latin */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveRhf6.woff2) format('woff2');
+      unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+    }
+  </style>
+  <link rel="preload" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" as="script"><link rel="preload" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/app.c0af73e7.js" as="script">
+  <link rel="stylesheet" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css"><link rel="stylesheet" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css">
+  <script>window.i18nFetch = new Promise((res, rej) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open('GET', '/js/i18n/ru-compiled.85eb77f0b17c8235e7b64b9f81ea5ec2.json');
+          xhr.responseType = 'json';
+          xhr.onload = function(e) {
+            if (this.status === 200) {
+              res({ru: xhr.response});
+            } else {
+              rej(e);
+            }
+          };
+          xhr.send();
+        });</script>
+  
+  <script data-vue-meta="ssr" src="/js/ads.js" onload="window['zhY4i4nJ9K'] = true" data-vmid="checkad"></script><script data-vue-meta="ssr" type="application/ld+json" data-vmid="ldjson-schema">{"@context":"http:\/\/schema.org","@type":"Article","mainEntityOfPage":{"@type":"WebPage","@id":"https:\/\/habr.com\/ru\/company\/flant\/blog\/452988\/"},"headline":"Интеграция Kubernetes Dashboard и пользователей GitLab","datePublished":"2019-05-24T09:22:13+03:00","dateModified":"2020-01-14T11:02:11+03:00","author":{"@type":"Person","name":"Баймухаметов Руслан"},"publisher":{"@type":"Organization","name":"Habr","logo":{"@type":"ImageObject","url":"https:\/\/habrastorage.org\/webt\/a_\/lk\/9m\/a_lk9mjkccjox-zccjrpfolmkmq.png"}},"description":"Kubernetes Dashboard &mdash; простой в работе инструмент для получения актуальных сведений о работающем кластере и минимального управления им. Начинаешь его ценить е...","url":"https:\/\/habr.com\/ru\/company\/flant\/blog\/452988\/#post-content-body","about":["c_flant","h_sys_admin","h_devops","h_kubernetes","f_develop","f_admin"],"image":["https:\/\/habr.com\/share\/publication\/452988\/52eccabb816c681b4e48c38a61a16a89\/","https:\/\/habrastorage.org\/webt\/q9\/u2\/fc\/q9u2fcnbkuqxxf0ii-lfyljnymc.png","https:\/\/habrastorage.org\/webt\/p1\/iz\/mo\/p1izmot-ncabrufaur9vulpqmfc.png","https:\/\/habrastorage.org\/webt\/t_\/hy\/d-\/t_hyd-ueebs_0mnce1xiyujfkq0.png","https:\/\/habrastorage.org\/webt\/ar\/oy\/af\/aroyafgjtqfn9o57jizhulg1d6o.png","https:\/\/habrastorage.org\/webt\/ip\/ca\/e_\/ipcae_0rklsslqgumhnehjf0fq8.png","https:\/\/habrastorage.org\/webt\/ai\/_m\/cm\/ai_mcm4gqbemsi0lvwsf34mvirs.png","https:\/\/habrastorage.org\/webt\/2u\/ek\/6n\/2uek6nwrydcjgctphjcgvsficu8.png","https:\/\/habrastorage.org\/webt\/hv\/g7\/xt\/hvg7xtedmnc0scqesqocl3vccym.png","https:\/\/habrastorage.org\/webt\/8i\/sk\/ee\/8iskeeib2sfxz84tgq0jpewgp3a.png","https:\/\/habrastorage.org\/webt\/9h\/j2\/mg\/9hj2mglvqk-nxhgk90rnpmqaq24.png","https:\/\/habrastorage.org\/webt\/jd\/7y\/7i\/jd7y7ilc3dfopw0jgnx1dvs4vqa.png","https:\/\/habrastorage.org\/webt\/bp\/uq\/xb\/bpuqxbeam7ha7aqwsix0thed9go.png","https:\/\/habrastorage.org\/webt\/ep\/bf\/ko\/epbfkognsudoi6zwdofu5e0n-k4.png","https:\/\/habrastorage.org\/webt\/b2\/xc\/-9\/b2xc-9nbeqzfjdhzv6tbh5f2le8.png","https:\/\/habrastorage.org\/webt\/4x\/s-\/f7\/4xs-f7lpnyokbn8jlgqjkhvq_fi.png","https:\/\/habrastorage.org\/webt\/lp\/o2\/lq\/lpo2lq-3uxxc0atra9aqkcvrzm0.png"]}</script>
+  <script src="//www.googletagservices.com/tag/js/gpt.js" async></script>
+  <style>.grecaptcha-badge{visibility: hidden;}</style>
+  <meta name="habr-version" content="2.49.0">
+  
+  <meta data-vue-meta="ssr" property="fb:app_id" content="444736788986613"><meta data-vue-meta="ssr" property="fb:pages" content="472597926099084"><meta data-vue-meta="ssr" name="twitter:card" content="summary_large_image"><meta data-vue-meta="ssr" name="twitter:site" content="@habr_eng"><meta data-vue-meta="ssr" property="og:title" content="Интеграция Kubernetes Dashboard и пользователей GitLab" data-vmid="og:title"><meta data-vue-meta="ssr" name="twitter:title" content="Интеграция Kubernetes Dashboard и пользователей GitLab" data-vmid="twitter:title"><meta data-vue-meta="ssr" name="aiturec:title" content="Интеграция Kubernetes Dashboard и пользователей GitLab" data-vmid="aiturec:title"><meta data-vue-meta="ssr" name="description" content="Kubernetes Dashboard — простой в работе инструмент для получения актуальных сведений о работающем кластере и минимального управления им. Начинаешь его ценить ещё больше, когда доступ к этим..." data-vmid="description"><meta data-vue-meta="ssr" itemprop="description" content="Kubernetes Dashboard — простой в работе инструмент для получения актуальных сведений о работающем кластере и минимального управления им. Начинаешь его ценить ещё больше, когда доступ к этим..." data-vmid="description:itemprop"><meta data-vue-meta="ssr" property="og:description" content="Kubernetes Dashboard — простой в работе инструмент для получения актуальных сведений о работающем кластере и минимального управления им. Начинаешь его ценить ещё больше, когда доступ к этим..." data-vmid="og:description"><meta data-vue-meta="ssr" name="twitter:description" content="Kubernetes Dashboard — простой в работе инструмент для получения актуальных сведений о работающем кластере и минимального управления им. Начинаешь его ценить ещё больше, когда доступ к этим..." data-vmid="twitter:description"><meta data-vue-meta="ssr" property="aiturec:description" content="Kubernetes Dashboard — простой в работе инструмент для получения актуальных сведений о работающем кластере и минимального управления им. Начинаешь его ценить ещё больше, когда доступ к этим..." data-vmid="aiturec:description"><meta data-vue-meta="ssr" itemprop="image" content="https://habrastorage.org/webt/q9/u2/fc/q9u2fcnbkuqxxf0ii-lfyljnymc.png" data-vmid="image:itemprop"><meta data-vue-meta="ssr" property="og:image" content="https://habrastorage.org/webt/q9/u2/fc/q9u2fcnbkuqxxf0ii-lfyljnymc.png" data-vmid="og:image"><meta data-vue-meta="ssr" property="aiturec:image" content="https://habrastorage.org/webt/q9/u2/fc/q9u2fcnbkuqxxf0ii-lfyljnymc.png" data-vmid="aiturec:image"><meta data-vue-meta="ssr" name="twitter:image" content="https://habrastorage.org/webt/q9/u2/fc/q9u2fcnbkuqxxf0ii-lfyljnymc.png" data-vmid="twitter:image"><meta data-vue-meta="ssr" property="vk:image" content="https://habrastorage.org/webt/q9/u2/fc/q9u2fcnbkuqxxf0ii-lfyljnymc.png" data-vmid="vk:image"><meta data-vue-meta="ssr" property="aiturec:item_id" content="452988" data-vmid="aiturec:item_id"><meta data-vue-meta="ssr" property="aiturec:datetime" content="2019-05-24T06:22:13.000Z" data-vmid="aiturec:datetime"><meta data-vue-meta="ssr" property="og:type" content="article" data-vmid="og:type"><meta data-vue-meta="ssr" property="og:locale" content="ru_RU" data-vmid="og:locale"><meta data-vue-meta="ssr" property="og:image:width" content="1200" data-vmid="og:image:width"><meta data-vue-meta="ssr" property="og:image:height" content="630" data-vmid="og:image:height">
+  <link data-vue-meta="ssr" href="https://habr.com/ru/rss/post/452988/?fl=ru" type="application/rss+xml" title="" rel="alternate" name="rss"><link data-vue-meta="ssr" href="https://habr.com/ru/company/flant/blog/452988/" rel="canonical" data-vmid="canonical"><link data-vue-meta="ssr" data-vmid="hreflang"><link data-vue-meta="ssr" image_src="image" href="https://habrastorage.org/webt/q9/u2/fc/q9u2fcnbkuqxxf0ii-lfyljnymc.png" data-vmid="image:href">
+  <meta name="apple-mobile-web-app-status-bar-style" content="#303b44">
+  <meta name="msapplication-TileColor" content="#629FBC">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="16x16"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-16.png"
+  >
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="32x32"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-32.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="76x76"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-76.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="120x120"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="152x152"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-152.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="180x180"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-180.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="256x256"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-256.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1136x640.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2436x1125.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1792x828.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_828x1792.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1334x750.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2208x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1125x2436.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2208.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2732x2048.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2688x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2224x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_750x1334.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x2732.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2388x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2224.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_640x1136.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2388.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x1536.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1536x2048.png"
+  >
+  <link
+    rel="mask-icon"
+    color="#77a2b6"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.svg"
+  >
+  <link
+    crossorigin="use-credentials"
+    href="/manifest.webmanifest"
+    rel="manifest"
+  >
+</head>
+<body>
+
+
+<div id="app" data-server-rendered="true" data-async-called="true"><div class="tm-layout__wrapper"><!----> <div></div> <!----> <header class="tm-header"><div class="tm-page-width"><div class="tm-header__container"><!----> <span class="tm-header__logo-wrap"><a href="/ru/" class="tm-header__logo tm-header__logo_ru"><svg height="16" width="16" class="tm-svg-img tm-header__icon"><title>Хабр</title> <use xlink:href="/img/habr-logo-ru.svg#logo"></use></svg></a> <span class="tm-header__beta-sign" style="display:none;">β</span></span> <div class="tm-dropdown tm-header__projects"><div class="tm-dropdown__head"><button class="tm-header__dropdown-toggle"><svg height="16" width="16" class="tm-svg-img tm-header__icon tm-header__icon_dropdown"><title>Открыть список</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#arrow-down"></use></svg></button></div> <!----></div> <a href="/ru/sandbox/start/" class="tm-header__become-author-btn">
+            Как стать автором
+          </a> <div class="tm-feature tm-header__feature tm-feature_variant-inline"><!----></div> <!----> <!----></div></div></header> <div class="tm-layout"><div class="tm-page-progress-bar"></div> <div data-menu-sticky="true" class="tm-base-layout__header tm-base-layout__header_is-sticky"><div class="tm-page-width"><div class="tm-base-layout__header-wrapper"><div class="tm-main-menu"><div class="tm-main-menu__section"><nav class="tm-main-menu__section-content"><!----> <a href="/ru/all/" class="tm-main-menu__item">
+        Все потоки
+      </a> <a href="/ru/flows/develop/" class="tm-main-menu__item">
+          Разработка
+        </a><a href="/ru/flows/admin/" class="tm-main-menu__item">
+          Администрирование
+        </a><a href="/ru/flows/design/" class="tm-main-menu__item">
+          Дизайн
+        </a><a href="/ru/flows/management/" class="tm-main-menu__item">
+          Менеджмент
+        </a><a href="/ru/flows/marketing/" class="tm-main-menu__item">
+          Маркетинг
+        </a><a href="/ru/flows/popsci/" class="tm-main-menu__item">
+          Научпоп
+        </a></nav></div></div> <div class="tm-header-user-menu tm-base-layout__user-menu"><a href="/ru/search/" class="tm-header-user-menu__item tm-header-user-menu__search"><svg height="24" width="24" class="tm-svg-img tm-header-user-menu__icon tm-header-user-menu__icon_search tm-header-user-menu__icon_dark"><title>Поиск</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#search"></use></svg></a> <!----> <!----> <!----> <div class="tm-header-user-menu__item tm-header-user-menu__user_desktop"><div class="tm-dropdown"><div class="tm-dropdown__head"><svg height="24" width="24" data-test-id="menu-toggle-guest" class="tm-svg-img tm-header-user-menu__icon"><title>Профиль</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#header-user"></use></svg> <!----></div> <!----></div> <!----></div> <!----></div></div></div></div> <!----> <div class="tm-page-width"></div> <main class="tm-layout__container"><div hl="ru" companyName="flant" data-async-called="true" class="tm-page"><div class="tm-page-width"><div class="tm-page__header"><div class="tm-company-card__branding tm-company-article__branding tm-company-card__branding_loading"><div class="tm-company-card__branding-placeholder"><!----></div> <a href="https://flant.ru"><img src="//habrastorage.org/getpro/habr/branding/3d4/c06/8ba/3d4c068ba151a5c21727ee9bb31f95de.png" width="100%" class="tm-company-card__branding-image"></a></div></div> <div class="tm-page__wrapper"><div class="tm-page__main tm-page__main_has-sidebar"><div class="pull-down"><div class="pull-down__header" style="height:0px;"><div class="pull-down__content" style="bottom:10px;"><svg height="24" width="24" class="tm-svg-img pull-down__arrow"><title>Обновить</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#pull-arrow"></use></svg></div></div> <div class="tm-article-presenter"><div class="tm-company-card tm-company-article__company-card"><div class="tm-company-card__info"><div class="tm-company-card__header"><a href="/ru/company/flant/profile/" class="tm-company-card__avatar"><div class="tm-entity-image"><img alt="" height="48" src="//habrastorage.org/getpro/habr/company/de7/635/363/de763536359ce6e2d2a978f8dded1964.png" width="48" class="tm-entity-image__pic"></div></a> <a href="https://career.habr.com/companies/flant" rel="noopener" target="_blank" class="tm-grade tm-company-card__rating"><div class="tm-rating"><div class="tm-rating__header"><svg height="24" width="24" class="tm-svg-img tm-svg-grade__icon"><title>Оценка компании на Хабр Карьере</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#grade"></use></svg> <div class="tm-rating__counter tm-rating__counter_variant-grade">4.51</div></div> <div class="tm-rating__text tm-rating__text_variant-grade">
+    Оценка
+  </div></div></a> <div class="tm-rating tm-company-card__rating"><div class="tm-rating__header"> <div class="tm-rating__counter">294.82</div></div> <div class="tm-rating__text">
+    Рейтинг
+  </div></div></div> <div class="tm-company-card__info"><a href="/ru/company/flant/profile/" class="tm-company-card__name">
+        Флант
+      </a> <div class="tm-company-card__description">DevOps-as-a-Service, Kubernetes, обслуживание 24×7</div></div></div> <div class="tm-company-card__buttons"><!----> <!----></div></div> <div class="tm-article-presenter__body"><div class="tm-misprint-area"><div class="tm-misprint-area__wrapper"><article class="tm-article-presenter__content tm-article-presenter__content_narrow"><div class="tm-article-presenter__header"> <div class="tm-article-snippet tm-article-presenter__snippet"><div class="tm-article-snippet__meta-container"><div class="tm-article-snippet__meta"><span class="tm-user-info tm-article-snippet__author"><a href="/ru/users/broken-ufa/" title="broken-ufa" class="tm-user-info__userpic"><div class="tm-entity-image"><svg height="24" width="24" class="tm-svg-img tm-image-placeholder tm-image-placeholder_lilac"><!----> <use xlink:href="/img/megazord-v24.ce74655c.svg#placeholder-user"></use></svg></div></a> <span class="tm-user-info__user"><a href="/ru/users/broken-ufa/" class="tm-user-info__username">
+      broken-ufa
+    </a> </span></span> <span class="tm-article-snippet__datetime-published"><time datetime="2019-05-24T06:22:13.000Z" title="2019-05-24, 09:22">24  мая  2019 в 09:22</time></span></div> <!----></div> <h1 lang="ru" class="tm-article-snippet__title tm-article-snippet__title_h1"><span>Интеграция Kubernetes Dashboard и пользователей GitLab</span></h1> <div class="tm-article-snippet__hubs"><span class="tm-article-snippet__hubs-item"><a href="/ru/company/flant/blog/" class="tm-article-snippet__hubs-item-link router-link-active"><span>Блог компании Флант</span> <!----></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/sys_admin/" class="tm-article-snippet__hubs-item-link"><span>Системное администрирование</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/devops/" class="tm-article-snippet__hubs-item-link"><span>DevOps</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/kubernetes/" class="tm-article-snippet__hubs-item-link"><span>Kubernetes</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span></div> <!----> <!----> <!----></div></div> <!----> <div data-gallery-root="" lang="ru" class="tm-article-body"><div id="post-content-body" class="article-formatted-body article-formatted-body_version-1"><div xmlns="http://www.w3.org/1999/xhtml"><img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/q9/u2/fc/q9u2fcnbkuqxxf0ii-lfyljnymc.png"/><br/>
+<br/>
+Kubernetes Dashboard — простой в работе инструмент для получения актуальных сведений о работающем кластере и минимального управления им. Начинаешь его ценить ещё больше, когда доступ к этим возможностям нужен не только администраторам/DevOps-инженерам, но и тем, кто меньше привык к консоли и/или не намерен разбираться со всеми тонкостями взаимодействия с kubectl и другими утилитами. Так случилось и у нас: разработчикам захотелось быстрого доступа к веб-интерфейсу Kubernetes, а поскольку мы используем GitLab, решение напросилось само собой.<a name="habracut"></a><br/>
+<br/>
+<h2>Зачем это?</h2><br/>
+Непосредственные разработчики могут быть заинтересованы в инструменте вроде K8s Dashboard для задач по отладке. Иногда хочется просматривать логи и ресурсы, а порой и убивать pod’ы, масштабировать Deployments/StatefulSets и даже заходить в консоль контейнеров (случаются и такие запросы, для решения которых, впрочем, есть другой путь — например, через <a href="https://habr.com/ru/company/flant/blog/436112/">kubectl-debug</a>).<br/>
+<br/>
+Кроме того, есть и психологический момент для руководителей, когда они хотят посмотреть на кластер — увидеть, что «всё зелененькое», и таким образом успокоиться, что «всё работает» (что, конечно, весьма относительно… но это уже выходит за рамки статьи).<br/>
+<br/>
+В качестве стандартной CI-системы у нас <a href="https://habr.com/ru/company/flant/blog/345116/">применяется</a> GitLab: ей пользуются и все разработчики. Поэтому, чтобы предоставить им доступ, было логично сделать интеграцию Dashboard с аккаунтами в GitLab.<br/>
+<br/>
+Также отмечу, что мы используем NGINX Ingress. Если же вы работаете с другими <a href="https://habr.com/ru/company/flant/blog/447180/">ingress-решениями</a>, потребуется самостоятельно найти аналоги аннотаций для авторизации.<br/>
+<br/>
+<h2>Пробуем интеграцию</h2><br/>
+<h3>Установка Dashboard</h3><br/>
+<i><b>Внимание</b>: Если вы собираетесь повторять описанные ниже шаги, то — во избежание лишних операций — сначала дочитайте до следующего подзаголовка.</i><br/>
+<br/>
+Поскольку эта интеграция используется нами во множестве инсталляций, мы автоматизировали её установку. Исходники, которые потребуются для этого, опубликованы в <a href="https://github.com/flant/examples/tree/master/2019/05-kubernetes-dashboard-gitlab">специальном GitHub-репозитории</a>. В их основе — незначительно модифицированные YAML-конфигурации из <a href="https://github.com/kubernetes/dashboard">официального репозитория Dashboard</a>, а также Bash-скрипт для быстрого развёртывания.<br/>
+<br/>
+Скрипт устанавливает Dashboard в кластер и настраивает его на интеграцию с GitLab:<br/>
+<br/>
+<pre><code class="bash">$ ./ctl.sh  
+Usage: ctl.sh [OPTION]... --gitlab-url GITLAB_URL --oauth2-id ID --oauth2-secret SECRET --dashboard-url DASHBOARD_URL
+Install kubernetes-dashboard to Kubernetes cluster.
+Mandatory arguments:
+ -i, --install                install into 'kube-system' namespace
+ -u, --upgrade                upgrade existing installation, will reuse password and host names
+ -d, --delete                 remove everything, including the namespace
+     --gitlab-url             set gitlab url with schema (https://gitlab.example.com)
+     --oauth2-id              set OAUTH2_PROXY_CLIENT_ID from gitlab
+     --oauth2-secret          set OAUTH2_PROXY_CLIENT_SECRET from gitlab
+     --dashboard-url          set dashboard url without schema (dashboard.example.com)
+Optional arguments:
+ -h, --help                   output this message</code></pre><br/>
+Однако перед его использованием необходимо зайти в GitLab: Admin area → Applications — и добавить новое приложение для будущей панели. Назовём его «kubernetes dashboard»:<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/p1/iz/mo/p1izmot-ncabrufaur9vulpqmfc.png"/><br/>
+<br/>
+В результате его добавления GitLab предоставит хэши:<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/t_/hy/d-/t_hyd-ueebs_0mnce1xiyujfkq0.png"/><br/>
+<br/>
+Именно они и используются в качестве аргументов к скрипту. В результате, установка выглядит следующим образом:<br/>
+<br/>
+<pre><code class="bash">$ ./ctl.sh -i --gitlab-url https://gitlab.example.com --oauth2-id 6a52769e… --oauth2-secret 6b79168f… --dashboard-url dashboard.example.com</code></pre><br/>
+После этого проверим, что всё запустилось:<br/>
+<br/>
+<pre><code class="bash">$ kubectl -n kube-system get pod | egrep '(dash|oauth)'
+kubernetes-dashboard-76b55bc9f8-xpncp   1/1       Running   0          14s
+oauth2-proxy-5586ccf95c-czp2v           1/1       Running   0          14s</code></pre><br/>
+Рано или поздно всё запустится, однако <b>сразу авторизация работать не будет</b>! Дело в том, что в используемом образе (ситуация в других образах аналогична) некорректно реализован процесс ловли редиректа в callback. Это обстоятельство приводит к тому, что oauth стирает cookie, которую сам же (oauth) нам предоставляет…<br/>
+<br/>
+Проблема решается сборкой своего образа oauth с патчем.<br/>
+<br/>
+<h3>Патч к oauth и повторная установка</h3><br/>
+Для этого воспользуемся следующим Dockerfile’ом:<br/>
+<br/>
+<pre><code class="plaintext">FROM golang:1.9-alpine3.7
+WORKDIR /go/src/github.com/bitly/oauth2_proxy
+
+RUN apk --update add make git build-base curl bash ca-certificates wget \
+&amp;&amp; update-ca-certificates \
+&amp;&amp; go get -u github.com/golang/dep/cmd/dep \
+&amp;&amp; curl -sSO https://raw.githubusercontent.com/pote/gpm/v1.4.0/bin/gpm \
+&amp;&amp; chmod +x gpm \
+&amp;&amp; mv gpm /usr/local/bin
+RUN git clone https://github.com/bitly/oauth2_proxy.git . \
+&amp;&amp; git checkout fa2771998a98a5bfdfa3c3503757668ac4f1c8ec
+ADD rd.patch .
+RUN patch -p1 &lt; rd.patch &amp;&amp; ./dist.sh
+
+FROM alpine:3.7
+RUN apk --update add curl bash  ca-certificates &amp;&amp; update-ca-certificates
+COPY --from=0 /go/src/github.com/bitly/oauth2_proxy/dist/ /bin/
+
+EXPOSE 8080 4180
+ENTRYPOINT [ "/bin/oauth2_proxy" ]
+CMD [ "--upstream=http://0.0.0.0:8080/", "--http-address=0.0.0.0:4180" ]</code></pre><br/>
+<div class="spoiler"><b class="spoiler_title">А вот как выглядит сам патч rd.patch</b><div class="spoiler_text"><pre><code class="plaintext">diff --git a/Gopkg.lock b/Gopkg.lock
+index 5a3758a..1294a90 100644
+--- a/Gopkg.lock
++++ b/Gopkg.lock
+@@ -131,7 +131,7 @@
+   version = "v1.0.0"
+ 
+ [[projects]]
+-  name = "gopkg.in/fsnotify.v1"
++  name = "gopkg.in/fsnotify/fsnotify.v1"
+   packages = ["."]
+   revision = "836bfd95fecc0f1511dd66bdbf2b5b61ab8b00b6"
+   version = "v1.2.11"
+@@ -149,6 +149,6 @@
+ [solve-meta]
+   analyzer-name = "dep"
+   analyzer-version = 1
+-  inputs-digest = "b502c41a61115d14d6379be26b0300f65d173bdad852f0170d387ebf2d7ec173"
++  inputs-digest = "cfdd05348394cd0597edb858bdba5681665358a963356ed248d98f39373c33b5"
+   solver-name = "gps-cdcl"
+   solver-version = 1
+diff --git a/Gopkg.toml b/Gopkg.toml
+index c4005e1..422bd43 100644
+--- a/Gopkg.toml
++++ b/Gopkg.toml
+@@ -4,7 +4,7 @@
+ #
+ 
+ [[constraint]]
+-  name = "github.com/18F/hmacauth"
++  name = "github.com/mbland/hmacauth"
+   version = "~1.0.1"
+ 
+ [[constraint]]
+@@ -36,7 +36,7 @@
+   name = "google.golang.org/api"
+ 
+ [[constraint]]
+-  name = "gopkg.in/fsnotify.v1"
++  name = "gopkg.in/fsnotify/fsnotify.v1"
+   version = "~1.2.0"
+ 
+ [[constraint]]
+diff --git a/dist.sh b/dist.sh
+index a00318b..92990d4 100755
+--- a/dist.sh
++++ b/dist.sh
+@@ -14,25 +14,13 @@ goversion=$(go version | awk '{print $3}')
+ sha256sum=()
+ 
+ echo "... running tests"
+-./test.sh
++#./test.sh
+ 
+-for os in windows linux darwin; do
+-    echo "... building v$version for $os/$arch"
+-    EXT=
+-    if [ $os = windows ]; then
+-        EXT=".exe"
+-    fi
+-    BUILD=$(mktemp -d ${TMPDIR:-/tmp}/oauth2_proxy.XXXXXX)
+-    TARGET="oauth2_proxy-$version.$os-$arch.$goversion"
+-    FILENAME="oauth2_proxy-$version.$os-$arch$EXT"
+-    GOOS=$os GOARCH=$arch CGO_ENABLED=0 \
+-        go build -ldflags="-s -w" -o $BUILD/$TARGET/$FILENAME || exit 1
+-    pushd $BUILD/$TARGET
+-    sha256sum+=("$(shasum -a 256 $FILENAME || exit 1)")
+-    cd .. &amp;&amp; tar czvf $TARGET.tar.gz $TARGET
+-    mv $TARGET.tar.gz $DIR/dist
+-    popd
+-done
++os='linux'
++echo "... building v$version for $os/$arch"
++TARGET="oauth2_proxy-$version.$os-$arch.$goversion"
++GOOS=$os GOARCH=$arch CGO_ENABLED=0 \
++    go build -ldflags="-s -w" -o ./dist/oauth2_proxy || exit 1
+ 
+ checksum_file="sha256sum.txt"
+ cd $DIR/dist
+diff --git a/oauthproxy.go b/oauthproxy.go
+index 21e5dfc..df9101a 100644
+--- a/oauthproxy.go
++++ b/oauthproxy.go
+@@ -381,7 +381,9 @@ func (p *OAuthProxy) SignInPage(rw http.ResponseWriter, req *http.Request, code
+ 	if redirect_url == p.SignInPath {
+ 		redirect_url = "/"
+ 	}
+-
++	if req.FormValue("rd") != "" {
++		redirect_url = req.FormValue("rd")
++	}
+ 	t := struct {
+ 		ProviderName  string
+ 		SignInMessage string
+diff --git a/watcher.go b/watcher.go
+index bedb9f8..4b83946 100644
+--- a/watcher.go
++++ b/watcher.go
+@@ -7,8 +7,7 @@ import (
+ 	"os"
+ 	"path/filepath"
+ 	"time"
+-
+-	"gopkg.in/fsnotify.v1"
++	"gopkg.in/fsnotify/fsnotify.v1"
+ )
+ 
+ func WaitForReplacement(filename string, op fsnotify.Op,
+
+</code></pre></div></div><br/>
+Теперь можно осуществить сборку образа и за’push’ить его в наш же GitLab. Далее в <code>manifests/kube-dashboard-oauth2-proxy.yaml</code> укажем использование нужного образа (замените его на свой):<br/>
+<br/>
+<pre><code class="plaintext"> image: docker.io/colemickens/oauth2_proxy:latest</code></pre><br/>
+Если у вас закрытый авторизацией registry — не забудьте добавить использование секрета для pull’а образов:<br/>
+<br/>
+<pre><code class="plaintext">      imagePullSecrets:
+     - name: gitlab-registry</code></pre><br/>
+… и добавьте сам секрет для registry:<br/>
+<br/>
+<pre><code class="plaintext">---
+apiVersion: v1
+data:
+ .dockercfg: eyJyZWdpc3RyeS5jb21wYW55LmNvbSI6IHsKICJ1c2VybmFtZSI6ICJvYXV0aDIiLAogInBhc3N3b3JkIjogIlBBU1NXT1JEIiwKICJhdXRoIjogIkFVVEhfVE9LRU4iLAogImVtYWlsIjogIm1haWxAY29tcGFueS5jb20iCn0KfQoK
+=
+kind: Secret
+metadata:
+ annotations:
+ name: gitlab-registry
+ namespace: kube-system
+type: kubernetes.io/dockercfg</code></pre><br/>
+Внимательный читатель увидит, что приведённая выше длинная строка — это base64 от конфига:<br/>
+<br/>
+<pre><code class="json">{"registry.company.com": {
+ "username": "oauth2",
+ "password": "PASSWORD",
+ "auth": "AUTH_TOKEN",
+ "email": "mail@company.com"
+}
+}</code></pre><br/>
+Это данные пользователя в GitLab, код которым Kubernetes будет pull’ить образ из registry.<br/>
+<br/>
+После того, как всё сделано, можно удалить текущую (некорректно работающую) инсталляцию Dashboard командой:<br/>
+<br/>
+<pre><code class="plaintext">$ ./ctl.sh -d</code></pre><br/>
+… и установить всё заново:<br/>
+<br/>
+<pre><code class="plaintext">$ ./ctl.sh -i --gitlab-url https://gitlab.example.com --oauth2-id 6a52769e… --oauth2-secret 6b79168f… --dashboard-url dashboard.example.com</code></pre><br/>
+Настало время зайти в Dashboard и найти довольно архаичную кнопку авторизации:<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/ar/oy/af/aroyafgjtqfn9o57jizhulg1d6o.png"/><br/>
+<br/>
+После нажатия на неё нас встретит GitLab, предлагая авторизоваться на своей привычной странице (конечно же, если мы не были предварительно авторизованы там):<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/ip/ca/e_/ipcae_0rklsslqgumhnehjf0fq8.png"/><br/>
+<br/>
+Авторизуемся с учётными данными GitLab — и всё свершилось:<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/ai/_m/cm/ai_mcm4gqbemsi0lvwsf34mvirs.png"/><br/>
+<br/>
+<h2>О возможностях Dashboard</h2><br/>
+Если вы разработчик, который прежде не работал с Kubernetes, или же просто по какой-то причине не сталкивались прежде с Dashboard — проиллюстрирую некоторые его возможности.<br/>
+<br/>
+Во-первых, можно посмотреть, что «всё зелененькое»:<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/2u/ek/6n/2uek6nwrydcjgctphjcgvsficu8.png"/><br/>
+<br/>
+По pod’ам доступны и более детальные данные, такие как переменные окружения, выкаченный образ, аргументы запуска, их состояние:<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/hv/g7/xt/hvg7xtedmnc0scqesqocl3vccym.png"/><br/>
+<br/>
+У deployment’ов видны статусы:<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/8i/sk/ee/8iskeeib2sfxz84tgq0jpewgp3a.png"/><br/>
+<br/>
+… и другие подробности:<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/9h/j2/mg/9hj2mglvqk-nxhgk90rnpmqaq24.png"/><br/>
+<br/>
+… а также есть возможность отмасштабировать deployment:<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/jd/7y/7i/jd7y7ilc3dfopw0jgnx1dvs4vqa.png"/><br/>
+<br/>
+Результат этой операции:<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/bp/uq/xb/bpuqxbeam7ha7aqwsix0thed9go.png"/><br/>
+<br/>
+Среди прочих полезных возможностей, уже упомянутых в начале статьи, — просмотр логов:<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/ep/bf/ko/epbfkognsudoi6zwdofu5e0n-k4.png"/><br/>
+<br/>
+… и функция входа в консоль контейнеров выбранного pod’а:<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/b2/xc/-9/b2xc-9nbeqzfjdhzv6tbh5f2le8.png"/><br/>
+<br/>
+Ещё, например, можно посмотреть и limit’ы/request’ы на узлах:<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/4x/s-/f7/4xs-f7lpnyokbn8jlgqjkhvq_fi.png"/><br/>
+<br/>
+Конечно, это не все возможности панели, но надеюсь, что общее представление сложилось.<br/>
+<br/>
+<h2>Недостатки интеграции и Dashboard</h2><br/>
+В описанной интеграции нет никакого <b>разграничения доступа</b>. С ней все пользователи, имеющие какой-либо доступ к GitLab, получают доступ в Dashboard. Доступ в самом Dashboard у них одинаковый, соответствующий правам самой Dashboard, которые <a href="https://github.com/kubernetes/dashboard/wiki/Access-control">определяются в RBAC</a>. Очевидно, что это подойдёт не всем, но для нашего случая оказалось достаточным.<br/>
+<br/>
+Из заметных минусов в самой панели Dashboard отмечу следующие:<br/>
+<br/>
+<ul>
+<li> невозможно попасть в консоль init-контейнера;</li>
+<li> невозможно редактировать Deployments и StatefulSets, хотя это поправимо в ClusterRole;</li>
+<li> совместимость Dashboard с последними версиями Kubernetes и будущее проекта вызывает вопросы.</li>
+</ul><br/>
+Последняя проблема заслуживает особого внимания.<br/>
+<br/>
+<h2>Статус и альтернативы Dashboard</h2><br/>
+Таблица совместимости Dashboard с релизами Kubernetes, представленная в последней версии проекта (<a href="https://github.com/kubernetes/dashboard/releases/tag/v1.10.1">v1.10.1</a>), не очень-то радует:<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/lp/o2/lq/lpo2lq-3uxxc0atra9aqkcvrzm0.png"/><br/>
+<br/>
+Несмотря на это, существует (уже принятый в январе) <a href="https://github.com/kubernetes/dashboard/pull/3476">PR #3476</a>, который объявляет о поддержке K8s 1.13. Вдобавок, среди issues проекта можно найти упоминания пользователей, работающих с панелью в K8s 1.14. Наконец, <a href="https://github.com/kubernetes/dashboard/commits/master">коммиты</a> в кодовую базу проекта не прекращаются. Так что (как минимум!) фактический статус проекта не настолько плох, как может сперва показаться из официальной таблицы совместимости.<br/>
+<br/>
+Наконец, у Dashboard существуют альтернативы. Среди них:<br/>
+<br/>
+<ol>
+<li> <a href="https://github.com/herbrandson/k8dash">K8Dash</a> — молодой интерфейс (первые коммиты датируются мартом этого года), уже предлагающий неплохие возможности, такие как визуальное представление текущего статуса кластера и управление его объектами. Позиционируется как «интерфейс реального времени», т.к. автоматически актуализирует показываемые данные, не требуя обновлять страницу в браузере.</li>
+<li> <a href="https://github.com/openshift/console">OpenShift Console</a> — веб-интерфейс от Red Hat OpenShift, который, впрочем, принесёт в ваш кластер и другие наработки проекта, что не всем подходит.</li>
+<li> <a href="https://github.com/smpio/kubernator">Kubernator</a> — интересный проект, созданный как более низкоуровневый (чем Dashboard) интерфейс с возможностью просмотра всех объектов кластера. Однако всё выглядит так, что его разработка прекратилась.</li>
+<li> <a href="https://github.com/reactiveops/polaris">Polaris</a> — буквально на днях <a href="https://www.reddit.com/r/kubernetes/comments/bpf8so/introducing_polaris_keeping_your_kubernetes/">анонсированный</a> проект, который совмещает в себе функции панели (показывает текущее состояние кластера, но не управляет его объектами) и автоматической «валидации лучших практик» (проверяет кластер на корректность конфигураций запущенных в нём Deployments).</li>
+</ol><br/>
+<h2>Вместо выводов</h2><br/>
+Dashboard — стандартный инструмент для кластеров Kubernetes, которые мы обслуживаем. Его интеграция с GitLab тоже стала частью нашей «инсталляции по умолчанию», поскольку многие разработчики рады тем возможностям, которые у них появляются с этой панелью.<br/>
+<br/>
+У Kubernetes Dashboard периодически появляются альтернативы от Open Source-сообщества (и мы рады их рассмотреть), однако на данном этапе остаёмся с этим решением.<br/>
+<br/>
+<h2>P.S.</h2><br/>
+Читайте также в нашем блоге:<br/>
+<br/>
+<ul>
+<li> «<a href="https://habr.com/ru/company/flant/blog/426985/">kubebox и другие консольные оболочки для Kubernetes</a>»;</li>
+<li> «<a href="https://habr.com/ru/company/flant/blog/345116/">Лучшие практики CI/CD с Kubernetes и GitLab (обзор и видео доклада)</a>»;</li>
+<li> «<a href="https://habr.com/ru/company/flant/blog/345580/">Сборка и дeплой приложений в Kubernetes с помощью dapp и GitLab CI</a>»;</li>
+<li> «<a href="https://habr.com/ru/company/flant/blog/332712/">GitLab CI для непрерывной интеграции и доставки в production. Часть 1: наш пайплайн</a>».</li>
+</ul><br/>
+<br/>
+UPD. По репорту whoch, была найдена ошибка в патче (табы заменились на пробелы). Патч в статье обновлен.</div></div> <!----> <!----></div> <div class="tm-article-presenter__meta"><div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Теги:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5BKubernetes%20Dashboard%5D" class="tm-tags-list__link">Kubernetes Dashboard</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5BKubernetes%5D" class="tm-tags-list__link">Kubernetes</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5BGitLab%5D" class="tm-tags-list__link">GitLab</a></li></ul></div> <div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Хабы:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/company/flant/blog/" class="tm-hubs-list__link router-link-active">
+    Блог компании Флант
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/sys_admin/" class="tm-hubs-list__link">
+    Системное администрирование
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/devops/" class="tm-hubs-list__link">
+    DevOps
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/kubernetes/" class="tm-hubs-list__link">
+    Kubernetes
+  </a></li></ul></div></div></article></div> <!----></div> <div class="tm-article-sticky-panel"><div class="tm-data-icons tm-article-sticky-panel__icons"><div class="tm-article-rating tm-data-icons__item"><div class="tm-votes-meter tm-article-rating__votes-switcher"><svg height="16" width="16" class="tm-svg-img tm-votes-meter__icon tm-votes-meter__icon_medium"><title>Всего голосов 27: ↑27 и ↓0</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-rating"></use></svg> <span title="Всего голосов 27: ↑27 и ↓0" class="tm-votes-meter__value tm-votes-meter__value_positive tm-votes-meter__value_medium">+27</span></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----> <span title="Количество просмотров" class="tm-icon-counter tm-data-icons__item"><svg height="16" width="16" class="tm-svg-img tm-icon-counter__icon"><title>Просмотры</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-views"></use></svg> <span class="tm-icon-counter__value">10K</span></span> <button title="Добавить в закладки" type="button" class="bookmarks-button tm-data-icons__item"><span title="Добавить в закладки" class="tm-svg-icon__wrapper bookmarks-button__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Добавить в закладки</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-favorite"></use></svg></span> <span title="Количество пользователей, добавивших публикацию в закладки" class="bookmarks-button__counter">
+    49
+  </span></button> <!----> <div title="Поделиться" class="tm-sharing tm-data-icons__item"><button type="button" class="tm-sharing__button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="tm-sharing__icon"><path fill="currentColor" d="M10.33.275l9.047 7.572a.2.2 0 010 .306l-9.048 7.572a.2.2 0 01-.328-.153V11c-8 0-9.94 6-9.94 6S-1 5 10 5V.428a.2.2 0 01.328-.153z"></path></svg></button> <!----></div> <DIV class="v-portal" style="display:none;"></DIV></div> </div></div> <!----> <!----> <div class="tm-article-presenter__footer"><div class="tm-article-blocks"><!----> <section class="tm-block tm-block_spacing-bottom"><!----> <div class="tm-block__body tm-block__body_variant-balanced"><div class="tm-article-author"><div class="tm-article-author__company"><div class="tm-article-author__company-card"><div class="tm-company-snippet"><a href="/ru/company/flant/profile/" class="tm-company-snippet__logo-link"><div class="tm-entity-image"><img alt="" height="40" src="//habrastorage.org/getpro/habr/company/de7/635/363/de763536359ce6e2d2a978f8dded1964.png" width="40" class="tm-entity-image__pic"></div></a> <div class="tm-company-snippet__info"><a href="/ru/company/flant/profile/" class="tm-company-snippet__title">Флант</a> <div class="tm-company-snippet__description">DevOps-as-a-Service, Kubernetes, обслуживание 24×7</div></div></div> <div class="tm-article-author__buttons"><!----> <!----></div></div> <div class="tm-article-author__company-contacts"><a href="https://flant.ru/" rel="noopener" target="_blank" class="tm-article-author__contact">
+      Сайт
+    </a><a href="https://twitter.com/flant_ru" rel="noopener" target="_blank" class="tm-article-author__contact">
+      Twitter
+    </a><a href="https://vk.com/flant_ru" rel="noopener" target="_blank" class="tm-article-author__contact">
+      ВКонтакте
+    </a><a href="https://github.com/flant" rel="noopener" target="_blank" class="tm-article-author__contact">
+      Github
+    </a><a href="https://telegram.me/flant_ru" rel="noopener" target="_blank" class="tm-article-author__contact">
+      Telegram
+    </a></div> <div class="tm-article-author__separator"></div></div> <div class="tm-user-card tm-article-author__user-card tm-user-card_variant-article"><div class="tm-user-card__info-container"><div class="tm-user-card__header"><div class="tm-user-card__header-data"><a href="/ru/users/broken-ufa/" class="tm-user-card__userpic tm-user-card__userpic_size-40"><div class="tm-entity-image"><svg class="tm-svg-img tm-image-placeholder tm-image-placeholder_lilac"><!----> <use xlink:href="/img/megazord-v24.ce74655c.svg#placeholder-user"></use></svg></div></a> <div class="tm-user-card__meta"><div title=" 37 голосов " class="tm-karma tm-user-card__karma"><div class="tm-karma__votes tm-karma__votes_positive">
+    35
+  </div> <div class="tm-karma__text">
+    Карма
+  </div></div> <div title="Рейтинг пользователя" class="tm-rating tm-user-card__rating"><div class="tm-rating__header"> <div class="tm-rating__counter">0</div></div> <div class="tm-rating__text">
+    Рейтинг
+  </div></div></div></div></div> <div class="tm-user-card__info tm-user-card__info_variant-article"><div class="tm-user-card__title tm-user-card__title_variant-article"><span class="tm-user-card__name tm-user-card__name_variant-article">Баймухаметов Руслан</span> <a href="/ru/users/broken-ufa/" class="tm-user-card__nickname tm-user-card__nickname_variant-article">
+          @broken-ufa
+        </a> <!----></div> <p class="tm-user-card__short-info tm-user-card__short-info_variant-article">DevOps-инженер / *nix-администратор</p></div></div> <div class="tm-user-card__buttons tm-user-card__buttons_variant-article"><!----> <!----> <!----> <!----> <!----></div></div> <!----></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----></section> <div class="tm-article-blocks__comments"><div class="tm-article-page-comments"><div class="tm-article-comments-counter-link tm-article-comments-counter-button"><a href="/ru/company/flant/blog/452988/comments/" class="tm-article-comments-counter-link__link tm-article-comments-counter-link__link_button-style"><svg height="16" width="16" class="tm-svg-img tm-article-comments-counter-link__icon tm-article-comments-counter-link__icon_contrasted"><title>Комментарии</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-comments"></use></svg> <span class="tm-article-comments-counter-link__value tm-article-comments-counter-link__value_contrasted">
+       Комментарии 7 
+    </span></a> <!----></div></div></div>  <!---->  <!----> <!----></div></div></div></div></div> <div class="tm-page__sidebar"><div class="tm-layout-sidebar"><div class="tm-layout-sidebar__placeholder_initial"></div> <div class="tm-sexy-sidebar tm-sexy-sidebar_initial" style="margin-top:0px;"><!----> <section class="tm-block tm-block_spacing-bottom"><header class="tm-block__header"><h2 class="tm-block__title">Информация</h2> <!----></header> <div class="tm-block__body"><div class="tm-company-basic-info"><dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Дата основания</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><time datetime="2008-05-12T20:00:00.000Z" title="2008-05-13, 00:00">13  мая  2008</time></dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Местоположение</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap">
+    Россия
+  </dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Сайт</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><a href="https://flant.ru/" target="_blank" class="tm-company-basic-info__link">
+      flant.ru
+    </a></dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Численность</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap">
+    101–200 человек
+  </dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Дата регистрации</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><time datetime="2017-01-25T07:25:09.000Z" title="2017-01-25, 10:25">25  января  2017</time></dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Представитель</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><a href="/ru/users/shurup/" class="tm-company-basic-info__link">
+      Дмитрий Шурупов
+    </a></dd></dl></div></div> <!----></section> <div class="tm-company-widgets"></div> <!----></div></div></div></div></div></div></main> <!----></div> <div class="tm-footer-menu"><div class="tm-page-width"><div class="tm-footer-menu__container"><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Ваш аккаунт
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr/?back=/ru/company/flant/blog/452988/&amp;hl=ru" rel="nofollow" target="_self">
+                Войти
+              </a></li><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr-register/?back=/ru/company/flant/blog/452988/&amp;hl=ru" rel="nofollow" target="_self">
+                Регистрация
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Разделы
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/" class="footer-menu__item-link router-link-active">
+                Публикации
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/news/" class="footer-menu__item-link">
+                Новости
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/hubs/" class="footer-menu__item-link">
+                Хабы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/companies/" class="footer-menu__item-link">
+                Компании
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/users/" class="footer-menu__item-link">
+                Авторы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/sandbox/" class="footer-menu__item-link">
+                Песочница
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Информация
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/docs/help/" class="footer-menu__item-link">
+                Устройство сайта
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/authors/codex/" class="footer-menu__item-link">
+                Для авторов
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/companies/corpblogs/" class="footer-menu__item-link">
+                Для компаний
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/docs/transparency/" class="footer-menu__item-link">
+                Документы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/agreement" target="_blank">
+                Соглашение
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/confidential/" target="_blank">
+                Конфиденциальность
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Услуги
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQLwRfQmXibiUlWaRg-BAc38s7oM3lJiaPju7qmdJsp8ysIvZ_G-Npem0njJLMozE2bPHMpDqiI5hhy/pub?start=false&amp;loop=false&amp;delayms=60000&amp;slide=id.g91a03369cd_4_297" target="_blank">
+                Реклама
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://habrastorage.org/storage/stuff/habr/service_price.pdf" target="_blank">
+                Тарифы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQJJds8-Di7BQSP_guHxICN7woVYoN5NP_22ra-BIo4bqnTT9FR6fB-Ku2P0AoRpX0Ds-LRkDeAoD8F/pub?start=false&amp;loop=false&amp;delayms=60000" target="_blank">
+                Контент
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://tmtm.timepad.ru/" target="_blank">
+                Семинары
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/megaprojects/" class="footer-menu__item-link">
+                Мегапроекты
+              </a></li></ul></div></div></div></div></div> <div class="tm-footer"><div class="tm-page-width"><div class="tm-footer__container"><!----> <div class="tm-footer__social"><a href="https://www.facebook.com/habrahabr.ru" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Facebook</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-facebook"></use></svg></a><a href="https://twitter.com/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Twitter</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-twitter"></use></svg></a><a href="https://vk.com/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>VK</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-vkontakte"></use></svg></a><a href="https://telegram.me/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Telegram</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-telegram"></use></svg></a><a href="https://www.youtube.com/channel/UCd_sTwKqVrweTt4oAKY5y4w" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Youtube</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-youtube"></use></svg></a><a href="https://zen.yandex.ru/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Яндекс Дзен</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-zen"></use></svg></a></div> <DIV class="v-portal" style="display:none;"></DIV> <button class="tm-footer__link"><!---->
+        Настройка языка
+      </button> <a href="/ru/about" class="tm-footer__link">
+        О сайте
+      </a> <a href="/ru/feedback/" class="tm-footer__link">
+        Техническая поддержка
+      </a> <!----> <a href="/berserk-mode-nope" class="tm-footer__link">
+        Вернуться на старую версию
+      </a> <div class="tm-footer-copyright"><span class="tm-copyright"><span class="tm-copyright__years">© 2006–2021 </span> <span class="tm-copyright__name">«<a href="https://company.habr.com/" rel="noopener" target="_blank" class="tm-copyright__link">Habr</a>»</span></span></div></div></div></div> <!----> <!----></div> <div class="vue-portal-target"></div></div>
+<script>window.__INITIAL_STATE__={"adblock":{"hasAcceptableAdsFilter":false,"hasAdblock":false},"articlesList":{"articlesList":{"452988":{"id":"452988","timePublished":"2019-05-24T06:22:13+00:00","isCorporative":true,"lang":"ru","titleHtml":"Интеграция Kubernetes Dashboard и пользователей GitLab","leadData":{"textHtml":"\u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fq9\u002Fu2\u002Ffc\u002Fq9u2fcnbkuqxxf0ii-lfyljnymc.png\"\u003E\u003Cbr\u003E\r\n\u003Cbr\u003E\r\nKubernetes Dashboard — простой в работе инструмент для получения актуальных сведений о работающем кластере и минимального управления им. Начинаешь его ценить ещё больше, когда доступ к этим возможностям нужен не только администраторам\u002FDevOps-инженерам, но и тем, кто меньше привык к консоли и\u002Fили не намерен разбираться со всеми тонкостями взаимодействия с kubectl и другими утилитами. Так случилось и у нас: разработчикам захотелось быстрого доступа к веб-интерфейсу Kubernetes, а поскольку мы используем GitLab, решение напросилось само собой.","imageUrl":null,"buttonTextHtml":"Читать дальше →","image":null},"editorVersion":"1.0","postType":"article","postLabels":[],"author":{"scoreStats":{"score":35,"votesCount":37},"rating":0,"relatedData":null,"contacts":[],"authorContacts":[],"paymentDetails":{"paymentYandexMoney":null,"paymentPayPalMe":null,"paymentWebmoney":null},"id":"1310810","alias":"broken-ufa","fullname":"Баймухаметов Руслан","avatarUrl":null,"speciality":"DevOps-инженер \u002F *nix-администратор"},"statistics":{"commentsCount":7,"favoritesCount":49,"readingCount":10021,"score":27,"votesCount":27},"hubs":[{"relatedData":null,"id":"20940","alias":"flant","type":"corporative","title":"Блог компании Флант","titleHtml":"Блог компании Флант","isProfiled":false},{"relatedData":null,"id":"221","alias":"sys_admin","type":"collective","title":"Системное администрирование","titleHtml":"Системное администрирование","isProfiled":true},{"relatedData":null,"id":"20788","alias":"devops","type":"collective","title":"DevOps","titleHtml":"DevOps","isProfiled":true},{"relatedData":null,"id":"22196","alias":"kubernetes","type":"collective","title":"Kubernetes","titleHtml":"Kubernetes","isProfiled":true}],"flows":[{"id":"1","alias":"develop","title":"Разработка"},{"id":"6","alias":"admin","title":"Администрирование"}],"relatedData":null,"textHtml":"\u003Cdiv xmlns=\"http:\u002F\u002Fwww.w3.org\u002F1999\u002Fxhtml\"\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fq9\u002Fu2\u002Ffc\u002Fq9u2fcnbkuqxxf0ii-lfyljnymc.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nKubernetes Dashboard — простой в работе инструмент для получения актуальных сведений о работающем кластере и минимального управления им. Начинаешь его ценить ещё больше, когда доступ к этим возможностям нужен не только администраторам\u002FDevOps-инженерам, но и тем, кто меньше привык к консоли и\u002Fили не намерен разбираться со всеми тонкостями взаимодействия с kubectl и другими утилитами. Так случилось и у нас: разработчикам захотелось быстрого доступа к веб-интерфейсу Kubernetes, а поскольку мы используем GitLab, решение напросилось само собой.\u003Ca name=\"habracut\"\u003E\u003C\u002Fa\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EЗачем это?\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nНепосредственные разработчики могут быть заинтересованы в инструменте вроде K8s Dashboard для задач по отладке. Иногда хочется просматривать логи и ресурсы, а порой и убивать pod’ы, масштабировать Deployments\u002FStatefulSets и даже заходить в консоль контейнеров (случаются и такие запросы, для решения которых, впрочем, есть другой путь — например, через \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fflant\u002Fblog\u002F436112\u002F\"\u003Ekubectl-debug\u003C\u002Fa\u003E).\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nКроме того, есть и психологический момент для руководителей, когда они хотят посмотреть на кластер — увидеть, что «всё зелененькое», и таким образом успокоиться, что «всё работает» (что, конечно, весьма относительно… но это уже выходит за рамки статьи).\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВ качестве стандартной CI-системы у нас \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fflant\u002Fblog\u002F345116\u002F\"\u003Eприменяется\u003C\u002Fa\u003E GitLab: ей пользуются и все разработчики. Поэтому, чтобы предоставить им доступ, было логично сделать интеграцию Dashboard с аккаунтами в GitLab.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nТакже отмечу, что мы используем NGINX Ingress. Если же вы работаете с другими \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fflant\u002Fblog\u002F447180\u002F\"\u003Eingress-решениями\u003C\u002Fa\u003E, потребуется самостоятельно найти аналоги аннотаций для авторизации.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EПробуем интеграцию\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\n\u003Ch3\u003EУстановка Dashboard\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\n\u003Ci\u003E\u003Cb\u003EВнимание\u003C\u002Fb\u003E: Если вы собираетесь повторять описанные ниже шаги, то — во избежание лишних операций — сначала дочитайте до следующего подзаголовка.\u003C\u002Fi\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПоскольку эта интеграция используется нами во множестве инсталляций, мы автоматизировали её установку. Исходники, которые потребуются для этого, опубликованы в \u003Ca href=\"https:\u002F\u002Fgithub.com\u002Fflant\u002Fexamples\u002Ftree\u002Fmaster\u002F2019\u002F05-kubernetes-dashboard-gitlab\"\u003Eспециальном GitHub-репозитории\u003C\u002Fa\u003E. В их основе — незначительно модифицированные YAML-конфигурации из \u003Ca href=\"https:\u002F\u002Fgithub.com\u002Fkubernetes\u002Fdashboard\"\u003Eофициального репозитория Dashboard\u003C\u002Fa\u003E, а также Bash-скрипт для быстрого развёртывания.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nСкрипт устанавливает Dashboard в кластер и настраивает его на интеграцию с GitLab:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"bash\"\u003E$ .\u002Fctl.sh  \nUsage: ctl.sh [OPTION]... --gitlab-url GITLAB_URL --oauth2-id ID --oauth2-secret SECRET --dashboard-url DASHBOARD_URL\nInstall kubernetes-dashboard to Kubernetes cluster.\nMandatory arguments:\n -i, --install                install into 'kube-system' namespace\n -u, --upgrade                upgrade existing installation, will reuse password and host names\n -d, --delete                 remove everything, including the namespace\n     --gitlab-url             set gitlab url with schema (https:\u002F\u002Fgitlab.example.com)\n     --oauth2-id              set OAUTH2_PROXY_CLIENT_ID from gitlab\n     --oauth2-secret          set OAUTH2_PROXY_CLIENT_SECRET from gitlab\n     --dashboard-url          set dashboard url without schema (dashboard.example.com)\nOptional arguments:\n -h, --help                   output this message\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nОднако перед его использованием необходимо зайти в GitLab: Admin area → Applications — и добавить новое приложение для будущей панели. Назовём его «kubernetes dashboard»:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fp1\u002Fiz\u002Fmo\u002Fp1izmot-ncabrufaur9vulpqmfc.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВ результате его добавления GitLab предоставит хэши:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Ft_\u002Fhy\u002Fd-\u002Ft_hyd-ueebs_0mnce1xiyujfkq0.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nИменно они и используются в качестве аргументов к скрипту. В результате, установка выглядит следующим образом:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"bash\"\u003E$ .\u002Fctl.sh -i --gitlab-url https:\u002F\u002Fgitlab.example.com --oauth2-id 6a52769e… --oauth2-secret 6b79168f… --dashboard-url dashboard.example.com\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nПосле этого проверим, что всё запустилось:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"bash\"\u003E$ kubectl -n kube-system get pod | egrep '(dash|oauth)'\nkubernetes-dashboard-76b55bc9f8-xpncp   1\u002F1       Running   0          14s\noauth2-proxy-5586ccf95c-czp2v           1\u002F1       Running   0          14s\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nРано или поздно всё запустится, однако \u003Cb\u003Eсразу авторизация работать не будет\u003C\u002Fb\u003E! Дело в том, что в используемом образе (ситуация в других образах аналогична) некорректно реализован процесс ловли редиректа в callback. Это обстоятельство приводит к тому, что oauth стирает cookie, которую сам же (oauth) нам предоставляет…\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПроблема решается сборкой своего образа oauth с патчем.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch3\u003EПатч к oauth и повторная установка\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\nДля этого воспользуемся следующим Dockerfile’ом:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003EFROM golang:1.9-alpine3.7\nWORKDIR \u002Fgo\u002Fsrc\u002Fgithub.com\u002Fbitly\u002Foauth2_proxy\n\nRUN apk --update add make git build-base curl bash ca-certificates wget \\\n&amp;&amp; update-ca-certificates \\\n&amp;&amp; go get -u github.com\u002Fgolang\u002Fdep\u002Fcmd\u002Fdep \\\n&amp;&amp; curl -sSO https:\u002F\u002Fraw.githubusercontent.com\u002Fpote\u002Fgpm\u002Fv1.4.0\u002Fbin\u002Fgpm \\\n&amp;&amp; chmod +x gpm \\\n&amp;&amp; mv gpm \u002Fusr\u002Flocal\u002Fbin\nRUN git clone https:\u002F\u002Fgithub.com\u002Fbitly\u002Foauth2_proxy.git . \\\n&amp;&amp; git checkout fa2771998a98a5bfdfa3c3503757668ac4f1c8ec\nADD rd.patch .\nRUN patch -p1 &lt; rd.patch &amp;&amp; .\u002Fdist.sh\n\nFROM alpine:3.7\nRUN apk --update add curl bash  ca-certificates &amp;&amp; update-ca-certificates\nCOPY --from=0 \u002Fgo\u002Fsrc\u002Fgithub.com\u002Fbitly\u002Foauth2_proxy\u002Fdist\u002F \u002Fbin\u002F\n\nEXPOSE 8080 4180\nENTRYPOINT [ \"\u002Fbin\u002Foauth2_proxy\" ]\nCMD [ \"--upstream=http:\u002F\u002F0.0.0.0:8080\u002F\", \"--http-address=0.0.0.0:4180\" ]\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cdiv class=\"spoiler\"\u003E\u003Cb class=\"spoiler_title\"\u003EА вот как выглядит сам патч rd.patch\u003C\u002Fb\u003E\u003Cdiv class=\"spoiler_text\"\u003E\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003Ediff --git a\u002FGopkg.lock b\u002FGopkg.lock\nindex 5a3758a..1294a90 100644\n--- a\u002FGopkg.lock\n+++ b\u002FGopkg.lock\n@@ -131,7 +131,7 @@\n   version = \"v1.0.0\"\n \n [[projects]]\n-  name = \"gopkg.in\u002Ffsnotify.v1\"\n+  name = \"gopkg.in\u002Ffsnotify\u002Ffsnotify.v1\"\n   packages = [\".\"]\n   revision = \"836bfd95fecc0f1511dd66bdbf2b5b61ab8b00b6\"\n   version = \"v1.2.11\"\n@@ -149,6 +149,6 @@\n [solve-meta]\n   analyzer-name = \"dep\"\n   analyzer-version = 1\n-  inputs-digest = \"b502c41a61115d14d6379be26b0300f65d173bdad852f0170d387ebf2d7ec173\"\n+  inputs-digest = \"cfdd05348394cd0597edb858bdba5681665358a963356ed248d98f39373c33b5\"\n   solver-name = \"gps-cdcl\"\n   solver-version = 1\ndiff --git a\u002FGopkg.toml b\u002FGopkg.toml\nindex c4005e1..422bd43 100644\n--- a\u002FGopkg.toml\n+++ b\u002FGopkg.toml\n@@ -4,7 +4,7 @@\n #\n \n [[constraint]]\n-  name = \"github.com\u002F18F\u002Fhmacauth\"\n+  name = \"github.com\u002Fmbland\u002Fhmacauth\"\n   version = \"~1.0.1\"\n \n [[constraint]]\n@@ -36,7 +36,7 @@\n   name = \"google.golang.org\u002Fapi\"\n \n [[constraint]]\n-  name = \"gopkg.in\u002Ffsnotify.v1\"\n+  name = \"gopkg.in\u002Ffsnotify\u002Ffsnotify.v1\"\n   version = \"~1.2.0\"\n \n [[constraint]]\ndiff --git a\u002Fdist.sh b\u002Fdist.sh\nindex a00318b..92990d4 100755\n--- a\u002Fdist.sh\n+++ b\u002Fdist.sh\n@@ -14,25 +14,13 @@ goversion=$(go version | awk '{print $3}')\n sha256sum=()\n \n echo \"... running tests\"\n-.\u002Ftest.sh\n+#.\u002Ftest.sh\n \n-for os in windows linux darwin; do\n-    echo \"... building v$version for $os\u002F$arch\"\n-    EXT=\n-    if [ $os = windows ]; then\n-        EXT=\".exe\"\n-    fi\n-    BUILD=$(mktemp -d ${TMPDIR:-\u002Ftmp}\u002Foauth2_proxy.XXXXXX)\n-    TARGET=\"oauth2_proxy-$version.$os-$arch.$goversion\"\n-    FILENAME=\"oauth2_proxy-$version.$os-$arch$EXT\"\n-    GOOS=$os GOARCH=$arch CGO_ENABLED=0 \\\n-        go build -ldflags=\"-s -w\" -o $BUILD\u002F$TARGET\u002F$FILENAME || exit 1\n-    pushd $BUILD\u002F$TARGET\n-    sha256sum+=(\"$(shasum -a 256 $FILENAME || exit 1)\")\n-    cd .. &amp;&amp; tar czvf $TARGET.tar.gz $TARGET\n-    mv $TARGET.tar.gz $DIR\u002Fdist\n-    popd\n-done\n+os='linux'\n+echo \"... building v$version for $os\u002F$arch\"\n+TARGET=\"oauth2_proxy-$version.$os-$arch.$goversion\"\n+GOOS=$os GOARCH=$arch CGO_ENABLED=0 \\\n+    go build -ldflags=\"-s -w\" -o .\u002Fdist\u002Foauth2_proxy || exit 1\n \n checksum_file=\"sha256sum.txt\"\n cd $DIR\u002Fdist\ndiff --git a\u002Foauthproxy.go b\u002Foauthproxy.go\nindex 21e5dfc..df9101a 100644\n--- a\u002Foauthproxy.go\n+++ b\u002Foauthproxy.go\n@@ -381,7 +381,9 @@ func (p *OAuthProxy) SignInPage(rw http.ResponseWriter, req *http.Request, code\n \tif redirect_url == p.SignInPath {\n \t\tredirect_url = \"\u002F\"\n \t}\n-\n+\tif req.FormValue(\"rd\") != \"\" {\n+\t\tredirect_url = req.FormValue(\"rd\")\n+\t}\n \tt := struct {\n \t\tProviderName  string\n \t\tSignInMessage string\ndiff --git a\u002Fwatcher.go b\u002Fwatcher.go\nindex bedb9f8..4b83946 100644\n--- a\u002Fwatcher.go\n+++ b\u002Fwatcher.go\n@@ -7,8 +7,7 @@ import (\n \t\"os\"\n \t\"path\u002Ffilepath\"\n \t\"time\"\n-\n-\t\"gopkg.in\u002Ffsnotify.v1\"\n+\t\"gopkg.in\u002Ffsnotify\u002Ffsnotify.v1\"\n )\n \n func WaitForReplacement(filename string, op fsnotify.Op,\n\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003C\u002Fdiv\u003E\u003C\u002Fdiv\u003E\u003Cbr\u002F\u003E\r\nТеперь можно осуществить сборку образа и за’push’ить его в наш же GitLab. Далее в \u003Ccode\u003Emanifests\u002Fkube-dashboard-oauth2-proxy.yaml\u003C\u002Fcode\u003E укажем использование нужного образа (замените его на свой):\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E image: docker.io\u002Fcolemickens\u002Foauth2_proxy:latest\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nЕсли у вас закрытый авторизацией registry — не забудьте добавить использование секрета для pull’а образов:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E      imagePullSecrets:\n     - name: gitlab-registry\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n… и добавьте сам секрет для registry:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E---\napiVersion: v1\ndata:\n .dockercfg: eyJyZWdpc3RyeS5jb21wYW55LmNvbSI6IHsKICJ1c2VybmFtZSI6ICJvYXV0aDIiLAogInBhc3N3b3JkIjogIlBBU1NXT1JEIiwKICJhdXRoIjogIkFVVEhfVE9LRU4iLAogImVtYWlsIjogIm1haWxAY29tcGFueS5jb20iCn0KfQoK\n=\nkind: Secret\nmetadata:\n annotations:\n name: gitlab-registry\n namespace: kube-system\ntype: kubernetes.io\u002Fdockercfg\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nВнимательный читатель увидит, что приведённая выше длинная строка — это base64 от конфига:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"json\"\u003E{\"registry.company.com\": {\n \"username\": \"oauth2\",\n \"password\": \"PASSWORD\",\n \"auth\": \"AUTH_TOKEN\",\n \"email\": \"mail@company.com\"\n}\n}\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nЭто данные пользователя в GitLab, код которым Kubernetes будет pull’ить образ из registry.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПосле того, как всё сделано, можно удалить текущую (некорректно работающую) инсталляцию Dashboard командой:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E$ .\u002Fctl.sh -d\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n… и установить всё заново:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E$ .\u002Fctl.sh -i --gitlab-url https:\u002F\u002Fgitlab.example.com --oauth2-id 6a52769e… --oauth2-secret 6b79168f… --dashboard-url dashboard.example.com\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nНастало время зайти в Dashboard и найти довольно архаичную кнопку авторизации:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Far\u002Foy\u002Faf\u002Faroyafgjtqfn9o57jizhulg1d6o.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПосле нажатия на неё нас встретит GitLab, предлагая авторизоваться на своей привычной странице (конечно же, если мы не были предварительно авторизованы там):\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fip\u002Fca\u002Fe_\u002Fipcae_0rklsslqgumhnehjf0fq8.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nАвторизуемся с учётными данными GitLab — и всё свершилось:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fai\u002F_m\u002Fcm\u002Fai_mcm4gqbemsi0lvwsf34mvirs.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EО возможностях Dashboard\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nЕсли вы разработчик, который прежде не работал с Kubernetes, или же просто по какой-то причине не сталкивались прежде с Dashboard — проиллюстрирую некоторые его возможности.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВо-первых, можно посмотреть, что «всё зелененькое»:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002F2u\u002Fek\u002F6n\u002F2uek6nwrydcjgctphjcgvsficu8.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПо pod’ам доступны и более детальные данные, такие как переменные окружения, выкаченный образ, аргументы запуска, их состояние:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fhv\u002Fg7\u002Fxt\u002Fhvg7xtedmnc0scqesqocl3vccym.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nУ deployment’ов видны статусы:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002F8i\u002Fsk\u002Fee\u002F8iskeeib2sfxz84tgq0jpewgp3a.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n… и другие подробности:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002F9h\u002Fj2\u002Fmg\u002F9hj2mglvqk-nxhgk90rnpmqaq24.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n… а также есть возможность отмасштабировать deployment:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fjd\u002F7y\u002F7i\u002Fjd7y7ilc3dfopw0jgnx1dvs4vqa.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nРезультат этой операции:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fbp\u002Fuq\u002Fxb\u002Fbpuqxbeam7ha7aqwsix0thed9go.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nСреди прочих полезных возможностей, уже упомянутых в начале статьи, — просмотр логов:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fep\u002Fbf\u002Fko\u002Fepbfkognsudoi6zwdofu5e0n-k4.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n… и функция входа в консоль контейнеров выбранного pod’а:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fb2\u002Fxc\u002F-9\u002Fb2xc-9nbeqzfjdhzv6tbh5f2le8.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЕщё, например, можно посмотреть и limit’ы\u002Frequest’ы на узлах:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002F4x\u002Fs-\u002Ff7\u002F4xs-f7lpnyokbn8jlgqjkhvq_fi.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nКонечно, это не все возможности панели, но надеюсь, что общее представление сложилось.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EНедостатки интеграции и Dashboard\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nВ описанной интеграции нет никакого \u003Cb\u003Eразграничения доступа\u003C\u002Fb\u003E. С ней все пользователи, имеющие какой-либо доступ к GitLab, получают доступ в Dashboard. Доступ в самом Dashboard у них одинаковый, соответствующий правам самой Dashboard, которые \u003Ca href=\"https:\u002F\u002Fgithub.com\u002Fkubernetes\u002Fdashboard\u002Fwiki\u002FAccess-control\"\u003Eопределяются в RBAC\u003C\u002Fa\u003E. Очевидно, что это подойдёт не всем, но для нашего случая оказалось достаточным.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nИз заметных минусов в самой панели Dashboard отмечу следующие:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003E невозможно попасть в консоль init-контейнера;\u003C\u002Fli\u003E\r\n\u003Cli\u003E невозможно редактировать Deployments и StatefulSets, хотя это поправимо в ClusterRole;\u003C\u002Fli\u003E\r\n\u003Cli\u003E совместимость Dashboard с последними версиями Kubernetes и будущее проекта вызывает вопросы.\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\nПоследняя проблема заслуживает особого внимания.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EСтатус и альтернативы Dashboard\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nТаблица совместимости Dashboard с релизами Kubernetes, представленная в последней версии проекта (\u003Ca href=\"https:\u002F\u002Fgithub.com\u002Fkubernetes\u002Fdashboard\u002Freleases\u002Ftag\u002Fv1.10.1\"\u003Ev1.10.1\u003C\u002Fa\u003E), не очень-то радует:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Flp\u002Fo2\u002Flq\u002Flpo2lq-3uxxc0atra9aqkcvrzm0.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nНесмотря на это, существует (уже принятый в январе) \u003Ca href=\"https:\u002F\u002Fgithub.com\u002Fkubernetes\u002Fdashboard\u002Fpull\u002F3476\"\u003EPR #3476\u003C\u002Fa\u003E, который объявляет о поддержке K8s 1.13. Вдобавок, среди issues проекта можно найти упоминания пользователей, работающих с панелью в K8s 1.14. Наконец, \u003Ca href=\"https:\u002F\u002Fgithub.com\u002Fkubernetes\u002Fdashboard\u002Fcommits\u002Fmaster\"\u003Eкоммиты\u003C\u002Fa\u003E в кодовую базу проекта не прекращаются. Так что (как минимум!) фактический статус проекта не настолько плох, как может сперва показаться из официальной таблицы совместимости.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nНаконец, у Dashboard существуют альтернативы. Среди них:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Col\u003E\r\n\u003Cli\u003E \u003Ca href=\"https:\u002F\u002Fgithub.com\u002Fherbrandson\u002Fk8dash\"\u003EK8Dash\u003C\u002Fa\u003E — молодой интерфейс (первые коммиты датируются мартом этого года), уже предлагающий неплохие возможности, такие как визуальное представление текущего статуса кластера и управление его объектами. Позиционируется как «интерфейс реального времени», т.к. автоматически актуализирует показываемые данные, не требуя обновлять страницу в браузере.\u003C\u002Fli\u003E\r\n\u003Cli\u003E \u003Ca href=\"https:\u002F\u002Fgithub.com\u002Fopenshift\u002Fconsole\"\u003EOpenShift Console\u003C\u002Fa\u003E — веб-интерфейс от Red Hat OpenShift, который, впрочем, принесёт в ваш кластер и другие наработки проекта, что не всем подходит.\u003C\u002Fli\u003E\r\n\u003Cli\u003E \u003Ca href=\"https:\u002F\u002Fgithub.com\u002Fsmpio\u002Fkubernator\"\u003EKubernator\u003C\u002Fa\u003E — интересный проект, созданный как более низкоуровневый (чем Dashboard) интерфейс с возможностью просмотра всех объектов кластера. Однако всё выглядит так, что его разработка прекратилась.\u003C\u002Fli\u003E\r\n\u003Cli\u003E \u003Ca href=\"https:\u002F\u002Fgithub.com\u002Freactiveops\u002Fpolaris\"\u003EPolaris\u003C\u002Fa\u003E — буквально на днях \u003Ca href=\"https:\u002F\u002Fwww.reddit.com\u002Fr\u002Fkubernetes\u002Fcomments\u002Fbpf8so\u002Fintroducing_polaris_keeping_your_kubernetes\u002F\"\u003Eанонсированный\u003C\u002Fa\u003E проект, который совмещает в себе функции панели (показывает текущее состояние кластера, но не управляет его объектами) и автоматической «валидации лучших практик» (проверяет кластер на корректность конфигураций запущенных в нём Deployments).\u003C\u002Fli\u003E\r\n\u003C\u002Fol\u003E\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EВместо выводов\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nDashboard — стандартный инструмент для кластеров Kubernetes, которые мы обслуживаем. Его интеграция с GitLab тоже стала частью нашей «инсталляции по умолчанию», поскольку многие разработчики рады тем возможностям, которые у них появляются с этой панелью.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nУ Kubernetes Dashboard периодически появляются альтернативы от Open Source-сообщества (и мы рады их рассмотреть), однако на данном этапе остаёмся с этим решением.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EP.S.\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nЧитайте также в нашем блоге:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003E «\u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fflant\u002Fblog\u002F426985\u002F\"\u003Ekubebox и другие консольные оболочки для Kubernetes\u003C\u002Fa\u003E»;\u003C\u002Fli\u003E\r\n\u003Cli\u003E «\u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fflant\u002Fblog\u002F345116\u002F\"\u003EЛучшие практики CI\u002FCD с Kubernetes и GitLab (обзор и видео доклада)\u003C\u002Fa\u003E»;\u003C\u002Fli\u003E\r\n\u003Cli\u003E «\u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fflant\u002Fblog\u002F345580\u002F\"\u003EСборка и дeплой приложений в Kubernetes с помощью dapp и GitLab CI\u003C\u002Fa\u003E»;\u003C\u002Fli\u003E\r\n\u003Cli\u003E «\u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Fflant\u002Fblog\u002F332712\u002F\"\u003EGitLab CI для непрерывной интеграции и доставки в production. Часть 1: наш пайплайн\u003C\u002Fa\u003E».\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nUPD. По репорту whoch, была найдена ошибка в патче (табы заменились на пробелы). Патч в статье обновлен.\u003C\u002Fdiv\u003E","tags":[{"titleHtml":"Kubernetes Dashboard"},{"titleHtml":"Kubernetes"},{"titleHtml":"GitLab"}],"metadata":{"stylesUrls":[],"scriptUrls":[],"shareImageUrl":"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fq9\u002Fu2\u002Ffc\u002Fq9u2fcnbkuqxxf0ii-lfyljnymc.png","shareImageWidth":1200,"shareImageHeight":630,"vkShareImageUrl":"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fq9\u002Fu2\u002Ffc\u002Fq9u2fcnbkuqxxf0ii-lfyljnymc.png","schemaJsonLd":"{\"@context\":\"http:\\\u002F\\\u002Fschema.org\",\"@type\":\"Article\",\"mainEntityOfPage\":{\"@type\":\"WebPage\",\"@id\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fru\\\u002Fcompany\\\u002Fflant\\\u002Fblog\\\u002F452988\\\u002F\"},\"headline\":\"Интеграция Kubernetes Dashboard и пользователей GitLab\",\"datePublished\":\"2019-05-24T09:22:13+03:00\",\"dateModified\":\"2020-01-14T11:02:11+03:00\",\"author\":{\"@type\":\"Person\",\"name\":\"Баймухаметов Руслан\"},\"publisher\":{\"@type\":\"Organization\",\"name\":\"Habr\",\"logo\":{\"@type\":\"ImageObject\",\"url\":\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fa_\\\u002Flk\\\u002F9m\\\u002Fa_lk9mjkccjox-zccjrpfolmkmq.png\"}},\"description\":\"Kubernetes Dashboard &mdash; простой в работе инструмент для получения актуальных сведений о работающем кластере и минимального управления им. Начинаешь его ценить е...\",\"url\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fru\\\u002Fcompany\\\u002Fflant\\\u002Fblog\\\u002F452988\\\u002F#post-content-body\",\"about\":[\"c_flant\",\"h_sys_admin\",\"h_devops\",\"h_kubernetes\",\"f_develop\",\"f_admin\"],\"image\":[\"https:\\\u002F\\\u002Fhabr.com\\\u002Fshare\\\u002Fpublication\\\u002F452988\\\u002F52eccabb816c681b4e48c38a61a16a89\\\u002F\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fq9\\\u002Fu2\\\u002Ffc\\\u002Fq9u2fcnbkuqxxf0ii-lfyljnymc.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fp1\\\u002Fiz\\\u002Fmo\\\u002Fp1izmot-ncabrufaur9vulpqmfc.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Ft_\\\u002Fhy\\\u002Fd-\\\u002Ft_hyd-ueebs_0mnce1xiyujfkq0.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Far\\\u002Foy\\\u002Faf\\\u002Faroyafgjtqfn9o57jizhulg1d6o.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fip\\\u002Fca\\\u002Fe_\\\u002Fipcae_0rklsslqgumhnehjf0fq8.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fai\\\u002F_m\\\u002Fcm\\\u002Fai_mcm4gqbemsi0lvwsf34mvirs.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002F2u\\\u002Fek\\\u002F6n\\\u002F2uek6nwrydcjgctphjcgvsficu8.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fhv\\\u002Fg7\\\u002Fxt\\\u002Fhvg7xtedmnc0scqesqocl3vccym.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002F8i\\\u002Fsk\\\u002Fee\\\u002F8iskeeib2sfxz84tgq0jpewgp3a.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002F9h\\\u002Fj2\\\u002Fmg\\\u002F9hj2mglvqk-nxhgk90rnpmqaq24.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fjd\\\u002F7y\\\u002F7i\\\u002Fjd7y7ilc3dfopw0jgnx1dvs4vqa.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fbp\\\u002Fuq\\\u002Fxb\\\u002Fbpuqxbeam7ha7aqwsix0thed9go.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fep\\\u002Fbf\\\u002Fko\\\u002Fepbfkognsudoi6zwdofu5e0n-k4.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fb2\\\u002Fxc\\\u002F-9\\\u002Fb2xc-9nbeqzfjdhzv6tbh5f2le8.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002F4x\\\u002Fs-\\\u002Ff7\\\u002F4xs-f7lpnyokbn8jlgqjkhvq_fi.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Flp\\\u002Fo2\\\u002Flq\\\u002Flpo2lq-3uxxc0atra9aqkcvrzm0.png\"]}","metaDescription":"Kubernetes Dashboard — простой в работе инструмент для получения актуальных сведений о работающем кластере и минимального управления им. Начинаешь его ценить ещё больше, когда доступ к этим...","mainImageUrl":null,"amp":false},"polls":[],"commentsEnabled":true,"rulesRemindEnabled":false,"votesEnabled":true,"status":"published","plannedPublishTime":null,"checked":null,"isEditorial":false}},"articlesIds":{},"isLoading":false,"pagesCount":{},"route":{},"reasonsList":null,"view":"cards","lastVisitedRoute":{},"ssrCommentsArticleIds":[""],"karma":{}},"authorContribution":{"authors":{}},"betaTest":{"currentAnnouncement":null,"announcements":{},"announcementCards":null,"announcementComments":{},"announcementCommentThreads":{},"announcementCommentingStatuses":{},"archivedList":[]},"authorStatistics":{"articleRefs":{},"articleIds":{},"pagesCount":{},"route":{},"viewsCount":[],"maxStatsCount":{}},"career":{"seoLandings":[],"hubs":""},"comments":{"articleComments":{},"searchCommentsResults":null,"previewComment":null,"pagesCount":null,"commentAccess":{},"scrollParents":{},"pageArticleComments":{"lastViewedComment":0,"postId":null,"lastCommentTimestamp":"","moderated":[],"moderatedIds":[],"commentRoute":""}},"companies":{"companyRefs":{"flant":{"alias":"flant","imageUrl":"\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fcompany\u002Fde7\u002F635\u002F363\u002Fde763536359ce6e2d2a978f8dded1964.png","titleHtml":"Флант","descriptionHtml":"DevOps-as-a-Service, Kubernetes, обслуживание 24×7","relatedData":null,"statistics":{"postsCount":407,"newsCount":28,"vacanciesCount":0,"employeesCount":59,"careerRating":4.51,"subscribersCount":27067,"rating":294.82,"invest":null},"foundationDate":{"year":"2008","month":"05","day":"13"},"location":{"city":{"id":"447159","title":"Москва"},"region":{"id":"1885","title":"Москва и Московская обл."},"country":{"id":"168","title":"Россия"}},"siteUrl":"https:\u002F\u002Fflant.ru\u002F","staffNumber":"101–200 человек","registrationDate":"2017-01-25T07:25:09+00:00","representativeUser":{"alias":"shurup","fullname":"Дмитрий Шурупов"},"contacts":[{"title":"Сайт","url":"https:\u002F\u002Fflant.ru\u002F"},{"title":"Twitter","url":"https:\u002F\u002Ftwitter.com\u002Fflant_ru"},{"title":"ВКонтакте","url":"https:\u002F\u002Fvk.com\u002Fflant_ru"},{"title":"Github","url":"https:\u002F\u002Fgithub.com\u002Fflant"},{"title":"Telegram","url":"https:\u002F\u002Ftelegram.me\u002Fflant_ru"}],"settings":{"analyticsSettings":[{"type":"ga","trackingId":"UA-87911172-2"}],"branding":{"imageUrl":"\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fbranding\u002F3d4\u002Fc06\u002F8ba\u002F3d4c068ba151a5c21727ee9bb31f95de.png","linkUrl":"https:\u002F\u002Fflant.ru","pixelUrl":null},"status":"active"},"metadata":{"titleHtml":"Флант, Москва - DevOps-as-a-Service, Kubernetes, обслуживание 24×7 с 13 мая 2008 г.","title":"Флант, Москва - DevOps-as-a-Service, Kubernetes, обслуживание 24×7 с 13 мая 2008 г.","keywords":["DevOps","Системное администрирование","Kubernetes","Open source","Администрирование баз данных"],"descriptionHtml":"407 статей от авторов компании Флант","description":"407 статей от авторов компании Флант"},"aDeskSettings":null,"careerAlias":"flant","maxCustomTrackerLinks":3}},"companyIds":{},"companyTopIds":{},"pagesCount":{},"companyProfiles":{},"companiesCategories":[],"companiesCategoriesTotalCount":0,"companiesWidgets":{},"companiesWorkers":{},"companiesFans":{},"route":{},"isLoading":false,"companyWorkersLoading":false,"companyFansLoading":false,"vacancies":{}},"companiesContribution":{"hubs":{},"flows":{},"companyRefs":{}},"companyHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"conversation":{"messages":[],"respondent":null,"isLoadMore":false},"conversations":{"conversations":[],"unreadCount":0,"pagesCount":0,"isLoadMore":false},"desktopState":{"desktopFl":null,"desktopHl":null,"isChecked":false,"isLoginDemanded":false},"dfp":{"slotsDict":{}},"docs":{"menu":{},"articles":{},"mainMenu":[],"loading":{"main":false,"dropdown":false,"article":false}},"feature":{"isProbablyVisible":"true"},"flows":{"flows":[{"alias":"develop","id":1,"route":{"name":"FLOW_PAGE","params":{"flowName":"develop"}}},{"alias":"admin","id":6,"route":{"name":"FLOW_PAGE","params":{"flowName":"admin"}}},{"alias":"design","id":2,"route":{"name":"FLOW_PAGE","params":{"flowName":"design"}}},{"alias":"management","id":3,"route":{"name":"FLOW_PAGE","params":{"flowName":"management"}}},{"alias":"marketing","id":4,"route":{"name":"FLOW_PAGE","params":{"flowName":"marketing"}}},{"alias":"popsci","id":7,"route":{"name":"FLOW_PAGE","params":{"flowName":"popsci"}}}]},"global":{"isPwa":false,"device":"desktop","isHabrCom":true},"hubs":{"hubRefs":{},"hubIds":{},"pagesCount":{},"isLoading":false,"route":{}},"hubsBlock":{"hubRefs":{},"hubIds":{}},"i18n":{"fl":"ru","hl":"ru"},"info":{"infoPage":{},"isLoading":true},"location":{"urlStruct":{"protocol":null,"slashes":null,"auth":null,"host":null,"port":null,"hostname":null,"hash":null,"search":null,"query":{},"pathname":null,"path":null,"href":""},"searchQuery":null},"me":{"user":null,"ppgDemanded":false,"karmaResetInfo":{"canReincarnate":null,"wasReincarnated":null,"currentScore":null},"notes":null},"mostReadingList":{"mostReadingListIds":[],"mostReadingListRefs":null,"promoPost":null},"pinnedPost":{"pinnedPost":null},"ppa":{"articles":{},"card":null,"transactions":null,"totalTransactions":null,"isAccessible":null},"projectsBlocks":{"activeBlocks":{}},"pullRefresh":{"shouldRefresh":false},"sandbox":{"articleIds":[],"articleRefs":{},"pagesCount":null,"route":{},"lastVisitedRoute":{},"isLoading":false},"settingsOther":{"inputs":{"uiLang":{"errors":[],"ref":null,"value":""},"articlesLangEnglish":{"errors":[],"ref":null,"value":false},"articlesLangRussian":{"errors":[],"ref":null,"value":false},"agreement":{"errors":[],"ref":null,"value":false},"email":{"errors":[],"ref":null,"value":true},"digest":{"errors":[],"ref":null,"value":true}}},"similarList":{"similarListIds":[],"similarListRefs":null},"ssr":{"error":null,"isDataLoaded":false,"isDataLoading":false,"isHydrationFailed":false,"isServer":false},"userHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"userInvites":{"availableInvites":0,"usedInvitesIds":[],"usedInvitesRefs":{},"usedInvitesPagesCount":0,"unusedInvitesIds":[],"unusedInvitesRefs":{},"unusedInvitesPagesCount":0},"users":{"authorRefs":{},"authorIds":{},"pagesCount":{},"authorProfiles":{},"userHubs":{},"userInvitations":{},"authorFollowers":{},"authorFollowed":{},"karmaStats":[],"statistics":null,"isLoading":false,"authorFollowersLoading":false,"authorFollowedLoading":false,"userHubsLoading":false,"userInvitationsLoading":false,"route":{}},"viewport":{"prevScrollY":{},"scrollY":0,"width":0},"tracker":{"items":{},"pagesCache":{},"markedViewedSilently":{},"markedRead":{},"unreadCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null},"unviewedCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null}}};(function(){var s;(s=document.currentScript||document.scripts[document.scripts.length-1]).parentNode.removeChild(s);}());</script>
+<script src="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" defer></script><script src="https://assets.habr.com/habr-web/js/app.c0af73e7.js" defer></script>
+
+
+
+    <script>
+      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+        (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+        m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+      })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+    </script>
+  
+  <script type="text/javascript" >
+    (function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+    m[i].l=1*new Date();k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})
+    (window, document, "script", "https://mc.yandex.ru/metrika/tag.js", "ym");
+
+    ym(24049213, "init", {
+      defer:true,
+      trackLinks:true,
+      accurateTrackBounce:true,
+      webvisor:false,
+    });
+  </script>
+  <noscript>
+    <div>
+      <img src="https://mc.yandex.ru/watch/24049213" style="position:absolute; left:-9999px;" alt="" />
+    </div>
+  </noscript>
+  
+    <script type="text/javascript">
+      window.addEventListener('load', function () {
+        setTimeout(() => {
+          const img = new Image();
+          img.src = 'https://vk.com/rtrg?p=VK-RTRG-421343-57vKE';
+        }, 0);
+      });
+    </script>
+  
+</body>
+</html>

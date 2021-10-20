@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="ru" data-vue-meta="%7B%22lang%22:%7B%22ssr%22:%22ru%22%7D%7D">
+<head >
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
+  <title>Apache Kafka и потоковая обработка данных с помощью Spark Streaming / Хабр</title>
+  <style>
+    /* cyrillic-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSxf6TF0.woff2) format('woff2');
+      unicode-range: U+0460-052F, U+1C80-1C88, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+    }
+
+    /* cyrillic */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveQhf6TF0.woff2) format('woff2');
+      unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+    }
+
+    /* latin-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSBf6TF0.woff2) format('woff2');
+      unicode-range: U+0100-024F, U+0259, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20CF, U+2113, U+2C60-2C7F, U+A720-A7FF;
+    }
+
+    /* latin */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveRhf6.woff2) format('woff2');
+      unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+    }
+  </style>
+  <link rel="preload" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" as="script"><link rel="preload" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/app.c0af73e7.js" as="script">
+  <link rel="stylesheet" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css"><link rel="stylesheet" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css">
+  <script>window.i18nFetch = new Promise((res, rej) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open('GET', '/js/i18n/ru-compiled.85eb77f0b17c8235e7b64b9f81ea5ec2.json');
+          xhr.responseType = 'json';
+          xhr.onload = function(e) {
+            if (this.status === 200) {
+              res({ru: xhr.response});
+            } else {
+              rej(e);
+            }
+          };
+          xhr.send();
+        });</script>
+  
+  <script data-vue-meta="ssr" src="/js/ads.js" onload="window['zhY4i4nJ9K'] = true" data-vmid="checkad"></script><script data-vue-meta="ssr" type="application/ld+json" data-vmid="ldjson-schema">{"@context":"http:\/\/schema.org","@type":"Article","mainEntityOfPage":{"@type":"WebPage","@id":"https:\/\/habr.com\/ru\/post\/451160\/"},"headline":"Apache Kafka и потоковая обработка данных с помощью Spark Streaming","datePublished":"2019-05-10T08:03:15+03:00","dateModified":"2019-05-10T10:56:01+03:00","author":{"@type":"Person","name":"Igor Gorbenko"},"publisher":{"@type":"Organization","name":"Habr","logo":{"@type":"ImageObject","url":"https:\/\/habrastorage.org\/webt\/a_\/lk\/9m\/a_lk9mjkccjox-zccjrpfolmkmq.png"}},"description":"Привет, Хабр! Сегодня мы построим систему, которая будет при помощи Spark Streaming обрабатывать потоки сообщений Apache Kafka и записывать результат обработки в...","url":"https:\/\/habr.com\/ru\/post\/451160\/#post-content-body","about":["h_python","h_programming","h_aws","h_bigdata","h_cloud_services","f_develop","f_admin"],"image":["https:\/\/habrastorage.org\/webt\/5w\/sb\/8v\/5wsb8vvncrzhysct-pd6oqraqky.jpeg","https:\/\/habrastorage.org\/webt\/od\/ef\/zc\/odefzciug8ckvim4-ei6pdg49tw.png","https:\/\/habrastorage.org\/webt\/s5\/gh\/bu\/s5ghbuswhb0dcc0pmlvu_uloes4.png","https:\/\/habrastorage.org\/webt\/_e\/3g\/zj\/_e3gzjrmsycjb8ntjmur6ztaspw.png","https:\/\/habrastorage.org\/webt\/dg\/os\/m7\/dgosm7dwnh3fr-uksjdt_xpltsk.png","https:\/\/habrastorage.org\/webt\/3y\/d_\/8r\/3yd_8rsz2swfgaxaafpkyizthac.png","https:\/\/habrastorage.org\/webt\/fn\/6p\/5b\/fn6p5bjyitndy_ozs2cdcw_ssi0.png","https:\/\/habrastorage.org\/webt\/mj\/jh\/wg\/mjjhwg3cknoehrq8wyxk3uw5v74.png","https:\/\/habrastorage.org\/webt\/lg\/jt\/mf\/lgjtmfdfst0pvqthojb_bdpeohc.png","https:\/\/habrastorage.org\/webt\/40\/z9\/q7\/40z9q7owar5kpnimyzrdj5laqgs.png","https:\/\/habrastorage.org\/webt\/fl\/2i\/ne\/fl2inejlgnghwsh3itdrlcywdsu.png","https:\/\/habrastorage.org\/webt\/js\/8r\/tv\/js8rtvp8tudwjtpgso6xota5h-g.png","https:\/\/habrastorage.org\/webt\/ge\/8j\/bn\/ge8jbntssnooajc8so36h0tjo80.png","https:\/\/habrastorage.org\/webt\/nk\/ae\/-s\/nkae-ste1tp3wgvmyilicvwlk8e.png","https:\/\/habrastorage.org\/webt\/ex\/1p\/po\/ex1ppogq_vdsk3nnvywm7l8vq8i.png","https:\/\/habrastorage.org\/webt\/9n\/sj\/jd\/9nsjjdun0hdy5qtwqub0xhvzunk.png","https:\/\/habrastorage.org\/webt\/cf\/q1\/25\/cfq125zpzkyldktsuvdo175fazy.png","https:\/\/habrastorage.org\/webt\/7j\/j9\/qm\/7jj9qmf4zpter3jkbblrmiqni2s.png"]}</script>
+  <script src="//www.googletagservices.com/tag/js/gpt.js" async></script>
+  <style>.grecaptcha-badge{visibility: hidden;}</style>
+  <meta name="habr-version" content="2.49.0">
+  
+  <meta data-vue-meta="ssr" property="fb:app_id" content="444736788986613"><meta data-vue-meta="ssr" property="fb:pages" content="472597926099084"><meta data-vue-meta="ssr" name="twitter:card" content="summary_large_image"><meta data-vue-meta="ssr" name="twitter:site" content="@habr_eng"><meta data-vue-meta="ssr" property="og:title" content="Apache Kafka и потоковая обработка данных с помощью Spark Streaming" data-vmid="og:title"><meta data-vue-meta="ssr" name="twitter:title" content="Apache Kafka и потоковая обработка данных с помощью Spark Streaming" data-vmid="twitter:title"><meta data-vue-meta="ssr" name="aiturec:title" content="Apache Kafka и потоковая обработка данных с помощью Spark Streaming" data-vmid="aiturec:title"><meta data-vue-meta="ssr" name="description" content="Привет, Хабр! Сегодня мы построим систему, которая будет при помощи Spark Streaming обрабатывать потоки сообщений Apache Kafka и записывать результат обработки в облачную базу данных AWS..." data-vmid="description"><meta data-vue-meta="ssr" itemprop="description" content="Привет, Хабр! Сегодня мы построим систему, которая будет при помощи Spark Streaming обрабатывать потоки сообщений Apache Kafka и записывать результат обработки в облачную базу данных AWS..." data-vmid="description:itemprop"><meta data-vue-meta="ssr" property="og:description" content="Привет, Хабр! Сегодня мы построим систему, которая будет при помощи Spark Streaming обрабатывать потоки сообщений Apache Kafka и записывать результат обработки в облачную базу данных AWS..." data-vmid="og:description"><meta data-vue-meta="ssr" name="twitter:description" content="Привет, Хабр! Сегодня мы построим систему, которая будет при помощи Spark Streaming обрабатывать потоки сообщений Apache Kafka и записывать результат обработки в облачную базу данных AWS..." data-vmid="twitter:description"><meta data-vue-meta="ssr" property="aiturec:description" content="Привет, Хабр! Сегодня мы построим систему, которая будет при помощи Spark Streaming обрабатывать потоки сообщений Apache Kafka и записывать результат обработки в облачную базу данных AWS..." data-vmid="aiturec:description"><meta data-vue-meta="ssr" itemprop="image" content="https://habr.com/share/publication/451160/8c22b24de52c14c419cb6fe716276d2e/" data-vmid="image:itemprop"><meta data-vue-meta="ssr" property="og:image" content="https://habr.com/share/publication/451160/8c22b24de52c14c419cb6fe716276d2e/" data-vmid="og:image"><meta data-vue-meta="ssr" property="aiturec:image" content="https://habr.com/share/publication/451160/8c22b24de52c14c419cb6fe716276d2e/" data-vmid="aiturec:image"><meta data-vue-meta="ssr" name="twitter:image" content="https://habr.com/share/publication/451160/8c22b24de52c14c419cb6fe716276d2e/" data-vmid="twitter:image"><meta data-vue-meta="ssr" property="vk:image" content="https://habr.com/share/publication/451160/8c22b24de52c14c419cb6fe716276d2e/" data-vmid="vk:image"><meta data-vue-meta="ssr" property="aiturec:item_id" content="451160" data-vmid="aiturec:item_id"><meta data-vue-meta="ssr" property="aiturec:datetime" content="2019-05-10T05:03:15.000Z" data-vmid="aiturec:datetime"><meta data-vue-meta="ssr" property="og:type" content="article" data-vmid="og:type"><meta data-vue-meta="ssr" property="og:locale" content="ru_RU" data-vmid="og:locale"><meta data-vue-meta="ssr" property="og:image:width" content="1200" data-vmid="og:image:width"><meta data-vue-meta="ssr" property="og:image:height" content="630" data-vmid="og:image:height">
+  <link data-vue-meta="ssr" href="https://habr.com/ru/rss/post/451160/?fl=ru" type="application/rss+xml" title="" rel="alternate" name="rss"><link data-vue-meta="ssr" href="https://habr.com/ru/post/451160/" rel="canonical" data-vmid="canonical"><link data-vue-meta="ssr" data-vmid="hreflang"><link data-vue-meta="ssr" image_src="image" href="https://habr.com/share/publication/451160/8c22b24de52c14c419cb6fe716276d2e/" data-vmid="image:href">
+  <meta name="apple-mobile-web-app-status-bar-style" content="#303b44">
+  <meta name="msapplication-TileColor" content="#629FBC">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="16x16"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-16.png"
+  >
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="32x32"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-32.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="76x76"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-76.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="120x120"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="152x152"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-152.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="180x180"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-180.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="256x256"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-256.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1136x640.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2436x1125.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1792x828.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_828x1792.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1334x750.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2208x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1125x2436.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2208.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2732x2048.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2688x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2224x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_750x1334.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x2732.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2388x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2224.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_640x1136.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2388.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x1536.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1536x2048.png"
+  >
+  <link
+    rel="mask-icon"
+    color="#77a2b6"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.svg"
+  >
+  <link
+    crossorigin="use-credentials"
+    href="/manifest.webmanifest"
+    rel="manifest"
+  >
+</head>
+<body>
+
+
+<div id="app" data-server-rendered="true" data-async-called="true"><div class="tm-layout__wrapper"><!----> <div></div> <!----> <header class="tm-header"><div class="tm-page-width"><div class="tm-header__container"><!----> <span class="tm-header__logo-wrap"><a href="/ru/" class="tm-header__logo tm-header__logo_ru"><svg height="16" width="16" class="tm-svg-img tm-header__icon"><title>Хабр</title> <use xlink:href="/img/habr-logo-ru.svg#logo"></use></svg></a> <span class="tm-header__beta-sign" style="display:none;">β</span></span> <div class="tm-dropdown tm-header__projects"><div class="tm-dropdown__head"><button class="tm-header__dropdown-toggle"><svg height="16" width="16" class="tm-svg-img tm-header__icon tm-header__icon_dropdown"><title>Открыть список</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#arrow-down"></use></svg></button></div> <!----></div> <a href="/ru/sandbox/start/" class="tm-header__become-author-btn">
+            Как стать автором
+          </a> <div class="tm-feature tm-header__feature tm-feature_variant-inline"><!----></div> <!----> <!----></div></div></header> <div class="tm-layout"><div class="tm-page-progress-bar"></div> <div data-menu-sticky="true" class="tm-base-layout__header tm-base-layout__header_is-sticky"><div class="tm-page-width"><div class="tm-base-layout__header-wrapper"><div class="tm-main-menu"><div class="tm-main-menu__section"><nav class="tm-main-menu__section-content"><!----> <a href="/ru/all/" class="tm-main-menu__item">
+        Все потоки
+      </a> <a href="/ru/flows/develop/" class="tm-main-menu__item">
+          Разработка
+        </a><a href="/ru/flows/admin/" class="tm-main-menu__item">
+          Администрирование
+        </a><a href="/ru/flows/design/" class="tm-main-menu__item">
+          Дизайн
+        </a><a href="/ru/flows/management/" class="tm-main-menu__item">
+          Менеджмент
+        </a><a href="/ru/flows/marketing/" class="tm-main-menu__item">
+          Маркетинг
+        </a><a href="/ru/flows/popsci/" class="tm-main-menu__item">
+          Научпоп
+        </a></nav></div></div> <div class="tm-header-user-menu tm-base-layout__user-menu"><a href="/ru/search/" class="tm-header-user-menu__item tm-header-user-menu__search"><svg height="24" width="24" class="tm-svg-img tm-header-user-menu__icon tm-header-user-menu__icon_search tm-header-user-menu__icon_dark"><title>Поиск</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#search"></use></svg></a> <!----> <!----> <!----> <div class="tm-header-user-menu__item tm-header-user-menu__user_desktop"><div class="tm-dropdown"><div class="tm-dropdown__head"><svg height="24" width="24" data-test-id="menu-toggle-guest" class="tm-svg-img tm-header-user-menu__icon"><title>Профиль</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#header-user"></use></svg> <!----></div> <!----></div> <!----></div> <!----></div></div></div></div> <!----> <div class="tm-page-width"></div> <main class="tm-layout__container"><div hl="ru" data-async-called="true" class="tm-page"><div class="tm-page-width"><!----> <div class="tm-page__wrapper"><div class="tm-page__main tm-page__main_has-sidebar"><div class="pull-down"><div class="pull-down__header" style="height:0px;"><div class="pull-down__content" style="bottom:10px;"><svg height="24" width="24" class="tm-svg-img pull-down__arrow"><title>Обновить</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#pull-arrow"></use></svg></div></div> <div class="tm-article-presenter"> <div class="tm-article-presenter__body"><div class="tm-misprint-area"><div class="tm-misprint-area__wrapper"><article class="tm-article-presenter__content tm-article-presenter__content_narrow"><div class="tm-article-presenter__header"> <div class="tm-article-snippet tm-article-presenter__snippet"><div class="tm-article-snippet__meta-container"><div class="tm-article-snippet__meta"><span class="tm-user-info tm-article-snippet__author"><a href="/ru/users/I_v_g/" title="I_v_g" class="tm-user-info__userpic"><div class="tm-entity-image"><img alt="" height="24" loading="lazy" src="//habrastorage.org/r/w32/getpro/habr/avatars/c2f/a8c/537/c2fa8c537e061d2ffeb7176718794460.jpg" width="24" class="tm-entity-image__pic"></div></a> <span class="tm-user-info__user"><a href="/ru/users/I_v_g/" class="tm-user-info__username">
+      I_v_g
+    </a> </span></span> <span class="tm-article-snippet__datetime-published"><time datetime="2019-05-10T05:03:15.000Z" title="2019-05-10, 08:03">10  мая  2019 в 08:03</time></span></div> <!----></div> <h1 lang="ru" class="tm-article-snippet__title tm-article-snippet__title_h1"><span>Apache Kafka и потоковая обработка данных с помощью Spark Streaming</span></h1> <div class="tm-article-snippet__hubs"><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/python/" class="tm-article-snippet__hubs-item-link"><span>Python</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/programming/" class="tm-article-snippet__hubs-item-link"><span>Программирование</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/aws/" class="tm-article-snippet__hubs-item-link"><span>Amazon Web Services</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/bigdata/" class="tm-article-snippet__hubs-item-link"><span>Big Data</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/cloud_services/" class="tm-article-snippet__hubs-item-link"><span>Облачные сервисы</span> <!----></a></span></div> <div class="tm-article-snippet__labels"><div class="tm-article-snippet__label"><span>
+        Tutorial
+      </span></div></div> <!----> <!----></div></div> <!----> <div data-gallery-root="" lang="ru" class="tm-article-body"><div id="post-content-body" class="article-formatted-body article-formatted-body_version-1"><div xmlns="http://www.w3.org/1999/xhtml">Привет, Хабр! Сегодня мы построим систему, которая будет при помощи Spark Streaming обрабатывать потоки сообщений Apache Kafka и записывать результат обработки в облачную базу данных AWS RDS.<br/>
+<br/>
+Представим, что некая кредитная организация ставит перед нами задачу обработки входящих транзакций «на лету» по всем своим филиалам. Это может быть сделано с целью оперативного расчета открытой валютой позиции для казначейства, лимитов или финансового результата по сделкам и т.д.<br/>
+<br/>
+Как реализовать этот кейс без применения магии и волшебных заклинаний — читаем под катом! Поехали!<br/>
+<br/>
+<div style="text-align:center;"><img src="https://habrastorage.org/r/w780q1/webt/5w/sb/8v/5wsb8vvncrzhysct-pd6oqraqky.jpeg" data-src="https://habrastorage.org/webt/5w/sb/8v/5wsb8vvncrzhysct-pd6oqraqky.jpeg" data-blurred="true"/></div><br/>
+<a href="https://www.megapixl.com/valerybrozhinsky-stock-images-videos-portfolio">(Источник картинки)</a><br/>
+<a name="habracut"></a><br/>
+<h2>Введение</h2><br/>
+Безусловно, обработка большого массива данных в реальном времени предоставляет широкие возможности для использования в современных системах. Одной из популярнейших комбинаций для этого является тандем Apache Kafka и Spark Streaming, где Kafka — создает поток пакетов входящих сообщений, а Spark Streaming обрабатывает эти пакеты через заданный интервал времени.<br/>
+<br/>
+Для повышения отказоустойчивости приложения, будем использовать контрольные точки — чекпоинты (checkpoints). При помощи этого механизма, когда модулю Spark Streaming потребуется восстановить утраченные данные, ему нужно будет только вернуться к последней контрольной точке и возобновить вычисления от нее.<br/>
+<br/>
+<h2>Архитектура разрабатываемой системы</h2><br/>
+<div style="text-align:center;"><img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/od/ef/zc/odefzciug8ckvim4-ei6pdg49tw.png"/></div><br/>
+<br/>
+Используемые компоненты:<br/>
+<br/>
+<ul>
+<li><a href="https://kafka.apache.org/intro"><b>Apache Kafka</b></a> — это распределенная система обмена сообщениями с публикацией и подпиской. Подходит как для автономного, так и для онлайнового потребления сообщений. Для предотвращения потери данных сообщения Kafka сохраняются на диске и реплицируются внутри кластера. Система Kafka построена поверх службы синхронизации ZooKeeper;</li>
+<li><a href="https://spark.apache.org/streaming/"><b>Apache Spark Streaming</b></a> — компонент Spark для обработки потоковых данных. Модуль Spark Streaming построен с применением «микропакетной» архитектуры (micro-batch architecture), когда поток данных интерпретируется как непрерывная последовательность маленьких пакетов данных. Spark Streaming принимает данные из разных источников и объединяет их в небольшие пакеты. Новые пакеты создаются через регулярные интервалы времени. В начале каждого интервала времени создается новый пакет, и любые данные, поступившие в течение этого интервала, включаются в пакет. В конце интервала увеличение пакета прекращается. Размер интервала определяется параметром, который называется интервал пакетирования (batch interval); </li>
+<li><a href="https://spark.apache.org/sql/"><b>Apache Spark SQL </b></a> — объединяет реляционную обработку с функциональным программированием Spark. Под структурированными данными подразумеваются данные, имеющие схему, то есть единый набор полей для всех записей. Spark SQL поддерживает ввод из множества источников структурированных данных и, благодаря наличию информации о схеме, он может эффективно извлекать только необходимые поля записей, а также предоставляет API-интерфейсы DataFrame;</li>
+<li><a href="https://docs.aws.amazon.com/en_us/AmazonRDS/latest/UserGuide/Welcome.html"><b>AWS RDS</b></a> — это cравнительно недорогая облачная реляционная база данных, веб-сервис, который упрощает настройку, эксплуатацию и масштабирование, администрируется непосредcтвенно Amazon.</li>
+</ul><br/>
+<h2>Установка и запуск сервера Kafka</h2><br/>
+Перед непосредственным использованием Kafka, необходимо убедиться в наличии Java, т.к. для работы используется JVM:<br/>
+<br/>
+<pre><code class="bash">sudo apt-get update 
+sudo apt-get install default-jre
+java -version
+</code></pre><br/>
+Создадим нового пользователя для работы с Kafka:<br/>
+<br/>
+<pre><code class="bash">sudo useradd kafka -m
+sudo passwd kafka
+sudo adduser kafka sudo
+</code></pre><br/>
+Далее скачиваем дистрибутив с официального сайта Apache Kafka:<br/>
+<br/>
+<pre><code class="bash">wget -P /YOUR_PATH "http://apache-mirror.rbc.ru/pub/apache/kafka/2.2.0/kafka_2.12-2.2.0.tgz"</code></pre><br/>
+Распаковываем скаченный архив:<br/>
+<pre><code class="bash">tar -xvzf /YOUR_PATH/kafka_2.12-2.2.0.tgz
+ln -s /YOUR_PATH/kafka_2.12-2.2.0 kafka
+</code></pre><br/>
+Следующий шаг — опциональный. Дело в том, что настройки по умолчанию не позволяют полноценно использовать все возможности Apache Kafka. Например, удалять тему, категорию, группу, на которые могут быть опубликованы сообщения. Чтобы изменить это, отредактируем файл конфигурации:<br/>
+<br/>
+<pre><code class="bash">vim ~/kafka/config/server.properties</code></pre><br/>
+Добавьте в конец файла следующее:<br/>
+<br/>
+<pre><code class="bash">delete.topic.enable = true</code></pre><br/>
+Перед запуском сервера Kafka, необходимо стартовать сервер ZooKeeper, будем использовать вспомогательный скрипт, который поставляется вместе с дистрибутивом Kafka:<br/>
+<br/>
+<pre><code class="bash">Cd ~/kafka
+bin/zookeeper-server-start.sh config/zookeeper.properties
+</code></pre><br/>
+После того, как ZooKeeper успешно стартовал, в отдельном терминале запускаем сервер Kafka:<br/>
+<br/>
+<pre><code class="bash">bin/kafka-server-start.sh config/server.properties</code></pre><br/>
+Создадим новый топик под названием Transaction:<br/>
+<br/>
+<pre><code class="bash">bin/kafka-topics.sh --create --zookeeper localhost:2181 --replication-factor 1 --partitions 3 --topic transaction</code></pre><br/>
+Убедимся, что топик с нужным количеством партиций и репликацией был создан:<br/>
+<br/>
+<pre><code class="bash">bin/kafka-topics.sh --describe --zookeeper localhost:2181</code></pre><br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/s5/gh/bu/s5ghbuswhb0dcc0pmlvu_uloes4.png"/><br/>
+<br/>
+Упустим моменты тестирования продюсера и консьюмера для вновь созданного топика. Более подробно о том, как можно протестировать отправку и прием сообщений, написано в официальной документации — <a href="https://kafka.apache.org/documentation/#quickstart_send">Send some messages</a>. Ну а мы переходим к написанию продюсера на Python с использованием KafkaProducer API.<br/>
+<br/>
+<h2>Написание продюсера</h2><br/>
+Продюсер будет генерить случайные данные — по 100 сообщений каждую секунду. Под случайными данными будем понимать словарь, состоящий из трех полей:<br/>
+<br/>
+<ul>
+<li><b>Branch </b> — наименование точки продаж кредитной организации;</li>
+<li><b>Currency </b> — валюта сделки;</li>
+<li><b>Amount </b> — сумма сделки. Сумма будет положительным числом, если это покупка валюты Банком, и отрицательным — если продажа.</li>
+</ul><br/>
+Код для продюсера выглядит следующим образом:<br/>
+<br/>
+<pre><code class="python">from numpy.random import choice, randint
+
+def get_random_value():
+    new_dict = {}
+
+    branch_list = ['Kazan', 'SPB', 'Novosibirsk', 'Surgut']
+    currency_list = ['RUB', 'USD', 'EUR', 'GBP']
+
+    new_dict['branch'] = choice(branch_list)
+    new_dict['currency'] = choice(currency_list)
+    new_dict['amount'] = randint(-100, 100)
+
+    return new_dict
+</code></pre><br/>
+Далее, используя метод send, отправляем сообщение на сервер, в нужный нам топик, в формате JSON:<br/>
+<br/>
+<pre><code class="python">from kafka import KafkaProducer    
+
+producer = KafkaProducer(bootstrap_servers=['localhost:9092'],
+                             value_serializer=lambda x:dumps(x).encode('utf-8'),
+                             compression_type='gzip')
+my_topic = 'transaction'
+data = get_random_value()
+
+try:
+    future = producer.send(topic = my_topic, value = data)
+    record_metadata = future.get(timeout=10)
+    
+    print('--> The message has been sent to a topic: \
+            {}, partition: {}, offset: {}' \
+            .format(record_metadata.topic,
+                record_metadata.partition,
+                record_metadata.offset ))   
+                             
+except Exception as e:
+    print('--> It seems an Error occurred: {}'.format(e))
+
+finally:
+    producer.flush()
+</code></pre><br/>
+При запуске скрипта получаем в терминале следующие сообщения:<br/>
+<br/>
+<div style="text-align:center;"><img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/_e/3g/zj/_e3gzjrmsycjb8ntjmur6ztaspw.png"/></div><br/>
+Это означает, что все работает как мы хотели — продюсер генерит и отправляет сообщения в нужный нам топик. <br/>
+<br/>
+Следующим шагом будет установка Spark и обработка этого потока сообщений.<br/>
+<br/>
+<h2>Установка Apache Spark</h2><br/>
+<b>Apache Spark</b> — это универсальная и высокопроизводительная кластерная вычислительная платформа.<br/>
+<br/>
+По производительности Spark превосходит популярные реализации модели MapReduce, попутно обеспечивая поддержку более широкого диапазона типов вычислений, включая интерактивные запросы и потоковую обработку. Скорость играет важную роль при обработке больших объемов данных, так как именно скорость позволяет работать в интерактивном режиме, не тратя минуты или часы на ожидание. Одно из важнейших достоинств Spark, обеспечивающих столь высокую скорость, — способность выполнять вычисления в памяти. <br/>
+<br/>
+Данный фреймворк написан на Scala, поэтому необходимо установить ее в первую очередь:<br/>
+<br/>
+<pre><code class="bash">sudo apt-get install scala</code></pre><br/>
+Скачиваем с официального сайта дистрибутив Spark:<br/>
+<br/>
+<pre><code class="bash">wget "http://mirror.linux-ia64.org/apache/spark/spark-2.4.2/spark-2.4.2-bin-hadoop2.7.tgz"</code></pre><br/>
+Распаковываем архив:<br/>
+<br/>
+<pre><code class="bash">sudo tar xvf spark-2.4.2/spark-2.4.2-bin-hadoop2.7.tgz -C /usr/local/spark</code></pre><br/>
+Добавляем путь к Spark в bash-файл:<br/>
+<br/>
+<pre><code class="bash">vim ~/.bashrc</code></pre><br/>
+Добавляем через редактор следующие строчки:<br/>
+<br/>
+<pre><code class="bash">SPARK_HOME=/usr/local/spark
+export PATH=$SPARK_HOME/bin:$PATH
+</code></pre><br/>
+Выполняем команду ниже после внесения правок в bashrc:<br/>
+<br/>
+<pre><code class="bash">source ~/.bashrc</code></pre><br/>
+<h2>Развертывание AWS PostgreSQL</h2><br/>
+Осталось развернуть базу данных, куда будем заливать обработанную информацию из потоков. Для этого будем использовать сервис AWS RDS.<br/>
+<br/>
+Заходим в консоль AWS --> AWS RDS --> Databases --> Create database:<br/>
+<br/>
+<div style="text-align:center;"><img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/dg/os/m7/dgosm7dwnh3fr-uksjdt_xpltsk.png"/></div><br/>
+Выбираем PostgreSQL и нажимаем кнопку Next:<br/>
+<br/>
+<div style="text-align:center;"><img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/3y/d_/8r/3yd_8rsz2swfgaxaafpkyizthac.png"/></div><br/>
+Т.к. данный пример разбирается исключительно в образовательных целях, будем использовать бесплатный сервер «на минималках» (Free Tier):<br/>
+<br/>
+<div style="text-align:center;"><img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/fn/6p/5b/fn6p5bjyitndy_ozs2cdcw_ssi0.png"/></div><br/>
+Далее, ставим галочку в блоке Free Tier, и после этого нам автоматом будет предложен инстанс класса t2.micro — хоть и слабенький, но бесплатный и вполне подойдет для нашей задачи:<br/>
+<div style="text-align:center;"><img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/mj/jh/wg/mjjhwg3cknoehrq8wyxk3uw5v74.png"/></div><br/>
+Следом идут очень важные вещи: наименование инстанса БД, имя мастер-пользователя и его пароль. Назовем инстанст: myHabrTest, мастер-пользователь: <b>habr</b>, пароль: <b>habr12345 </b>и нажимаем на кнопку Next:<br/>
+<br/>
+<div style="text-align:center;"><img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/lg/jt/mf/lgjtmfdfst0pvqthojb_bdpeohc.png"/></div><br/>
+<br/>
+На следующей странице находятся параметры, отвечающие за доступность нашего сервера БД извне (Public accessibility) и доступность портов:<br/>
+<br/>
+<div style="text-align:center;"><img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/40/z9/q7/40z9q7owar5kpnimyzrdj5laqgs.png"/></div><br/>
+Давайте создадим новую настройку для VPC security group, которая позволит извне обращаться к нашему серверу БД через порт 5432 (PostgreSQL).<br/>
+<br/>
+Перейдем в отдельном окне браузера к консоли AWS в раздел VPC Dashboard --> Security Groups --> Create security group:<br/>
+<div style="text-align:center;"><img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/fl/2i/ne/fl2inejlgnghwsh3itdrlcywdsu.png"/></div><br/>
+Задаем имя для Security group — PostgreSQL, описание, указываем к какой VPC данная группа должна быть ассоциирована и нажимаем кнопку Create:<br/>
+<br/>
+<div style="text-align:center;"><img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/js/8r/tv/js8rtvp8tudwjtpgso6xota5h-g.png"/></div><br/>
+Заполняем для свежесозданной группы Inbound rules для порта 5432, как показано на картинке ниже. Вручную порт можно не указывать, а выбрать PostgreSQL из раскрывающегося списка Type. <br/>
+<br/>
+Строго говоря, значение ::/0 означает доступность входящего траффика для сервера со всего мира, что канонически не совсем верно, но для разбора примера позволим себе использовать такой подход:<br/>
+<br/>
+<div style="text-align:center;"><img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/ge/8j/bn/ge8jbntssnooajc8so36h0tjo80.png"/></div><br/>
+Возвращаемся к странице браузера, где у нас открыто «Configure advanced settings» и выбираем в разделе VPC security groups --> Choose existing VPC security groups --> PostgreSQL:<br/>
+<br/>
+<div style="text-align:center;"><img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/nk/ae/-s/nkae-ste1tp3wgvmyilicvwlk8e.png"/></div><br/>
+Далее, в разделе Database options --> Database name --> задаем имя — <b>habrDB</b>. <br/>
+<br/>
+Остальные параметры, за исключением разве что отключения бэкапирования (backup retention period — 0 days), мониторинга и Performance Insights, можем оставить по умолчанию. Нажимаем на кнопку <b>Create database</b>:<br/>
+<br/>
+<div style="text-align:center;"><img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/ex/1p/po/ex1ppogq_vdsk3nnvywm7l8vq8i.png"/></div><br/>
+<h2>Обработчик потоков</h2><br/>
+Завершающим этапом будет разработка Spark-джобы, которая будет каждые две секунды обрабатывать новые данные, пришедшие от Kafka и заносить результат в базу данных.<br/>
+<br/>
+Как было отмечено выше, контрольные точки (сheckpoints) — это основной механизм в SparkStreaming, который должен быть настроен для обеспечения отказоустойчивости. Будем использовать контрольные точки и, в случае падения процедуры, модулю Spark Streaming для восстановления утраченных данных нужно будет только вернуться к последней контрольной точке и возобновить вычисления от нее.<br/>
+<br/>
+Контрольную точку можно включить, установив каталог в отказоустойчивой, надежной файловой системе (например, HDFS, S3 и т. Д.), в которой будет сохранена информация контрольной точки. Это делается с помощью, например:<br/>
+<br/>
+<pre><code class="python">streamingContext.checkpoint(checkpointDirectory)</code></pre><br/>
+В нашем примере будем использовать следующий подход, а именно, если checkpointDirectory существует, то контекст будет воссоздан из данных контрольной точки. Если каталог не существует (т.е. выполняется в первый раз), то вызывается функция functionToCreateContext для создания нового контекста и настройки DStreams:<br/>
+<br/>
+<pre><code class="python">from pyspark.streaming import StreamingContext
+
+context = StreamingContext.getOrCreate(checkpointDirectory, functionToCreateContext)
+</code></pre><br/>
+Создаем объект DirectStream с целью подключения к топику «transaction» при помощи метода createDirectStream библиотеки KafkaUtils:<br/>
+<br/>
+<pre><code class="python">from pyspark.streaming.kafka import KafkaUtils
+    
+sc = SparkContext(conf=conf)
+ssc = StreamingContext(sc, 2)
+
+broker_list = 'localhost:9092'
+topic = 'transaction'
+
+directKafkaStream = KafkaUtils.createDirectStream(ssc,
+                                [topic],
+                                {"metadata.broker.list": broker_list})
+</code></pre><br/>
+Парсим входящие данные в формате JSON:<br/>
+<br/>
+<pre><code class="python">rowRdd = rdd.map(lambda w: Row(branch=w['branch'],
+                                       currency=w['currency'],
+                                       amount=w['amount']))
+                                       
+testDataFrame = spark.createDataFrame(rowRdd)
+testDataFrame.createOrReplaceTempView("treasury_stream")
+</code></pre><br/>
+Используя Spark SQL, делаем несложную группировку и выводим результат в консоль:<br/>
+<br/>
+<pre><code class="sql">select 
+    from_unixtime(unix_timestamp()) as curr_time,
+    t.branch                        as branch_name,
+    t.currency                      as currency_code,
+    sum(amount)                     as batch_value
+from treasury_stream t
+group by
+    t.branch,
+    t.currency
+</code></pre><br/>
+Получение текста запроса и запуск его через Spark SQL:<br/>
+<br/>
+<pre><code class="python">sql_query = get_sql_query()
+testResultDataFrame = spark.sql(sql_query)
+testResultDataFrame.show(n=5)
+</code></pre><br/>
+А затем сохраняем полученные агрегированные данные в таблицу в AWS RDS. Чтобы сохранить результаты агрегации в таблицу базы данных, будем использовать метод write объекта DataFrame:<br/>
+<br/>
+<pre><code class="python">testResultDataFrame.write \
+    .format("jdbc") \
+    .mode("append") \
+    .option("driver", 'org.postgresql.Driver') \
+    .option("url","jdbc:postgresql://myhabrtest.ciny8bykwxeg.us-east-1.rds.amazonaws.com:5432/habrDB") \
+    .option("dbtable", "transaction_flow") \
+    .option("user", "habr") \
+    .option("password", "habr12345") \
+    .save()
+</code></pre><br/>
+<blockquote>Несколько слов о настройке подключения к AWS RDS. Пользователя и пароль к нему мы создавали на шаге «Развертывание AWS PostgreSQL». В качестве url сервера баз данных следует использовать Endpoint, который отображается в разделе Connectivity &amp; security:<br/>
+<br/>
+<div style="text-align:center;"><img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/9n/sj/jd/9nsjjdun0hdy5qtwqub0xhvzunk.png"/></div></blockquote><br/>
+В целях корректной связки Spark и Kafka, следует запускать джобу через smark-submit с использованием артефакта <b>spark-streaming-kafka-0-8_2.11</b>. Дополнительно применим также артефакт для взаимодействия с базой данных PostgreSQL, их будем передавать через --packages.<br/>
+<br/>
+Для гибкости скрипта, вынесем в качестве входных параметров также наименование сервера сообщений и топик, из которого хотим получать данные.<br/>
+<br/>
+Итак, пришло время запустить и проверить работоспособность системы:<br/>
+<br/>
+<pre><code class="bash">spark-submit \
+--packages org.apache.spark:spark-streaming-kafka-0-8_2.11:2.0.2,\
+org.postgresql:postgresql:9.4.1207 \
+spark_job.py localhost:9092 transaction
+</code></pre><br/>
+Все получилось! Как видно на картинке ниже — в процессе работы приложения новые результаты агрегации выводятся каждые 2 секунды, потому что мы установили интервал пакетирования равным 2 секундам, когда создавали объект StreamingContext:<br/>
+<br/>
+<div style="text-align:center;"><img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/cf/q1/25/cfq125zpzkyldktsuvdo175fazy.png"/></div><br/>
+Далее, делаем нехитрый запрос к базе данных, чтобы проверить наличие записей в таблице <b>transaction_flow</b>:<br/>
+<br/>
+<div style="text-align:center;"><img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/7j/j9/qm/7jj9qmf4zpter3jkbblrmiqni2s.png"/></div><br/>
+<h2>Заключение</h2><br/>
+В данной статье был рассмотрен пример поточной обработки информации с использованием Spark Streaming в связке с Apache Kafka и PostgreSQL. С ростом объемов данных из различных источников, сложно переоценить практическую ценность Spark Streaming для создания потоковых приложений и приложений, действующих в масштабе реального времени.<br/>
+<br/>
+Полный исходный код вы можете найти в моем репозитории на <a href="https://github.com/igorgorbenko/kafka_project_habr">GitHub</a>.<br/>
+<br/>
+С удовольствием готов обсудить данную статью, жду Ваших комментариев, а также, надеюсь на конструктивную критику всех неравнодушных читателей.<br/>
+<br/>
+Желаю успехов!<br/>
+<br/>
+<b>P.S.</b> Первоначально планировалось использовать локальную БД PostgreSQL, но учитывая мою любовь к AWS, я решил вынести базу данных в облако. В следующей статье по этой теме я покажу, как реализовать целиком вышеописанную систему в AWS при помощи AWS Kinesis и AWS EMR. Следите за новостями!</div></div> <!----> <!----></div> <div class="tm-article-presenter__meta"><div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Теги:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bbig%20data%5D" class="tm-tags-list__link">big data</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bspark%5D" class="tm-tags-list__link">spark</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bspark%20streaming%5D" class="tm-tags-list__link">spark streaming</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Baws%5D" class="tm-tags-list__link">aws</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bamazon%5D" class="tm-tags-list__link">amazon</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bkafka%20streams%5D" class="tm-tags-list__link">kafka streams</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bkafka%5D" class="tm-tags-list__link">kafka</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bpython%5D" class="tm-tags-list__link">python</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Brds%5D" class="tm-tags-list__link">rds</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bpostgresql%5D" class="tm-tags-list__link">postgresql</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Btutorial%5D" class="tm-tags-list__link">tutorial</a></li></ul></div> <div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Хабы:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/hub/python/" class="tm-hubs-list__link">
+    Python
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/programming/" class="tm-hubs-list__link">
+    Программирование
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/aws/" class="tm-hubs-list__link">
+    Amazon Web Services
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/bigdata/" class="tm-hubs-list__link">
+    Big Data
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/cloud_services/" class="tm-hubs-list__link">
+    Облачные сервисы
+  </a></li></ul></div></div></article></div> <!----></div> <div class="tm-article-sticky-panel"><div class="tm-data-icons tm-article-sticky-panel__icons"><div class="tm-article-rating tm-data-icons__item"><div class="tm-votes-meter tm-article-rating__votes-switcher"><svg height="16" width="16" class="tm-svg-img tm-votes-meter__icon tm-votes-meter__icon_medium"><title>Всего голосов 16: ↑16 и ↓0</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-rating"></use></svg> <span title="Всего голосов 16: ↑16 и ↓0" class="tm-votes-meter__value tm-votes-meter__value_positive tm-votes-meter__value_medium">+16</span></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----> <span title="Количество просмотров" class="tm-icon-counter tm-data-icons__item"><svg height="16" width="16" class="tm-svg-img tm-icon-counter__icon"><title>Просмотры</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-views"></use></svg> <span class="tm-icon-counter__value">24K</span></span> <button title="Добавить в закладки" type="button" class="bookmarks-button tm-data-icons__item"><span title="Добавить в закладки" class="tm-svg-icon__wrapper bookmarks-button__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Добавить в закладки</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-favorite"></use></svg></span> <span title="Количество пользователей, добавивших публикацию в закладки" class="bookmarks-button__counter">
+    124
+  </span></button> <!----> <div title="Поделиться" class="tm-sharing tm-data-icons__item"><button type="button" class="tm-sharing__button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="tm-sharing__icon"><path fill="currentColor" d="M10.33.275l9.047 7.572a.2.2 0 010 .306l-9.048 7.572a.2.2 0 01-.328-.153V11c-8 0-9.94 6-9.94 6S-1 5 10 5V.428a.2.2 0 01.328-.153z"></path></svg></button> <!----></div> <DIV class="v-portal" style="display:none;"></DIV></div> </div></div> <!----> <!----> <div class="tm-article-presenter__footer"><div class="tm-article-blocks"><!----> <section class="tm-block tm-block_spacing-bottom"><!----> <div class="tm-block__body tm-block__body_variant-balanced"><div class="tm-article-author"> <div class="tm-user-card tm-article-author__user-card tm-user-card_variant-article"><div class="tm-user-card__info-container"><div class="tm-user-card__header"><div class="tm-user-card__header-data"><a href="/ru/users/I_v_g/" class="tm-user-card__userpic tm-user-card__userpic_size-40"><div class="tm-entity-image"><img alt="" src="//habrastorage.org/getpro/habr/avatars/c2f/a8c/537/c2fa8c537e061d2ffeb7176718794460.jpg" class="tm-entity-image__pic"></div></a> <div class="tm-user-card__meta"><div title=" 21 голос " class="tm-karma tm-user-card__karma"><div class="tm-karma__votes tm-karma__votes_positive">
+    16.2
+  </div> <div class="tm-karma__text">
+    Карма
+  </div></div> <div title="Рейтинг пользователя" class="tm-rating tm-user-card__rating"><div class="tm-rating__header"> <div class="tm-rating__counter">0</div></div> <div class="tm-rating__text">
+    Рейтинг
+  </div></div></div></div></div> <div class="tm-user-card__info tm-user-card__info_variant-article"><div class="tm-user-card__title tm-user-card__title_variant-article"><span class="tm-user-card__name tm-user-card__name_variant-article">Igor Gorbenko</span> <a href="/ru/users/I_v_g/" class="tm-user-card__nickname tm-user-card__nickname_variant-article">
+          @I_v_g
+        </a> <!----></div> <p class="tm-user-card__short-info tm-user-card__short-info_variant-article">Big Data and Cloud</p></div></div> <div class="tm-user-card__buttons tm-user-card__buttons_variant-article"><!----> <!----> <!----> <!----> <!----></div></div> <div class="tm-article-author__user-contacts"><a href="http://www.linkedin.com/in/igorvgorbenko" rel="noopener" target="_blank" class="tm-article-author__contact">
+      Сайт
+    </a></div></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----></section> <div class="tm-article-blocks__comments"><div class="tm-article-page-comments"><div class="tm-article-comments-counter-link tm-article-comments-counter-button"><a href="/ru/post/451160/comments/" class="tm-article-comments-counter-link__link tm-article-comments-counter-link__link_button-style"><svg height="16" width="16" class="tm-svg-img tm-article-comments-counter-link__icon tm-article-comments-counter-link__icon_contrasted"><title>Комментарии</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-comments"></use></svg> <span class="tm-article-comments-counter-link__value tm-article-comments-counter-link__value_contrasted">
+       Комментарии 5 
+    </span></a> <!----></div></div></div> <div class="tm-ad-banner__container tm-page-article__banner"><!----> <div id="articleBottomBanner" class="tm-ad-banner"></div></div> <!----> <!----> <!----> <!----> </div></div></div></div></div> <div class="tm-page__sidebar"><div class="tm-layout-sidebar"><div class="tm-layout-sidebar__ads tm-layout-sidebar__ads_initial"><div class="tm-ad-banner__container tm-layout-sidebar__banner"><!----> <div id="sidebarBanner" class="tm-ad-banner"></div></div></div> <div class="tm-sexy-sidebar tm-sexy-sidebar_initial" style="margin-top:0px;"><!----> <!----></div></div></div></div></div></div></main> <!----></div> <div class="tm-footer-menu"><div class="tm-page-width"><div class="tm-footer-menu__container"><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Ваш аккаунт
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr/?back=/ru/post/451160/&amp;hl=ru" rel="nofollow" target="_self">
+                Войти
+              </a></li><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr-register/?back=/ru/post/451160/&amp;hl=ru" rel="nofollow" target="_self">
+                Регистрация
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Разделы
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/" class="footer-menu__item-link router-link-active">
+                Публикации
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/news/" class="footer-menu__item-link">
+                Новости
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/hubs/" class="footer-menu__item-link">
+                Хабы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/companies/" class="footer-menu__item-link">
+                Компании
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/users/" class="footer-menu__item-link">
+                Авторы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/sandbox/" class="footer-menu__item-link">
+                Песочница
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Информация
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/docs/help/" class="footer-menu__item-link">
+                Устройство сайта
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/authors/codex/" class="footer-menu__item-link">
+                Для авторов
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/companies/corpblogs/" class="footer-menu__item-link">
+                Для компаний
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/docs/transparency/" class="footer-menu__item-link">
+                Документы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/agreement" target="_blank">
+                Соглашение
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/confidential/" target="_blank">
+                Конфиденциальность
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Услуги
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQLwRfQmXibiUlWaRg-BAc38s7oM3lJiaPju7qmdJsp8ysIvZ_G-Npem0njJLMozE2bPHMpDqiI5hhy/pub?start=false&amp;loop=false&amp;delayms=60000&amp;slide=id.g91a03369cd_4_297" target="_blank">
+                Реклама
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://habrastorage.org/storage/stuff/habr/service_price.pdf" target="_blank">
+                Тарифы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQJJds8-Di7BQSP_guHxICN7woVYoN5NP_22ra-BIo4bqnTT9FR6fB-Ku2P0AoRpX0Ds-LRkDeAoD8F/pub?start=false&amp;loop=false&amp;delayms=60000" target="_blank">
+                Контент
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://tmtm.timepad.ru/" target="_blank">
+                Семинары
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/megaprojects/" class="footer-menu__item-link">
+                Мегапроекты
+              </a></li></ul></div></div></div></div></div> <div class="tm-footer"><div class="tm-page-width"><div class="tm-footer__container"><!----> <div class="tm-footer__social"><a href="https://www.facebook.com/habrahabr.ru" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Facebook</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-facebook"></use></svg></a><a href="https://twitter.com/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Twitter</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-twitter"></use></svg></a><a href="https://vk.com/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>VK</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-vkontakte"></use></svg></a><a href="https://telegram.me/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Telegram</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-telegram"></use></svg></a><a href="https://www.youtube.com/channel/UCd_sTwKqVrweTt4oAKY5y4w" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Youtube</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-youtube"></use></svg></a><a href="https://zen.yandex.ru/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Яндекс Дзен</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-zen"></use></svg></a></div> <DIV class="v-portal" style="display:none;"></DIV> <button class="tm-footer__link"><!---->
+        Настройка языка
+      </button> <a href="/ru/about" class="tm-footer__link">
+        О сайте
+      </a> <a href="/ru/feedback/" class="tm-footer__link">
+        Техническая поддержка
+      </a> <!----> <a href="/berserk-mode-nope" class="tm-footer__link">
+        Вернуться на старую версию
+      </a> <div class="tm-footer-copyright"><span class="tm-copyright"><span class="tm-copyright__years">© 2006–2021 </span> <span class="tm-copyright__name">«<a href="https://company.habr.com/" rel="noopener" target="_blank" class="tm-copyright__link">Habr</a>»</span></span></div></div></div></div> <!----> <!----></div> <div class="vue-portal-target"></div></div>
+<script>window.__INITIAL_STATE__={"adblock":{"hasAcceptableAdsFilter":false,"hasAdblock":false},"articlesList":{"articlesList":{"451160":{"id":"451160","timePublished":"2019-05-10T05:03:15+00:00","isCorporative":false,"lang":"ru","titleHtml":"Apache Kafka и потоковая обработка данных с помощью Spark Streaming","leadData":{"textHtml":"Привет, Хабр! Сегодня мы построим систему, которая будет при помощи Spark Streaming обрабатывать потоки сообщений Apache Kafka и записывать результат обработки в облачную базу данных AWS RDS.\u003Cbr\u003E\r\n\u003Cbr\u003E\r\nПредставим, что некая кредитная организация ставит перед нами задачу обработки входящих транзакций «на лету» по всем своим филиалам. Это может быть сделано с целью оперативного расчета открытой валютой позиции для казначейства, лимитов или финансового результата по сделкам и т.д.\u003Cbr\u003E\r\n\u003Cbr\u003E\r\nКак реализовать этот кейс без применения магии и волшебных заклинаний — читаем под катом! Поехали!\u003Cbr\u003E\r\n\u003Cbr\u003E\r\n\u003Cdiv style=\"text-align:center;\"\u003E\u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002F5w\u002Fsb\u002F8v\u002F5wsb8vvncrzhysct-pd6oqraqky.jpeg\"\u003E\u003C\u002Fdiv\u003E\u003Cbr\u003E\r\n\u003Ca href=\"https:\u002F\u002Fwww.megapixl.com\u002Fvalerybrozhinsky-stock-images-videos-portfolio\"\u003E(Источник картинки)\u003C\u002Fa\u003E\u003Cbr\u003E","imageUrl":null,"buttonTextHtml":"Читать дальше →","image":null},"editorVersion":"1.0","postType":"article","postLabels":[{"type":"tutorial","data":null}],"author":{"scoreStats":{"score":16.2,"votesCount":21},"rating":0,"relatedData":null,"contacts":[{"title":"Сайт","url":"http:\u002F\u002Fwww.linkedin.com\u002Fin\u002Figorvgorbenko","value":"http:\u002F\u002Fwww.linkedin.com\u002Fin\u002Figorvgorbenko"}],"authorContacts":[{"title":"Сайт","url":"http:\u002F\u002Fwww.linkedin.com\u002Fin\u002Figorvgorbenko","value":"http:\u002F\u002Fwww.linkedin.com\u002Fin\u002Figorvgorbenko"}],"paymentDetails":{"paymentYandexMoney":null,"paymentPayPalMe":null,"paymentWebmoney":null},"id":"1100136","alias":"I_v_g","fullname":"Igor Gorbenko","avatarUrl":"\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Favatars\u002Fc2f\u002Fa8c\u002F537\u002Fc2fa8c537e061d2ffeb7176718794460.jpg","speciality":"Big Data and Cloud"},"statistics":{"commentsCount":5,"favoritesCount":124,"readingCount":24251,"score":16,"votesCount":16},"hubs":[{"relatedData":null,"id":"340","alias":"python","type":"collective","title":"Python","titleHtml":"Python","isProfiled":true},{"relatedData":null,"id":"359","alias":"programming","type":"collective","title":"Программирование","titleHtml":"Программирование","isProfiled":true},{"relatedData":null,"id":"17682","alias":"aws","type":"collective","title":"Amazon Web Services","titleHtml":"Amazon Web Services","isProfiled":true},{"relatedData":null,"id":"17795","alias":"bigdata","type":"collective","title":"Big Data","titleHtml":"Big Data","isProfiled":true},{"relatedData":null,"id":"21470","alias":"cloud_services","type":"collective","title":"Облачные сервисы","titleHtml":"Облачные сервисы","isProfiled":false}],"flows":[{"id":"1","alias":"develop","title":"Разработка"},{"id":"6","alias":"admin","title":"Администрирование"}],"relatedData":null,"textHtml":"\u003Cdiv xmlns=\"http:\u002F\u002Fwww.w3.org\u002F1999\u002Fxhtml\"\u003EПривет, Хабр! Сегодня мы построим систему, которая будет при помощи Spark Streaming обрабатывать потоки сообщений Apache Kafka и записывать результат обработки в облачную базу данных AWS RDS.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПредставим, что некая кредитная организация ставит перед нами задачу обработки входящих транзакций «на лету» по всем своим филиалам. Это может быть сделано с целью оперативного расчета открытой валютой позиции для казначейства, лимитов или финансового результата по сделкам и т.д.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nКак реализовать этот кейс без применения магии и волшебных заклинаний — читаем под катом! Поехали!\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cdiv style=\"text-align:center;\"\u003E\u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fr\u002Fw780q1\u002Fwebt\u002F5w\u002Fsb\u002F8v\u002F5wsb8vvncrzhysct-pd6oqraqky.jpeg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002F5w\u002Fsb\u002F8v\u002F5wsb8vvncrzhysct-pd6oqraqky.jpeg\" data-blurred=\"true\"\u002F\u003E\u003C\u002Fdiv\u003E\u003Cbr\u002F\u003E\r\n\u003Ca href=\"https:\u002F\u002Fwww.megapixl.com\u002Fvalerybrozhinsky-stock-images-videos-portfolio\"\u003E(Источник картинки)\u003C\u002Fa\u003E\u003Cbr\u002F\u003E\r\n\u003Ca name=\"habracut\"\u003E\u003C\u002Fa\u003E\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EВведение\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nБезусловно, обработка большого массива данных в реальном времени предоставляет широкие возможности для использования в современных системах. Одной из популярнейших комбинаций для этого является тандем Apache Kafka и Spark Streaming, где Kafka — создает поток пакетов входящих сообщений, а Spark Streaming обрабатывает эти пакеты через заданный интервал времени.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nДля повышения отказоустойчивости приложения, будем использовать контрольные точки — чекпоинты (checkpoints). При помощи этого механизма, когда модулю Spark Streaming потребуется восстановить утраченные данные, ему нужно будет только вернуться к последней контрольной точке и возобновить вычисления от нее.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EАрхитектура разрабатываемой системы\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\n\u003Cdiv style=\"text-align:center;\"\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fod\u002Fef\u002Fzc\u002Fodefzciug8ckvim4-ei6pdg49tw.png\"\u002F\u003E\u003C\u002Fdiv\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nИспользуемые компоненты:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003E\u003Ca href=\"https:\u002F\u002Fkafka.apache.org\u002Fintro\"\u003E\u003Cb\u003EApache Kafka\u003C\u002Fb\u003E\u003C\u002Fa\u003E — это распределенная система обмена сообщениями с публикацией и подпиской. Подходит как для автономного, так и для онлайнового потребления сообщений. Для предотвращения потери данных сообщения Kafka сохраняются на диске и реплицируются внутри кластера. Система Kafka построена поверх службы синхронизации ZooKeeper;\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Ca href=\"https:\u002F\u002Fspark.apache.org\u002Fstreaming\u002F\"\u003E\u003Cb\u003EApache Spark Streaming\u003C\u002Fb\u003E\u003C\u002Fa\u003E — компонент Spark для обработки потоковых данных. Модуль Spark Streaming построен с применением «микропакетной» архитектуры (micro-batch architecture), когда поток данных интерпретируется как непрерывная последовательность маленьких пакетов данных. Spark Streaming принимает данные из разных источников и объединяет их в небольшие пакеты. Новые пакеты создаются через регулярные интервалы времени. В начале каждого интервала времени создается новый пакет, и любые данные, поступившие в течение этого интервала, включаются в пакет. В конце интервала увеличение пакета прекращается. Размер интервала определяется параметром, который называется интервал пакетирования (batch interval); \u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Ca href=\"https:\u002F\u002Fspark.apache.org\u002Fsql\u002F\"\u003E\u003Cb\u003EApache Spark SQL \u003C\u002Fb\u003E\u003C\u002Fa\u003E — объединяет реляционную обработку с функциональным программированием Spark. Под структурированными данными подразумеваются данные, имеющие схему, то есть единый набор полей для всех записей. Spark SQL поддерживает ввод из множества источников структурированных данных и, благодаря наличию информации о схеме, он может эффективно извлекать только необходимые поля записей, а также предоставляет API-интерфейсы DataFrame;\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Ca href=\"https:\u002F\u002Fdocs.aws.amazon.com\u002Fen_us\u002FAmazonRDS\u002Flatest\u002FUserGuide\u002FWelcome.html\"\u003E\u003Cb\u003EAWS RDS\u003C\u002Fb\u003E\u003C\u002Fa\u003E — это cравнительно недорогая облачная реляционная база данных, веб-сервис, который упрощает настройку, эксплуатацию и масштабирование, администрируется непосредcтвенно Amazon.\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EУстановка и запуск сервера Kafka\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nПеред непосредственным использованием Kafka, необходимо убедиться в наличии Java, т.к. для работы используется JVM:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"bash\"\u003Esudo apt-get update \nsudo apt-get install default-jre\njava -version\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nСоздадим нового пользователя для работы с Kafka:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"bash\"\u003Esudo useradd kafka -m\nsudo passwd kafka\nsudo adduser kafka sudo\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nДалее скачиваем дистрибутив с официального сайта Apache Kafka:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"bash\"\u003Ewget -P \u002FYOUR_PATH \"http:\u002F\u002Fapache-mirror.rbc.ru\u002Fpub\u002Fapache\u002Fkafka\u002F2.2.0\u002Fkafka_2.12-2.2.0.tgz\"\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nРаспаковываем скаченный архив:\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"bash\"\u003Etar -xvzf \u002FYOUR_PATH\u002Fkafka_2.12-2.2.0.tgz\nln -s \u002FYOUR_PATH\u002Fkafka_2.12-2.2.0 kafka\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nСледующий шаг — опциональный. Дело в том, что настройки по умолчанию не позволяют полноценно использовать все возможности Apache Kafka. Например, удалять тему, категорию, группу, на которые могут быть опубликованы сообщения. Чтобы изменить это, отредактируем файл конфигурации:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"bash\"\u003Evim ~\u002Fkafka\u002Fconfig\u002Fserver.properties\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nДобавьте в конец файла следующее:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"bash\"\u003Edelete.topic.enable = true\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nПеред запуском сервера Kafka, необходимо стартовать сервер ZooKeeper, будем использовать вспомогательный скрипт, который поставляется вместе с дистрибутивом Kafka:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"bash\"\u003ECd ~\u002Fkafka\nbin\u002Fzookeeper-server-start.sh config\u002Fzookeeper.properties\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nПосле того, как ZooKeeper успешно стартовал, в отдельном терминале запускаем сервер Kafka:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"bash\"\u003Ebin\u002Fkafka-server-start.sh config\u002Fserver.properties\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nСоздадим новый топик под названием Transaction:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"bash\"\u003Ebin\u002Fkafka-topics.sh --create --zookeeper localhost:2181 --replication-factor 1 --partitions 3 --topic transaction\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nУбедимся, что топик с нужным количеством партиций и репликацией был создан:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"bash\"\u003Ebin\u002Fkafka-topics.sh --describe --zookeeper localhost:2181\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fs5\u002Fgh\u002Fbu\u002Fs5ghbuswhb0dcc0pmlvu_uloes4.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nУпустим моменты тестирования продюсера и консьюмера для вновь созданного топика. Более подробно о том, как можно протестировать отправку и прием сообщений, написано в официальной документации — \u003Ca href=\"https:\u002F\u002Fkafka.apache.org\u002Fdocumentation\u002F#quickstart_send\"\u003ESend some messages\u003C\u002Fa\u003E. Ну а мы переходим к написанию продюсера на Python с использованием KafkaProducer API.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EНаписание продюсера\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nПродюсер будет генерить случайные данные — по 100 сообщений каждую секунду. Под случайными данными будем понимать словарь, состоящий из трех полей:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003E\u003Cb\u003EBranch \u003C\u002Fb\u003E — наименование точки продаж кредитной организации;\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Cb\u003ECurrency \u003C\u002Fb\u003E — валюта сделки;\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Cb\u003EAmount \u003C\u002Fb\u003E — сумма сделки. Сумма будет положительным числом, если это покупка валюты Банком, и отрицательным — если продажа.\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\nКод для продюсера выглядит следующим образом:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"python\"\u003Efrom numpy.random import choice, randint\n\ndef get_random_value():\n    new_dict = {}\n\n    branch_list = ['Kazan', 'SPB', 'Novosibirsk', 'Surgut']\n    currency_list = ['RUB', 'USD', 'EUR', 'GBP']\n\n    new_dict['branch'] = choice(branch_list)\n    new_dict['currency'] = choice(currency_list)\n    new_dict['amount'] = randint(-100, 100)\n\n    return new_dict\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nДалее, используя метод send, отправляем сообщение на сервер, в нужный нам топик, в формате JSON:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"python\"\u003Efrom kafka import KafkaProducer    \n\nproducer = KafkaProducer(bootstrap_servers=['localhost:9092'],\n                             value_serializer=lambda x:dumps(x).encode('utf-8'),\n                             compression_type='gzip')\nmy_topic = 'transaction'\ndata = get_random_value()\n\ntry:\n    future = producer.send(topic = my_topic, value = data)\n    record_metadata = future.get(timeout=10)\n    \n    print('--\u003E The message has been sent to a topic: \\\n            {}, partition: {}, offset: {}' \\\n            .format(record_metadata.topic,\n                record_metadata.partition,\n                record_metadata.offset ))   \n                             \nexcept Exception as e:\n    print('--\u003E It seems an Error occurred: {}'.format(e))\n\nfinally:\n    producer.flush()\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nПри запуске скрипта получаем в терминале следующие сообщения:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cdiv style=\"text-align:center;\"\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002F_e\u002F3g\u002Fzj\u002F_e3gzjrmsycjb8ntjmur6ztaspw.png\"\u002F\u003E\u003C\u002Fdiv\u003E\u003Cbr\u002F\u003E\r\nЭто означает, что все работает как мы хотели — продюсер генерит и отправляет сообщения в нужный нам топик. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nСледующим шагом будет установка Spark и обработка этого потока сообщений.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EУстановка Apache Spark\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\n\u003Cb\u003EApache Spark\u003C\u002Fb\u003E — это универсальная и высокопроизводительная кластерная вычислительная платформа.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПо производительности Spark превосходит популярные реализации модели MapReduce, попутно обеспечивая поддержку более широкого диапазона типов вычислений, включая интерактивные запросы и потоковую обработку. Скорость играет важную роль при обработке больших объемов данных, так как именно скорость позволяет работать в интерактивном режиме, не тратя минуты или часы на ожидание. Одно из важнейших достоинств Spark, обеспечивающих столь высокую скорость, — способность выполнять вычисления в памяти. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nДанный фреймворк написан на Scala, поэтому необходимо установить ее в первую очередь:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"bash\"\u003Esudo apt-get install scala\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nСкачиваем с официального сайта дистрибутив Spark:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"bash\"\u003Ewget \"http:\u002F\u002Fmirror.linux-ia64.org\u002Fapache\u002Fspark\u002Fspark-2.4.2\u002Fspark-2.4.2-bin-hadoop2.7.tgz\"\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nРаспаковываем архив:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"bash\"\u003Esudo tar xvf spark-2.4.2\u002Fspark-2.4.2-bin-hadoop2.7.tgz -C \u002Fusr\u002Flocal\u002Fspark\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nДобавляем путь к Spark в bash-файл:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"bash\"\u003Evim ~\u002F.bashrc\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nДобавляем через редактор следующие строчки:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"bash\"\u003ESPARK_HOME=\u002Fusr\u002Flocal\u002Fspark\nexport PATH=$SPARK_HOME\u002Fbin:$PATH\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nВыполняем команду ниже после внесения правок в bashrc:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"bash\"\u003Esource ~\u002F.bashrc\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EРазвертывание AWS PostgreSQL\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nОсталось развернуть базу данных, куда будем заливать обработанную информацию из потоков. Для этого будем использовать сервис AWS RDS.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЗаходим в консоль AWS --\u003E AWS RDS --\u003E Databases --\u003E Create database:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cdiv style=\"text-align:center;\"\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fdg\u002Fos\u002Fm7\u002Fdgosm7dwnh3fr-uksjdt_xpltsk.png\"\u002F\u003E\u003C\u002Fdiv\u003E\u003Cbr\u002F\u003E\r\nВыбираем PostgreSQL и нажимаем кнопку Next:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cdiv style=\"text-align:center;\"\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002F3y\u002Fd_\u002F8r\u002F3yd_8rsz2swfgaxaafpkyizthac.png\"\u002F\u003E\u003C\u002Fdiv\u003E\u003Cbr\u002F\u003E\r\nТ.к. данный пример разбирается исключительно в образовательных целях, будем использовать бесплатный сервер «на минималках» (Free Tier):\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cdiv style=\"text-align:center;\"\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Ffn\u002F6p\u002F5b\u002Ffn6p5bjyitndy_ozs2cdcw_ssi0.png\"\u002F\u003E\u003C\u002Fdiv\u003E\u003Cbr\u002F\u003E\r\nДалее, ставим галочку в блоке Free Tier, и после этого нам автоматом будет предложен инстанс класса t2.micro — хоть и слабенький, но бесплатный и вполне подойдет для нашей задачи:\u003Cbr\u002F\u003E\r\n\u003Cdiv style=\"text-align:center;\"\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fmj\u002Fjh\u002Fwg\u002Fmjjhwg3cknoehrq8wyxk3uw5v74.png\"\u002F\u003E\u003C\u002Fdiv\u003E\u003Cbr\u002F\u003E\r\nСледом идут очень важные вещи: наименование инстанса БД, имя мастер-пользователя и его пароль. Назовем инстанст: myHabrTest, мастер-пользователь: \u003Cb\u003Ehabr\u003C\u002Fb\u003E, пароль: \u003Cb\u003Ehabr12345 \u003C\u002Fb\u003Eи нажимаем на кнопку Next:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cdiv style=\"text-align:center;\"\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Flg\u002Fjt\u002Fmf\u002Flgjtmfdfst0pvqthojb_bdpeohc.png\"\u002F\u003E\u003C\u002Fdiv\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nНа следующей странице находятся параметры, отвечающие за доступность нашего сервера БД извне (Public accessibility) и доступность портов:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cdiv style=\"text-align:center;\"\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002F40\u002Fz9\u002Fq7\u002F40z9q7owar5kpnimyzrdj5laqgs.png\"\u002F\u003E\u003C\u002Fdiv\u003E\u003Cbr\u002F\u003E\r\nДавайте создадим новую настройку для VPC security group, которая позволит извне обращаться к нашему серверу БД через порт 5432 (PostgreSQL).\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПерейдем в отдельном окне браузера к консоли AWS в раздел VPC Dashboard --\u003E Security Groups --\u003E Create security group:\u003Cbr\u002F\u003E\r\n\u003Cdiv style=\"text-align:center;\"\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Ffl\u002F2i\u002Fne\u002Ffl2inejlgnghwsh3itdrlcywdsu.png\"\u002F\u003E\u003C\u002Fdiv\u003E\u003Cbr\u002F\u003E\r\nЗадаем имя для Security group — PostgreSQL, описание, указываем к какой VPC данная группа должна быть ассоциирована и нажимаем кнопку Create:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cdiv style=\"text-align:center;\"\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fjs\u002F8r\u002Ftv\u002Fjs8rtvp8tudwjtpgso6xota5h-g.png\"\u002F\u003E\u003C\u002Fdiv\u003E\u003Cbr\u002F\u003E\r\nЗаполняем для свежесозданной группы Inbound rules для порта 5432, как показано на картинке ниже. Вручную порт можно не указывать, а выбрать PostgreSQL из раскрывающегося списка Type. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nСтрого говоря, значение ::\u002F0 означает доступность входящего траффика для сервера со всего мира, что канонически не совсем верно, но для разбора примера позволим себе использовать такой подход:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cdiv style=\"text-align:center;\"\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fge\u002F8j\u002Fbn\u002Fge8jbntssnooajc8so36h0tjo80.png\"\u002F\u003E\u003C\u002Fdiv\u003E\u003Cbr\u002F\u003E\r\nВозвращаемся к странице браузера, где у нас открыто «Configure advanced settings» и выбираем в разделе VPC security groups --\u003E Choose existing VPC security groups --\u003E PostgreSQL:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cdiv style=\"text-align:center;\"\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fnk\u002Fae\u002F-s\u002Fnkae-ste1tp3wgvmyilicvwlk8e.png\"\u002F\u003E\u003C\u002Fdiv\u003E\u003Cbr\u002F\u003E\r\nДалее, в разделе Database options --\u003E Database name --\u003E задаем имя — \u003Cb\u003EhabrDB\u003C\u002Fb\u003E. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nОстальные параметры, за исключением разве что отключения бэкапирования (backup retention period — 0 days), мониторинга и Performance Insights, можем оставить по умолчанию. Нажимаем на кнопку \u003Cb\u003ECreate database\u003C\u002Fb\u003E:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cdiv style=\"text-align:center;\"\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fex\u002F1p\u002Fpo\u002Fex1ppogq_vdsk3nnvywm7l8vq8i.png\"\u002F\u003E\u003C\u002Fdiv\u003E\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EОбработчик потоков\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nЗавершающим этапом будет разработка Spark-джобы, которая будет каждые две секунды обрабатывать новые данные, пришедшие от Kafka и заносить результат в базу данных.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nКак было отмечено выше, контрольные точки (сheckpoints) — это основной механизм в SparkStreaming, который должен быть настроен для обеспечения отказоустойчивости. Будем использовать контрольные точки и, в случае падения процедуры, модулю Spark Streaming для восстановления утраченных данных нужно будет только вернуться к последней контрольной точке и возобновить вычисления от нее.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nКонтрольную точку можно включить, установив каталог в отказоустойчивой, надежной файловой системе (например, HDFS, S3 и т. Д.), в которой будет сохранена информация контрольной точки. Это делается с помощью, например:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"python\"\u003EstreamingContext.checkpoint(checkpointDirectory)\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nВ нашем примере будем использовать следующий подход, а именно, если checkpointDirectory существует, то контекст будет воссоздан из данных контрольной точки. Если каталог не существует (т.е. выполняется в первый раз), то вызывается функция functionToCreateContext для создания нового контекста и настройки DStreams:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"python\"\u003Efrom pyspark.streaming import StreamingContext\n\ncontext = StreamingContext.getOrCreate(checkpointDirectory, functionToCreateContext)\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nСоздаем объект DirectStream с целью подключения к топику «transaction» при помощи метода createDirectStream библиотеки KafkaUtils:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"python\"\u003Efrom pyspark.streaming.kafka import KafkaUtils\n    \nsc = SparkContext(conf=conf)\nssc = StreamingContext(sc, 2)\n\nbroker_list = 'localhost:9092'\ntopic = 'transaction'\n\ndirectKafkaStream = KafkaUtils.createDirectStream(ssc,\n                                [topic],\n                                {\"metadata.broker.list\": broker_list})\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nПарсим входящие данные в формате JSON:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"python\"\u003ErowRdd = rdd.map(lambda w: Row(branch=w['branch'],\n                                       currency=w['currency'],\n                                       amount=w['amount']))\n                                       \ntestDataFrame = spark.createDataFrame(rowRdd)\ntestDataFrame.createOrReplaceTempView(\"treasury_stream\")\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nИспользуя Spark SQL, делаем несложную группировку и выводим результат в консоль:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"sql\"\u003Eselect \n    from_unixtime(unix_timestamp()) as curr_time,\n    t.branch                        as branch_name,\n    t.currency                      as currency_code,\n    sum(amount)                     as batch_value\nfrom treasury_stream t\ngroup by\n    t.branch,\n    t.currency\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nПолучение текста запроса и запуск его через Spark SQL:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"python\"\u003Esql_query = get_sql_query()\ntestResultDataFrame = spark.sql(sql_query)\ntestResultDataFrame.show(n=5)\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nА затем сохраняем полученные агрегированные данные в таблицу в AWS RDS. Чтобы сохранить результаты агрегации в таблицу базы данных, будем использовать метод write объекта DataFrame:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"python\"\u003EtestResultDataFrame.write \\\n    .format(\"jdbc\") \\\n    .mode(\"append\") \\\n    .option(\"driver\", 'org.postgresql.Driver') \\\n    .option(\"url\",\"jdbc:postgresql:\u002F\u002Fmyhabrtest.ciny8bykwxeg.us-east-1.rds.amazonaws.com:5432\u002FhabrDB\") \\\n    .option(\"dbtable\", \"transaction_flow\") \\\n    .option(\"user\", \"habr\") \\\n    .option(\"password\", \"habr12345\") \\\n    .save()\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cblockquote\u003EНесколько слов о настройке подключения к AWS RDS. Пользователя и пароль к нему мы создавали на шаге «Развертывание AWS PostgreSQL». В качестве url сервера баз данных следует использовать Endpoint, который отображается в разделе Connectivity &amp; security:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cdiv style=\"text-align:center;\"\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002F9n\u002Fsj\u002Fjd\u002F9nsjjdun0hdy5qtwqub0xhvzunk.png\"\u002F\u003E\u003C\u002Fdiv\u003E\u003C\u002Fblockquote\u003E\u003Cbr\u002F\u003E\r\nВ целях корректной связки Spark и Kafka, следует запускать джобу через smark-submit с использованием артефакта \u003Cb\u003Espark-streaming-kafka-0-8_2.11\u003C\u002Fb\u003E. Дополнительно применим также артефакт для взаимодействия с базой данных PostgreSQL, их будем передавать через --packages.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nДля гибкости скрипта, вынесем в качестве входных параметров также наименование сервера сообщений и топик, из которого хотим получать данные.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nИтак, пришло время запустить и проверить работоспособность системы:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"bash\"\u003Espark-submit \\\n--packages org.apache.spark:spark-streaming-kafka-0-8_2.11:2.0.2,\\\norg.postgresql:postgresql:9.4.1207 \\\nspark_job.py localhost:9092 transaction\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nВсе получилось! Как видно на картинке ниже — в процессе работы приложения новые результаты агрегации выводятся каждые 2 секунды, потому что мы установили интервал пакетирования равным 2 секундам, когда создавали объект StreamingContext:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cdiv style=\"text-align:center;\"\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fcf\u002Fq1\u002F25\u002Fcfq125zpzkyldktsuvdo175fazy.png\"\u002F\u003E\u003C\u002Fdiv\u003E\u003Cbr\u002F\u003E\r\nДалее, делаем нехитрый запрос к базе данных, чтобы проверить наличие записей в таблице \u003Cb\u003Etransaction_flow\u003C\u002Fb\u003E:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cdiv style=\"text-align:center;\"\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002F7j\u002Fj9\u002Fqm\u002F7jj9qmf4zpter3jkbblrmiqni2s.png\"\u002F\u003E\u003C\u002Fdiv\u003E\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EЗаключение\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nВ данной статье был рассмотрен пример поточной обработки информации с использованием Spark Streaming в связке с Apache Kafka и PostgreSQL. С ростом объемов данных из различных источников, сложно переоценить практическую ценность Spark Streaming для создания потоковых приложений и приложений, действующих в масштабе реального времени.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПолный исходный код вы можете найти в моем репозитории на \u003Ca href=\"https:\u002F\u002Fgithub.com\u002Figorgorbenko\u002Fkafka_project_habr\"\u003EGitHub\u003C\u002Fa\u003E.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nС удовольствием готов обсудить данную статью, жду Ваших комментариев, а также, надеюсь на конструктивную критику всех неравнодушных читателей.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЖелаю успехов!\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cb\u003EP.S.\u003C\u002Fb\u003E Первоначально планировалось использовать локальную БД PostgreSQL, но учитывая мою любовь к AWS, я решил вынести базу данных в облако. В следующей статье по этой теме я покажу, как реализовать целиком вышеописанную систему в AWS при помощи AWS Kinesis и AWS EMR. Следите за новостями!\u003C\u002Fdiv\u003E","tags":[{"titleHtml":"big data"},{"titleHtml":"spark"},{"titleHtml":"spark streaming"},{"titleHtml":"aws"},{"titleHtml":"amazon"},{"titleHtml":"kafka streams"},{"titleHtml":"kafka"},{"titleHtml":"python"},{"titleHtml":"rds"},{"titleHtml":"postgresql"},{"titleHtml":"tutorial"}],"metadata":{"stylesUrls":[],"scriptUrls":[],"shareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F451160\u002F8c22b24de52c14c419cb6fe716276d2e\u002F","shareImageWidth":1200,"shareImageHeight":630,"vkShareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F451160\u002F8c22b24de52c14c419cb6fe716276d2e\u002F?format=vk","schemaJsonLd":"{\"@context\":\"http:\\\u002F\\\u002Fschema.org\",\"@type\":\"Article\",\"mainEntityOfPage\":{\"@type\":\"WebPage\",\"@id\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fru\\\u002Fpost\\\u002F451160\\\u002F\"},\"headline\":\"Apache Kafka и потоковая обработка данных с помощью Spark Streaming\",\"datePublished\":\"2019-05-10T08:03:15+03:00\",\"dateModified\":\"2019-05-10T10:56:01+03:00\",\"author\":{\"@type\":\"Person\",\"name\":\"Igor Gorbenko\"},\"publisher\":{\"@type\":\"Organization\",\"name\":\"Habr\",\"logo\":{\"@type\":\"ImageObject\",\"url\":\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fa_\\\u002Flk\\\u002F9m\\\u002Fa_lk9mjkccjox-zccjrpfolmkmq.png\"}},\"description\":\"Привет, Хабр! Сегодня мы построим систему, которая будет при помощи Spark Streaming обрабатывать потоки сообщений Apache Kafka и записывать результат обработки в...\",\"url\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fru\\\u002Fpost\\\u002F451160\\\u002F#post-content-body\",\"about\":[\"h_python\",\"h_programming\",\"h_aws\",\"h_bigdata\",\"h_cloud_services\",\"f_develop\",\"f_admin\"],\"image\":[\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002F5w\\\u002Fsb\\\u002F8v\\\u002F5wsb8vvncrzhysct-pd6oqraqky.jpeg\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fod\\\u002Fef\\\u002Fzc\\\u002Fodefzciug8ckvim4-ei6pdg49tw.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fs5\\\u002Fgh\\\u002Fbu\\\u002Fs5ghbuswhb0dcc0pmlvu_uloes4.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002F_e\\\u002F3g\\\u002Fzj\\\u002F_e3gzjrmsycjb8ntjmur6ztaspw.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fdg\\\u002Fos\\\u002Fm7\\\u002Fdgosm7dwnh3fr-uksjdt_xpltsk.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002F3y\\\u002Fd_\\\u002F8r\\\u002F3yd_8rsz2swfgaxaafpkyizthac.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Ffn\\\u002F6p\\\u002F5b\\\u002Ffn6p5bjyitndy_ozs2cdcw_ssi0.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fmj\\\u002Fjh\\\u002Fwg\\\u002Fmjjhwg3cknoehrq8wyxk3uw5v74.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Flg\\\u002Fjt\\\u002Fmf\\\u002Flgjtmfdfst0pvqthojb_bdpeohc.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002F40\\\u002Fz9\\\u002Fq7\\\u002F40z9q7owar5kpnimyzrdj5laqgs.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Ffl\\\u002F2i\\\u002Fne\\\u002Ffl2inejlgnghwsh3itdrlcywdsu.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fjs\\\u002F8r\\\u002Ftv\\\u002Fjs8rtvp8tudwjtpgso6xota5h-g.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fge\\\u002F8j\\\u002Fbn\\\u002Fge8jbntssnooajc8so36h0tjo80.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fnk\\\u002Fae\\\u002F-s\\\u002Fnkae-ste1tp3wgvmyilicvwlk8e.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fex\\\u002F1p\\\u002Fpo\\\u002Fex1ppogq_vdsk3nnvywm7l8vq8i.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002F9n\\\u002Fsj\\\u002Fjd\\\u002F9nsjjdun0hdy5qtwqub0xhvzunk.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fcf\\\u002Fq1\\\u002F25\\\u002Fcfq125zpzkyldktsuvdo175fazy.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002F7j\\\u002Fj9\\\u002Fqm\\\u002F7jj9qmf4zpter3jkbblrmiqni2s.png\"]}","metaDescription":"Привет, Хабр! Сегодня мы построим систему, которая будет при помощи Spark Streaming обрабатывать потоки сообщений Apache Kafka и записывать результат обработки в облачную базу данных AWS...","mainImageUrl":null,"amp":false},"polls":[],"commentsEnabled":true,"rulesRemindEnabled":false,"votesEnabled":true,"status":"published","plannedPublishTime":null,"checked":null,"isEditorial":false}},"articlesIds":{},"isLoading":false,"pagesCount":{},"route":{},"reasonsList":null,"view":"cards","lastVisitedRoute":{},"ssrCommentsArticleIds":[""],"karma":{}},"authorContribution":{"authors":{}},"betaTest":{"currentAnnouncement":null,"announcements":{},"announcementCards":null,"announcementComments":{},"announcementCommentThreads":{},"announcementCommentingStatuses":{},"archivedList":[]},"authorStatistics":{"articleRefs":{},"articleIds":{},"pagesCount":{},"route":{},"viewsCount":[],"maxStatsCount":{}},"career":{"seoLandings":[],"hubs":"python,programming,aws,bigdata,cloud_services"},"comments":{"articleComments":{},"searchCommentsResults":null,"previewComment":null,"pagesCount":null,"commentAccess":{},"scrollParents":{},"pageArticleComments":{"lastViewedComment":0,"postId":null,"lastCommentTimestamp":"","moderated":[],"moderatedIds":[],"commentRoute":""}},"companies":{"companyRefs":{},"companyIds":{},"companyTopIds":{},"pagesCount":{},"companyProfiles":{},"companiesCategories":[],"companiesCategoriesTotalCount":0,"companiesWidgets":{},"companiesWorkers":{},"companiesFans":{},"route":{},"isLoading":false,"companyWorkersLoading":false,"companyFansLoading":false,"vacancies":{}},"companiesContribution":{"hubs":{},"flows":{},"companyRefs":{}},"companyHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"conversation":{"messages":[],"respondent":null,"isLoadMore":false},"conversations":{"conversations":[],"unreadCount":0,"pagesCount":0,"isLoadMore":false},"desktopState":{"desktopFl":null,"desktopHl":null,"isChecked":false,"isLoginDemanded":false},"dfp":{"slotsDict":{}},"docs":{"menu":{},"articles":{},"mainMenu":[],"loading":{"main":false,"dropdown":false,"article":false}},"feature":{"isProbablyVisible":"true"},"flows":{"flows":[{"alias":"develop","id":1,"route":{"name":"FLOW_PAGE","params":{"flowName":"develop"}}},{"alias":"admin","id":6,"route":{"name":"FLOW_PAGE","params":{"flowName":"admin"}}},{"alias":"design","id":2,"route":{"name":"FLOW_PAGE","params":{"flowName":"design"}}},{"alias":"management","id":3,"route":{"name":"FLOW_PAGE","params":{"flowName":"management"}}},{"alias":"marketing","id":4,"route":{"name":"FLOW_PAGE","params":{"flowName":"marketing"}}},{"alias":"popsci","id":7,"route":{"name":"FLOW_PAGE","params":{"flowName":"popsci"}}}]},"global":{"isPwa":false,"device":"desktop","isHabrCom":true},"hubs":{"hubRefs":{},"hubIds":{},"pagesCount":{},"isLoading":false,"route":{}},"hubsBlock":{"hubRefs":{},"hubIds":{}},"i18n":{"fl":"ru","hl":"ru"},"info":{"infoPage":{},"isLoading":true},"location":{"urlStruct":{"protocol":null,"slashes":null,"auth":null,"host":null,"port":null,"hostname":null,"hash":null,"search":null,"query":{},"pathname":null,"path":null,"href":""},"searchQuery":null},"me":{"user":null,"ppgDemanded":false,"karmaResetInfo":{"canReincarnate":null,"wasReincarnated":null,"currentScore":null},"notes":null},"mostReadingList":{"mostReadingListIds":[],"mostReadingListRefs":null,"promoPost":null},"pinnedPost":{"pinnedPost":null},"ppa":{"articles":{},"card":null,"transactions":null,"totalTransactions":null,"isAccessible":null},"projectsBlocks":{"activeBlocks":{}},"pullRefresh":{"shouldRefresh":false},"sandbox":{"articleIds":[],"articleRefs":{},"pagesCount":null,"route":{},"lastVisitedRoute":{},"isLoading":false},"settingsOther":{"inputs":{"uiLang":{"errors":[],"ref":null,"value":""},"articlesLangEnglish":{"errors":[],"ref":null,"value":false},"articlesLangRussian":{"errors":[],"ref":null,"value":false},"agreement":{"errors":[],"ref":null,"value":false},"email":{"errors":[],"ref":null,"value":true},"digest":{"errors":[],"ref":null,"value":true}}},"similarList":{"similarListIds":[],"similarListRefs":null},"ssr":{"error":null,"isDataLoaded":false,"isDataLoading":false,"isHydrationFailed":false,"isServer":false},"userHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"userInvites":{"availableInvites":0,"usedInvitesIds":[],"usedInvitesRefs":{},"usedInvitesPagesCount":0,"unusedInvitesIds":[],"unusedInvitesRefs":{},"unusedInvitesPagesCount":0},"users":{"authorRefs":{},"authorIds":{},"pagesCount":{},"authorProfiles":{},"userHubs":{},"userInvitations":{},"authorFollowers":{},"authorFollowed":{},"karmaStats":[],"statistics":null,"isLoading":false,"authorFollowersLoading":false,"authorFollowedLoading":false,"userHubsLoading":false,"userInvitationsLoading":false,"route":{}},"viewport":{"prevScrollY":{},"scrollY":0,"width":0},"tracker":{"items":{},"pagesCache":{},"markedViewedSilently":{},"markedRead":{},"unreadCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null},"unviewedCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null}}};(function(){var s;(s=document.currentScript||document.scripts[document.scripts.length-1]).parentNode.removeChild(s);}());</script>
+<script src="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" defer></script><script src="https://assets.habr.com/habr-web/js/app.c0af73e7.js" defer></script>
+
+
+
+    <script>
+      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+        (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+        m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+      })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+    </script>
+  
+  <script type="text/javascript" >
+    (function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+    m[i].l=1*new Date();k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})
+    (window, document, "script", "https://mc.yandex.ru/metrika/tag.js", "ym");
+
+    ym(24049213, "init", {
+      defer:true,
+      trackLinks:true,
+      accurateTrackBounce:true,
+      webvisor:false,
+    });
+  </script>
+  <noscript>
+    <div>
+      <img src="https://mc.yandex.ru/watch/24049213" style="position:absolute; left:-9999px;" alt="" />
+    </div>
+  </noscript>
+  
+    <script type="text/javascript">
+      window.addEventListener('load', function () {
+        setTimeout(() => {
+          const img = new Image();
+          img.src = 'https://vk.com/rtrg?p=VK-RTRG-421343-57vKE';
+        }, 0);
+      });
+    </script>
+  
+</body>
+</html>

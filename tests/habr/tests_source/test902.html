@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="ru" data-vue-meta="%7B%22lang%22:%7B%22ssr%22:%22ru%22%7D%7D">
+<head >
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
+  <title>PowerShell Desired State Configuration и напильник: часть 1. Настройка DSC Pull Server для работы с базой данных SQL / Хабр</title>
+  <style>
+    /* cyrillic-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSxf6TF0.woff2) format('woff2');
+      unicode-range: U+0460-052F, U+1C80-1C88, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+    }
+
+    /* cyrillic */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveQhf6TF0.woff2) format('woff2');
+      unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+    }
+
+    /* latin-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSBf6TF0.woff2) format('woff2');
+      unicode-range: U+0100-024F, U+0259, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20CF, U+2113, U+2C60-2C7F, U+A720-A7FF;
+    }
+
+    /* latin */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveRhf6.woff2) format('woff2');
+      unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+    }
+  </style>
+  <link rel="preload" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" as="script"><link rel="preload" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/app.c0af73e7.js" as="script">
+  <link rel="stylesheet" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css"><link rel="stylesheet" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css">
+  <script>window.i18nFetch = new Promise((res, rej) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open('GET', '/js/i18n/ru-compiled.85eb77f0b17c8235e7b64b9f81ea5ec2.json');
+          xhr.responseType = 'json';
+          xhr.onload = function(e) {
+            if (this.status === 200) {
+              res({ru: xhr.response});
+            } else {
+              rej(e);
+            }
+          };
+          xhr.send();
+        });</script>
+  
+  <script data-vue-meta="ssr" src="/js/ads.js" onload="window['zhY4i4nJ9K'] = true" data-vmid="checkad"></script><script data-vue-meta="ssr" type="application/ld+json" data-vmid="ldjson-schema">{"@context":"http:\/\/schema.org","@type":"Article","mainEntityOfPage":{"@type":"WebPage","@id":"https:\/\/habr.com\/ru\/company\/dataline\/blog\/452064\/"},"headline":"PowerShell Desired State Configuration и напильник: часть 1. Настройка DSC Pull Server для работы с базой данных SQL","datePublished":"2019-05-16T10:48:57+03:00","dateModified":"2019-05-16T11:29:52+03:00","author":{"@type":"Person","name":"dm_dsc"},"publisher":{"@type":"Organization","name":"Habr","logo":{"@type":"ImageObject","url":"https:\/\/habrastorage.org\/webt\/a_\/lk\/9m\/a_lk9mjkccjox-zccjrpfolmkmq.png"}},"description":"PowerShell Desired State Configuration (DSC) сильно упрощает работу по развертыванию и конфигурированию операционной системы, ролей сервера и приложений, когда...","url":"https:\/\/habr.com\/ru\/company\/dataline\/blog\/452064\/#post-content-body","about":["c_dataline","h_powershell","h_it-infrastructure","h_s_admin","h_mssql","f_develop","f_admin"],"image":["https:\/\/habrastorage.org\/webt\/-4\/vu\/2i\/-4vu2idi-kona7rk1zluhuqtrlk.png","https:\/\/habrastorage.org\/webt\/24\/je\/ik\/24jeikjjhurylsfpxfdz-hkdkoo.png","https:\/\/habrastorage.org\/webt\/-i\/km\/hz\/-ikmhzvewzfmt8ygqaidws2erzm.png","https:\/\/habrastorage.org\/webt\/z-\/qz\/tx\/z-qztxe410jqyjoj7rwna3t9-am.png","https:\/\/habrastorage.org\/webt\/uh\/no\/vm\/uhnovmv8wsywdxi6ahxiinvkj4y.png","https:\/\/habrastorage.org\/webt\/cl\/fg\/vg\/clfgvg0ya7csozw1ner_egxdxs8.png","https:\/\/habrastorage.org\/webt\/9i\/la\/7n\/9ila7nedgtygol496l7da239i1k.png","https:\/\/habrastorage.org\/webt\/im\/3v\/ww\/im3vwwj9ib9wucm4xnl70jow1yy.png","https:\/\/habrastorage.org\/webt\/l5\/rc\/dq\/l5rcdqtxvaajv5h5mbil72vv3k0.png","https:\/\/habrastorage.org\/webt\/th\/dt\/xu\/thdtxutqcvsrv0laifxjhsbse2w.png","https:\/\/habrastorage.org\/webt\/dc\/sc\/p5\/dcscp5f9n-cdmm0qfo0gv_-k0oy.png","https:\/\/habrastorage.org\/webt\/kr\/sd\/ds\/krsddsbr4jpvi9dgvc3f_qcxwqy.png","https:\/\/habrastorage.org\/webt\/nu\/aq\/q8\/nuaqq8akzpdz07fwf1gedrxcfns.png","https:\/\/habrastorage.org\/webt\/bf\/7k\/at\/bf7kat56ltu-amw0nhvgbp2tkpw.png","https:\/\/habrastorage.org\/webt\/7i\/au\/wo\/7iauwo3j_x0qzfwqgfc1u8tyfks.png","https:\/\/habrastorage.org\/webt\/oi\/49\/w0\/oi49w0cedn8ilblfijwlhjsumfm.png","https:\/\/habrastorage.org\/webt\/z3\/ui\/pp\/z3uippubkjjk0r2fqolnoweezme.png","https:\/\/habrastorage.org\/webt\/pt\/k5\/cu\/ptk5cuuxfa2deeqiw_h6vb4vy_4.png","https:\/\/habrastorage.org\/webt\/ey\/b_\/dz\/eyb_dz43l6-xzg3yupw4zgrasbi.png","https:\/\/habrastorage.org\/webt\/_d\/py\/lq\/_dpylq1y7uycuiq08tkq-jp1eri.png","https:\/\/habrastorage.org\/webt\/_2\/bw\/bs\/_2bwbsadgrihkikrnnh2eq2tkbs.png","https:\/\/habrastorage.org\/webt\/eg\/ex\/eg\/egexegl50aplc4fr_f1jbfx3edq.png","https:\/\/habrastorage.org\/webt\/di\/a8\/_n\/dia8_nwzir-nhafd9rezwstdwjq.png","https:\/\/habrastorage.org\/webt\/kt\/ft\/tm\/ktfttmjcb_8gyb3s-o_xnwewyfy.png","https:\/\/habrastorage.org\/webt\/4r\/4z\/aa\/4r4zaalbv3rms8xsfjoijzvtige.png","https:\/\/habrastorage.org\/webt\/tq\/4n\/ia\/tq4niasnq5av17ozevpg365y_qy.png","https:\/\/habrastorage.org\/webt\/aq\/ql\/vq\/aqqlvqqilfgqgdakivqfna9irvu.png","https:\/\/habrastorage.org\/webt\/rr\/8c\/zl\/rr8czlircqalebpljfw47h5eax4.png","https:\/\/habrastorage.org\/webt\/dy\/f9\/w5\/dyf9w58ztue8ugsagfiieghgqsc.png","https:\/\/habrastorage.org\/webt\/e-\/fl\/s_\/e-fls_elpbmiktv67egcweaxlvq.png","https:\/\/habrastorage.org\/webt\/xo\/ug\/do\/xougdoiodatj1tlmsalqpdfzauk.png","https:\/\/habrastorage.org\/webt\/w7\/lj\/us\/w7ljush_8zrt8hupqoqvrtsgk4g.png","https:\/\/habrastorage.org\/webt\/6w\/o-\/1q\/6wo-1qvgkwua75cv1nd1rsmng1k.png","https:\/\/habrastorage.org\/webt\/58\/16\/x8\/5816x8uw93muoywridyx-dwjugw.png","https:\/\/habrastorage.org\/webt\/oi\/oe\/1z\/oioe1zuj9x9gvl9eeek9sc38nz8.png","https:\/\/habrastorage.org\/webt\/_5\/db\/gl\/_5dbglhxbi5mgboeexxi_pw7oxk.png","https:\/\/habrastorage.org\/webt\/et\/te\/mn\/ettemnvebjfc3kgviqzqsob_eas.png","https:\/\/habrastorage.org\/webt\/qc\/qp\/m5\/qcqpm5a4iwsl_-9d7n2uzll9zjg.png","https:\/\/habrastorage.org\/webt\/ba\/oo\/04\/baoo048uqhsyxpsv4yaaftqmwvi.png"]}</script>
+  <script src="//www.googletagservices.com/tag/js/gpt.js" async></script>
+  <style>.grecaptcha-badge{visibility: hidden;}</style>
+  <meta name="habr-version" content="2.49.0">
+  
+  <meta data-vue-meta="ssr" property="fb:app_id" content="444736788986613"><meta data-vue-meta="ssr" property="fb:pages" content="472597926099084"><meta data-vue-meta="ssr" name="twitter:card" content="summary_large_image"><meta data-vue-meta="ssr" name="twitter:site" content="@habr_eng"><meta data-vue-meta="ssr" property="og:title" content="PowerShell Desired State Configuration и напильник: часть 1. Настройка DSC Pull Server для работы с базой данных SQL" data-vmid="og:title"><meta data-vue-meta="ssr" name="twitter:title" content="PowerShell Desired State Configuration и напильник: часть 1. Настройка DSC Pull Server для работы с базой данных SQL" data-vmid="twitter:title"><meta data-vue-meta="ssr" name="aiturec:title" content="PowerShell Desired State Configuration и напильник: часть 1. Настройка DSC Pull Server для работы с базой данных SQL" data-vmid="aiturec:title"><meta data-vue-meta="ssr" name="description" content="PowerShell Desired State Configuration (DSC) сильно упрощает работу по развертыванию и конфигурированию операционной системы, ролей сервера и приложений, когда у вас сотни серверов. 
+
+Но при..." data-vmid="description"><meta data-vue-meta="ssr" itemprop="description" content="PowerShell Desired State Configuration (DSC) сильно упрощает работу по развертыванию и конфигурированию операционной системы, ролей сервера и приложений, когда у вас сотни серверов. 
+
+Но при..." data-vmid="description:itemprop"><meta data-vue-meta="ssr" property="og:description" content="PowerShell Desired State Configuration (DSC) сильно упрощает работу по развертыванию и конфигурированию операционной системы, ролей сервера и приложений, когда у вас сотни серверов. 
+
+Но при..." data-vmid="og:description"><meta data-vue-meta="ssr" name="twitter:description" content="PowerShell Desired State Configuration (DSC) сильно упрощает работу по развертыванию и конфигурированию операционной системы, ролей сервера и приложений, когда у вас сотни серверов. 
+
+Но при..." data-vmid="twitter:description"><meta data-vue-meta="ssr" property="aiturec:description" content="PowerShell Desired State Configuration (DSC) сильно упрощает работу по развертыванию и конфигурированию операционной системы, ролей сервера и приложений, когда у вас сотни серверов. 
+
+Но при..." data-vmid="aiturec:description"><meta data-vue-meta="ssr" itemprop="image" content="https://habr.com/share/publication/452064/1a104e4e02e5d47ca378348bde7a99ab/" data-vmid="image:itemprop"><meta data-vue-meta="ssr" property="og:image" content="https://habr.com/share/publication/452064/1a104e4e02e5d47ca378348bde7a99ab/" data-vmid="og:image"><meta data-vue-meta="ssr" property="aiturec:image" content="https://habr.com/share/publication/452064/1a104e4e02e5d47ca378348bde7a99ab/" data-vmid="aiturec:image"><meta data-vue-meta="ssr" name="twitter:image" content="https://habr.com/share/publication/452064/1a104e4e02e5d47ca378348bde7a99ab/" data-vmid="twitter:image"><meta data-vue-meta="ssr" property="vk:image" content="https://habr.com/share/publication/452064/1a104e4e02e5d47ca378348bde7a99ab/" data-vmid="vk:image"><meta data-vue-meta="ssr" property="aiturec:item_id" content="452064" data-vmid="aiturec:item_id"><meta data-vue-meta="ssr" property="aiturec:datetime" content="2019-05-16T07:48:57.000Z" data-vmid="aiturec:datetime"><meta data-vue-meta="ssr" property="og:type" content="article" data-vmid="og:type"><meta data-vue-meta="ssr" property="og:locale" content="ru_RU" data-vmid="og:locale"><meta data-vue-meta="ssr" property="og:image:width" content="1200" data-vmid="og:image:width"><meta data-vue-meta="ssr" property="og:image:height" content="630" data-vmid="og:image:height">
+  <link data-vue-meta="ssr" href="https://habr.com/ru/rss/post/452064/?fl=ru" type="application/rss+xml" title="" rel="alternate" name="rss"><link data-vue-meta="ssr" href="https://habr.com/ru/company/dataline/blog/452064/" rel="canonical" data-vmid="canonical"><link data-vue-meta="ssr" data-vmid="hreflang"><link data-vue-meta="ssr" image_src="image" href="https://habr.com/share/publication/452064/1a104e4e02e5d47ca378348bde7a99ab/" data-vmid="image:href">
+  <meta name="apple-mobile-web-app-status-bar-style" content="#303b44">
+  <meta name="msapplication-TileColor" content="#629FBC">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="16x16"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-16.png"
+  >
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="32x32"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-32.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="76x76"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-76.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="120x120"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="152x152"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-152.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="180x180"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-180.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="256x256"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-256.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1136x640.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2436x1125.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1792x828.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_828x1792.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1334x750.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2208x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1125x2436.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2208.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2732x2048.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2688x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2224x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_750x1334.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x2732.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2388x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2224.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_640x1136.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2388.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x1536.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1536x2048.png"
+  >
+  <link
+    rel="mask-icon"
+    color="#77a2b6"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.svg"
+  >
+  <link
+    crossorigin="use-credentials"
+    href="/manifest.webmanifest"
+    rel="manifest"
+  >
+</head>
+<body>
+
+
+<div id="app" data-server-rendered="true" data-async-called="true"><div class="tm-layout__wrapper"><!----> <div></div> <!----> <header class="tm-header"><div class="tm-page-width"><div class="tm-header__container"><!----> <span class="tm-header__logo-wrap"><a href="/ru/" class="tm-header__logo tm-header__logo_ru"><svg height="16" width="16" class="tm-svg-img tm-header__icon"><title>Хабр</title> <use xlink:href="/img/habr-logo-ru.svg#logo"></use></svg></a> <span class="tm-header__beta-sign" style="display:none;">β</span></span> <div class="tm-dropdown tm-header__projects"><div class="tm-dropdown__head"><button class="tm-header__dropdown-toggle"><svg height="16" width="16" class="tm-svg-img tm-header__icon tm-header__icon_dropdown"><title>Открыть список</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#arrow-down"></use></svg></button></div> <!----></div> <a href="/ru/sandbox/start/" class="tm-header__become-author-btn">
+            Как стать автором
+          </a> <div class="tm-feature tm-header__feature tm-feature_variant-inline"><!----></div> <!----> <!----></div></div></header> <div class="tm-layout"><div class="tm-page-progress-bar"></div> <div data-menu-sticky="true" class="tm-base-layout__header tm-base-layout__header_is-sticky"><div class="tm-page-width"><div class="tm-base-layout__header-wrapper"><div class="tm-main-menu"><div class="tm-main-menu__section"><nav class="tm-main-menu__section-content"><!----> <a href="/ru/all/" class="tm-main-menu__item">
+        Все потоки
+      </a> <a href="/ru/flows/develop/" class="tm-main-menu__item">
+          Разработка
+        </a><a href="/ru/flows/admin/" class="tm-main-menu__item">
+          Администрирование
+        </a><a href="/ru/flows/design/" class="tm-main-menu__item">
+          Дизайн
+        </a><a href="/ru/flows/management/" class="tm-main-menu__item">
+          Менеджмент
+        </a><a href="/ru/flows/marketing/" class="tm-main-menu__item">
+          Маркетинг
+        </a><a href="/ru/flows/popsci/" class="tm-main-menu__item">
+          Научпоп
+        </a></nav></div></div> <div class="tm-header-user-menu tm-base-layout__user-menu"><a href="/ru/search/" class="tm-header-user-menu__item tm-header-user-menu__search"><svg height="24" width="24" class="tm-svg-img tm-header-user-menu__icon tm-header-user-menu__icon_search tm-header-user-menu__icon_dark"><title>Поиск</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#search"></use></svg></a> <!----> <!----> <!----> <div class="tm-header-user-menu__item tm-header-user-menu__user_desktop"><div class="tm-dropdown"><div class="tm-dropdown__head"><svg height="24" width="24" data-test-id="menu-toggle-guest" class="tm-svg-img tm-header-user-menu__icon"><title>Профиль</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#header-user"></use></svg> <!----></div> <!----></div> <!----></div> <!----></div></div></div></div> <!----> <div class="tm-page-width"></div> <main class="tm-layout__container"><div hl="ru" companyName="dataline" data-async-called="true" class="tm-page"><div class="tm-page-width"><div class="tm-page__header"><!----></div> <div class="tm-page__wrapper"><div class="tm-page__main tm-page__main_has-sidebar"><div class="pull-down"><div class="pull-down__header" style="height:0px;"><div class="pull-down__content" style="bottom:10px;"><svg height="24" width="24" class="tm-svg-img pull-down__arrow"><title>Обновить</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#pull-arrow"></use></svg></div></div> <div class="tm-article-presenter"><div class="tm-company-card tm-company-article__company-card"><div class="tm-company-card__info"><div class="tm-company-card__header"><a href="/ru/company/dataline/profile/" class="tm-company-card__avatar"><div class="tm-entity-image"><img alt="" height="48" src="//habrastorage.org/getpro/habr/company/e1b/ff9/809/e1bff98097e89d63bdcd7cf1f2e3d800.jpg" width="48" class="tm-entity-image__pic"></div></a> <!----> <div class="tm-rating tm-company-card__rating"><div class="tm-rating__header"> <div class="tm-rating__counter">115.23</div></div> <div class="tm-rating__text">
+    Рейтинг
+  </div></div></div> <div class="tm-company-card__info"><a href="/ru/company/dataline/profile/" class="tm-company-card__name">
+        DataLine
+      </a> <div class="tm-company-card__description">Экосистема ИТ-сервисов</div></div></div> <div class="tm-company-card__buttons"><!----> <!----></div></div> <div class="tm-article-presenter__body"><div class="tm-misprint-area"><div class="tm-misprint-area__wrapper"><article class="tm-article-presenter__content tm-article-presenter__content_narrow"><div class="tm-article-presenter__header"> <div class="tm-article-snippet tm-article-presenter__snippet"><div class="tm-article-snippet__meta-container"><div class="tm-article-snippet__meta"><span class="tm-user-info tm-article-snippet__author"><a href="/ru/users/dm_dsc/" title="dm_dsc" class="tm-user-info__userpic"><div class="tm-entity-image"><svg height="24" width="24" class="tm-svg-img tm-image-placeholder tm-image-placeholder_lilac"><!----> <use xlink:href="/img/megazord-v24.ce74655c.svg#placeholder-user"></use></svg></div></a> <span class="tm-user-info__user"><a href="/ru/users/dm_dsc/" class="tm-user-info__username">
+      dm_dsc
+    </a> </span></span> <span class="tm-article-snippet__datetime-published"><time datetime="2019-05-16T07:48:57.000Z" title="2019-05-16, 10:48">16  мая  2019 в 10:48</time></span></div> <!----></div> <h1 lang="ru" class="tm-article-snippet__title tm-article-snippet__title_h1"><span>PowerShell Desired State Configuration и напильник: часть 1. Настройка DSC Pull Server для работы с базой данных SQL</span></h1> <div class="tm-article-snippet__hubs"><span class="tm-article-snippet__hubs-item"><a href="/ru/company/dataline/blog/" class="tm-article-snippet__hubs-item-link router-link-active"><span>Блог компании DataLine</span> <!----></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/powershell/" class="tm-article-snippet__hubs-item-link"><span>PowerShell</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/it-infrastructure/" class="tm-article-snippet__hubs-item-link"><span>IT-инфраструктура</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/s_admin/" class="tm-article-snippet__hubs-item-link"><span>Серверное администрирование</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/mssql/" class="tm-article-snippet__hubs-item-link"><span>Microsoft SQL Server</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span></div> <div class="tm-article-snippet__labels"><div class="tm-article-snippet__label"><span>
+        Tutorial
+      </span></div></div> <!----> <!----></div></div> <!----> <div data-gallery-root="" lang="ru" class="tm-article-body"><div id="post-content-body" class="article-formatted-body article-formatted-body_version-1"><div xmlns="http://www.w3.org/1999/xhtml"><img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/-4/vu/2i/-4vu2idi-kona7rk1zluhuqtrlk.png"/><br/>
+<br/>
+PowerShell Desired State Configuration (DSC) сильно упрощает работу по развертыванию и конфигурированию операционной системы, ролей сервера и приложений, когда у вас сотни серверов. <br/>
+<br/>
+Но при использовании DSC on-premises, т.е. не в MS Azure, возникает пара нюансов. Они особенно ощутимы, если организация большая (от 300 рабочих станций и серверов) и в ней еще не открыли мир контейнеров:<br/>
+<br/>
+<ul>
+<li>Нет полноценных отчетов о состоянии систем. Если нужная конфигурация не применилась на каких-то серверах, то без этих отчетов мы об этом не узнаем. От встроенного сервера отчетов информацию получить довольно сложно, а для большого количества хостов – еще и долго. </li>
+<li>Отсутствует масштабируемость и отказоустойчивость. Невозможно построить ферму опрашивающих веб-серверов DSC, которые бы имели единую отказоустойчивую базу данных и общее хранилище mof-файлов конфигураций, модулей и ключей регистрации. </li>
+</ul><br/>
+Сегодня я расскажу, как можно решить первую проблему и получить данные для построения отчетности. Все было бы проще, если в качестве базы данных можно было бы использовать SQL. MS <a href="https://techsnips.io/snips/how-to-configure-a-dsc-pull-server-to-use-a-sql-database-backend-in-windows-server-2019/">обещает </a>встроенную поддержку только в Windows Server 2019 или в build Windows server 1803. Забирать данные с использованием OleDB provider тоже <a href="https://blogs.msdn.microsoft.com/wushuai/2016/11/27/try-to-use-sql-server-as-dsc-pull-server-backend/">не получится</a>, так как DSC-сервер использует именованный параметр, который не полностью поддерживается OleDbCommand.<br/>
+<br/>
+Нашел вот такой способ: тем, кто использует Windows Server 2012 и 2016, можно <a href="https://blogs.technet.microsoft.com/fieldcoding/2017/05/11/using-sql-server-2016-for-a-dsc-pull-server/">настроить</a> использование БД SQL в качестве backend’a для опрашивающего DSC-сервера. Для этого создадим «прокси» в виде .mdb файла со связанными таблицами, который будет перенаправлять данные, полученные от отчетов клиентов, в БД SQL-сервера. <br/>
+<a name="habracut"></a><br/>
+<i>Примечание: для Windows Server 2016 необходимо использовать <a href="https://download.microsoft.com/download/3/5/C/35C84C36-661A-44E6-9324-8786B8DBE231/AccessDatabaseEngine.exe">AccessDatabaseEngine2016x86</a>, так как Microsoft.Jet.OLEDB.4.0 больше не поддерживается. </i><br/>
+<br/>
+Я не буду подробно останавливаться на процессе развертывания опрашивающего DSC-сервера, он очень хорошо описан <a href="https://docs.microsoft.com/ru-ru/powershell/dsc/pull-server/pullserver">тут</a>. Отмечу только пару моментов. Если мы разворачиваем опрашивающий DSC на одном веб-сервере со WSUS или Kaspersky Security Center, то в скрипте создания конфигурации необходимо поменять следующие параметры:<br/>
+<br/>
+<ol>
+<li><pre><code class="sql">UseSecurityBestPractices     = $false</code></pre> <br/>
+Иначе TLS 1.0 будет отключен, вы не сможете подключиться к БД SQL. Kaspersky Security Center тоже не будет работать (проблема должна быть решена в Kaspersky Security Center v11).</li>
+<li><pre><code class="sql">Enable32BitAppOnWin64   = $true</code></pre> <br/>
+Если не внести это изменение, не получится запустить AppPool DSC-сервера на IIS со WSUS.</li>
+<li>При установке DSC-сервера совместно с WSUS отключите статическое и динамическое кэширование для сайта DSC. </li>
+</ol><br/>
+Перейдем к настройке сервера DSC для использования БД SQL. <br/>
+<br/>
+<h3>Создание БД SQL</h3><br/>
+<ol>
+<li>Создадим пустую базу данных SQL с именем DSC.<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/24/je/ik/24jeikjjhurylsfpxfdz-hkdkoo.png"/><br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/-i/km/hz/-ikmhzvewzfmt8ygqaidws2erzm.png"/></li>
+<li>Создадим учетную запись для подключения к этой базе данных. Предварительно проверьте, что на SQL-сервере разрешена аутентификация учетных записей как Windows, так и SQL.<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/z-/qz/tx/z-qztxe410jqyjoj7rwna3t9-am.png"/><br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/uh/no/vm/uhnovmv8wsywdxi6ahxiinvkj4y.png"/></li>
+<li>Переходим в раздел User Mapping. Выбираем базу данных, в данном случае – DSC. Даем права владельца базы данных. <br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/cl/fg/vg/clfgvg0ya7csozw1ner_egxdxs8.png"/></li>
+<li>Готово. <br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/9i/la/7n/9ila7nedgtygol496l7da239i1k.png"/></li>
+</ol><br/>
+<h3>Создание схемы для базы данных DSC</h3><br/>
+Создать схему для базы данных DSC можно двумя способами: <br/>
+<br/>
+<ul>
+<li>самостоятельно, через скрипт на TSQL<br/>
+<br/>
+<pre><code class="sql">SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[Devices](
+[TargetName] [nvarchar](255) NOT NULL,
+[ConfigurationID] [nvarchar](255) NOT NULL,
+[ServerCheckSum] [nvarchar](255) NOT NULL,
+[TargetCheckSum] [nvarchar](255) NOT NULL,
+[NodeCompliant] [bit] NOT NULL,
+[LastComplianceTime] [datetime] NULL,
+[LastHeartbeatTime] [datetime] NULL,
+[Dirty] [bit] NOT NULL,
+[StatusCode] [int] NULL
+) ON [PRIMARY]
+GO
+ 
+CREATE TABLE [dbo].[RegistrationData](
+[AgentId] [nvarchar](255) NOT NULL,
+[LCMVersion] [nvarchar](255) NULL,
+[NodeName] [nvarchar](255) NULL,
+[IPAddress] [nvarchar](255) NULL,
+[ConfigurationNames] [nvarchar](max) NULL
+) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+GO
+ 
+CREATE TABLE [dbo].[StatusReport](
+[JobId] [nvarchar](50) NOT NULL,
+[Id] [nvarchar](50) NOT NULL,
+[OperationType] [nvarchar](255) NULL,
+[RefreshMode] [nvarchar](255) NULL,
+[Status] [nvarchar](255) NULL,
+[LCMVersion] [nvarchar](50) NULL,
+[ReportFormatVersion] [nvarchar](255) NULL,
+[ConfigurationVersion] [nvarchar](255) NULL,
+[NodeName] [nvarchar](255) NULL,
+[IPAddress] [nvarchar](255) NULL,
+[StartTime] [datetime] NULL,
+[EndTime] [datetime] NULL,
+[Errors] [nvarchar](max) NULL,
+[StatusData] [nvarchar](max) NULL,
+[RebootRequested] [nvarchar](255) NULL
+) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+GO</code></pre></li>
+<li>импортировать данные из пустого devices.mdb в составе PS-модуля PSDesiredStateConfiguration через Мастера импорта данных SQL. <br/>
+<br/>
+Devices.mdb, с которым мы будем работать, находится в C:\Windows\SysWOW64\WindowsPowerShell\v1.0\Modules\PSDesiredStateConfiguration\PullServer.<br/>
+</li>
+</ul><br/>
+<ol>
+<li>Для импорта данных запускаем SQL Server Import and Export Wizard.<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/im/3v/ww/im3vwwj9ib9wucm4xnl70jow1yy.png"/></li>
+<li>Выбираем, откуда мы будем забирать данные – в нашем случае это база данных Microsoft Access. Нажимаем Next.<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/l5/rc/dq/l5rcdqtxvaajv5h5mbil72vv3k0.png"/></li>
+<li>Выбираем файл, откуда импортируем схему.<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/th/dt/xu/thdtxutqcvsrv0laifxjhsbse2w.png"/></li>
+<li>Указываем, куда импортировать, – у нас это БД SQL. <br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/dc/sc/p5/dcscp5f9n-cdmm0qfo0gv_-k0oy.png"/></li>
+<li>Выбираем SQL-сервер (Server Name) и базу данных, в которую будем импортировать данные (DataBase).<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/kr/sd/ds/krsddsbr4jpvi9dgvc3f_qcxwqy.png"/></li>
+<li>Выбираем опцию Copy data from one or more tables or views (копирование данных из таблиц или представлений).<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/nu/aq/q8/nuaqq8akzpdz07fwf1gedrxcfns.png"/></li>
+<li>Выбираем таблицы, из которых будем импортировать схему БД.<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/bf/7k/at/bf7kat56ltu-amw0nhvgbp2tkpw.png"/></li>
+<li>Ставим галочку Run Immediately и жмем Finish. <br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/7i/au/wo/7iauwo3j_x0qzfwqgfc1u8tyfks.png"/></li>
+<li>Готово. <br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/oi/49/w0/oi49w0cedn8ilblfijwlhjsumfm.png"/></li>
+<li>В результате в БД DSC должны появиться таблицы.<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/z3/ui/pp/z3uippubkjjk0r2fqolnoweezme.png"/></li>
+</ol><br/>
+<h3>Настройка .mdb «прокси» файла</h3><br/>
+<b>Создание ODBC-подключения к SQL-серверу.</b> Предполагается, что MS Access не установлен на сервере с DSC, поэтому настройка databases.mdb выполняется на промежуточном хосте с установленным MS Access. <br/>
+<br/>
+Создадим системное ODBC-подключение к SQL-серверу (разрядность подключения должна совпадать с разрядностью MS Access – 64 или 32). Его можно создать с помощью:<br/>
+ — командлета Powershell:<br/>
+<br/>
+<pre><code class="sql">Add-OdbcDsn –Name DSC –DriverName 'SQL Server' –Platform '&lt;64-bit or 32-bit>' –DsnType System –SetPropertyValue @('Description=DSC Pull Server',"Server=&lt;Name of your SQL Server>",'Trusted_Connection=yes','Database=DSC') –PassThru</code></pre><br/>
+ — или вручную, с помощью мастера подключений:<br/>
+<br/>
+<ol>
+<li>Открываем Administrative tools. Выбираем источники данных ODBC в зависимости от версии установленного MS Access. Переходим во вкладку System DSN и создаем системное подключение (Add).<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/pt/k5/cu/ptk5cuuxfa2deeqiw_h6vb4vy_4.png"/></li>
+<li>Указываем, что будем подключаться к SQL-серверу. Жмем Finish.<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/ey/b_/dz/eyb_dz43l6-xzg3yupw4zgrasbi.png"/></li>
+<li>Указываем имя и сервер для подключения. Потом подключение с такими же параметрами нужно будет создать на сервере DSC.<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/_d/py/lq/_dpylq1y7uycuiq08tkq-jp1eri.png"/></li>
+<li>Указываем, что для подключения к SQL-серверу используется предварительно созданный нами логин с именем DSC.<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/_2/bw/bs/_2bwbsadgrihkikrnnh2eq2tkbs.png"/></li>
+<li>Указываем БД в настройках подключения DSC.<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/eg/ex/eg/egexegl50aplc4fr_f1jbfx3edq.png"/></li>
+<li>Жмем Finish.<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/di/a8/_n/dia8_nwzir-nhafd9rezwstdwjq.png"/></li>
+<li>Перед завершением настройки проверяем, что подключение работает (Test Data Source).<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/kt/ft/tm/ktfttmjcb_8gyb3s-o_xnwewyfy.png"/></li>
+<li>Готово.<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/4r/4z/aa/4r4zaalbv3rms8xsfjoijzvtige.png"/></li>
+</ol><br/>
+<b>Создание базы данных devices.mdb в MS Access.</b> Запускаем MS Access и создаем пустую базу данных под названием devices.mdb.<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/tq/4n/ia/tq4niasnq5av17ozevpg365y_qy.png"/><br/>
+<br/>
+<ol>
+<li>Переходим во вкладку Внешние данные, кликаем на База данных ODBC. В появившемся окне выбираем Создать связанную таблицу для связи с источником данных.<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/aq/ql/vq/aqqlvqqilfgqgdakivqfna9irvu.png"/></li>
+<li>В новом окне выбираем вкладку Machine Data Source и жмем ОК. В новом окне вводим учетные данные для подключения к SQL-серверу.<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/rr/8c/zl/rr8czlircqalebpljfw47h5eax4.png"/></li>
+<li>Выбираем таблицы, которые необходимо прилинковать. Отмечаем галкой Сохранить пароль и жмем ОК. Пароль сохранять каждый раз для всех трех таблиц.<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/dy/f9/w5/dyf9w58ztue8ugsagfiieghgqsc.png"/></li>
+<li>В индексах нужно выбрать следующие:<br/>
+ — TargetName для таблицы dbo_Devices;<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/e-/fl/s_/e-fls_elpbmiktv67egcweaxlvq.png"/><br/>
+<br/>
+ — NodeName или IPAddress для dbo_RegistrationData;<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/xo/ug/do/xougdoiodatj1tlmsalqpdfzauk.png"/><br/>
+<br/>
+ — NodeName или IPAddress для dbo_StatusReport.<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/w7/lj/us/w7ljush_8zrt8hupqoqvrtsgk4g.png"/></li>
+<li>Переименуем таблицы в MS Access, а именно: удалим префикс dbo_, чтобы DSC мог использовать их. <br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/6w/o-/1q/6wo-1qvgkwua75cv1nd1rsmng1k.png"/></li>
+<li>Готово. <br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/58/16/x8/5816x8uw93muoywridyx-dwjugw.png"/></li>
+<li>Сохраняем файл и закрываем MS Access. Теперь копируем полученный devices.mdb на DSC-сервер (по умолчанию в C:\Program Files\WindowsPowershell\DSCService) и заменяем им существующий (если он есть). </li>
+</ol><br/>
+<h3>Настройка DSC-сервера для использования SQL</h3><br/>
+<ol>
+<li>Возвращаемся к серверу DSC. Чтобы подключиться к SQL-серверу с нашим proxy-файлом, создадим новое ODBC подключение на DSC-сервере. Имя, и разрядность, и настройки подключения должны быть такие же, как и при создании MDB-файла. Можно скопировать уже настроенный пустой devices.mdb отсюда.<br/>
+</li>
+<li>Чтобы использовать devices.mdb, нужно внести изменения в web.config опрашивающего сервера DSC (по умолчанию – C:\inetpub\PSDSCPullServer\web.config):</li>
+</ol><br/>
+<br/>
+ — для Windows Server 2012<br/>
+<br/>
+<pre><code class="sql">&lt;add key="dbprovider" value="System.Data.OleDb">
+&lt;add key="dbconnectionstr" value="Provider=Microsoft.Jet.OLEDB.4.0;Data Source=C:\Program Files\WindowsPowerShell\DscService\Devices.mdb;"></code></pre><br/>
+ — для Windows Server 2016<br/>
+<br/>
+<pre><code class="sql">&lt;add key="dbprovider" value="System.Data.OleDb">
+&lt;add key="dbconnectionstr" value="Provider=Microsoft.ACE.OLEDB.12.0;Data Source=C:\Program Files\WindowsPowerShell\DscService\Devices.mdb;"></code></pre><br/>
+<br/>
+На этом настройка DSC-сервера закончена. <br/>
+<br/>
+<h3>Проверка работоспособности DSC-сервера</h3><br/>
+<ol>
+<li>Проверим, что DSC-сервер доступен через web-браузер.<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/oi/oe/1z/oioe1zuj9x9gvl9eeek9sc38nz8.png"/></li>
+<li>Теперь проверим, правильно ли работает опрашивающий сервер DSC. Для этого в составе модуля xPSDesiredStateConfiguration есть скрипт pullserversetuptests.ps1. Перед запуском этого скрипта необходимо установить модуль Powershell с именем Pester. Устанавливаем его Install-Module -Name Pester.</li>
+<li>Открываем C:\Program Files\WindowsPowerShell\Modules\xPSDesiredStateConfiguration\&lt;версия модуля>\DSCPullServerSetup\PullServerDeploymentVerificationTest (в примере версия 8.0.0.0.0).<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/_5/db/gl/_5dbglhxbi5mgboeexxi_pw7oxk.png"/></li>
+<li>Открываем PullServerSetupTests.ps1 и проверяем путь к web.config DSC-сервера. Красным выделил путь к web.config, который будет проверять скрипт. Если нужно, меняем этот путь.<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/et/te/mn/ettemnvebjfc3kgviqzqsob_eas.png"/></li>
+<li>Запускаем pullserversetuptests.ps1 <br/>
+Invoke-Pester .\PullServerSetupTests.ps1 <br/>
+Все работает.<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/qc/qp/m5/qcqpm5a4iwsl_-9d7n2uzll9zjg.png"/></li>
+<li>В SQL Management Studio видим, что администрируемые хосты отправляют отчеты на сервер отчетов DSC и данные попадают в базу данных DSC на SQL-сервере.<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/ba/oo/04/baoo048uqhsyxpsv4yaaftqmwvi.png"/></li>
+</ol><br/>
+На этом все. В следующих статьях планирую рассказать, как на полученных данных построить отчеты, и коснусь вопросов про отказоустойчивость и масштабируемость.</div></div> <!----> <!----></div> <div class="tm-article-presenter__meta"><div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Теги:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bdsc%5D" class="tm-tags-list__link">dsc</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bdesired%20state%20configuration%5D" class="tm-tags-list__link">desired state configuration</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5BPowerShell%5D" class="tm-tags-list__link">PowerShell</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bms%20sql%20server%5D" class="tm-tags-list__link">ms sql server</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5B%D1%81%D0%B5%D1%80%D0%B2%D0%B5%D1%80%D0%BD%D0%BE%D0%B5%20%D0%B0%D0%B4%D0%BC%D0%B8%D0%BD%D0%B8%D1%81%D1%82%D1%80%D0%B8%D1%80%D0%BE%D0%B2%D0%B0%D0%BD%D0%B8%D0%B5%5D" class="tm-tags-list__link">серверное администрирование</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5B%D0%B0%D0%B2%D1%82%D0%BE%D0%BC%D0%B0%D1%82%D0%B8%D0%B7%D0%B0%D1%86%D0%B8%D1%8F%20%D1%80%D1%83%D1%82%D0%B8%D0%BD%D1%8B%5D" class="tm-tags-list__link">автоматизация рутины</a></li></ul></div> <div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Хабы:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/company/dataline/blog/" class="tm-hubs-list__link router-link-active">
+    Блог компании DataLine
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/powershell/" class="tm-hubs-list__link">
+    PowerShell
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/it-infrastructure/" class="tm-hubs-list__link">
+    IT-инфраструктура
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/s_admin/" class="tm-hubs-list__link">
+    Серверное администрирование
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/mssql/" class="tm-hubs-list__link">
+    Microsoft SQL Server
+  </a></li></ul></div></div></article></div> <!----></div> <div class="tm-article-sticky-panel"><div class="tm-data-icons tm-article-sticky-panel__icons"><div class="tm-article-rating tm-data-icons__item"><div class="tm-votes-meter tm-article-rating__votes-switcher"><svg height="16" width="16" class="tm-svg-img tm-votes-meter__icon tm-votes-meter__icon_medium"><title>Всего голосов 24: ↑22 и ↓2</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-rating"></use></svg> <span title="Всего голосов 24: ↑22 и ↓2" class="tm-votes-meter__value tm-votes-meter__value_positive tm-votes-meter__value_medium">+20</span></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----> <span title="Количество просмотров" class="tm-icon-counter tm-data-icons__item"><svg height="16" width="16" class="tm-svg-img tm-icon-counter__icon"><title>Просмотры</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-views"></use></svg> <span class="tm-icon-counter__value">5.5K</span></span> <button title="Добавить в закладки" type="button" class="bookmarks-button tm-data-icons__item"><span title="Добавить в закладки" class="tm-svg-icon__wrapper bookmarks-button__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Добавить в закладки</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-favorite"></use></svg></span> <span title="Количество пользователей, добавивших публикацию в закладки" class="bookmarks-button__counter">
+    39
+  </span></button> <!----> <div title="Поделиться" class="tm-sharing tm-data-icons__item"><button type="button" class="tm-sharing__button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="tm-sharing__icon"><path fill="currentColor" d="M10.33.275l9.047 7.572a.2.2 0 010 .306l-9.048 7.572a.2.2 0 01-.328-.153V11c-8 0-9.94 6-9.94 6S-1 5 10 5V.428a.2.2 0 01.328-.153z"></path></svg></button> <!----></div> <DIV class="v-portal" style="display:none;"></DIV></div> </div></div> <!----> <!----> <div class="tm-article-presenter__footer"><div class="tm-article-blocks"><!----> <section class="tm-block tm-block_spacing-bottom"><!----> <div class="tm-block__body tm-block__body_variant-balanced"><div class="tm-article-author"><div class="tm-article-author__company"><div class="tm-article-author__company-card"><div class="tm-company-snippet"><a href="/ru/company/dataline/profile/" class="tm-company-snippet__logo-link"><div class="tm-entity-image"><img alt="" height="40" src="//habrastorage.org/getpro/habr/company/e1b/ff9/809/e1bff98097e89d63bdcd7cf1f2e3d800.jpg" width="40" class="tm-entity-image__pic"></div></a> <div class="tm-company-snippet__info"><a href="/ru/company/dataline/profile/" class="tm-company-snippet__title">DataLine</a> <div class="tm-company-snippet__description">Экосистема ИТ-сервисов</div></div></div> <div class="tm-article-author__buttons"><!----> <!----></div></div> <div class="tm-article-author__company-contacts"><a href="http://www.dtln.ru/" rel="noopener" target="_blank" class="tm-article-author__contact">
+      Сайт
+    </a><a href="https://facebook.com/ilikedataline" rel="noopener" target="_blank" class="tm-article-author__contact">
+      Facebook
+    </a><a href="https://vk.com/ilikedataline" rel="noopener" target="_blank" class="tm-article-author__contact">
+      ВКонтакте
+    </a><a href="https://instagram.com/ilikedataline" rel="noopener" target="_blank" class="tm-article-author__contact">
+      Instagram
+    </a><a href="https://telegram.me/unidataline" rel="noopener" target="_blank" class="tm-article-author__contact">
+      Telegram
+    </a></div> <div class="tm-article-author__separator"></div></div> <div class="tm-user-card tm-article-author__user-card tm-user-card_variant-article"><div class="tm-user-card__info-container"><div class="tm-user-card__header"><div class="tm-user-card__header-data"><a href="/ru/users/dm_dsc/" class="tm-user-card__userpic tm-user-card__userpic_size-40"><div class="tm-entity-image"><svg class="tm-svg-img tm-image-placeholder tm-image-placeholder_lilac"><!----> <use xlink:href="/img/megazord-v24.ce74655c.svg#placeholder-user"></use></svg></div></a> <div class="tm-user-card__meta"><div title=" 15 голосов " class="tm-karma tm-user-card__karma"><div class="tm-karma__votes tm-karma__votes_positive">
+    11
+  </div> <div class="tm-karma__text">
+    Карма
+  </div></div> <div title="Рейтинг пользователя" class="tm-rating tm-user-card__rating"><div class="tm-rating__header"> <div class="tm-rating__counter">0</div></div> <div class="tm-rating__text">
+    Рейтинг
+  </div></div></div></div></div> <div class="tm-user-card__info tm-user-card__info_variant-article"><div class="tm-user-card__title tm-user-card__title_variant-article"><!----> <a href="/ru/users/dm_dsc/" class="tm-user-card__nickname tm-user-card__nickname_variant-article">
+          @dm_dsc
+        </a> <!----></div> <p class="tm-user-card__short-info tm-user-card__short-info_variant-article">Пользователь</p></div></div> <div class="tm-user-card__buttons tm-user-card__buttons_variant-article"><!----> <!----> <!----> <!----> <!----></div></div> <!----></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----></section> <div class="tm-article-blocks__comments"><div class="tm-article-page-comments"><div class="tm-article-comments-counter-link tm-article-comments-counter-button"><a href="/ru/company/dataline/blog/452064/comments/" class="tm-article-comments-counter-link__link tm-article-comments-counter-link__link_button-style"><svg height="16" width="16" class="tm-svg-img tm-article-comments-counter-link__icon tm-article-comments-counter-link__icon_contrasted"><title>Комментарии</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-comments"></use></svg> <span class="tm-article-comments-counter-link__value tm-article-comments-counter-link__value_contrasted">
+       Комментарии 3 
+    </span></a> <!----></div></div></div>  <!---->  <!----> <!----></div></div></div></div></div> <div class="tm-page__sidebar"><div class="tm-layout-sidebar"><div class="tm-layout-sidebar__placeholder_initial"></div> <div class="tm-sexy-sidebar tm-sexy-sidebar_initial" style="margin-top:0px;"><!----> <section class="tm-block tm-block_spacing-bottom"><header class="tm-block__header"><h2 class="tm-block__title">Информация</h2> <!----></header> <div class="tm-block__body"><div class="tm-company-basic-info"><dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Дата основания</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><time datetime="2007-10-01T20:00:00.000Z" title="2007-10-02, 00:00">2  октября  2007</time></dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Местоположение</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap">
+    Россия
+  </dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Сайт</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><a href="http://dtln.ru/" target="_blank" class="tm-company-basic-info__link">
+      dtln.ru
+    </a></dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Численность</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap">
+    201–500 человек
+  </dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Дата регистрации</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><time datetime="2009-03-24T14:32:02.000Z" title="2009-03-24, 17:32">24  марта  2009</time></dd></dl> <!----></div></div> <!----></section> <div class="tm-company-widgets"></div> <!----></div></div></div></div></div></div></main> <!----></div> <div class="tm-footer-menu"><div class="tm-page-width"><div class="tm-footer-menu__container"><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Ваш аккаунт
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr/?back=/ru/company/dataline/blog/452064/&amp;hl=ru" rel="nofollow" target="_self">
+                Войти
+              </a></li><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr-register/?back=/ru/company/dataline/blog/452064/&amp;hl=ru" rel="nofollow" target="_self">
+                Регистрация
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Разделы
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/" class="footer-menu__item-link router-link-active">
+                Публикации
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/news/" class="footer-menu__item-link">
+                Новости
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/hubs/" class="footer-menu__item-link">
+                Хабы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/companies/" class="footer-menu__item-link">
+                Компании
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/users/" class="footer-menu__item-link">
+                Авторы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/sandbox/" class="footer-menu__item-link">
+                Песочница
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Информация
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/docs/help/" class="footer-menu__item-link">
+                Устройство сайта
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/authors/codex/" class="footer-menu__item-link">
+                Для авторов
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/companies/corpblogs/" class="footer-menu__item-link">
+                Для компаний
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/docs/transparency/" class="footer-menu__item-link">
+                Документы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/agreement" target="_blank">
+                Соглашение
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/confidential/" target="_blank">
+                Конфиденциальность
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Услуги
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQLwRfQmXibiUlWaRg-BAc38s7oM3lJiaPju7qmdJsp8ysIvZ_G-Npem0njJLMozE2bPHMpDqiI5hhy/pub?start=false&amp;loop=false&amp;delayms=60000&amp;slide=id.g91a03369cd_4_297" target="_blank">
+                Реклама
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://habrastorage.org/storage/stuff/habr/service_price.pdf" target="_blank">
+                Тарифы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQJJds8-Di7BQSP_guHxICN7woVYoN5NP_22ra-BIo4bqnTT9FR6fB-Ku2P0AoRpX0Ds-LRkDeAoD8F/pub?start=false&amp;loop=false&amp;delayms=60000" target="_blank">
+                Контент
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://tmtm.timepad.ru/" target="_blank">
+                Семинары
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/megaprojects/" class="footer-menu__item-link">
+                Мегапроекты
+              </a></li></ul></div></div></div></div></div> <div class="tm-footer"><div class="tm-page-width"><div class="tm-footer__container"><!----> <div class="tm-footer__social"><a href="https://www.facebook.com/habrahabr.ru" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Facebook</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-facebook"></use></svg></a><a href="https://twitter.com/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Twitter</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-twitter"></use></svg></a><a href="https://vk.com/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>VK</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-vkontakte"></use></svg></a><a href="https://telegram.me/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Telegram</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-telegram"></use></svg></a><a href="https://www.youtube.com/channel/UCd_sTwKqVrweTt4oAKY5y4w" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Youtube</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-youtube"></use></svg></a><a href="https://zen.yandex.ru/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Яндекс Дзен</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-zen"></use></svg></a></div> <DIV class="v-portal" style="display:none;"></DIV> <button class="tm-footer__link"><!---->
+        Настройка языка
+      </button> <a href="/ru/about" class="tm-footer__link">
+        О сайте
+      </a> <a href="/ru/feedback/" class="tm-footer__link">
+        Техническая поддержка
+      </a> <!----> <a href="/berserk-mode-nope" class="tm-footer__link">
+        Вернуться на старую версию
+      </a> <div class="tm-footer-copyright"><span class="tm-copyright"><span class="tm-copyright__years">© 2006–2021 </span> <span class="tm-copyright__name">«<a href="https://company.habr.com/" rel="noopener" target="_blank" class="tm-copyright__link">Habr</a>»</span></span></div></div></div></div> <!----> <!----></div> <div class="vue-portal-target"></div></div>
+<script>window.__INITIAL_STATE__={"adblock":{"hasAcceptableAdsFilter":false,"hasAdblock":false},"articlesList":{"articlesList":{"452064":{"id":"452064","timePublished":"2019-05-16T07:48:57+00:00","isCorporative":true,"lang":"ru","titleHtml":"PowerShell Desired State Configuration и напильник: часть 1. Настройка DSC Pull Server для работы с базой данных SQL","leadData":{"textHtml":"\u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002F-4\u002Fvu\u002F2i\u002F-4vu2idi-kona7rk1zluhuqtrlk.png\"\u003E\u003Cbr\u003E\r\n\u003Cbr\u003E\r\nPowerShell Desired State Configuration (DSC) сильно упрощает работу по развертыванию и конфигурированию операционной системы, ролей сервера и приложений, когда у вас сотни серверов. \u003Cbr\u003E\r\n\u003Cbr\u003E\r\nНо при использовании DSC on-premises, т.е. не в MS Azure, возникает пара нюансов. Они особенно ощутимы, если организация большая (от 300 рабочих станций и серверов) и в ней еще не открыли мир контейнеров:\u003Cbr\u003E\r\n\u003Cbr\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003EНет полноценных отчетов о состоянии систем. Если нужная конфигурация не применилась на каких-то серверах, то без этих отчетов мы об этом не узнаем. От встроенного сервера отчетов информацию получить довольно сложно, а для большого количества хостов – еще и долго. \u003C\u002Fli\u003E\r\n\u003Cli\u003EОтсутствует масштабируемость и отказоустойчивость. Невозможно построить ферму опрашивающих веб-серверов DSC, которые бы имели единую отказоустойчивую базу данных и общее хранилище mof-файлов конфигураций, модулей и ключей регистрации. \u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u003E\r\nСегодня я расскажу, как можно решить первую проблему и получить данные для построения отчетности. Все было бы проще, если в качестве базы данных можно было бы использовать SQL. MS \u003Ca href=\"https:\u002F\u002Ftechsnips.io\u002Fsnips\u002Fhow-to-configure-a-dsc-pull-server-to-use-a-sql-database-backend-in-windows-server-2019\u002F\"\u003Eобещает \u003C\u002Fa\u003Eвстроенную поддержку только в Windows Server 2019 или в build Windows server 1803. Забирать данные с использованием OleDB provider тоже \u003Ca href=\"https:\u002F\u002Fblogs.msdn.microsoft.com\u002Fwushuai\u002F2016\u002F11\u002F27\u002Ftry-to-use-sql-server-as-dsc-pull-server-backend\u002F\"\u003Eне получится\u003C\u002Fa\u003E, так как DSC-сервер использует именованный параметр, который не полностью поддерживается OleDbCommand.\u003Cbr\u003E\r\n\u003Cbr\u003E\r\nНашел вот такой способ: тем, кто использует Windows Server 2012 и 2016, можно \u003Ca href=\"https:\u002F\u002Fblogs.technet.microsoft.com\u002Ffieldcoding\u002F2017\u002F05\u002F11\u002Fusing-sql-server-2016-for-a-dsc-pull-server\u002F\"\u003Eнастроить\u003C\u002Fa\u003E использование БД SQL в качестве backend’a для опрашивающего DSC-сервера. Для этого создадим «прокси» в виде .mdb файла со связанными таблицами, который будет перенаправлять данные, полученные от отчетов клиентов, в БД SQL-сервера. \u003Cbr\u003E","imageUrl":null,"buttonTextHtml":"Читать дальше →","image":null},"editorVersion":"1.0","postType":"article","postLabels":[{"type":"tutorial","data":null}],"author":{"scoreStats":{"score":11,"votesCount":15},"rating":0,"relatedData":null,"contacts":[],"authorContacts":[],"paymentDetails":{"paymentYandexMoney":null,"paymentPayPalMe":null,"paymentWebmoney":null},"id":"2053747","alias":"dm_dsc","fullname":null,"avatarUrl":null,"speciality":null},"statistics":{"commentsCount":3,"favoritesCount":39,"readingCount":5469,"score":20,"votesCount":24},"hubs":[{"relatedData":null,"id":"9406","alias":"dataline","type":"corporative","title":"Блог компании DataLine","titleHtml":"Блог компании DataLine","isProfiled":false},{"relatedData":null,"id":"6065","alias":"powershell","type":"collective","title":"PowerShell","titleHtml":"PowerShell","isProfiled":true},{"relatedData":null,"id":"6398","alias":"it-infrastructure","type":"collective","title":"IT-инфраструктура","titleHtml":"IT-инфраструктура","isProfiled":true},{"relatedData":null,"id":"17350","alias":"s_admin","type":"collective","title":"Серверное администрирование","titleHtml":"Серверное администрирование","isProfiled":true},{"relatedData":null,"id":"17378","alias":"mssql","type":"collective","title":"Microsoft SQL Server","titleHtml":"Microsoft SQL Server","isProfiled":true}],"flows":[{"id":"1","alias":"develop","title":"Разработка"},{"id":"6","alias":"admin","title":"Администрирование"}],"relatedData":null,"textHtml":"\u003Cdiv xmlns=\"http:\u002F\u002Fwww.w3.org\u002F1999\u002Fxhtml\"\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002F-4\u002Fvu\u002F2i\u002F-4vu2idi-kona7rk1zluhuqtrlk.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nPowerShell Desired State Configuration (DSC) сильно упрощает работу по развертыванию и конфигурированию операционной системы, ролей сервера и приложений, когда у вас сотни серверов. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nНо при использовании DSC on-premises, т.е. не в MS Azure, возникает пара нюансов. Они особенно ощутимы, если организация большая (от 300 рабочих станций и серверов) и в ней еще не открыли мир контейнеров:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003EНет полноценных отчетов о состоянии систем. Если нужная конфигурация не применилась на каких-то серверах, то без этих отчетов мы об этом не узнаем. От встроенного сервера отчетов информацию получить довольно сложно, а для большого количества хостов – еще и долго. \u003C\u002Fli\u003E\r\n\u003Cli\u003EОтсутствует масштабируемость и отказоустойчивость. Невозможно построить ферму опрашивающих веб-серверов DSC, которые бы имели единую отказоустойчивую базу данных и общее хранилище mof-файлов конфигураций, модулей и ключей регистрации. \u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\nСегодня я расскажу, как можно решить первую проблему и получить данные для построения отчетности. Все было бы проще, если в качестве базы данных можно было бы использовать SQL. MS \u003Ca href=\"https:\u002F\u002Ftechsnips.io\u002Fsnips\u002Fhow-to-configure-a-dsc-pull-server-to-use-a-sql-database-backend-in-windows-server-2019\u002F\"\u003Eобещает \u003C\u002Fa\u003Eвстроенную поддержку только в Windows Server 2019 или в build Windows server 1803. Забирать данные с использованием OleDB provider тоже \u003Ca href=\"https:\u002F\u002Fblogs.msdn.microsoft.com\u002Fwushuai\u002F2016\u002F11\u002F27\u002Ftry-to-use-sql-server-as-dsc-pull-server-backend\u002F\"\u003Eне получится\u003C\u002Fa\u003E, так как DSC-сервер использует именованный параметр, который не полностью поддерживается OleDbCommand.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nНашел вот такой способ: тем, кто использует Windows Server 2012 и 2016, можно \u003Ca href=\"https:\u002F\u002Fblogs.technet.microsoft.com\u002Ffieldcoding\u002F2017\u002F05\u002F11\u002Fusing-sql-server-2016-for-a-dsc-pull-server\u002F\"\u003Eнастроить\u003C\u002Fa\u003E использование БД SQL в качестве backend’a для опрашивающего DSC-сервера. Для этого создадим «прокси» в виде .mdb файла со связанными таблицами, который будет перенаправлять данные, полученные от отчетов клиентов, в БД SQL-сервера. \u003Cbr\u002F\u003E\r\n\u003Ca name=\"habracut\"\u003E\u003C\u002Fa\u003E\u003Cbr\u002F\u003E\r\n\u003Ci\u003EПримечание: для Windows Server 2016 необходимо использовать \u003Ca href=\"https:\u002F\u002Fdownload.microsoft.com\u002Fdownload\u002F3\u002F5\u002FC\u002F35C84C36-661A-44E6-9324-8786B8DBE231\u002FAccessDatabaseEngine.exe\"\u003EAccessDatabaseEngine2016x86\u003C\u002Fa\u003E, так как Microsoft.Jet.OLEDB.4.0 больше не поддерживается. \u003C\u002Fi\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЯ не буду подробно останавливаться на процессе развертывания опрашивающего DSC-сервера, он очень хорошо описан \u003Ca href=\"https:\u002F\u002Fdocs.microsoft.com\u002Fru-ru\u002Fpowershell\u002Fdsc\u002Fpull-server\u002Fpullserver\"\u003Eтут\u003C\u002Fa\u003E. Отмечу только пару моментов. Если мы разворачиваем опрашивающий DSC на одном веб-сервере со WSUS или Kaspersky Security Center, то в скрипте создания конфигурации необходимо поменять следующие параметры:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Col\u003E\r\n\u003Cli\u003E\u003Cpre\u003E\u003Ccode class=\"sql\"\u003EUseSecurityBestPractices     = $false\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E \u003Cbr\u002F\u003E\r\nИначе TLS 1.0 будет отключен, вы не сможете подключиться к БД SQL. Kaspersky Security Center тоже не будет работать (проблема должна быть решена в Kaspersky Security Center v11).\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Cpre\u003E\u003Ccode class=\"sql\"\u003EEnable32BitAppOnWin64   = $true\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E \u003Cbr\u002F\u003E\r\nЕсли не внести это изменение, не получится запустить AppPool DSC-сервера на IIS со WSUS.\u003C\u002Fli\u003E\r\n\u003Cli\u003EПри установке DSC-сервера совместно с WSUS отключите статическое и динамическое кэширование для сайта DSC. \u003C\u002Fli\u003E\r\n\u003C\u002Fol\u003E\u003Cbr\u002F\u003E\r\nПерейдем к настройке сервера DSC для использования БД SQL. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch3\u003EСоздание БД SQL\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\n\u003Col\u003E\r\n\u003Cli\u003EСоздадим пустую базу данных SQL с именем DSC.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002F24\u002Fje\u002Fik\u002F24jeikjjhurylsfpxfdz-hkdkoo.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002F-i\u002Fkm\u002Fhz\u002F-ikmhzvewzfmt8ygqaidws2erzm.png\"\u002F\u003E\u003C\u002Fli\u003E\r\n\u003Cli\u003EСоздадим учетную запись для подключения к этой базе данных. Предварительно проверьте, что на SQL-сервере разрешена аутентификация учетных записей как Windows, так и SQL.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fz-\u002Fqz\u002Ftx\u002Fz-qztxe410jqyjoj7rwna3t9-am.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fuh\u002Fno\u002Fvm\u002Fuhnovmv8wsywdxi6ahxiinvkj4y.png\"\u002F\u003E\u003C\u002Fli\u003E\r\n\u003Cli\u003EПереходим в раздел User Mapping. Выбираем базу данных, в данном случае – DSC. Даем права владельца базы данных. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fcl\u002Ffg\u002Fvg\u002Fclfgvg0ya7csozw1ner_egxdxs8.png\"\u002F\u003E\u003C\u002Fli\u003E\r\n\u003Cli\u003EГотово. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002F9i\u002Fla\u002F7n\u002F9ila7nedgtygol496l7da239i1k.png\"\u002F\u003E\u003C\u002Fli\u003E\r\n\u003C\u002Fol\u003E\u003Cbr\u002F\u003E\r\n\u003Ch3\u003EСоздание схемы для базы данных DSC\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\nСоздать схему для базы данных DSC можно двумя способами: \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003Eсамостоятельно, через скрипт на TSQL\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"sql\"\u003ESET ANSI_NULLS ON\nGO\nSET QUOTED_IDENTIFIER ON\nGO\nCREATE TABLE [dbo].[Devices](\n[TargetName] [nvarchar](255) NOT NULL,\n[ConfigurationID] [nvarchar](255) NOT NULL,\n[ServerCheckSum] [nvarchar](255) NOT NULL,\n[TargetCheckSum] [nvarchar](255) NOT NULL,\n[NodeCompliant] [bit] NOT NULL,\n[LastComplianceTime] [datetime] NULL,\n[LastHeartbeatTime] [datetime] NULL,\n[Dirty] [bit] NOT NULL,\n[StatusCode] [int] NULL\n) ON [PRIMARY]\nGO\n \nCREATE TABLE [dbo].[RegistrationData](\n[AgentId] [nvarchar](255) NOT NULL,\n[LCMVersion] [nvarchar](255) NULL,\n[NodeName] [nvarchar](255) NULL,\n[IPAddress] [nvarchar](255) NULL,\n[ConfigurationNames] [nvarchar](max) NULL\n) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]\nGO\n \nCREATE TABLE [dbo].[StatusReport](\n[JobId] [nvarchar](50) NOT NULL,\n[Id] [nvarchar](50) NOT NULL,\n[OperationType] [nvarchar](255) NULL,\n[RefreshMode] [nvarchar](255) NULL,\n[Status] [nvarchar](255) NULL,\n[LCMVersion] [nvarchar](50) NULL,\n[ReportFormatVersion] [nvarchar](255) NULL,\n[ConfigurationVersion] [nvarchar](255) NULL,\n[NodeName] [nvarchar](255) NULL,\n[IPAddress] [nvarchar](255) NULL,\n[StartTime] [datetime] NULL,\n[EndTime] [datetime] NULL,\n[Errors] [nvarchar](max) NULL,\n[StatusData] [nvarchar](max) NULL,\n[RebootRequested] [nvarchar](255) NULL\n) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]\nGO\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003C\u002Fli\u003E\r\n\u003Cli\u003Eимпортировать данные из пустого devices.mdb в составе PS-модуля PSDesiredStateConfiguration через Мастера импорта данных SQL. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nDevices.mdb, с которым мы будем работать, находится в C:\\Windows\\SysWOW64\\WindowsPowerShell\\v1.0\\Modules\\PSDesiredStateConfiguration\\PullServer.\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\n\u003Col\u003E\r\n\u003Cli\u003EДля импорта данных запускаем SQL Server Import and Export Wizard.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fim\u002F3v\u002Fww\u002Fim3vwwj9ib9wucm4xnl70jow1yy.png\"\u002F\u003E\u003C\u002Fli\u003E\r\n\u003Cli\u003EВыбираем, откуда мы будем забирать данные – в нашем случае это база данных Microsoft Access. Нажимаем Next.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fl5\u002Frc\u002Fdq\u002Fl5rcdqtxvaajv5h5mbil72vv3k0.png\"\u002F\u003E\u003C\u002Fli\u003E\r\n\u003Cli\u003EВыбираем файл, откуда импортируем схему.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fth\u002Fdt\u002Fxu\u002Fthdtxutqcvsrv0laifxjhsbse2w.png\"\u002F\u003E\u003C\u002Fli\u003E\r\n\u003Cli\u003EУказываем, куда импортировать, – у нас это БД SQL. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fdc\u002Fsc\u002Fp5\u002Fdcscp5f9n-cdmm0qfo0gv_-k0oy.png\"\u002F\u003E\u003C\u002Fli\u003E\r\n\u003Cli\u003EВыбираем SQL-сервер (Server Name) и базу данных, в которую будем импортировать данные (DataBase).\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fkr\u002Fsd\u002Fds\u002Fkrsddsbr4jpvi9dgvc3f_qcxwqy.png\"\u002F\u003E\u003C\u002Fli\u003E\r\n\u003Cli\u003EВыбираем опцию Copy data from one or more tables or views (копирование данных из таблиц или представлений).\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fnu\u002Faq\u002Fq8\u002Fnuaqq8akzpdz07fwf1gedrxcfns.png\"\u002F\u003E\u003C\u002Fli\u003E\r\n\u003Cli\u003EВыбираем таблицы, из которых будем импортировать схему БД.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fbf\u002F7k\u002Fat\u002Fbf7kat56ltu-amw0nhvgbp2tkpw.png\"\u002F\u003E\u003C\u002Fli\u003E\r\n\u003Cli\u003EСтавим галочку Run Immediately и жмем Finish. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002F7i\u002Fau\u002Fwo\u002F7iauwo3j_x0qzfwqgfc1u8tyfks.png\"\u002F\u003E\u003C\u002Fli\u003E\r\n\u003Cli\u003EГотово. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Foi\u002F49\u002Fw0\u002Foi49w0cedn8ilblfijwlhjsumfm.png\"\u002F\u003E\u003C\u002Fli\u003E\r\n\u003Cli\u003EВ результате в БД DSC должны появиться таблицы.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fz3\u002Fui\u002Fpp\u002Fz3uippubkjjk0r2fqolnoweezme.png\"\u002F\u003E\u003C\u002Fli\u003E\r\n\u003C\u002Fol\u003E\u003Cbr\u002F\u003E\r\n\u003Ch3\u003EНастройка .mdb «прокси» файла\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\n\u003Cb\u003EСоздание ODBC-подключения к SQL-серверу.\u003C\u002Fb\u003E Предполагается, что MS Access не установлен на сервере с DSC, поэтому настройка databases.mdb выполняется на промежуточном хосте с установленным MS Access. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nСоздадим системное ODBC-подключение к SQL-серверу (разрядность подключения должна совпадать с разрядностью MS Access – 64 или 32). Его можно создать с помощью:\u003Cbr\u002F\u003E\r\n — командлета Powershell:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"sql\"\u003EAdd-OdbcDsn –Name DSC –DriverName 'SQL Server' –Platform '&lt;64-bit or 32-bit\u003E' –DsnType System –SetPropertyValue @('Description=DSC Pull Server',\"Server=&lt;Name of your SQL Server\u003E\",'Trusted_Connection=yes','Database=DSC') –PassThru\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n — или вручную, с помощью мастера подключений:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Col\u003E\r\n\u003Cli\u003EОткрываем Administrative tools. Выбираем источники данных ODBC в зависимости от версии установленного MS Access. Переходим во вкладку System DSN и создаем системное подключение (Add).\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fpt\u002Fk5\u002Fcu\u002Fptk5cuuxfa2deeqiw_h6vb4vy_4.png\"\u002F\u003E\u003C\u002Fli\u003E\r\n\u003Cli\u003EУказываем, что будем подключаться к SQL-серверу. Жмем Finish.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fey\u002Fb_\u002Fdz\u002Feyb_dz43l6-xzg3yupw4zgrasbi.png\"\u002F\u003E\u003C\u002Fli\u003E\r\n\u003Cli\u003EУказываем имя и сервер для подключения. Потом подключение с такими же параметрами нужно будет создать на сервере DSC.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002F_d\u002Fpy\u002Flq\u002F_dpylq1y7uycuiq08tkq-jp1eri.png\"\u002F\u003E\u003C\u002Fli\u003E\r\n\u003Cli\u003EУказываем, что для подключения к SQL-серверу используется предварительно созданный нами логин с именем DSC.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002F_2\u002Fbw\u002Fbs\u002F_2bwbsadgrihkikrnnh2eq2tkbs.png\"\u002F\u003E\u003C\u002Fli\u003E\r\n\u003Cli\u003EУказываем БД в настройках подключения DSC.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Feg\u002Fex\u002Feg\u002Fegexegl50aplc4fr_f1jbfx3edq.png\"\u002F\u003E\u003C\u002Fli\u003E\r\n\u003Cli\u003EЖмем Finish.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fdi\u002Fa8\u002F_n\u002Fdia8_nwzir-nhafd9rezwstdwjq.png\"\u002F\u003E\u003C\u002Fli\u003E\r\n\u003Cli\u003EПеред завершением настройки проверяем, что подключение работает (Test Data Source).\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fkt\u002Fft\u002Ftm\u002Fktfttmjcb_8gyb3s-o_xnwewyfy.png\"\u002F\u003E\u003C\u002Fli\u003E\r\n\u003Cli\u003EГотово.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002F4r\u002F4z\u002Faa\u002F4r4zaalbv3rms8xsfjoijzvtige.png\"\u002F\u003E\u003C\u002Fli\u003E\r\n\u003C\u002Fol\u003E\u003Cbr\u002F\u003E\r\n\u003Cb\u003EСоздание базы данных devices.mdb в MS Access.\u003C\u002Fb\u003E Запускаем MS Access и создаем пустую базу данных под названием devices.mdb.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Ftq\u002F4n\u002Fia\u002Ftq4niasnq5av17ozevpg365y_qy.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Col\u003E\r\n\u003Cli\u003EПереходим во вкладку Внешние данные, кликаем на База данных ODBC. В появившемся окне выбираем Создать связанную таблицу для связи с источником данных.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Faq\u002Fql\u002Fvq\u002Faqqlvqqilfgqgdakivqfna9irvu.png\"\u002F\u003E\u003C\u002Fli\u003E\r\n\u003Cli\u003EВ новом окне выбираем вкладку Machine Data Source и жмем ОК. В новом окне вводим учетные данные для подключения к SQL-серверу.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Frr\u002F8c\u002Fzl\u002Frr8czlircqalebpljfw47h5eax4.png\"\u002F\u003E\u003C\u002Fli\u003E\r\n\u003Cli\u003EВыбираем таблицы, которые необходимо прилинковать. Отмечаем галкой Сохранить пароль и жмем ОК. Пароль сохранять каждый раз для всех трех таблиц.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fdy\u002Ff9\u002Fw5\u002Fdyf9w58ztue8ugsagfiieghgqsc.png\"\u002F\u003E\u003C\u002Fli\u003E\r\n\u003Cli\u003EВ индексах нужно выбрать следующие:\u003Cbr\u002F\u003E\r\n — TargetName для таблицы dbo_Devices;\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fe-\u002Ffl\u002Fs_\u002Fe-fls_elpbmiktv67egcweaxlvq.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n — NodeName или IPAddress для dbo_RegistrationData;\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fxo\u002Fug\u002Fdo\u002Fxougdoiodatj1tlmsalqpdfzauk.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n — NodeName или IPAddress для dbo_StatusReport.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fw7\u002Flj\u002Fus\u002Fw7ljush_8zrt8hupqoqvrtsgk4g.png\"\u002F\u003E\u003C\u002Fli\u003E\r\n\u003Cli\u003EПереименуем таблицы в MS Access, а именно: удалим префикс dbo_, чтобы DSC мог использовать их. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002F6w\u002Fo-\u002F1q\u002F6wo-1qvgkwua75cv1nd1rsmng1k.png\"\u002F\u003E\u003C\u002Fli\u003E\r\n\u003Cli\u003EГотово. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002F58\u002F16\u002Fx8\u002F5816x8uw93muoywridyx-dwjugw.png\"\u002F\u003E\u003C\u002Fli\u003E\r\n\u003Cli\u003EСохраняем файл и закрываем MS Access. Теперь копируем полученный devices.mdb на DSC-сервер (по умолчанию в C:\\Program Files\\WindowsPowershell\\DSCService) и заменяем им существующий (если он есть). \u003C\u002Fli\u003E\r\n\u003C\u002Fol\u003E\u003Cbr\u002F\u003E\r\n\u003Ch3\u003EНастройка DSC-сервера для использования SQL\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\n\u003Col\u003E\r\n\u003Cli\u003EВозвращаемся к серверу DSC. Чтобы подключиться к SQL-серверу с нашим proxy-файлом, создадим новое ODBC подключение на DSC-сервере. Имя, и разрядность, и настройки подключения должны быть такие же, как и при создании MDB-файла. Можно скопировать уже настроенный пустой devices.mdb отсюда.\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003Cli\u003EЧтобы использовать devices.mdb, нужно внести изменения в web.config опрашивающего сервера DSC (по умолчанию – C:\\inetpub\\PSDSCPullServer\\web.config):\u003C\u002Fli\u003E\r\n\u003C\u002Fol\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n — для Windows Server 2012\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"sql\"\u003E&lt;add key=\"dbprovider\" value=\"System.Data.OleDb\"\u003E\n&lt;add key=\"dbconnectionstr\" value=\"Provider=Microsoft.Jet.OLEDB.4.0;Data Source=C:\\Program Files\\WindowsPowerShell\\DscService\\Devices.mdb;\"\u003E\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n — для Windows Server 2016\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"sql\"\u003E&lt;add key=\"dbprovider\" value=\"System.Data.OleDb\"\u003E\n&lt;add key=\"dbconnectionstr\" value=\"Provider=Microsoft.ACE.OLEDB.12.0;Data Source=C:\\Program Files\\WindowsPowerShell\\DscService\\Devices.mdb;\"\u003E\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nНа этом настройка DSC-сервера закончена. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch3\u003EПроверка работоспособности DSC-сервера\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\n\u003Col\u003E\r\n\u003Cli\u003EПроверим, что DSC-сервер доступен через web-браузер.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Foi\u002Foe\u002F1z\u002Foioe1zuj9x9gvl9eeek9sc38nz8.png\"\u002F\u003E\u003C\u002Fli\u003E\r\n\u003Cli\u003EТеперь проверим, правильно ли работает опрашивающий сервер DSC. Для этого в составе модуля xPSDesiredStateConfiguration есть скрипт pullserversetuptests.ps1. Перед запуском этого скрипта необходимо установить модуль Powershell с именем Pester. Устанавливаем его Install-Module -Name Pester.\u003C\u002Fli\u003E\r\n\u003Cli\u003EОткрываем C:\\Program Files\\WindowsPowerShell\\Modules\\xPSDesiredStateConfiguration\\&lt;версия модуля\u003E\\DSCPullServerSetup\\PullServerDeploymentVerificationTest (в примере версия 8.0.0.0.0).\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002F_5\u002Fdb\u002Fgl\u002F_5dbglhxbi5mgboeexxi_pw7oxk.png\"\u002F\u003E\u003C\u002Fli\u003E\r\n\u003Cli\u003EОткрываем PullServerSetupTests.ps1 и проверяем путь к web.config DSC-сервера. Красным выделил путь к web.config, который будет проверять скрипт. Если нужно, меняем этот путь.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fet\u002Fte\u002Fmn\u002Fettemnvebjfc3kgviqzqsob_eas.png\"\u002F\u003E\u003C\u002Fli\u003E\r\n\u003Cli\u003EЗапускаем pullserversetuptests.ps1 \u003Cbr\u002F\u003E\r\nInvoke-Pester .\\PullServerSetupTests.ps1 \u003Cbr\u002F\u003E\r\nВсе работает.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fqc\u002Fqp\u002Fm5\u002Fqcqpm5a4iwsl_-9d7n2uzll9zjg.png\"\u002F\u003E\u003C\u002Fli\u003E\r\n\u003Cli\u003EВ SQL Management Studio видим, что администрируемые хосты отправляют отчеты на сервер отчетов DSC и данные попадают в базу данных DSC на SQL-сервере.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fba\u002Foo\u002F04\u002Fbaoo048uqhsyxpsv4yaaftqmwvi.png\"\u002F\u003E\u003C\u002Fli\u003E\r\n\u003C\u002Fol\u003E\u003Cbr\u002F\u003E\r\nНа этом все. В следующих статьях планирую рассказать, как на полученных данных построить отчеты, и коснусь вопросов про отказоустойчивость и масштабируемость.\u003C\u002Fdiv\u003E","tags":[{"titleHtml":"dsc"},{"titleHtml":"desired state configuration"},{"titleHtml":"PowerShell"},{"titleHtml":"ms sql server"},{"titleHtml":"серверное администрирование"},{"titleHtml":"автоматизация рутины"}],"metadata":{"stylesUrls":[],"scriptUrls":[],"shareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F452064\u002F1a104e4e02e5d47ca378348bde7a99ab\u002F","shareImageWidth":1200,"shareImageHeight":630,"vkShareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F452064\u002F1a104e4e02e5d47ca378348bde7a99ab\u002F?format=vk","schemaJsonLd":"{\"@context\":\"http:\\\u002F\\\u002Fschema.org\",\"@type\":\"Article\",\"mainEntityOfPage\":{\"@type\":\"WebPage\",\"@id\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fru\\\u002Fcompany\\\u002Fdataline\\\u002Fblog\\\u002F452064\\\u002F\"},\"headline\":\"PowerShell Desired State Configuration и напильник: часть 1. Настройка DSC Pull Server для работы с базой данных SQL\",\"datePublished\":\"2019-05-16T10:48:57+03:00\",\"dateModified\":\"2019-05-16T11:29:52+03:00\",\"author\":{\"@type\":\"Person\",\"name\":\"dm_dsc\"},\"publisher\":{\"@type\":\"Organization\",\"name\":\"Habr\",\"logo\":{\"@type\":\"ImageObject\",\"url\":\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fa_\\\u002Flk\\\u002F9m\\\u002Fa_lk9mjkccjox-zccjrpfolmkmq.png\"}},\"description\":\"PowerShell Desired State Configuration (DSC) сильно упрощает работу по развертыванию и конфигурированию операционной системы, ролей сервера и приложений, когда...\",\"url\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fru\\\u002Fcompany\\\u002Fdataline\\\u002Fblog\\\u002F452064\\\u002F#post-content-body\",\"about\":[\"c_dataline\",\"h_powershell\",\"h_it-infrastructure\",\"h_s_admin\",\"h_mssql\",\"f_develop\",\"f_admin\"],\"image\":[\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002F-4\\\u002Fvu\\\u002F2i\\\u002F-4vu2idi-kona7rk1zluhuqtrlk.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002F24\\\u002Fje\\\u002Fik\\\u002F24jeikjjhurylsfpxfdz-hkdkoo.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002F-i\\\u002Fkm\\\u002Fhz\\\u002F-ikmhzvewzfmt8ygqaidws2erzm.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fz-\\\u002Fqz\\\u002Ftx\\\u002Fz-qztxe410jqyjoj7rwna3t9-am.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fuh\\\u002Fno\\\u002Fvm\\\u002Fuhnovmv8wsywdxi6ahxiinvkj4y.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fcl\\\u002Ffg\\\u002Fvg\\\u002Fclfgvg0ya7csozw1ner_egxdxs8.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002F9i\\\u002Fla\\\u002F7n\\\u002F9ila7nedgtygol496l7da239i1k.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fim\\\u002F3v\\\u002Fww\\\u002Fim3vwwj9ib9wucm4xnl70jow1yy.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fl5\\\u002Frc\\\u002Fdq\\\u002Fl5rcdqtxvaajv5h5mbil72vv3k0.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fth\\\u002Fdt\\\u002Fxu\\\u002Fthdtxutqcvsrv0laifxjhsbse2w.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fdc\\\u002Fsc\\\u002Fp5\\\u002Fdcscp5f9n-cdmm0qfo0gv_-k0oy.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fkr\\\u002Fsd\\\u002Fds\\\u002Fkrsddsbr4jpvi9dgvc3f_qcxwqy.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fnu\\\u002Faq\\\u002Fq8\\\u002Fnuaqq8akzpdz07fwf1gedrxcfns.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fbf\\\u002F7k\\\u002Fat\\\u002Fbf7kat56ltu-amw0nhvgbp2tkpw.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002F7i\\\u002Fau\\\u002Fwo\\\u002F7iauwo3j_x0qzfwqgfc1u8tyfks.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Foi\\\u002F49\\\u002Fw0\\\u002Foi49w0cedn8ilblfijwlhjsumfm.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fz3\\\u002Fui\\\u002Fpp\\\u002Fz3uippubkjjk0r2fqolnoweezme.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fpt\\\u002Fk5\\\u002Fcu\\\u002Fptk5cuuxfa2deeqiw_h6vb4vy_4.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fey\\\u002Fb_\\\u002Fdz\\\u002Feyb_dz43l6-xzg3yupw4zgrasbi.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002F_d\\\u002Fpy\\\u002Flq\\\u002F_dpylq1y7uycuiq08tkq-jp1eri.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002F_2\\\u002Fbw\\\u002Fbs\\\u002F_2bwbsadgrihkikrnnh2eq2tkbs.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Feg\\\u002Fex\\\u002Feg\\\u002Fegexegl50aplc4fr_f1jbfx3edq.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fdi\\\u002Fa8\\\u002F_n\\\u002Fdia8_nwzir-nhafd9rezwstdwjq.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fkt\\\u002Fft\\\u002Ftm\\\u002Fktfttmjcb_8gyb3s-o_xnwewyfy.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002F4r\\\u002F4z\\\u002Faa\\\u002F4r4zaalbv3rms8xsfjoijzvtige.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Ftq\\\u002F4n\\\u002Fia\\\u002Ftq4niasnq5av17ozevpg365y_qy.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Faq\\\u002Fql\\\u002Fvq\\\u002Faqqlvqqilfgqgdakivqfna9irvu.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Frr\\\u002F8c\\\u002Fzl\\\u002Frr8czlircqalebpljfw47h5eax4.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fdy\\\u002Ff9\\\u002Fw5\\\u002Fdyf9w58ztue8ugsagfiieghgqsc.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fe-\\\u002Ffl\\\u002Fs_\\\u002Fe-fls_elpbmiktv67egcweaxlvq.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fxo\\\u002Fug\\\u002Fdo\\\u002Fxougdoiodatj1tlmsalqpdfzauk.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fw7\\\u002Flj\\\u002Fus\\\u002Fw7ljush_8zrt8hupqoqvrtsgk4g.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002F6w\\\u002Fo-\\\u002F1q\\\u002F6wo-1qvgkwua75cv1nd1rsmng1k.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002F58\\\u002F16\\\u002Fx8\\\u002F5816x8uw93muoywridyx-dwjugw.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Foi\\\u002Foe\\\u002F1z\\\u002Foioe1zuj9x9gvl9eeek9sc38nz8.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002F_5\\\u002Fdb\\\u002Fgl\\\u002F_5dbglhxbi5mgboeexxi_pw7oxk.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fet\\\u002Fte\\\u002Fmn\\\u002Fettemnvebjfc3kgviqzqsob_eas.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fqc\\\u002Fqp\\\u002Fm5\\\u002Fqcqpm5a4iwsl_-9d7n2uzll9zjg.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fba\\\u002Foo\\\u002F04\\\u002Fbaoo048uqhsyxpsv4yaaftqmwvi.png\"]}","metaDescription":"PowerShell Desired State Configuration (DSC) сильно упрощает работу по развертыванию и конфигурированию операционной системы, ролей сервера и приложений, когда у вас сотни серверов. \r\n\r\nНо при...","mainImageUrl":null,"amp":false},"polls":[],"commentsEnabled":true,"rulesRemindEnabled":false,"votesEnabled":true,"status":"published","plannedPublishTime":null,"checked":null,"isEditorial":false}},"articlesIds":{},"isLoading":false,"pagesCount":{},"route":{},"reasonsList":null,"view":"cards","lastVisitedRoute":{},"ssrCommentsArticleIds":[""],"karma":{}},"authorContribution":{"authors":{}},"betaTest":{"currentAnnouncement":null,"announcements":{},"announcementCards":null,"announcementComments":{},"announcementCommentThreads":{},"announcementCommentingStatuses":{},"archivedList":[]},"authorStatistics":{"articleRefs":{},"articleIds":{},"pagesCount":{},"route":{},"viewsCount":[],"maxStatsCount":{}},"career":{"seoLandings":[],"hubs":""},"comments":{"articleComments":{},"searchCommentsResults":null,"previewComment":null,"pagesCount":null,"commentAccess":{},"scrollParents":{},"pageArticleComments":{"lastViewedComment":0,"postId":null,"lastCommentTimestamp":"","moderated":[],"moderatedIds":[],"commentRoute":""}},"companies":{"companyRefs":{"dataline":{"alias":"dataline","imageUrl":"\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fcompany\u002Fe1b\u002Fff9\u002F809\u002Fe1bff98097e89d63bdcd7cf1f2e3d800.jpg","titleHtml":"DataLine","descriptionHtml":"Экосистема ИТ-сервисов","relatedData":null,"statistics":{"postsCount":199,"newsCount":13,"vacanciesCount":0,"employeesCount":41,"careerRating":null,"subscribersCount":30932,"rating":115.23,"invest":null},"foundationDate":{"year":"2007","month":"10","day":"02"},"location":{"city":{"id":"447159","title":"Москва"},"region":{"id":"1885","title":"Москва и Московская обл."},"country":{"id":"168","title":"Россия"}},"siteUrl":"http:\u002F\u002Fdtln.ru\u002F","staffNumber":"201–500 человек","registrationDate":"2009-03-24T14:32:02+00:00","representativeUser":null,"contacts":[{"title":"Сайт","url":"http:\u002F\u002Fwww.dtln.ru\u002F"},{"title":"Facebook","url":"https:\u002F\u002Ffacebook.com\u002Filikedataline"},{"title":"ВКонтакте","url":"https:\u002F\u002Fvk.com\u002Filikedataline"},{"title":"Instagram","url":"https:\u002F\u002Finstagram.com\u002Filikedataline"},{"title":"Telegram","url":"https:\u002F\u002Ftelegram.me\u002Funidataline"}],"settings":{"analyticsSettings":[{"type":"ym","trackingId":"56550142"}],"branding":null,"status":"active"},"metadata":{"titleHtml":"DataLine, Москва - Экосистема ИТ-сервисов с 2 октября 2007 г.","title":"DataLine, Москва - Экосистема ИТ-сервисов с 2 октября 2007 г.","keywords":["IT-инфраструктура","Облачные сервисы","Информационная безопасность","Хранилища данных","Хранение данных"],"descriptionHtml":"199 статей от авторов компании DataLine","description":"199 статей от авторов компании DataLine"},"aDeskSettings":null,"careerAlias":"dtln","maxCustomTrackerLinks":0}},"companyIds":{},"companyTopIds":{},"pagesCount":{},"companyProfiles":{},"companiesCategories":[],"companiesCategoriesTotalCount":0,"companiesWidgets":{},"companiesWorkers":{},"companiesFans":{},"route":{},"isLoading":false,"companyWorkersLoading":false,"companyFansLoading":false,"vacancies":{}},"companiesContribution":{"hubs":{},"flows":{},"companyRefs":{}},"companyHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"conversation":{"messages":[],"respondent":null,"isLoadMore":false},"conversations":{"conversations":[],"unreadCount":0,"pagesCount":0,"isLoadMore":false},"desktopState":{"desktopFl":null,"desktopHl":null,"isChecked":false,"isLoginDemanded":false},"dfp":{"slotsDict":{}},"docs":{"menu":{},"articles":{},"mainMenu":[],"loading":{"main":false,"dropdown":false,"article":false}},"feature":{"isProbablyVisible":"true"},"flows":{"flows":[{"alias":"develop","id":1,"route":{"name":"FLOW_PAGE","params":{"flowName":"develop"}}},{"alias":"admin","id":6,"route":{"name":"FLOW_PAGE","params":{"flowName":"admin"}}},{"alias":"design","id":2,"route":{"name":"FLOW_PAGE","params":{"flowName":"design"}}},{"alias":"management","id":3,"route":{"name":"FLOW_PAGE","params":{"flowName":"management"}}},{"alias":"marketing","id":4,"route":{"name":"FLOW_PAGE","params":{"flowName":"marketing"}}},{"alias":"popsci","id":7,"route":{"name":"FLOW_PAGE","params":{"flowName":"popsci"}}}]},"global":{"isPwa":false,"device":"desktop","isHabrCom":true},"hubs":{"hubRefs":{},"hubIds":{},"pagesCount":{},"isLoading":false,"route":{}},"hubsBlock":{"hubRefs":{},"hubIds":{}},"i18n":{"fl":"ru","hl":"ru"},"info":{"infoPage":{},"isLoading":true},"location":{"urlStruct":{"protocol":null,"slashes":null,"auth":null,"host":null,"port":null,"hostname":null,"hash":null,"search":null,"query":{},"pathname":null,"path":null,"href":""},"searchQuery":null},"me":{"user":null,"ppgDemanded":false,"karmaResetInfo":{"canReincarnate":null,"wasReincarnated":null,"currentScore":null},"notes":null},"mostReadingList":{"mostReadingListIds":[],"mostReadingListRefs":null,"promoPost":null},"pinnedPost":{"pinnedPost":null},"ppa":{"articles":{},"card":null,"transactions":null,"totalTransactions":null,"isAccessible":null},"projectsBlocks":{"activeBlocks":{}},"pullRefresh":{"shouldRefresh":false},"sandbox":{"articleIds":[],"articleRefs":{},"pagesCount":null,"route":{},"lastVisitedRoute":{},"isLoading":false},"settingsOther":{"inputs":{"uiLang":{"errors":[],"ref":null,"value":""},"articlesLangEnglish":{"errors":[],"ref":null,"value":false},"articlesLangRussian":{"errors":[],"ref":null,"value":false},"agreement":{"errors":[],"ref":null,"value":false},"email":{"errors":[],"ref":null,"value":true},"digest":{"errors":[],"ref":null,"value":true}}},"similarList":{"similarListIds":[],"similarListRefs":null},"ssr":{"error":null,"isDataLoaded":false,"isDataLoading":false,"isHydrationFailed":false,"isServer":false},"userHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"userInvites":{"availableInvites":0,"usedInvitesIds":[],"usedInvitesRefs":{},"usedInvitesPagesCount":0,"unusedInvitesIds":[],"unusedInvitesRefs":{},"unusedInvitesPagesCount":0},"users":{"authorRefs":{},"authorIds":{},"pagesCount":{},"authorProfiles":{},"userHubs":{},"userInvitations":{},"authorFollowers":{},"authorFollowed":{},"karmaStats":[],"statistics":null,"isLoading":false,"authorFollowersLoading":false,"authorFollowedLoading":false,"userHubsLoading":false,"userInvitationsLoading":false,"route":{}},"viewport":{"prevScrollY":{},"scrollY":0,"width":0},"tracker":{"items":{},"pagesCache":{},"markedViewedSilently":{},"markedRead":{},"unreadCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null},"unviewedCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null}}};(function(){var s;(s=document.currentScript||document.scripts[document.scripts.length-1]).parentNode.removeChild(s);}());</script>
+<script src="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" defer></script><script src="https://assets.habr.com/habr-web/js/app.c0af73e7.js" defer></script>
+
+
+
+    <script>
+      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+        (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+        m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+      })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+    </script>
+  
+  <script type="text/javascript" >
+    (function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+    m[i].l=1*new Date();k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})
+    (window, document, "script", "https://mc.yandex.ru/metrika/tag.js", "ym");
+
+    ym(24049213, "init", {
+      defer:true,
+      trackLinks:true,
+      accurateTrackBounce:true,
+      webvisor:false,
+    });
+  </script>
+  <noscript>
+    <div>
+      <img src="https://mc.yandex.ru/watch/24049213" style="position:absolute; left:-9999px;" alt="" />
+    </div>
+  </noscript>
+  
+    <script type="text/javascript">
+      window.addEventListener('load', function () {
+        setTimeout(() => {
+          const img = new Image();
+          img.src = 'https://vk.com/rtrg?p=VK-RTRG-421343-57vKE';
+        }, 0);
+      });
+    </script>
+  
+</body>
+</html>

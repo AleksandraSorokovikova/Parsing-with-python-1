@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="ru" data-vue-meta="%7B%22lang%22:%7B%22ssr%22:%22ru%22%7D%7D">
+<head >
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
+  <title>Восстанавливаем виртуальные машины с ошибочно инициализированного Datastore. История одной глупости с хэппи-эндом / Хабр</title>
+  <style>
+    /* cyrillic-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSxf6TF0.woff2) format('woff2');
+      unicode-range: U+0460-052F, U+1C80-1C88, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+    }
+
+    /* cyrillic */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveQhf6TF0.woff2) format('woff2');
+      unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+    }
+
+    /* latin-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSBf6TF0.woff2) format('woff2');
+      unicode-range: U+0100-024F, U+0259, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20CF, U+2113, U+2C60-2C7F, U+A720-A7FF;
+    }
+
+    /* latin */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveRhf6.woff2) format('woff2');
+      unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+    }
+  </style>
+  <link rel="preload" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" as="script"><link rel="preload" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/app.c0af73e7.js" as="script">
+  <link rel="stylesheet" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css"><link rel="stylesheet" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css">
+  <script>window.i18nFetch = new Promise((res, rej) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open('GET', '/js/i18n/ru-compiled.85eb77f0b17c8235e7b64b9f81ea5ec2.json');
+          xhr.responseType = 'json';
+          xhr.onload = function(e) {
+            if (this.status === 200) {
+              res({ru: xhr.response});
+            } else {
+              rej(e);
+            }
+          };
+          xhr.send();
+        });</script>
+  
+  <script data-vue-meta="ssr" src="/js/ads.js" onload="window['zhY4i4nJ9K'] = true" data-vmid="checkad"></script><script data-vue-meta="ssr" type="application/ld+json" data-vmid="ldjson-schema">{"@context":"http:\/\/schema.org","@type":"Article","mainEntityOfPage":{"@type":"WebPage","@id":"https:\/\/habr.com\/ru\/post\/452928\/"},"headline":"Восстанавливаем виртуальные машины с ошибочно инициализированного Datastore. История одной глупости с хэппи-эндом","datePublished":"2019-05-23T09:52:03+03:00","dateModified":"2019-05-23T12:12:54+03:00","author":{"@type":"Person","name":"Михаил Скудицкий"},"publisher":{"@type":"Organization","name":"Habr","logo":{"@type":"ImageObject","url":"https:\/\/habrastorage.org\/webt\/a_\/lk\/9m\/a_lk9mjkccjox-zccjrpfolmkmq.png"}},"description":"Disclaimer: Заметка носит развлекательный характер. Удельная плотность полезной информации в ней мала. Была написана &laquo;для себя&raquo;. Лирическое вступление Файловая п...","url":"https:\/\/habr.com\/ru\/post\/452928\/#post-content-body","about":["h_sys_admin","h_virtualization","h_data_recovery","f_admin"],"image":["https:\/\/habrastorage.org\/webt\/yy\/pe\/po\/yypepobhgib-ilpc2lratezxrhc.png","https:\/\/habrastorage.org\/webt\/jr\/y8\/sk\/jry8skays28vnmrhzl8ot6jpfyu.png","https:\/\/habrastorage.org\/webt\/tt\/f1\/eo\/ttf1eoyfh-l0lsyfxcwcazss7dw.png","https:\/\/habrastorage.org\/webt\/nc\/kh\/m0\/nckhm0xgc35ajd7hcmt9xbqgz6o.png","https:\/\/habrastorage.org\/webt\/ru\/o2\/jm\/ruo2jmc33trnezku3qnqzt3n1yy.png","https:\/\/habrastorage.org\/webt\/wa\/ra\/m3\/waram3hzq42ow0zefbooy1vacqk.png","https:\/\/habrastorage.org\/webt\/-p\/nc\/73\/-pnc73v0yy5rcpghk4qan_fownw.jpeg"]}</script>
+  <script src="//www.googletagservices.com/tag/js/gpt.js" async></script>
+  <style>.grecaptcha-badge{visibility: hidden;}</style>
+  <meta name="habr-version" content="2.49.0">
+  
+  <meta data-vue-meta="ssr" property="fb:app_id" content="444736788986613"><meta data-vue-meta="ssr" property="fb:pages" content="472597926099084"><meta data-vue-meta="ssr" name="twitter:card" content="summary_large_image"><meta data-vue-meta="ssr" name="twitter:site" content="@habr_eng"><meta data-vue-meta="ssr" property="og:title" content="Восстанавливаем виртуальные машины с ошибочно инициализированного Datastore. История одной глупости с хэппи-эндом" data-vmid="og:title"><meta data-vue-meta="ssr" name="twitter:title" content="Восстанавливаем виртуальные машины с ошибочно инициализированного Datastore. История одной глупости с хэппи-эндом" data-vmid="twitter:title"><meta data-vue-meta="ssr" name="aiturec:title" content="Восстанавливаем виртуальные машины с ошибочно инициализированного Datastore. История одной глупости с хэппи-эндом" data-vmid="aiturec:title"><meta data-vue-meta="ssr" name="description" content="Disclaimer: Заметка носит развлекательный характер. Удельная плотность полезной информации в ней мала. Была написана «для себя».
+Лирическое вступление
+Файловая помойка в нашей организации крутится..." data-vmid="description"><meta data-vue-meta="ssr" itemprop="description" content="Disclaimer: Заметка носит развлекательный характер. Удельная плотность полезной информации в ней мала. Была написана «для себя».
+Лирическое вступление
+Файловая помойка в нашей организации крутится..." data-vmid="description:itemprop"><meta data-vue-meta="ssr" property="og:description" content="Disclaimer: Заметка носит развлекательный характер. Удельная плотность полезной информации в ней мала. Была написана «для себя».
+Лирическое вступление
+Файловая помойка в нашей организации крутится..." data-vmid="og:description"><meta data-vue-meta="ssr" name="twitter:description" content="Disclaimer: Заметка носит развлекательный характер. Удельная плотность полезной информации в ней мала. Была написана «для себя».
+Лирическое вступление
+Файловая помойка в нашей организации крутится..." data-vmid="twitter:description"><meta data-vue-meta="ssr" property="aiturec:description" content="Disclaimer: Заметка носит развлекательный характер. Удельная плотность полезной информации в ней мала. Была написана «для себя».
+Лирическое вступление
+Файловая помойка в нашей организации крутится..." data-vmid="aiturec:description"><meta data-vue-meta="ssr" itemprop="image" content="https://habr.com/share/publication/452928/22b7981efc429f4353de941c700f5f5a/" data-vmid="image:itemprop"><meta data-vue-meta="ssr" property="og:image" content="https://habr.com/share/publication/452928/22b7981efc429f4353de941c700f5f5a/" data-vmid="og:image"><meta data-vue-meta="ssr" property="aiturec:image" content="https://habr.com/share/publication/452928/22b7981efc429f4353de941c700f5f5a/" data-vmid="aiturec:image"><meta data-vue-meta="ssr" name="twitter:image" content="https://habr.com/share/publication/452928/22b7981efc429f4353de941c700f5f5a/" data-vmid="twitter:image"><meta data-vue-meta="ssr" property="vk:image" content="https://habr.com/share/publication/452928/22b7981efc429f4353de941c700f5f5a/" data-vmid="vk:image"><meta data-vue-meta="ssr" property="aiturec:item_id" content="452928" data-vmid="aiturec:item_id"><meta data-vue-meta="ssr" property="aiturec:datetime" content="2019-05-23T06:52:03.000Z" data-vmid="aiturec:datetime"><meta data-vue-meta="ssr" property="og:type" content="article" data-vmid="og:type"><meta data-vue-meta="ssr" property="og:locale" content="ru_RU" data-vmid="og:locale"><meta data-vue-meta="ssr" property="og:image:width" content="1200" data-vmid="og:image:width"><meta data-vue-meta="ssr" property="og:image:height" content="630" data-vmid="og:image:height">
+  <link data-vue-meta="ssr" href="https://habr.com/ru/rss/post/452928/?fl=ru" type="application/rss+xml" title="" rel="alternate" name="rss"><link data-vue-meta="ssr" href="https://habr.com/ru/post/452928/" rel="canonical" data-vmid="canonical"><link data-vue-meta="ssr" data-vmid="hreflang"><link data-vue-meta="ssr" image_src="image" href="https://habr.com/share/publication/452928/22b7981efc429f4353de941c700f5f5a/" data-vmid="image:href"><link data-vue-meta="ssr" rel="amphtml" href="https://habr.com/ru/amp/post/452928/">
+  <meta name="apple-mobile-web-app-status-bar-style" content="#303b44">
+  <meta name="msapplication-TileColor" content="#629FBC">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="16x16"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-16.png"
+  >
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="32x32"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-32.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="76x76"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-76.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="120x120"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="152x152"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-152.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="180x180"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-180.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="256x256"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-256.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1136x640.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2436x1125.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1792x828.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_828x1792.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1334x750.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2208x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1125x2436.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2208.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2732x2048.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2688x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2224x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_750x1334.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x2732.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2388x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2224.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_640x1136.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2388.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x1536.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1536x2048.png"
+  >
+  <link
+    rel="mask-icon"
+    color="#77a2b6"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.svg"
+  >
+  <link
+    crossorigin="use-credentials"
+    href="/manifest.webmanifest"
+    rel="manifest"
+  >
+</head>
+<body>
+
+
+<div id="app" data-server-rendered="true" data-async-called="true"><div class="tm-layout__wrapper"><!----> <div></div> <!----> <header class="tm-header"><div class="tm-page-width"><div class="tm-header__container"><!----> <span class="tm-header__logo-wrap"><a href="/ru/" class="tm-header__logo tm-header__logo_ru"><svg height="16" width="16" class="tm-svg-img tm-header__icon"><title>Хабр</title> <use xlink:href="/img/habr-logo-ru.svg#logo"></use></svg></a> <span class="tm-header__beta-sign" style="display:none;">β</span></span> <div class="tm-dropdown tm-header__projects"><div class="tm-dropdown__head"><button class="tm-header__dropdown-toggle"><svg height="16" width="16" class="tm-svg-img tm-header__icon tm-header__icon_dropdown"><title>Открыть список</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#arrow-down"></use></svg></button></div> <!----></div> <a href="/ru/sandbox/start/" class="tm-header__become-author-btn">
+            Как стать автором
+          </a> <div class="tm-feature tm-header__feature tm-feature_variant-inline"><!----></div> <!----> <!----></div></div></header> <div class="tm-layout"><div class="tm-page-progress-bar"></div> <div data-menu-sticky="true" class="tm-base-layout__header tm-base-layout__header_is-sticky"><div class="tm-page-width"><div class="tm-base-layout__header-wrapper"><div class="tm-main-menu"><div class="tm-main-menu__section"><nav class="tm-main-menu__section-content"><!----> <a href="/ru/all/" class="tm-main-menu__item">
+        Все потоки
+      </a> <a href="/ru/flows/develop/" class="tm-main-menu__item">
+          Разработка
+        </a><a href="/ru/flows/admin/" class="tm-main-menu__item">
+          Администрирование
+        </a><a href="/ru/flows/design/" class="tm-main-menu__item">
+          Дизайн
+        </a><a href="/ru/flows/management/" class="tm-main-menu__item">
+          Менеджмент
+        </a><a href="/ru/flows/marketing/" class="tm-main-menu__item">
+          Маркетинг
+        </a><a href="/ru/flows/popsci/" class="tm-main-menu__item">
+          Научпоп
+        </a></nav></div></div> <div class="tm-header-user-menu tm-base-layout__user-menu"><a href="/ru/search/" class="tm-header-user-menu__item tm-header-user-menu__search"><svg height="24" width="24" class="tm-svg-img tm-header-user-menu__icon tm-header-user-menu__icon_search tm-header-user-menu__icon_dark"><title>Поиск</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#search"></use></svg></a> <!----> <!----> <!----> <div class="tm-header-user-menu__item tm-header-user-menu__user_desktop"><div class="tm-dropdown"><div class="tm-dropdown__head"><svg height="24" width="24" data-test-id="menu-toggle-guest" class="tm-svg-img tm-header-user-menu__icon"><title>Профиль</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#header-user"></use></svg> <!----></div> <!----></div> <!----></div> <!----></div></div></div></div> <!----> <div class="tm-page-width"></div> <main class="tm-layout__container"><div hl="ru" data-async-called="true" class="tm-page"><div class="tm-page-width"><!----> <div class="tm-page__wrapper"><div class="tm-page__main tm-page__main_has-sidebar"><div class="pull-down"><div class="pull-down__header" style="height:0px;"><div class="pull-down__content" style="bottom:10px;"><svg height="24" width="24" class="tm-svg-img pull-down__arrow"><title>Обновить</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#pull-arrow"></use></svg></div></div> <div class="tm-article-presenter"> <div class="tm-article-presenter__body"><div class="tm-misprint-area"><div class="tm-misprint-area__wrapper"><article class="tm-article-presenter__content tm-article-presenter__content_narrow"><div class="tm-article-presenter__header"> <div class="tm-article-snippet tm-article-presenter__snippet"><div class="tm-article-snippet__meta-container"><div class="tm-article-snippet__meta"><span class="tm-user-info tm-article-snippet__author"><a href="/ru/users/LazyFao/" title="LazyFao" class="tm-user-info__userpic"><div class="tm-entity-image"><img alt="" height="24" loading="lazy" src="//habrastorage.org/r/w32/getpro/habr/avatars/dc8/527/1f5/dc85271f52abfefe115dc29fe1c43bcf.png" width="24" class="tm-entity-image__pic"></div></a> <span class="tm-user-info__user"><a href="/ru/users/LazyFao/" class="tm-user-info__username">
+      LazyFao
+    </a> </span></span> <span class="tm-article-snippet__datetime-published"><time datetime="2019-05-23T06:52:03.000Z" title="2019-05-23, 09:52">23  мая  2019 в 09:52</time></span></div> <!----></div> <h1 lang="ru" class="tm-article-snippet__title tm-article-snippet__title_h1"><span>Восстанавливаем виртуальные машины с ошибочно инициализированного Datastore. История одной глупости с хэппи-эндом</span></h1> <div class="tm-article-snippet__hubs"><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/sys_admin/" class="tm-article-snippet__hubs-item-link"><span>Системное администрирование</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/virtualization/" class="tm-article-snippet__hubs-item-link"><span>Виртуализация</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/data_recovery/" class="tm-article-snippet__hubs-item-link"><span>Восстановление данных</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span></div> <!----> <!----> <!----></div></div> <!----> <div data-gallery-root="" lang="ru" class="tm-article-body"><div id="post-content-body" class="article-formatted-body article-formatted-body_version-1"><div xmlns="http://www.w3.org/1999/xhtml"><blockquote><b>Disclaimer: </b>Заметка носит развлекательный характер. Удельная плотность полезной информации в ней мала. Была написана «для себя».</blockquote><br/>
+<h3>Лирическое вступление</h3><br/>
+Файловая помойка в нашей организации крутится на виртуальной машине VMware ESXi 6 под Windows Server 2016. И это не просто помойка. Это сервер файлового обмена между структурными подразделениями: тут и совместная работа, и проектная документация, и папки с сетевых сканеров. В общем, тут вся производственная жизнь.<br/>
+<br/>
+И вот это вместилище всей производственной жизни стало виснуть. Причем гость мог тихо повиснуть сам, не затрагивая остальных. Мог повесить вслед за собой весь хост и, соответственно, все остальные гостевые машины. Мог повиснуть сам и повесить клиентские службы vSphere: то есть процессы остальных гостей живы, машины исправно работают и отвечают, а вот файлопомойка нет и vSphere Client к хосту не цепляется. В общем, никакой системы выявить не удавалось. Зависания могли произойти днем во время слабой загрузки. Могли ночью во время нулевой нагрузки. Могли ночью во время дифференциального резервного копирования и средней загрузки. Могли в выходные во время полного резервного копирования и высокой нагрузки. И наблюдалась явная деградация ситуации. Сначала это было раз в год, потом раз в полгода. Под конец моего терпения — дважды в неделю. <br/>
+<a name="habracut"></a><br/>
+Я грешил на оперативную память. Но остановить помойку даже в выходные и прогнать Memtest мне не давали. Ждали майских праздников. В майские праздники я прогнал Memtest и… ошибок найдено не было.<br/>
+<br/>
+Я впал в изумление и решил сходить в отпуск. Пока я был в отпуске — у помойки не было ни одного зависания. А когда в понедельник вышел первый день на работу — помойка висела. Вытерпела полное резервное копирование и аккурат по его окончании повисла. Такая теплая встреча из отпуска подтолкнула меня к решению физически перетащить диски с гостевой машиной в другой хост.<br/>
+<br/>
+И, хотя давно известно, что в первый день после отпуска нельзя делать ничего серьезного, хотя я всю дорогу на работу настраивал себя не работать, мое возмущение очередным зависанием выбило из головы и настрой, и зароки…<br/>
+<br/>
+Физические диски были переставлены в другой хост. Подключение на горячую. В настройках хранилищ на вкладке <i>Drives</i> появляются диски. На вкладке <i>Datastores</i> хранилища на этих дисках — нет. <i>Refresh</i> — не появляются. Ну и, разумеется, первый порыв — <i>Add Storage</i>. Мастер добавления рассказывает, что он поддерживает. Конечно поддерживает и VMFS. Я и не сомневался. Беглый просмотр сообщений мастера на каждом шаге: Next, Next, Next, Finish. Взгляд даже близко не зацепился за маленький желтый кружок с восклицательным знаком внизу окна одного из шагов мастера.<br/>
+<br/>
+По окончании мастера свежий Datastore появился в списке… а вместе с ним и Datastores с остальных физических дисков.<br/>
+<br/>
+Перехожу к навигации по только что добавленному Datastore, а он… пуст. Разумеется, я вновь впал в изумление. 8 утра на часах, первые 15 минут на работе после отпуска, даже сахар в кофе еще не размешал. И тут такое. Первая мысль была — не тот диск из «родного» хоста вытянул. Посмотрел, присутствует ли искомый Datastore в «родном» хосте: нет, не присутствует. Вторая мысль была: «бля#ь!». Не уверен, но мне кажется, что третья, четвертая и как минимум пятая мысль была такая же.<br/>
+<br/>
+Чтобы развеять сомнения, по-быстрому установил на пробу свежий ESXi, взял левый диск и, уже вчитываясь, прошелся по шагам мастера. Да. При добавлении Datastore с помощью мастера происходит потеря всех данных на диске без возможности отката операции и восстановления данных. Позже я прочитал на одном из форумов оценку такого дизайна мастера: shitsome crap. И прямо вот очень согласился.<br/>
+<br/>
+Начиная с шестой — мысли потекли в более конструктивном русле. Ладно. Инициализация занимает считанные секунды даже для 3Tb-диска. Значит, это высокоуровневое форматирование. Значит, просто была переписана таблица разделов. Значит, данные все еще там. Значит, сейчас поищем какой-нибудь unformat и voila.<br/>
+<br/>
+Гружу машину с загрузочного образа Strelec… И выясняю, что программы восстановления разделов знают все, кроме VMFS. Разметку разделов Synology, например, знают, а вот VMFS — нет.<br/>
+<br/>
+Перебор программ не утешителен: в лучшем случае GetDataBack и R.Saver находят NTFS-разделы с живой структурой каталогов и живыми именами файлов. Но меня это не устраивает. Мне нужны два vmdk-файла: с диском системы и диском файлов помойки.<br/>
+<br/>
+И тут я понимаю, что, похоже, сейчас буду ставить винду и раскатываться из файлового бэкапа. И одновременно с этим вспоминаю, что у меня там был корень DFS. А еще совершенно дикая по объему и разветвленности система прав доступа к папкам подразделений. Не вариант. Единственный приемлемый по времени вариант — восстановление состояния системы и диска с данными и всеми правами.<br/>
+<br/>
+Снова гуглинг, форумы, KB'шки и снова плач Ярославны: VMware ESXi не предусматривает механизма восстановления данных. Все ветки обсуждений имеют два финала: кто-то восстановился с помощью не дешевой DiskInternals VMFS Recovery или кому-то помог активно продвигающий свои услуги специалист по <i>vmfs-tools</i> и <i>dd</i>. Вариант с покупкой лицензии DiskInternals VMFS Recovery за $700 — не вариант. Допуск постороннего лица с «территории потенциального противника» к корпоративным данным — тоже не вариант. Зато было нагуглено, что VMFS разделы умеет читать так же еще UFS Explorer.<br/>
+<br/>
+<h3>DiskInternals VMFS Recovery</h3><br/>
+Была скачана и установлена триальная версия. Программа успешно увидела пустой VMFS раздел:<br/>
+<br/>
+<img src="/img/image-loader.svg" alt="image" data-src="https://habrastorage.org/webt/yy/pe/po/yypepobhgib-ilpc2lratezxrhc.png"/><br/>
+<br/>
+В режиме <i>Undelete (Fast Scan)</i> так же нашла и потертый Datastore c папками виртуальных машин с дисками внутри:<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/jr/y8/sk/jry8skays28vnmrhzl8ot6jpfyu.png"/><br/>
+<br/>
+Предпросмотр показал, что файлы живые:<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/tt/f1/eo/ttf1eoyfh-l0lsyfxcwcazss7dw.png"/><br/>
+<br/>
+Монтирование раздела в систему было успешным, но по непонятной причине во всех трех папках была одна и та же виртуалка. Конечно, по закону подлости — не та, что требуется.<br/>
+<br/>
+<div class="spoiler"><b class="spoiler_title">Три строчки стыда</b><div class="spoiler_text">Предпринятая попытка бессовестно запиратить софтину закончилась провалом. Зато запиратился UFS Explorer.<br/>
+<br/>
+<blockquote>Я крайне отрицательно отношусь к воровству ПО. Ни в коем случае не призываю к использованию средств обхода защиты от нелицензированного использования. <br/>
+</blockquote><br/>
+Я находился в катастрофическом положении и вовсе не гордился теми мерами, к которым прибег.<br/>
+</div></div><br/>
+<h3>UFS Explorer</h3><br/>
+Сканирование диска показало наличие 7 нод. Количество нод «удивительным образом» совпало с количеством *-flat.vmdk файлов, обнаруженных VMFS Recovery:<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/nc/kh/m0/nckhm0xgc35ajd7hcmt9xbqgz6o.png"/><br/>
+<br/>
+Сравнение размеров файлов и размеров нод показало так же совпадение до байта. Заодно были восстановлены имена *-flat.vmdk файлов и, соответственно, принадлежность их к виртуальным машинам.<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/ru/o2/jm/ruo2jmc33trnezku3qnqzt3n1yy.png"/><br/>
+<br/>
+Вообще, vmdk-диски с точки зрения ESXi состоят из двух файлов: это файл с данными (&lt;имя машины>-flat.vmdk) и файл «физической» разметки диска (&lt;имя машины>.vmdk). Если с локальной машины в Datastore залить *-flat.vmdk файл, то ESXi его не распознает как валидный файл диска. В базе знаний VMware есть статья о том, как вручную создать файл дескриптора диска: <a href="https://kb.vmware.com/s/article/1002511">kb.vmware.com/s/article/1002511</a>, но мне делать этого не пришлось, я просто скопипастил содержимое соответствующих файлов из области предпросмотра содержимого файла в DiskInternals VMFS Recovery:<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/wa/ra/m3/waram3hzq42ow0zefbooy1vacqk.png"/><br/>
+<br/>
+Спустя 4 часа выгрузки 2,5Тб нода из UFS Explorer'a и 20 часов загрузки в Datastore гипервизора грохнутые файлы дисков были подключены к свеже-созданной виртуальной машине. Диски подхватились. Потери данных замечено не было.<br/>
+<br/>
+<img src="https://habrastorage.org/r/w780q1/webt/-p/nc/73/-pnc73v0yy5rcpghk4qan_fownw.jpeg" data-src="https://habrastorage.org/webt/-p/nc/73/-pnc73v0yy5rcpghk4qan_fownw.jpeg" data-blurred="true"/></div></div> <!----> <!----></div> <div class="tm-article-presenter__meta"><div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Теги:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bvmfs%5D" class="tm-tags-list__link">vmfs</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bvmdk%5D" class="tm-tags-list__link">vmdk</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Brecovery%5D" class="tm-tags-list__link">recovery</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bufs%20explorer%5D" class="tm-tags-list__link">ufs explorer</a></li></ul></div> <div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Хабы:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/hub/sys_admin/" class="tm-hubs-list__link">
+    Системное администрирование
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/virtualization/" class="tm-hubs-list__link">
+    Виртуализация
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/data_recovery/" class="tm-hubs-list__link">
+    Восстановление данных
+  </a></li></ul></div></div></article></div> <!----></div> <div class="tm-article-sticky-panel"><div class="tm-data-icons tm-article-sticky-panel__icons"><div class="tm-article-rating tm-data-icons__item"><div class="tm-votes-meter tm-article-rating__votes-switcher"><svg height="16" width="16" class="tm-svg-img tm-votes-meter__icon tm-votes-meter__icon_medium"><title>Всего голосов 9: ↑9 и ↓0</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-rating"></use></svg> <span title="Всего голосов 9: ↑9 и ↓0" class="tm-votes-meter__value tm-votes-meter__value_positive tm-votes-meter__value_medium">+9</span></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----> <span title="Количество просмотров" class="tm-icon-counter tm-data-icons__item"><svg height="16" width="16" class="tm-svg-img tm-icon-counter__icon"><title>Просмотры</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-views"></use></svg> <span class="tm-icon-counter__value">15K</span></span> <button title="Добавить в закладки" type="button" class="bookmarks-button tm-data-icons__item"><span title="Добавить в закладки" class="tm-svg-icon__wrapper bookmarks-button__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Добавить в закладки</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-favorite"></use></svg></span> <span title="Количество пользователей, добавивших публикацию в закладки" class="bookmarks-button__counter">
+    27
+  </span></button> <!----> <div title="Поделиться" class="tm-sharing tm-data-icons__item"><button type="button" class="tm-sharing__button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="tm-sharing__icon"><path fill="currentColor" d="M10.33.275l9.047 7.572a.2.2 0 010 .306l-9.048 7.572a.2.2 0 01-.328-.153V11c-8 0-9.94 6-9.94 6S-1 5 10 5V.428a.2.2 0 01.328-.153z"></path></svg></button> <!----></div> <DIV class="v-portal" style="display:none;"></DIV></div> </div></div> <!----> <!----> <div class="tm-article-presenter__footer"><div class="tm-article-blocks"><!----> <section class="tm-block tm-block_spacing-bottom"><!----> <div class="tm-block__body tm-block__body_variant-balanced"><div class="tm-article-author"> <div class="tm-user-card tm-article-author__user-card tm-user-card_variant-article"><div class="tm-user-card__info-container"><div class="tm-user-card__header"><div class="tm-user-card__header-data"><a href="/ru/users/LazyFao/" class="tm-user-card__userpic tm-user-card__userpic_size-40"><div class="tm-entity-image"><img alt="" src="//habrastorage.org/getpro/habr/avatars/dc8/527/1f5/dc85271f52abfefe115dc29fe1c43bcf.png" class="tm-entity-image__pic"></div></a> <div class="tm-user-card__meta"><div title=" 19 голосов " class="tm-karma tm-user-card__karma"><div class="tm-karma__votes tm-karma__votes_positive">
+    19
+  </div> <div class="tm-karma__text">
+    Карма
+  </div></div> <div title="Рейтинг пользователя" class="tm-rating tm-user-card__rating"><div class="tm-rating__header"> <div class="tm-rating__counter">0</div></div> <div class="tm-rating__text">
+    Рейтинг
+  </div></div></div></div></div> <div class="tm-user-card__info tm-user-card__info_variant-article"><div class="tm-user-card__title tm-user-card__title_variant-article"><span class="tm-user-card__name tm-user-card__name_variant-article">Михаил Скудицкий</span> <a href="/ru/users/LazyFao/" class="tm-user-card__nickname tm-user-card__nickname_variant-article">
+          @LazyFao
+        </a> <!----></div> <p class="tm-user-card__short-info tm-user-card__short-info_variant-article">DevOps-инженер</p></div></div> <div class="tm-user-card__buttons tm-user-card__buttons_variant-article"><!----> <!----> <!----> <!----> <!----></div></div> <!----></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----></section> <div class="tm-article-blocks__comments"><div class="tm-article-page-comments"><div class="tm-article-comments-counter-link tm-article-comments-counter-button"><a href="/ru/post/452928/comments/" class="tm-article-comments-counter-link__link tm-article-comments-counter-link__link_button-style"><svg height="16" width="16" class="tm-svg-img tm-article-comments-counter-link__icon tm-article-comments-counter-link__icon_contrasted"><title>Комментарии</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-comments"></use></svg> <span class="tm-article-comments-counter-link__value tm-article-comments-counter-link__value_contrasted">
+       Комментарии 9 
+    </span></a> <!----></div></div></div> <div class="tm-ad-banner__container tm-page-article__banner"><!----> <div id="articleBottomBanner" class="tm-ad-banner"></div></div> <!----> <!----> <!----> <!----> </div></div></div></div></div> <div class="tm-page__sidebar"><div class="tm-layout-sidebar"><div class="tm-layout-sidebar__ads tm-layout-sidebar__ads_initial"><div class="tm-ad-banner__container tm-layout-sidebar__banner"><!----> <div id="sidebarBanner" class="tm-ad-banner"></div></div></div> <div class="tm-sexy-sidebar tm-sexy-sidebar_initial" style="margin-top:0px;"><!----> <!----></div></div></div></div></div></div></main> <!----></div> <div class="tm-footer-menu"><div class="tm-page-width"><div class="tm-footer-menu__container"><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Ваш аккаунт
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr/?back=/ru/post/452928/&amp;hl=ru" rel="nofollow" target="_self">
+                Войти
+              </a></li><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr-register/?back=/ru/post/452928/&amp;hl=ru" rel="nofollow" target="_self">
+                Регистрация
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Разделы
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/" class="footer-menu__item-link router-link-active">
+                Публикации
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/news/" class="footer-menu__item-link">
+                Новости
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/hubs/" class="footer-menu__item-link">
+                Хабы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/companies/" class="footer-menu__item-link">
+                Компании
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/users/" class="footer-menu__item-link">
+                Авторы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/sandbox/" class="footer-menu__item-link">
+                Песочница
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Информация
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/docs/help/" class="footer-menu__item-link">
+                Устройство сайта
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/authors/codex/" class="footer-menu__item-link">
+                Для авторов
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/companies/corpblogs/" class="footer-menu__item-link">
+                Для компаний
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/docs/transparency/" class="footer-menu__item-link">
+                Документы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/agreement" target="_blank">
+                Соглашение
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/confidential/" target="_blank">
+                Конфиденциальность
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Услуги
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQLwRfQmXibiUlWaRg-BAc38s7oM3lJiaPju7qmdJsp8ysIvZ_G-Npem0njJLMozE2bPHMpDqiI5hhy/pub?start=false&amp;loop=false&amp;delayms=60000&amp;slide=id.g91a03369cd_4_297" target="_blank">
+                Реклама
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://habrastorage.org/storage/stuff/habr/service_price.pdf" target="_blank">
+                Тарифы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQJJds8-Di7BQSP_guHxICN7woVYoN5NP_22ra-BIo4bqnTT9FR6fB-Ku2P0AoRpX0Ds-LRkDeAoD8F/pub?start=false&amp;loop=false&amp;delayms=60000" target="_blank">
+                Контент
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://tmtm.timepad.ru/" target="_blank">
+                Семинары
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/megaprojects/" class="footer-menu__item-link">
+                Мегапроекты
+              </a></li></ul></div></div></div></div></div> <div class="tm-footer"><div class="tm-page-width"><div class="tm-footer__container"><!----> <div class="tm-footer__social"><a href="https://www.facebook.com/habrahabr.ru" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Facebook</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-facebook"></use></svg></a><a href="https://twitter.com/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Twitter</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-twitter"></use></svg></a><a href="https://vk.com/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>VK</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-vkontakte"></use></svg></a><a href="https://telegram.me/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Telegram</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-telegram"></use></svg></a><a href="https://www.youtube.com/channel/UCd_sTwKqVrweTt4oAKY5y4w" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Youtube</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-youtube"></use></svg></a><a href="https://zen.yandex.ru/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Яндекс Дзен</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-zen"></use></svg></a></div> <DIV class="v-portal" style="display:none;"></DIV> <button class="tm-footer__link"><!---->
+        Настройка языка
+      </button> <a href="/ru/about" class="tm-footer__link">
+        О сайте
+      </a> <a href="/ru/feedback/" class="tm-footer__link">
+        Техническая поддержка
+      </a> <!----> <a href="/berserk-mode-nope" class="tm-footer__link">
+        Вернуться на старую версию
+      </a> <div class="tm-footer-copyright"><span class="tm-copyright"><span class="tm-copyright__years">© 2006–2021 </span> <span class="tm-copyright__name">«<a href="https://company.habr.com/" rel="noopener" target="_blank" class="tm-copyright__link">Habr</a>»</span></span></div></div></div></div> <!----> <!----></div> <div class="vue-portal-target"></div></div>
+<script>window.__INITIAL_STATE__={"adblock":{"hasAcceptableAdsFilter":false,"hasAdblock":false},"articlesList":{"articlesList":{"452928":{"id":"452928","timePublished":"2019-05-23T06:52:03+00:00","isCorporative":false,"lang":"ru","titleHtml":"Восстанавливаем виртуальные машины с ошибочно инициализированного Datastore. История одной глупости с хэппи-эндом","leadData":{"textHtml":"\u003Cblockquote\u003E\u003Cb\u003EDisclaimer: \u003C\u002Fb\u003EЗаметка носит развлекательный характер. Удельная плотность полезной информации в ней мала. Была написана «для себя».\u003C\u002Fblockquote\u003E\u003Cbr\u003E\r\n\u003Ch3\u003EЛирическое вступление\u003C\u002Fh3\u003E\u003Cbr\u003E\r\nФайловая помойка в нашей организации крутится на виртуальной машине VMware ESXi 6 под Windows Server 2016. И это не просто помойка. Это сервер файлового обмена между структурными подразделениями: тут и совместная работа, и проектная документация, и папки с сетевых сканеров. В общем, тут вся производственная жизнь.\u003Cbr\u003E\r\n\u003Cbr\u003E\r\nИ вот это вместилище всей производственной жизни стало виснуть. Причем гость мог тихо повиснуть сам, не затрагивая остальных. Мог повесить вслед за собой весь хост и, соответственно, все остальные гостевые машины. Мог повиснуть сам и повесить клиентские службы vSphere: то есть процессы остальных гостей живы, машины исправно работают и отвечают, а вот файлопомойка нет и vSphere Client к хосту не цепляется. В общем, никакой системы выявить не удавалось. Зависания могли произойти днем во время слабой загрузки. Могли ночью во время нулевой нагрузки. Могли ночью во время дифференциального резервного копирования и средней загрузки. Могли в выходные во время полного резервного копирования и высокой нагрузки. И наблюдалась явная деградация ситуации. Сначала это было раз в год, потом раз в полгода. Под конец моего терпения — дважды в неделю. \u003Cbr\u003E","imageUrl":null,"buttonTextHtml":"Читать дальше →","image":null},"editorVersion":"1.0","postType":"article","postLabels":[],"author":{"scoreStats":{"score":19,"votesCount":19},"rating":0,"relatedData":null,"contacts":[],"authorContacts":[],"paymentDetails":{"paymentYandexMoney":null,"paymentPayPalMe":null,"paymentWebmoney":null},"id":"1647181","alias":"LazyFao","fullname":"Михаил Скудицкий","avatarUrl":"\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Favatars\u002Fdc8\u002F527\u002F1f5\u002Fdc85271f52abfefe115dc29fe1c43bcf.png","speciality":"DevOps-инженер"},"statistics":{"commentsCount":9,"favoritesCount":27,"readingCount":14669,"score":9,"votesCount":9},"hubs":[{"relatedData":null,"id":"221","alias":"sys_admin","type":"collective","title":"Системное администрирование","titleHtml":"Системное администрирование","isProfiled":true},{"relatedData":null,"id":"7312","alias":"virtualization","type":"collective","title":"Виртуализация","titleHtml":"Виртуализация","isProfiled":true},{"relatedData":null,"id":"17351","alias":"data_recovery","type":"collective","title":"Восстановление данных","titleHtml":"Восстановление данных","isProfiled":true}],"flows":[{"id":"6","alias":"admin","title":"Администрирование"}],"relatedData":null,"textHtml":"\u003Cdiv xmlns=\"http:\u002F\u002Fwww.w3.org\u002F1999\u002Fxhtml\"\u003E\u003Cblockquote\u003E\u003Cb\u003EDisclaimer: \u003C\u002Fb\u003EЗаметка носит развлекательный характер. Удельная плотность полезной информации в ней мала. Была написана «для себя».\u003C\u002Fblockquote\u003E\u003Cbr\u002F\u003E\r\n\u003Ch3\u003EЛирическое вступление\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\nФайловая помойка в нашей организации крутится на виртуальной машине VMware ESXi 6 под Windows Server 2016. И это не просто помойка. Это сервер файлового обмена между структурными подразделениями: тут и совместная работа, и проектная документация, и папки с сетевых сканеров. В общем, тут вся производственная жизнь.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nИ вот это вместилище всей производственной жизни стало виснуть. Причем гость мог тихо повиснуть сам, не затрагивая остальных. Мог повесить вслед за собой весь хост и, соответственно, все остальные гостевые машины. Мог повиснуть сам и повесить клиентские службы vSphere: то есть процессы остальных гостей живы, машины исправно работают и отвечают, а вот файлопомойка нет и vSphere Client к хосту не цепляется. В общем, никакой системы выявить не удавалось. Зависания могли произойти днем во время слабой загрузки. Могли ночью во время нулевой нагрузки. Могли ночью во время дифференциального резервного копирования и средней загрузки. Могли в выходные во время полного резервного копирования и высокой нагрузки. И наблюдалась явная деградация ситуации. Сначала это было раз в год, потом раз в полгода. Под конец моего терпения — дважды в неделю. \u003Cbr\u002F\u003E\r\n\u003Ca name=\"habracut\"\u003E\u003C\u002Fa\u003E\u003Cbr\u002F\u003E\r\nЯ грешил на оперативную память. Но остановить помойку даже в выходные и прогнать Memtest мне не давали. Ждали майских праздников. В майские праздники я прогнал Memtest и… ошибок найдено не было.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЯ впал в изумление и решил сходить в отпуск. Пока я был в отпуске — у помойки не было ни одного зависания. А когда в понедельник вышел первый день на работу — помойка висела. Вытерпела полное резервное копирование и аккурат по его окончании повисла. Такая теплая встреча из отпуска подтолкнула меня к решению физически перетащить диски с гостевой машиной в другой хост.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nИ, хотя давно известно, что в первый день после отпуска нельзя делать ничего серьезного, хотя я всю дорогу на работу настраивал себя не работать, мое возмущение очередным зависанием выбило из головы и настрой, и зароки…\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nФизические диски были переставлены в другой хост. Подключение на горячую. В настройках хранилищ на вкладке \u003Ci\u003EDrives\u003C\u002Fi\u003E появляются диски. На вкладке \u003Ci\u003EDatastores\u003C\u002Fi\u003E хранилища на этих дисках — нет. \u003Ci\u003ERefresh\u003C\u002Fi\u003E — не появляются. Ну и, разумеется, первый порыв — \u003Ci\u003EAdd Storage\u003C\u002Fi\u003E. Мастер добавления рассказывает, что он поддерживает. Конечно поддерживает и VMFS. Я и не сомневался. Беглый просмотр сообщений мастера на каждом шаге: Next, Next, Next, Finish. Взгляд даже близко не зацепился за маленький желтый кружок с восклицательным знаком внизу окна одного из шагов мастера.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПо окончании мастера свежий Datastore появился в списке… а вместе с ним и Datastores с остальных физических дисков.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПерехожу к навигации по только что добавленному Datastore, а он… пуст. Разумеется, я вновь впал в изумление. 8 утра на часах, первые 15 минут на работе после отпуска, даже сахар в кофе еще не размешал. И тут такое. Первая мысль была — не тот диск из «родного» хоста вытянул. Посмотрел, присутствует ли искомый Datastore в «родном» хосте: нет, не присутствует. Вторая мысль была: «бля#ь!». Не уверен, но мне кажется, что третья, четвертая и как минимум пятая мысль была такая же.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЧтобы развеять сомнения, по-быстрому установил на пробу свежий ESXi, взял левый диск и, уже вчитываясь, прошелся по шагам мастера. Да. При добавлении Datastore с помощью мастера происходит потеря всех данных на диске без возможности отката операции и восстановления данных. Позже я прочитал на одном из форумов оценку такого дизайна мастера: shitsome crap. И прямо вот очень согласился.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nНачиная с шестой — мысли потекли в более конструктивном русле. Ладно. Инициализация занимает считанные секунды даже для 3Tb-диска. Значит, это высокоуровневое форматирование. Значит, просто была переписана таблица разделов. Значит, данные все еще там. Значит, сейчас поищем какой-нибудь unformat и voila.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nГружу машину с загрузочного образа Strelec… И выясняю, что программы восстановления разделов знают все, кроме VMFS. Разметку разделов Synology, например, знают, а вот VMFS — нет.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПеребор программ не утешителен: в лучшем случае GetDataBack и R.Saver находят NTFS-разделы с живой структурой каталогов и живыми именами файлов. Но меня это не устраивает. Мне нужны два vmdk-файла: с диском системы и диском файлов помойки.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nИ тут я понимаю, что, похоже, сейчас буду ставить винду и раскатываться из файлового бэкапа. И одновременно с этим вспоминаю, что у меня там был корень DFS. А еще совершенно дикая по объему и разветвленности система прав доступа к папкам подразделений. Не вариант. Единственный приемлемый по времени вариант — восстановление состояния системы и диска с данными и всеми правами.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nСнова гуглинг, форумы, KB'шки и снова плач Ярославны: VMware ESXi не предусматривает механизма восстановления данных. Все ветки обсуждений имеют два финала: кто-то восстановился с помощью не дешевой DiskInternals VMFS Recovery или кому-то помог активно продвигающий свои услуги специалист по \u003Ci\u003Evmfs-tools\u003C\u002Fi\u003E и \u003Ci\u003Edd\u003C\u002Fi\u003E. Вариант с покупкой лицензии DiskInternals VMFS Recovery за $700 — не вариант. Допуск постороннего лица с «территории потенциального противника» к корпоративным данным — тоже не вариант. Зато было нагуглено, что VMFS разделы умеет читать так же еще UFS Explorer.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch3\u003EDiskInternals VMFS Recovery\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\nБыла скачана и установлена триальная версия. Программа успешно увидела пустой VMFS раздел:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" alt=\"image\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fyy\u002Fpe\u002Fpo\u002Fyypepobhgib-ilpc2lratezxrhc.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВ режиме \u003Ci\u003EUndelete (Fast Scan)\u003C\u002Fi\u003E так же нашла и потертый Datastore c папками виртуальных машин с дисками внутри:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fjr\u002Fy8\u002Fsk\u002Fjry8skays28vnmrhzl8ot6jpfyu.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПредпросмотр показал, что файлы живые:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Ftt\u002Ff1\u002Feo\u002Fttf1eoyfh-l0lsyfxcwcazss7dw.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nМонтирование раздела в систему было успешным, но по непонятной причине во всех трех папках была одна и та же виртуалка. Конечно, по закону подлости — не та, что требуется.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cdiv class=\"spoiler\"\u003E\u003Cb class=\"spoiler_title\"\u003EТри строчки стыда\u003C\u002Fb\u003E\u003Cdiv class=\"spoiler_text\"\u003EПредпринятая попытка бессовестно запиратить софтину закончилась провалом. Зато запиратился UFS Explorer.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cblockquote\u003EЯ крайне отрицательно отношусь к воровству ПО. Ни в коем случае не призываю к использованию средств обхода защиты от нелицензированного использования. \u003Cbr\u002F\u003E\r\n\u003C\u002Fblockquote\u003E\u003Cbr\u002F\u003E\r\nЯ находился в катастрофическом положении и вовсе не гордился теми мерами, к которым прибег.\u003Cbr\u002F\u003E\r\n\u003C\u002Fdiv\u003E\u003C\u002Fdiv\u003E\u003Cbr\u002F\u003E\r\n\u003Ch3\u003EUFS Explorer\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\nСканирование диска показало наличие 7 нод. Количество нод «удивительным образом» совпало с количеством *-flat.vmdk файлов, обнаруженных VMFS Recovery:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fnc\u002Fkh\u002Fm0\u002Fnckhm0xgc35ajd7hcmt9xbqgz6o.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nСравнение размеров файлов и размеров нод показало так же совпадение до байта. Заодно были восстановлены имена *-flat.vmdk файлов и, соответственно, принадлежность их к виртуальным машинам.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fru\u002Fo2\u002Fjm\u002Fruo2jmc33trnezku3qnqzt3n1yy.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВообще, vmdk-диски с точки зрения ESXi состоят из двух файлов: это файл с данными (&lt;имя машины\u003E-flat.vmdk) и файл «физической» разметки диска (&lt;имя машины\u003E.vmdk). Если с локальной машины в Datastore залить *-flat.vmdk файл, то ESXi его не распознает как валидный файл диска. В базе знаний VMware есть статья о том, как вручную создать файл дескриптора диска: \u003Ca href=\"https:\u002F\u002Fkb.vmware.com\u002Fs\u002Farticle\u002F1002511\"\u003Ekb.vmware.com\u002Fs\u002Farticle\u002F1002511\u003C\u002Fa\u003E, но мне делать этого не пришлось, я просто скопипастил содержимое соответствующих файлов из области предпросмотра содержимого файла в DiskInternals VMFS Recovery:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fwa\u002Fra\u002Fm3\u002Fwaram3hzq42ow0zefbooy1vacqk.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nСпустя 4 часа выгрузки 2,5Тб нода из UFS Explorer'a и 20 часов загрузки в Datastore гипервизора грохнутые файлы дисков были подключены к свеже-созданной виртуальной машине. Диски подхватились. Потери данных замечено не было.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fr\u002Fw780q1\u002Fwebt\u002F-p\u002Fnc\u002F73\u002F-pnc73v0yy5rcpghk4qan_fownw.jpeg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002F-p\u002Fnc\u002F73\u002F-pnc73v0yy5rcpghk4qan_fownw.jpeg\" data-blurred=\"true\"\u002F\u003E\u003C\u002Fdiv\u003E","tags":[{"titleHtml":"vmfs"},{"titleHtml":"vmdk"},{"titleHtml":"recovery"},{"titleHtml":"ufs explorer"}],"metadata":{"stylesUrls":[],"scriptUrls":[],"shareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F452928\u002F22b7981efc429f4353de941c700f5f5a\u002F","shareImageWidth":1200,"shareImageHeight":630,"vkShareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F452928\u002F22b7981efc429f4353de941c700f5f5a\u002F?format=vk","schemaJsonLd":"{\"@context\":\"http:\\\u002F\\\u002Fschema.org\",\"@type\":\"Article\",\"mainEntityOfPage\":{\"@type\":\"WebPage\",\"@id\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fru\\\u002Fpost\\\u002F452928\\\u002F\"},\"headline\":\"Восстанавливаем виртуальные машины с ошибочно инициализированного Datastore. История одной глупости с хэппи-эндом\",\"datePublished\":\"2019-05-23T09:52:03+03:00\",\"dateModified\":\"2019-05-23T12:12:54+03:00\",\"author\":{\"@type\":\"Person\",\"name\":\"Михаил Скудицкий\"},\"publisher\":{\"@type\":\"Organization\",\"name\":\"Habr\",\"logo\":{\"@type\":\"ImageObject\",\"url\":\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fa_\\\u002Flk\\\u002F9m\\\u002Fa_lk9mjkccjox-zccjrpfolmkmq.png\"}},\"description\":\"Disclaimer: Заметка носит развлекательный характер. Удельная плотность полезной информации в ней мала. Была написана &laquo;для себя&raquo;. Лирическое вступление Файловая п...\",\"url\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fru\\\u002Fpost\\\u002F452928\\\u002F#post-content-body\",\"about\":[\"h_sys_admin\",\"h_virtualization\",\"h_data_recovery\",\"f_admin\"],\"image\":[\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fyy\\\u002Fpe\\\u002Fpo\\\u002Fyypepobhgib-ilpc2lratezxrhc.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fjr\\\u002Fy8\\\u002Fsk\\\u002Fjry8skays28vnmrhzl8ot6jpfyu.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Ftt\\\u002Ff1\\\u002Feo\\\u002Fttf1eoyfh-l0lsyfxcwcazss7dw.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fnc\\\u002Fkh\\\u002Fm0\\\u002Fnckhm0xgc35ajd7hcmt9xbqgz6o.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fru\\\u002Fo2\\\u002Fjm\\\u002Fruo2jmc33trnezku3qnqzt3n1yy.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fwa\\\u002Fra\\\u002Fm3\\\u002Fwaram3hzq42ow0zefbooy1vacqk.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002F-p\\\u002Fnc\\\u002F73\\\u002F-pnc73v0yy5rcpghk4qan_fownw.jpeg\"]}","metaDescription":"Disclaimer: Заметка носит развлекательный характер. Удельная плотность полезной информации в ней мала. Была написана «для себя».\r\nЛирическое вступление\r\nФайловая помойка в нашей организации крутится...","mainImageUrl":null,"amp":true},"polls":[],"commentsEnabled":true,"rulesRemindEnabled":false,"votesEnabled":true,"status":"published","plannedPublishTime":null,"checked":null,"isEditorial":false}},"articlesIds":{},"isLoading":false,"pagesCount":{},"route":{},"reasonsList":null,"view":"cards","lastVisitedRoute":{},"ssrCommentsArticleIds":[""],"karma":{}},"authorContribution":{"authors":{}},"betaTest":{"currentAnnouncement":null,"announcements":{},"announcementCards":null,"announcementComments":{},"announcementCommentThreads":{},"announcementCommentingStatuses":{},"archivedList":[]},"authorStatistics":{"articleRefs":{},"articleIds":{},"pagesCount":{},"route":{},"viewsCount":[],"maxStatsCount":{}},"career":{"seoLandings":[],"hubs":"sys_admin,virtualization,data_recovery"},"comments":{"articleComments":{},"searchCommentsResults":null,"previewComment":null,"pagesCount":null,"commentAccess":{},"scrollParents":{},"pageArticleComments":{"lastViewedComment":0,"postId":null,"lastCommentTimestamp":"","moderated":[],"moderatedIds":[],"commentRoute":""}},"companies":{"companyRefs":{},"companyIds":{},"companyTopIds":{},"pagesCount":{},"companyProfiles":{},"companiesCategories":[],"companiesCategoriesTotalCount":0,"companiesWidgets":{},"companiesWorkers":{},"companiesFans":{},"route":{},"isLoading":false,"companyWorkersLoading":false,"companyFansLoading":false,"vacancies":{}},"companiesContribution":{"hubs":{},"flows":{},"companyRefs":{}},"companyHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"conversation":{"messages":[],"respondent":null,"isLoadMore":false},"conversations":{"conversations":[],"unreadCount":0,"pagesCount":0,"isLoadMore":false},"desktopState":{"desktopFl":null,"desktopHl":null,"isChecked":false,"isLoginDemanded":false},"dfp":{"slotsDict":{}},"docs":{"menu":{},"articles":{},"mainMenu":[],"loading":{"main":false,"dropdown":false,"article":false}},"feature":{"isProbablyVisible":"true"},"flows":{"flows":[{"alias":"develop","id":1,"route":{"name":"FLOW_PAGE","params":{"flowName":"develop"}}},{"alias":"admin","id":6,"route":{"name":"FLOW_PAGE","params":{"flowName":"admin"}}},{"alias":"design","id":2,"route":{"name":"FLOW_PAGE","params":{"flowName":"design"}}},{"alias":"management","id":3,"route":{"name":"FLOW_PAGE","params":{"flowName":"management"}}},{"alias":"marketing","id":4,"route":{"name":"FLOW_PAGE","params":{"flowName":"marketing"}}},{"alias":"popsci","id":7,"route":{"name":"FLOW_PAGE","params":{"flowName":"popsci"}}}]},"global":{"isPwa":false,"device":"desktop","isHabrCom":true},"hubs":{"hubRefs":{},"hubIds":{},"pagesCount":{},"isLoading":false,"route":{}},"hubsBlock":{"hubRefs":{},"hubIds":{}},"i18n":{"fl":"ru","hl":"ru"},"info":{"infoPage":{},"isLoading":true},"location":{"urlStruct":{"protocol":null,"slashes":null,"auth":null,"host":null,"port":null,"hostname":null,"hash":null,"search":null,"query":{},"pathname":null,"path":null,"href":""},"searchQuery":null},"me":{"user":null,"ppgDemanded":false,"karmaResetInfo":{"canReincarnate":null,"wasReincarnated":null,"currentScore":null},"notes":null},"mostReadingList":{"mostReadingListIds":[],"mostReadingListRefs":null,"promoPost":null},"pinnedPost":{"pinnedPost":null},"ppa":{"articles":{},"card":null,"transactions":null,"totalTransactions":null,"isAccessible":null},"projectsBlocks":{"activeBlocks":{}},"pullRefresh":{"shouldRefresh":false},"sandbox":{"articleIds":[],"articleRefs":{},"pagesCount":null,"route":{},"lastVisitedRoute":{},"isLoading":false},"settingsOther":{"inputs":{"uiLang":{"errors":[],"ref":null,"value":""},"articlesLangEnglish":{"errors":[],"ref":null,"value":false},"articlesLangRussian":{"errors":[],"ref":null,"value":false},"agreement":{"errors":[],"ref":null,"value":false},"email":{"errors":[],"ref":null,"value":true},"digest":{"errors":[],"ref":null,"value":true}}},"similarList":{"similarListIds":[],"similarListRefs":null},"ssr":{"error":null,"isDataLoaded":false,"isDataLoading":false,"isHydrationFailed":false,"isServer":false},"userHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"userInvites":{"availableInvites":0,"usedInvitesIds":[],"usedInvitesRefs":{},"usedInvitesPagesCount":0,"unusedInvitesIds":[],"unusedInvitesRefs":{},"unusedInvitesPagesCount":0},"users":{"authorRefs":{},"authorIds":{},"pagesCount":{},"authorProfiles":{},"userHubs":{},"userInvitations":{},"authorFollowers":{},"authorFollowed":{},"karmaStats":[],"statistics":null,"isLoading":false,"authorFollowersLoading":false,"authorFollowedLoading":false,"userHubsLoading":false,"userInvitationsLoading":false,"route":{}},"viewport":{"prevScrollY":{},"scrollY":0,"width":0},"tracker":{"items":{},"pagesCache":{},"markedViewedSilently":{},"markedRead":{},"unreadCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null},"unviewedCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null}}};(function(){var s;(s=document.currentScript||document.scripts[document.scripts.length-1]).parentNode.removeChild(s);}());</script>
+<script src="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" defer></script><script src="https://assets.habr.com/habr-web/js/app.c0af73e7.js" defer></script>
+
+
+
+    <script>
+      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+        (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+        m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+      })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+    </script>
+  
+  <script type="text/javascript" >
+    (function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+    m[i].l=1*new Date();k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})
+    (window, document, "script", "https://mc.yandex.ru/metrika/tag.js", "ym");
+
+    ym(24049213, "init", {
+      defer:true,
+      trackLinks:true,
+      accurateTrackBounce:true,
+      webvisor:false,
+    });
+  </script>
+  <noscript>
+    <div>
+      <img src="https://mc.yandex.ru/watch/24049213" style="position:absolute; left:-9999px;" alt="" />
+    </div>
+  </noscript>
+  
+    <script type="text/javascript">
+      window.addEventListener('load', function () {
+        setTimeout(() => {
+          const img = new Image();
+          img.src = 'https://vk.com/rtrg?p=VK-RTRG-421343-57vKE';
+        }, 0);
+      });
+    </script>
+  
+</body>
+</html>

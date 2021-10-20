@@ -1,0 +1,885 @@
+<!DOCTYPE html>
+<html lang="ru" data-vue-meta="%7B%22lang%22:%7B%22ssr%22:%22ru%22%7D%7D">
+<head >
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
+  <title>Подружить CI, unit-тесты и базу данных / Хабр</title>
+  <style>
+    /* cyrillic-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSxf6TF0.woff2) format('woff2');
+      unicode-range: U+0460-052F, U+1C80-1C88, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+    }
+
+    /* cyrillic */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveQhf6TF0.woff2) format('woff2');
+      unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+    }
+
+    /* latin-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSBf6TF0.woff2) format('woff2');
+      unicode-range: U+0100-024F, U+0259, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20CF, U+2113, U+2C60-2C7F, U+A720-A7FF;
+    }
+
+    /* latin */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveRhf6.woff2) format('woff2');
+      unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+    }
+  </style>
+  <link rel="preload" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" as="script"><link rel="preload" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/app.c0af73e7.js" as="script">
+  <link rel="stylesheet" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css"><link rel="stylesheet" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css">
+  <script>window.i18nFetch = new Promise((res, rej) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open('GET', '/js/i18n/ru-compiled.85eb77f0b17c8235e7b64b9f81ea5ec2.json');
+          xhr.responseType = 'json';
+          xhr.onload = function(e) {
+            if (this.status === 200) {
+              res({ru: xhr.response});
+            } else {
+              rej(e);
+            }
+          };
+          xhr.send();
+        });</script>
+  
+  <script data-vue-meta="ssr" src="/js/ads.js" onload="window['zhY4i4nJ9K'] = true" data-vmid="checkad"></script><script data-vue-meta="ssr" type="application/ld+json" data-vmid="ldjson-schema">{"@context":"http:\/\/schema.org","@type":"Article","mainEntityOfPage":{"@type":"WebPage","@id":"https:\/\/habr.com\/ru\/post\/452722\/"},"headline":"Подружить CI, unit-тесты и базу данных","datePublished":"2019-05-21T08:13:11+03:00","dateModified":"2019-05-21T10:31:40+03:00","author":{"@type":"Person","name":"kotbajan"},"publisher":{"@type":"Organization","name":"Habr","logo":{"@type":"ImageObject","url":"https:\/\/habrastorage.org\/webt\/a_\/lk\/9m\/a_lk9mjkccjox-zccjrpfolmkmq.png"}},"description":"Статья про тестирование взаимодействия с БД в CI. Я видел несколько решений использующих docker и testcontainers, но у меня есть своё и им я хочу поделиться.  М...","url":"https:\/\/habr.com\/ru\/post\/452722\/#post-content-body","about":["h_gradle","f_develop"],"image":["https:\/\/habrastorage.org\/webt\/p9\/2f\/hw\/p92fhwlfahzagt8w9wzxpfclgzw.png","https:\/\/habrastorage.org\/webt\/js\/ro\/nh\/jsronhgbydvhziosboj6velwb5w.png","https:\/\/habrastorage.org\/webt\/my\/64\/hm\/my64hmqfabt8qg0jcuz-xwiddvi.png","https:\/\/habrastorage.org\/webt\/fr\/lb\/xf\/frlbxfbj6ck-8pdbhff0v5kpeta.png"]}</script>
+  <script src="//www.googletagservices.com/tag/js/gpt.js" async></script>
+  <style>.grecaptcha-badge{visibility: hidden;}</style>
+  <meta name="habr-version" content="2.49.0">
+  
+  <meta data-vue-meta="ssr" property="fb:app_id" content="444736788986613"><meta data-vue-meta="ssr" property="fb:pages" content="472597926099084"><meta data-vue-meta="ssr" name="twitter:card" content="summary_large_image"><meta data-vue-meta="ssr" name="twitter:site" content="@habr_eng"><meta data-vue-meta="ssr" property="og:title" content="Подружить CI, unit-тесты и базу данных" data-vmid="og:title"><meta data-vue-meta="ssr" name="twitter:title" content="Подружить CI, unit-тесты и базу данных" data-vmid="twitter:title"><meta data-vue-meta="ssr" name="aiturec:title" content="Подружить CI, unit-тесты и базу данных" data-vmid="aiturec:title"><meta data-vue-meta="ssr" name="description" content="Статья про тестирование взаимодействия с БД в CI. Я видел несколько решений использующих docker и testcontainers, но у меня есть своё и им я хочу поделиться.
+
+Мой прошлый java проект был тесно..." data-vmid="description"><meta data-vue-meta="ssr" itemprop="description" content="Статья про тестирование взаимодействия с БД в CI. Я видел несколько решений использующих docker и testcontainers, но у меня есть своё и им я хочу поделиться.
+
+Мой прошлый java проект был тесно..." data-vmid="description:itemprop"><meta data-vue-meta="ssr" property="og:description" content="Статья про тестирование взаимодействия с БД в CI. Я видел несколько решений использующих docker и testcontainers, но у меня есть своё и им я хочу поделиться.
+
+Мой прошлый java проект был тесно..." data-vmid="og:description"><meta data-vue-meta="ssr" name="twitter:description" content="Статья про тестирование взаимодействия с БД в CI. Я видел несколько решений использующих docker и testcontainers, но у меня есть своё и им я хочу поделиться.
+
+Мой прошлый java проект был тесно..." data-vmid="twitter:description"><meta data-vue-meta="ssr" property="aiturec:description" content="Статья про тестирование взаимодействия с БД в CI. Я видел несколько решений использующих docker и testcontainers, но у меня есть своё и им я хочу поделиться.
+
+Мой прошлый java проект был тесно..." data-vmid="aiturec:description"><meta data-vue-meta="ssr" itemprop="image" content="https://habr.com/share/publication/452722/aa73647c1646c3ffbfff260b1b5c262d/" data-vmid="image:itemprop"><meta data-vue-meta="ssr" property="og:image" content="https://habr.com/share/publication/452722/aa73647c1646c3ffbfff260b1b5c262d/" data-vmid="og:image"><meta data-vue-meta="ssr" property="aiturec:image" content="https://habr.com/share/publication/452722/aa73647c1646c3ffbfff260b1b5c262d/" data-vmid="aiturec:image"><meta data-vue-meta="ssr" name="twitter:image" content="https://habr.com/share/publication/452722/aa73647c1646c3ffbfff260b1b5c262d/" data-vmid="twitter:image"><meta data-vue-meta="ssr" property="vk:image" content="https://habr.com/share/publication/452722/aa73647c1646c3ffbfff260b1b5c262d/" data-vmid="vk:image"><meta data-vue-meta="ssr" property="aiturec:item_id" content="452722" data-vmid="aiturec:item_id"><meta data-vue-meta="ssr" property="aiturec:datetime" content="2019-05-21T05:13:11.000Z" data-vmid="aiturec:datetime"><meta data-vue-meta="ssr" property="og:type" content="article" data-vmid="og:type"><meta data-vue-meta="ssr" property="og:locale" content="ru_RU" data-vmid="og:locale"><meta data-vue-meta="ssr" property="og:image:width" content="1200" data-vmid="og:image:width"><meta data-vue-meta="ssr" property="og:image:height" content="630" data-vmid="og:image:height">
+  <link data-vue-meta="ssr" href="https://habr.com/ru/rss/post/452722/?fl=ru" type="application/rss+xml" title="" rel="alternate" name="rss"><link data-vue-meta="ssr" href="https://habr.com/ru/post/452722/" rel="canonical" data-vmid="canonical"><link data-vue-meta="ssr" data-vmid="hreflang"><link data-vue-meta="ssr" image_src="image" href="https://habr.com/share/publication/452722/aa73647c1646c3ffbfff260b1b5c262d/" data-vmid="image:href">
+  <meta name="apple-mobile-web-app-status-bar-style" content="#303b44">
+  <meta name="msapplication-TileColor" content="#629FBC">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="16x16"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-16.png"
+  >
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="32x32"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-32.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="76x76"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-76.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="120x120"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="152x152"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-152.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="180x180"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-180.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="256x256"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-256.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1136x640.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2436x1125.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1792x828.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_828x1792.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1334x750.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2208x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1125x2436.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2208.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2732x2048.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2688x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2224x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_750x1334.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x2732.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2388x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2224.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_640x1136.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2388.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x1536.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1536x2048.png"
+  >
+  <link
+    rel="mask-icon"
+    color="#77a2b6"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.svg"
+  >
+  <link
+    crossorigin="use-credentials"
+    href="/manifest.webmanifest"
+    rel="manifest"
+  >
+</head>
+<body>
+
+
+<div id="app" data-server-rendered="true" data-async-called="true"><div class="tm-layout__wrapper"><!----> <div></div> <!----> <header class="tm-header"><div class="tm-page-width"><div class="tm-header__container"><!----> <span class="tm-header__logo-wrap"><a href="/ru/" class="tm-header__logo tm-header__logo_ru"><svg height="16" width="16" class="tm-svg-img tm-header__icon"><title>Хабр</title> <use xlink:href="/img/habr-logo-ru.svg#logo"></use></svg></a> <span class="tm-header__beta-sign" style="display:none;">β</span></span> <div class="tm-dropdown tm-header__projects"><div class="tm-dropdown__head"><button class="tm-header__dropdown-toggle"><svg height="16" width="16" class="tm-svg-img tm-header__icon tm-header__icon_dropdown"><title>Открыть список</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#arrow-down"></use></svg></button></div> <!----></div> <a href="/ru/sandbox/start/" class="tm-header__become-author-btn">
+            Как стать автором
+          </a> <div class="tm-feature tm-header__feature tm-feature_variant-inline"><!----></div> <!----> <!----></div></div></header> <div class="tm-layout"><div class="tm-page-progress-bar"></div> <div data-menu-sticky="true" class="tm-base-layout__header tm-base-layout__header_is-sticky"><div class="tm-page-width"><div class="tm-base-layout__header-wrapper"><div class="tm-main-menu"><div class="tm-main-menu__section"><nav class="tm-main-menu__section-content"><!----> <a href="/ru/all/" class="tm-main-menu__item">
+        Все потоки
+      </a> <a href="/ru/flows/develop/" class="tm-main-menu__item">
+          Разработка
+        </a><a href="/ru/flows/admin/" class="tm-main-menu__item">
+          Администрирование
+        </a><a href="/ru/flows/design/" class="tm-main-menu__item">
+          Дизайн
+        </a><a href="/ru/flows/management/" class="tm-main-menu__item">
+          Менеджмент
+        </a><a href="/ru/flows/marketing/" class="tm-main-menu__item">
+          Маркетинг
+        </a><a href="/ru/flows/popsci/" class="tm-main-menu__item">
+          Научпоп
+        </a></nav></div></div> <div class="tm-header-user-menu tm-base-layout__user-menu"><a href="/ru/search/" class="tm-header-user-menu__item tm-header-user-menu__search"><svg height="24" width="24" class="tm-svg-img tm-header-user-menu__icon tm-header-user-menu__icon_search tm-header-user-menu__icon_dark"><title>Поиск</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#search"></use></svg></a> <!----> <!----> <!----> <div class="tm-header-user-menu__item tm-header-user-menu__user_desktop"><div class="tm-dropdown"><div class="tm-dropdown__head"><svg height="24" width="24" data-test-id="menu-toggle-guest" class="tm-svg-img tm-header-user-menu__icon"><title>Профиль</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#header-user"></use></svg> <!----></div> <!----></div> <!----></div> <!----></div></div></div></div> <!----> <div class="tm-page-width"></div> <main class="tm-layout__container"><div hl="ru" data-async-called="true" class="tm-page"><div class="tm-page-width"><!----> <div class="tm-page__wrapper"><div class="tm-page__main tm-page__main_has-sidebar"><div class="pull-down"><div class="pull-down__header" style="height:0px;"><div class="pull-down__content" style="bottom:10px;"><svg height="24" width="24" class="tm-svg-img pull-down__arrow"><title>Обновить</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#pull-arrow"></use></svg></div></div> <div class="tm-article-presenter"> <div class="tm-article-presenter__body"><div class="tm-misprint-area"><div class="tm-misprint-area__wrapper"><article class="tm-article-presenter__content tm-article-presenter__content_narrow"><div class="tm-article-presenter__header"> <div class="tm-article-snippet tm-article-presenter__snippet"><div class="tm-article-snippet__meta-container"><div class="tm-article-snippet__meta"><span class="tm-user-info tm-article-snippet__author"><a href="/ru/users/kotbajan/" title="kotbajan" class="tm-user-info__userpic"><div class="tm-entity-image"><svg height="24" width="24" class="tm-svg-img tm-image-placeholder tm-image-placeholder_lilac"><!----> <use xlink:href="/img/megazord-v24.ce74655c.svg#placeholder-user"></use></svg></div></a> <span class="tm-user-info__user"><a href="/ru/users/kotbajan/" class="tm-user-info__username">
+      kotbajan
+    </a> </span></span> <span class="tm-article-snippet__datetime-published"><time datetime="2019-05-21T05:13:11.000Z" title="2019-05-21, 08:13">21  мая  2019 в 08:13</time></span></div> <!----></div> <h1 lang="ru" class="tm-article-snippet__title tm-article-snippet__title_h1"><span>Подружить CI, unit-тесты и базу данных</span></h1> <div class="tm-article-snippet__hubs"><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/gradle/" class="tm-article-snippet__hubs-item-link"><span>Gradle</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span></div> <div class="tm-article-snippet__labels"><div class="tm-article-snippet__label"><span>
+        Tutorial
+      </span></div></div> <!----> <!----></div></div> <!----> <div data-gallery-root="" lang="ru" class="tm-article-body"><div id="post-content-body" class="article-formatted-body article-formatted-body_version-1"><div xmlns="http://www.w3.org/1999/xhtml"><div style="text-align:center;"><img src="/img/image-loader.svg" alt="image" data-src="https://habrastorage.org/webt/p9/2f/hw/p92fhwlfahzagt8w9wzxpfclgzw.png"/></div><br/>
+Статья про тестирование взаимодействия с БД в CI. Я видел несколько решений использующих docker и testcontainers, но у меня есть своё и им я хочу поделиться.<br/>
+<a name="habracut"></a><br/>
+Мой прошлый java проект был тесно завязан на базу данных. Длительная обработка с повторами попыток, многопоточность и выборки с блокировками. Для задачи требовалось поправить парочку хитрых SQL запросов. Я как-то привык покрывать тестами свой код, но до этого весь SQL сводился с примитивным запросам и его можно было погонять на H2 базе в памяти. А тут хардкор на оракле.<br/>
+<br/>
+Простой SQL я бы мог протестировать руками и малодушно забить на автотесты, оправдываясь перед собой «я же не какой-нибудь багодел, ошибки в простом коде допускать». Собственно, ошибки и появляются реже по причине наличия тестов. Можно было спихнуть ответственность на тестировщиков — если я где-то ошибся, они найдут.<br/>
+<br/>
+<div style="text-align:center;"><img src="/img/image-loader.svg" alt="image" data-src="https://habrastorage.org/webt/js/ro/nh/jsronhgbydvhziosboj6velwb5w.png"/></div><br/>
+Согласно идеологии unit-тестирования, тесты нужны только для тестирования отдельных модулей, а если модуль использует что-то извне, то это надо заменить на заглушку. На практике, когда заглушку реализовать становится слишком сложно, модуль просто игнорируется. Скорость и модульность важны, но важнее не оставлять не проверенным код, пусть он и не отображается в метриках покрытия. Потому модулем начинают считать уже не отдельный класс, а связную группу, вместе с конфигурацией. Главное, с такими утверждениями не дойти до растягивания понятия unit до уровня кластера.<br/>
+<br/>
+Для локального тестирования у каждого разработчика есть своя схема, но тесты запускаются на Jenkins и там подключения к БД пока нет. Для CI нужна отдельная схема, это вроде очевидно. Но на пустой схеме тесты запускать не очень правильно, создавать структуру БД в каждом тесте и по времени накладно и чревато расхождением структуры в тесте и в бою. Запускать на предварительно подготовленной базе — получу ворох проблем с ветками. Подготавливать БД перед запуском всех тестов можно с помощью liquibase, сначала очищая все под ноль, а затем обновляя до последней версии.<br/>
+<br/>
+Rollback часто забывают доработать и приходится на тестовых средах руками чистить базы. Протестируем-ка и его! Алгоритм получается следующий:<br/>
+<br/>
+<ol>
+<li>удалить все под корень (для чистоты эксперимента)</li>
+<li>обновить до последней версии</li>
+<li>выполнить rollback на 1-2 версии назад</li>
+<li>обновить до последней версии (тесты надо на новой структуре БД гонять, плюс проверка, что rollback не забыл удалить ничего, что помешает повторному накату обновления)</li>
+</ol><br/>
+Коллеги разработчики не хотят при запуске каждого теста запускать тестирование rollback. Делаем рубильник.<br/>
+<br/>
+<pre><code class="kotlin">    project.ext.doRollbackTest = { Boolean.parseBoolean(localConfig['test.rollback.enabled'] as String) }
+</code></pre><br/>
+Пока идет тренировка на кошечках все ок. Но динамично развивающийся проект вносит свои коррективы — 2 пулреквеста, одновременная сборка. Один инстанс что-то тестирует, а второй выбивает у него из под ног базу. Решается простым запретом параллельных сборок.<br/>
+<br/>
+<img src="/img/image-loader.svg" alt="image" data-src="https://habrastorage.org/webt/my/64/hm/my64hmqfabt8qg0jcuz-xwiddvi.png"/><br/>
+<br/>
+И снова падение — решил прогнать тесты с использованием учетки Jenkins, т.к. на личной все ок, а пул реквесты падают по не ясным причинам. Вспоминаем пылкие речи о том, что DevOps — это культура и недопустимо использование технических учеток в личных целях.<br/>
+<br/>
+<img src="/img/image-loader.svg" alt="image" data-src="https://habrastorage.org/webt/fr/lb/xf/frlbxfbj6ck-8pdbhff0v5kpeta.png"/><br/>
+<br/>
+Накопилось 10 пул реквестов. Все собраны, отревьювлены, можно сливать. Первый пошел, изменилась основная ветка — остальные дружно встают в очередь на пересборку. Можно сливать по мере прохождения, но есть же приоритеты. Более срочные пулреквесты, менее срочные, есть и зависающие из-за ошибок в коде. В общем — распараллелить обратно.<br/>
+<br/>
+Сборка должна быть простой, состоять из простых шагов и быть понятна даже вчерашнему студенту. В 99% нет проблем в том, что сборки пул реквестов и релизов идут последовательно, а не параллельно. Если на ревью не накапливается больше 1-2 PR, то вполне достаточно запрета одновременных сборок.<br/>
+<br/>
+А для параллельного запуска нам нужны базы или схемы, к которым у каждого запущенного теста будет монопольный доступ.<br/>
+<br/>
+Вариант первый — выделять динамически. Создание схемы в БД происходит быстро. Имея облако с API можно выделять БД там.<br/>
+<br/>
+Если не проработать удаление старых баз, можно быстро прикончить место на дисках, когда тесты будут падать и «забывать» освободить ресурсы. Именно «когда», а не «если».<br/>
+<br/>
+Вариант второй — пул баз / схем с отдельным сервисом по управлению. Наружу торчит API дайБазуНаВремя, забериОбратноСвободнуюБазуРаньшеСрока. Что оно будет возвращать: выделенный сервер с БД или только схемку, не важно. Главное, что ресурс не будет безвовратно утрачен.<br/>
+<br/>
+Вариант третий — пул баз / схем на саморегуляции. Необходимы ресурс для обмена информацией о блокировках и сам пул баз.<br/>
+<br/>
+Я остановился на последнем варианте, поскольку мне его проще прикрутить и поддерживать особенно не требуется. Логика следующая — создается несколько (10 например) схем и на общем ресурсе складывается вся необходимая информация о подключении к ним, каждый инстанс теста перед запуском делает отметку старта, после окончания — удаляет её. Если тест упал, не успев финализироваться, схема будет считаться свободной по окончанию таймаута.<br/>
+<br/>
+Чтение настроек:<br/>
+<br/>
+<pre><code class="kotlin">    project.ext.localConfig = new Properties()
+    localConfig.load(file("${rootDir}/local.properties").newReader())
+</code></pre><br/>
+Работа с sql из gradle скриптов требует загрузку драйвера:<br/>
+<pre><code class="kotlin">    configurations {
+        driver
+    }
+    dependencies {
+        driver group: "oracle", name: "ojdbc6", version: "11.+"
+    }
+    task initDriver {
+        doLast {
+            ClassLoader loader = GroovyObject.class.classLoader
+            configurations.driver.each { File file ->
+                loader.addURL(file.toURL())
+            }
+        }
+    }
+</code></pre><br/>
+Подключение:<br/>
+<br/>
+<pre><code class="kotlin">    import groovy.sql.Sql
+    project.ext.createSqlInstance = {
+        return Sql.newInstance(
+                url: localConfig["pool.db.url"],
+                user: localConfig["pool.db.username"],
+                password: localConfig["pool.db.password"],
+                driver: localConfig["pool.db.driverClass"])
+    }
+</code></pre><br/>
+Обмен информацией можно проводить через таблицу БД. Инициализация опорной таблицы (должна отработать один раз, потом таблица живет до скончания веков):<br/>
+<br/>
+<pre><code class="kotlin">    task initDbPool {
+        dependsOn initDriver
+        doLast {
+            Integer poolSize = 10
+            Sql sql = createSqlInstance() as Sql
+            String tableName = localConfig["pool.db.referenceTable"]
+            String baseName = localConfig["pool.db.baseName"]
+            String basePass = localConfig["pool.db.basePass"]
+            String token = "{id}"
+            List tableExists = sql.rows("select table_name from all_tables where table_name=?", [tableName])
+            assert tableExists.isEmpty()
+            sql.execute("""
+                CREATE TABLE ${tableName} (
+                ID NUMBER(2) NOT NULL PRIMARY KEY,
+                METADATA VARCHAR2(200) NOT NULL,
+                PROCESSED TIMESTAMP NULL,
+                GUID VARCHAR2(36) NULL)
+            """, [])
+
+            for (Integer i = 0 ; i &lt; poolSize ; i++) {
+                String username = baseName.replace(token, i.toString())
+                String password = basePass.replace(token, i.toString())
+                sql.execute("""
+                    CREATE USER ${username}
+                    IDENTIFIED BY "${password}"
+                    DEFAULT TABLESPACE USERS
+                    TEMPORARY TABLESPACE TEMP
+                    PROFILE DEFAULT
+                    QUOTA UNLIMITED ON USERS
+                """, [])
+                sql.execute("grant connect to ${username}", [])
+                sql.execute("grant create sequence to ${username}", [])
+                sql.execute("grant create session to ${username}", [])
+                sql.execute("grant create table to ${username}", [])
+                String metadata = JsonOutput.toJson([
+                    "app.db.driverClass": localConfig["pool.db.driverClass"],
+                    "app.db.url": localConfig["pool.db.url"],
+                    "app.db.username": username,
+                    "app.db.password": password
+                        ])
+
+                sql.execute("""
+                    INSERT INTO ${tableName} (id, metadata)
+                    values (?, ?)
+                """, [i, metadata])
+            }
+        }
+    }
+</code></pre><br/>
+У разработчиков есть собственные схемы для отладки и сборки, потому использование пула надо выключать:<br/>
+<br/>
+<pre><code class="kotlin">    project.ext.isCiBuild = { Boolean.parseBoolean(localConfig['pool.db.enabled'] as String) }
+</code></pre><br/>
+Занять и освободить базу:<br/>
+<br/>
+<pre><code class="kotlin">    task lockDb {
+        dependsOn initDriver
+        onlyIf isCiBuild
+        doLast {
+            project.ext.lockUid = UUID.randomUUID().toString()
+            String tableName = localConfig["pool.db.referenceTable"]
+            Sql sql = createSqlInstance() as Sql
+            sql.executeUpdate("""UPDATE ${tableName} SET GUID = ?, PROCESSED = SYSDATE
+                    WHERE ID IN (
+                        SELECT ID FROM (
+                            SELECT ID, ROW_NUMBER() OVER (ORDER BY PROCESSED) AS RN
+                            FROM ${tableName} WHERE GUID IS NULL OR PROCESSED &lt; (SYSDATE - NUMTODSINTERVAL(?, 'MINUTE'))
+                        ) WHERE RN = 1
+                    )
+                    """, [lockUid, 15])
+
+            def meta = sql.firstRow("SELECT METADATA FROM ${tableName} WHERE GUID = ?", [lockUid])
+            assert meta != null, "No free databases in pool"
+            def slurper = new JsonSlurper()
+            Map metadata = slurper.parseText(meta["METADATA"] as String) as Map
+            localConfig.putAll(metadata)
+            logger.info("Database locked, {}", metadata)
+        }
+    }
+
+    task unlockDb {
+        dependsOn lockDb // init lockUid
+        onlyIf isCiBuild
+        doLast {
+            try {
+                String tableName = localConfig["pool.db.referenceTable"]
+                Sql sql = createSqlInstance() as Sql
+                sql.executeUpdate("UPDATE ${tableName} SET GUID = NULL WHERE GUID = ?",
+                        [lockUid])
+                logger.info("Database unlocked")
+            } catch (ignored) {
+                logger.error(ignored)
+            }
+        }
+    }
+</code></pre><br/>
+Если выполнить сборку 2 раза подряд, могут быть выделены разные схемы и при сборке property-файлов останутся разные подставленные значения. Для локальных запусков настройки статичны.<br/>
+<br/>
+<pre><code class="kotlin">    configure([processResources, processTestResources]) { Task t ->
+        if (project.ext.isCiBuild()) {
+            t.outputs.upToDateWhen { false }
+        }
+        t.filesMatching('**/*.properties') {
+            filter(ReplaceTokens, tokens: localConfig, beginToken: '${', endToken: '}')
+        }
+    }
+</code></pre><br/>
+Таски для тестирования rollback:<br/>
+<br/>
+<pre><code class="kotlin">    task restoreAfterRollbackTest(type: LiquibaseTask) {
+        command = 'update'
+    }
+
+    task rollbackTest(type: LiquibaseTask) {
+        dependsOn lockDb
+        command = 'rollback'
+        requiresValue = true
+        doFirst {
+            project.ext.liquibaseCommandValue = localConfig['test.rollback.tag']
+        }
+        doLast {
+            project.ext.liquibaseCommandValue = null
+        }
+    }
+</code></pre><br/>
+И настроить порядок выполнения:<br/>
+<br/>
+<pre><code class="kotlin">    configure([project]) {
+        tasks.withType(LiquibaseTask.class) { LiquibaseTask t ->
+            logger.info("Liquibase task {} must run after {}", t.getName(), configLiquibase.getName())
+            (t as Task).dependsOn configLiquibase
+            if (isCiBuild()) {
+                logger.info("Liquibase task {} must run after {}", t.getName(), lockDb.getName())
+                (t as Task).dependsOn lockDb
+                (t as Task).finalizedBy unlockDb
+            }
+        }
+        // На этапе CI:
+        // 1. Чистим БД в 0 (dropAll)
+        // 2. Обновляем БД для проверки rollback (update)
+        // 3. Проверяем, что работает откат до изначального состояния (rollback tag)
+        // 4. Обновляем БД для прогона тестов (update)
+        // 5. Прогоняем тесты на БД
+        if (doRollbackTest()) {
+            def setTaskOrdering = { List&lt;Task> lst ->
+                for (int i = 0; i &lt; lst.size() - 1; i++) {
+                    logger.info("Task {} must run after {}", lst[i + 1].getName(), lst[i].getName())
+                    lst[i + 1].dependsOn lst[i]
+                }
+            }
+
+            setTaskOrdering([
+                    lockDb,
+                    configLiquibase,
+                    dropAll,
+                    update,
+                    rollbackTest,
+                    restoreAfterRollbackTest,
+                    processTestResources,
+                    test,
+            ])
+
+            lockDb.finalizedBy unlockDb
+            test.finalizedBy unlockDb
+        }
+    }
+</code></pre><br/>
+Выделение базы и тестирование rollback можно поместить внутрь тестов. Способы запуска кода перед и после выполнения всех тестов: в Junit5 это BeforeAllCallback, в TestNG BeforeSuite.<br/>
+<br/>
+На вопрос «зачем тестировать sql java-программисту» ответ — тестировать надо любой код. Бывают исключения и некоторый код тестировать нерационально в данный момент времени.<br/>
+<br/>
+Хотелось бы узнать, как проблема тестирования взаимодействия с БД решается другими программистами? Пришли ли контейнеры в каждый дом или тестирование интеграций перекладывается на плечи тестировщиков?<br/>
+<br/>
+<div class="spoiler"><b class="spoiler_title">Полный листинг</b><div class="spoiler_text"><pre><code class="kotlin">import groovy.json.JsonOutput
+import groovy.json.JsonSlurper
+import groovy.sql.Sql
+import org.apache.tools.ant.filters.ReplaceTokens
+import org.liquibase.gradle.LiquibaseTask
+
+plugins {
+    id 'java'
+    id 'org.liquibase.gradle' version '2.0.1'
+}
+
+configurations {
+    driver
+}
+
+repositories {
+    jcenter()
+    mavenCentral()
+    maven {
+        url = "http://www.datanucleus.org/downloads/maven2/"
+    }
+}
+
+dependencies {
+    implementation 'com.google.guava:guava:27.0.1-jre'
+    implementation 'org.springframework:spring-core:5.1.7.RELEASE'
+    implementation 'org.springframework:spring-context:5.1.7.RELEASE'
+    implementation 'org.springframework:spring-jdbc:5.1.7.RELEASE'
+
+    testImplementation 'junit:junit:4.12'
+    testImplementation 'org.springframework:spring-test:5.1.7.RELEASE'
+
+    testRuntime 'oracle:ojdbc6:11.+'
+
+    liquibaseRuntime 'org.liquibase:liquibase-core:3.6.1'
+    liquibaseRuntime 'oracle:ojdbc6:11.+'
+    liquibaseRuntime 'org.yaml:snakeyaml:1.24'
+
+
+    driver group: "oracle", name: "ojdbc6", version: "11.+"
+}
+
+project.ext.localConfig = new Properties()
+localConfig.load(file("${rootDir}/local.properties").newReader())
+
+project.ext.isCiBuild = { Boolean.parseBoolean(localConfig['pool.db.enabled'] as String) }
+
+project.ext.doRollbackTest = { Boolean.parseBoolean(localConfig['test.rollback.enabled'] as String) }
+
+task configLiquibase {
+    doLast {
+        liquibase {
+            activities {
+                testdb {
+                    changeLogFile 'changelog.yaml'
+                    url localConfig['app.db.url']
+                    driver localConfig['app.db.driverClass']
+                    username localConfig['app.db.username']
+                    password localConfig['app.db.password']
+                    logLevel 'debug'
+                    classpath "${project.projectDir}/db"
+                    contexts 'main'
+                }
+                runList = 'testdb'
+            }
+        }
+    }
+}
+
+task initDriver {
+    doLast {
+        ClassLoader loader = GroovyObject.class.classLoader
+        configurations.driver.each { File file ->
+            loader.addURL(file.toURL())
+        }
+    }
+}
+
+project.ext.createSqlInstance = {
+    return Sql.newInstance(
+            url: localConfig["pool.db.url"],
+            user: localConfig["pool.db.username"],
+            password: localConfig["pool.db.password"],
+            driver: localConfig["pool.db.driverClass"])
+}
+
+task initDbPool {
+    dependsOn initDriver
+    doLast {
+        Integer poolSize = 10
+        Sql sql = createSqlInstance() as Sql
+        String tableName = localConfig["pool.db.referenceTable"]
+        String baseName = localConfig["pool.db.baseName"]
+        String basePass = localConfig["pool.db.basePass"]
+        String token = "{id}"
+        List tableExists = sql.rows("select table_name from all_tables where table_name=?", [tableName])
+        assert tableExists.isEmpty()
+        sql.execute("""
+            CREATE TABLE ${tableName} (
+            ID NUMBER(2) NOT NULL PRIMARY KEY,
+            METADATA VARCHAR2(200) NOT NULL,
+            PROCESSED TIMESTAMP NULL,
+            GUID VARCHAR2(36) NULL)
+        """, [])
+
+        for (Integer i = 0 ; i &lt; poolSize ; i++) {
+            String username = baseName.replace(token, i.toString())
+            String password = basePass.replace(token, i.toString())
+            sql.execute("""
+                CREATE USER ${username}
+                IDENTIFIED BY "${password}"
+                DEFAULT TABLESPACE USERS
+                TEMPORARY TABLESPACE TEMP
+                PROFILE DEFAULT
+                QUOTA UNLIMITED ON USERS
+            """, [])
+            sql.execute("grant connect to ${username}", [])
+            sql.execute("grant create sequence to ${username}", [])
+            sql.execute("grant create session to ${username}", [])
+            sql.execute("grant create table to ${username}", [])
+            String metadata = JsonOutput.toJson([
+                "app.db.driverClass": localConfig["pool.db.driverClass"],
+                "app.db.url": localConfig["pool.db.url"],
+                "app.db.username": username,
+                "app.db.password": password
+                    ])
+
+            sql.execute("""
+                INSERT INTO ${tableName} (id, metadata)
+                values (?, ?)
+            """, [i, metadata])
+        }
+    }
+}
+
+task lockDb {
+    dependsOn initDriver
+    onlyIf isCiBuild
+    doLast {
+        project.ext.lockUid = UUID.randomUUID().toString()
+        String tableName = localConfig["pool.db.referenceTable"]
+        Sql sql = createSqlInstance() as Sql
+        sql.executeUpdate("""UPDATE ${tableName} SET GUID = ?, PROCESSED = SYSDATE
+                WHERE ID IN (
+                    SELECT ID FROM (
+                        SELECT ID, ROW_NUMBER() OVER (ORDER BY PROCESSED) AS RN
+                        FROM ${tableName} WHERE GUID IS NULL OR PROCESSED &lt; (SYSDATE - NUMTODSINTERVAL(?, 'MINUTE'))
+                    ) WHERE RN = 1
+                )
+                """, [lockUid, 15])
+
+        def meta = sql.firstRow("SELECT METADATA FROM ${tableName} WHERE GUID = ?", [lockUid])
+        assert meta != null, "No free databases in pool"
+        def slurper = new JsonSlurper()
+        Map metadata = slurper.parseText(meta["METADATA"] as String) as Map
+        localConfig.putAll(metadata)
+        logger.info("Database locked, {}", metadata)
+    }
+}
+
+task unlockDb {
+    dependsOn lockDb // init lockUid
+    onlyIf isCiBuild
+    doLast {
+        try {
+            String tableName = localConfig["pool.db.referenceTable"]
+            Sql sql = createSqlInstance() as Sql
+            sql.executeUpdate("UPDATE ${tableName} SET GUID = NULL WHERE GUID = ?",
+                    [lockUid])
+            logger.info("Database unlocked")
+        } catch (ignored) {
+            logger.error(ignored)
+        }
+    }
+}
+
+configure([processResources, processTestResources]) { Task t ->
+    if (project.ext.isCiBuild()) {
+        t.outputs.upToDateWhen { false }
+    }
+    t.filesMatching('**/*.properties') {
+        filter(ReplaceTokens, tokens: localConfig, beginToken: '${', endToken: '}')
+    }
+}
+
+task restoreAfterRollbackTest(type: LiquibaseTask) {
+    command = 'update'
+}
+
+task rollbackTest(type: LiquibaseTask) {
+    dependsOn lockDb
+    command = 'rollback'
+    requiresValue = true
+    doFirst {
+        project.ext.liquibaseCommandValue = localConfig['test.rollback.tag']
+    }
+    doLast {
+        project.ext.liquibaseCommandValue = null
+    }
+}
+
+configure([project]) {
+    tasks.withType(LiquibaseTask.class) { LiquibaseTask t ->
+        logger.info("Liquibase task {} must run after {}", t.getName(), configLiquibase.getName())
+        (t as Task).dependsOn configLiquibase
+        if (isCiBuild()) {
+            logger.info("Liquibase task {} must run after {}", t.getName(), lockDb.getName())
+            (t as Task).dependsOn lockDb
+            (t as Task).finalizedBy unlockDb
+        }
+    }
+    // На этапе CI:
+    // 1. Чистим БД в 0 (dropAll)
+    // 2. Обновляем БД для проверки rollback (update)
+    // 3. Проверяем, что работает откат до изначального состояния (rollback tag)
+    // 4. Обновляем БД для прогона тестов (update)
+    // 5. Прогоняем тесты на БД
+    if (doRollbackTest()) {
+        def setTaskOrdering = { List&lt;Task> lst ->
+            for (int i = 0; i &lt; lst.size() - 1; i++) {
+                logger.info("Task {} must run after {}", lst[i + 1].getName(), lst[i].getName())
+                lst[i + 1].dependsOn lst[i]
+            }
+        }
+
+        setTaskOrdering([
+                lockDb,
+                configLiquibase,
+                dropAll,
+                update,
+                rollbackTest,
+                restoreAfterRollbackTest,
+                processTestResources,
+                test,
+        ])
+
+        lockDb.finalizedBy unlockDb
+        test.finalizedBy unlockDb
+    }
+}
+</code></pre><br/>
+<pre><code class="bash">pool.db.enabled=false
+test.rollback.enabled=true
+
+pool.db.driverClass=oracle.jdbc.driver.OracleDriver
+pool.db.url=jdbc:oracle:thin:@localhost:1527:ORCLCDB
+pool.db.username=SYSTEM
+pool.db.password=Oradoc_db1
+
+pool.db.referenceTable=c##test_user1.REF_TABLE
+pool.db.baseName=C##CI_SCHEMA_{id}
+pool.db.basePass=CI_SCHEMA_{id}_PASS
+
+app.db.driverClass=
+app.db.url=
+app.db.username=
+app.db.password=
+
+test.rollback.tag=version_1
+</code></pre><br/>
+</div></div></div></div> <!----> <!----></div> <div class="tm-article-presenter__meta"><div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Теги:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bgradle%5D" class="tm-tags-list__link">gradle</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5B%D1%82%D0%B5%D1%81%D1%82%D0%B8%D1%80%D0%BE%D0%B2%D0%B0%D0%BD%D0%B8%D0%B5%5D" class="tm-tags-list__link">тестирование</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5B%D0%BD%D0%B5%D0%BF%D1%80%D0%B5%D1%80%D1%8B%D0%B2%D0%BD%D0%B0%D1%8F%20%D0%B8%D0%BD%D1%82%D0%B5%D0%B3%D1%80%D0%B0%D1%86%D0%B8%D1%8F%5D" class="tm-tags-list__link">непрерывная интеграция</a></li></ul></div> <div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Хабы:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/hub/gradle/" class="tm-hubs-list__link">
+    Gradle
+  </a></li></ul></div></div></article></div> <!----></div> <div class="tm-article-sticky-panel"><div class="tm-data-icons tm-article-sticky-panel__icons"><div class="tm-article-rating tm-data-icons__item"><div class="tm-votes-meter tm-article-rating__votes-switcher"><svg height="16" width="16" class="tm-svg-img tm-votes-meter__icon tm-votes-meter__icon_medium"><title>Всего голосов 4: ↑3 и ↓1</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-rating"></use></svg> <span title="Всего голосов 4: ↑3 и ↓1" class="tm-votes-meter__value tm-votes-meter__value_positive tm-votes-meter__value_medium">+2</span></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----> <span title="Количество просмотров" class="tm-icon-counter tm-data-icons__item"><svg height="16" width="16" class="tm-svg-img tm-icon-counter__icon"><title>Просмотры</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-views"></use></svg> <span class="tm-icon-counter__value">3.8K</span></span> <button title="Добавить в закладки" type="button" class="bookmarks-button tm-data-icons__item"><span title="Добавить в закладки" class="tm-svg-icon__wrapper bookmarks-button__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Добавить в закладки</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-favorite"></use></svg></span> <span title="Количество пользователей, добавивших публикацию в закладки" class="bookmarks-button__counter">
+    21
+  </span></button> <!----> <div title="Поделиться" class="tm-sharing tm-data-icons__item"><button type="button" class="tm-sharing__button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="tm-sharing__icon"><path fill="currentColor" d="M10.33.275l9.047 7.572a.2.2 0 010 .306l-9.048 7.572a.2.2 0 01-.328-.153V11c-8 0-9.94 6-9.94 6S-1 5 10 5V.428a.2.2 0 01.328-.153z"></path></svg></button> <!----></div> <DIV class="v-portal" style="display:none;"></DIV></div> </div></div> <!----> <!----> <div class="tm-article-presenter__footer"><div class="tm-article-blocks"><!----> <section class="tm-block tm-block_spacing-bottom"><!----> <div class="tm-block__body tm-block__body_variant-balanced"><div class="tm-article-author"> <div class="tm-user-card tm-article-author__user-card tm-user-card_variant-article"><div class="tm-user-card__info-container"><div class="tm-user-card__header"><div class="tm-user-card__header-data"><a href="/ru/users/kotbajan/" class="tm-user-card__userpic tm-user-card__userpic_size-40"><div class="tm-entity-image"><svg class="tm-svg-img tm-image-placeholder tm-image-placeholder_lilac"><!----> <use xlink:href="/img/megazord-v24.ce74655c.svg#placeholder-user"></use></svg></div></a> <div class="tm-user-card__meta"><div title=" 9 голосов " class="tm-karma tm-user-card__karma"><div class="tm-karma__votes tm-karma__votes_positive">
+    9
+  </div> <div class="tm-karma__text">
+    Карма
+  </div></div> <div title="Рейтинг пользователя" class="tm-rating tm-user-card__rating"><div class="tm-rating__header"> <div class="tm-rating__counter">0</div></div> <div class="tm-rating__text">
+    Рейтинг
+  </div></div></div></div></div> <div class="tm-user-card__info tm-user-card__info_variant-article"><div class="tm-user-card__title tm-user-card__title_variant-article"><!----> <a href="/ru/users/kotbajan/" class="tm-user-card__nickname tm-user-card__nickname_variant-article">
+          @kotbajan
+        </a> <!----></div> <p class="tm-user-card__short-info tm-user-card__short-info_variant-article">Пользователь</p></div></div> <div class="tm-user-card__buttons tm-user-card__buttons_variant-article"><!----> <!----> <!----> <!----> <!----></div></div> <!----></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----></section> <div class="tm-article-blocks__comments"><div class="tm-article-page-comments"><div class="tm-article-comments-counter-link tm-article-comments-counter-button"><a href="/ru/post/452722/comments/" class="tm-article-comments-counter-link__link tm-article-comments-counter-link__link_button-style"><svg height="16" width="16" class="tm-svg-img tm-article-comments-counter-link__icon tm-article-comments-counter-link__icon_contrasted"><title>Комментарии</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-comments"></use></svg> <span class="tm-article-comments-counter-link__value tm-article-comments-counter-link__value_contrasted">
+       Комментарии 10 
+    </span></a> <!----></div></div></div> <div class="tm-ad-banner__container tm-page-article__banner"><!----> <div id="articleBottomBanner" class="tm-ad-banner"></div></div> <!----> <!----> <!----> <!----> </div></div></div></div></div> <div class="tm-page__sidebar"><div class="tm-layout-sidebar"><div class="tm-layout-sidebar__ads tm-layout-sidebar__ads_initial"><div class="tm-ad-banner__container tm-layout-sidebar__banner"><!----> <div id="sidebarBanner" class="tm-ad-banner"></div></div></div> <div class="tm-sexy-sidebar tm-sexy-sidebar_initial" style="margin-top:0px;"><!----> <!----></div></div></div></div></div></div></main> <!----></div> <div class="tm-footer-menu"><div class="tm-page-width"><div class="tm-footer-menu__container"><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Ваш аккаунт
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr/?back=/ru/post/452722/&amp;hl=ru" rel="nofollow" target="_self">
+                Войти
+              </a></li><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr-register/?back=/ru/post/452722/&amp;hl=ru" rel="nofollow" target="_self">
+                Регистрация
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Разделы
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/" class="footer-menu__item-link router-link-active">
+                Публикации
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/news/" class="footer-menu__item-link">
+                Новости
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/hubs/" class="footer-menu__item-link">
+                Хабы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/companies/" class="footer-menu__item-link">
+                Компании
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/users/" class="footer-menu__item-link">
+                Авторы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/sandbox/" class="footer-menu__item-link">
+                Песочница
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Информация
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/docs/help/" class="footer-menu__item-link">
+                Устройство сайта
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/authors/codex/" class="footer-menu__item-link">
+                Для авторов
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/companies/corpblogs/" class="footer-menu__item-link">
+                Для компаний
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/docs/transparency/" class="footer-menu__item-link">
+                Документы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/agreement" target="_blank">
+                Соглашение
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/confidential/" target="_blank">
+                Конфиденциальность
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Услуги
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQLwRfQmXibiUlWaRg-BAc38s7oM3lJiaPju7qmdJsp8ysIvZ_G-Npem0njJLMozE2bPHMpDqiI5hhy/pub?start=false&amp;loop=false&amp;delayms=60000&amp;slide=id.g91a03369cd_4_297" target="_blank">
+                Реклама
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://habrastorage.org/storage/stuff/habr/service_price.pdf" target="_blank">
+                Тарифы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQJJds8-Di7BQSP_guHxICN7woVYoN5NP_22ra-BIo4bqnTT9FR6fB-Ku2P0AoRpX0Ds-LRkDeAoD8F/pub?start=false&amp;loop=false&amp;delayms=60000" target="_blank">
+                Контент
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://tmtm.timepad.ru/" target="_blank">
+                Семинары
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/megaprojects/" class="footer-menu__item-link">
+                Мегапроекты
+              </a></li></ul></div></div></div></div></div> <div class="tm-footer"><div class="tm-page-width"><div class="tm-footer__container"><!----> <div class="tm-footer__social"><a href="https://www.facebook.com/habrahabr.ru" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Facebook</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-facebook"></use></svg></a><a href="https://twitter.com/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Twitter</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-twitter"></use></svg></a><a href="https://vk.com/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>VK</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-vkontakte"></use></svg></a><a href="https://telegram.me/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Telegram</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-telegram"></use></svg></a><a href="https://www.youtube.com/channel/UCd_sTwKqVrweTt4oAKY5y4w" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Youtube</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-youtube"></use></svg></a><a href="https://zen.yandex.ru/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Яндекс Дзен</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-zen"></use></svg></a></div> <DIV class="v-portal" style="display:none;"></DIV> <button class="tm-footer__link"><!---->
+        Настройка языка
+      </button> <a href="/ru/about" class="tm-footer__link">
+        О сайте
+      </a> <a href="/ru/feedback/" class="tm-footer__link">
+        Техническая поддержка
+      </a> <!----> <a href="/berserk-mode-nope" class="tm-footer__link">
+        Вернуться на старую версию
+      </a> <div class="tm-footer-copyright"><span class="tm-copyright"><span class="tm-copyright__years">© 2006–2021 </span> <span class="tm-copyright__name">«<a href="https://company.habr.com/" rel="noopener" target="_blank" class="tm-copyright__link">Habr</a>»</span></span></div></div></div></div> <!----> <!----></div> <div class="vue-portal-target"></div></div>
+<script>window.__INITIAL_STATE__={"adblock":{"hasAcceptableAdsFilter":false,"hasAdblock":false},"articlesList":{"articlesList":{"452722":{"id":"452722","timePublished":"2019-05-21T05:13:11+00:00","isCorporative":false,"lang":"ru","titleHtml":"Подружить CI, unit-тесты и базу данных","leadData":{"textHtml":"\u003Cdiv style=\"text-align:center;\"\u003E\u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fp9\u002F2f\u002Fhw\u002Fp92fhwlfahzagt8w9wzxpfclgzw.png\" alt=\"image\"\u003E\u003C\u002Fdiv\u003E\u003Cbr\u003E\r\nСтатья про тестирование взаимодействия с БД в CI. Я видел несколько решений использующих docker и testcontainers, но у меня есть своё и им я хочу поделиться.\u003Cbr\u003E","imageUrl":null,"buttonTextHtml":"Читать дальше →","image":null},"editorVersion":"1.0","postType":"article","postLabels":[{"type":"tutorial","data":null}],"author":{"scoreStats":{"score":9,"votesCount":9},"rating":0,"relatedData":null,"contacts":[],"authorContacts":[],"paymentDetails":{"paymentYandexMoney":null,"paymentPayPalMe":null,"paymentWebmoney":null},"id":"407096","alias":"kotbajan","fullname":null,"avatarUrl":null,"speciality":null},"statistics":{"commentsCount":10,"favoritesCount":21,"readingCount":3760,"score":2,"votesCount":4},"hubs":[{"relatedData":null,"id":"21372","alias":"gradle","type":"collective","title":"Gradle","titleHtml":"Gradle","isProfiled":true}],"flows":[{"id":"1","alias":"develop","title":"Разработка"}],"relatedData":null,"textHtml":"\u003Cdiv xmlns=\"http:\u002F\u002Fwww.w3.org\u002F1999\u002Fxhtml\"\u003E\u003Cdiv style=\"text-align:center;\"\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" alt=\"image\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fp9\u002F2f\u002Fhw\u002Fp92fhwlfahzagt8w9wzxpfclgzw.png\"\u002F\u003E\u003C\u002Fdiv\u003E\u003Cbr\u002F\u003E\r\nСтатья про тестирование взаимодействия с БД в CI. Я видел несколько решений использующих docker и testcontainers, но у меня есть своё и им я хочу поделиться.\u003Cbr\u002F\u003E\r\n\u003Ca name=\"habracut\"\u003E\u003C\u002Fa\u003E\u003Cbr\u002F\u003E\r\nМой прошлый java проект был тесно завязан на базу данных. Длительная обработка с повторами попыток, многопоточность и выборки с блокировками. Для задачи требовалось поправить парочку хитрых SQL запросов. Я как-то привык покрывать тестами свой код, но до этого весь SQL сводился с примитивным запросам и его можно было погонять на H2 базе в памяти. А тут хардкор на оракле.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПростой SQL я бы мог протестировать руками и малодушно забить на автотесты, оправдываясь перед собой «я же не какой-нибудь багодел, ошибки в простом коде допускать». Собственно, ошибки и появляются реже по причине наличия тестов. Можно было спихнуть ответственность на тестировщиков — если я где-то ошибся, они найдут.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cdiv style=\"text-align:center;\"\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" alt=\"image\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fjs\u002Fro\u002Fnh\u002Fjsronhgbydvhziosboj6velwb5w.png\"\u002F\u003E\u003C\u002Fdiv\u003E\u003Cbr\u002F\u003E\r\nСогласно идеологии unit-тестирования, тесты нужны только для тестирования отдельных модулей, а если модуль использует что-то извне, то это надо заменить на заглушку. На практике, когда заглушку реализовать становится слишком сложно, модуль просто игнорируется. Скорость и модульность важны, но важнее не оставлять не проверенным код, пусть он и не отображается в метриках покрытия. Потому модулем начинают считать уже не отдельный класс, а связную группу, вместе с конфигурацией. Главное, с такими утверждениями не дойти до растягивания понятия unit до уровня кластера.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nДля локального тестирования у каждого разработчика есть своя схема, но тесты запускаются на Jenkins и там подключения к БД пока нет. Для CI нужна отдельная схема, это вроде очевидно. Но на пустой схеме тесты запускать не очень правильно, создавать структуру БД в каждом тесте и по времени накладно и чревато расхождением структуры в тесте и в бою. Запускать на предварительно подготовленной базе — получу ворох проблем с ветками. Подготавливать БД перед запуском всех тестов можно с помощью liquibase, сначала очищая все под ноль, а затем обновляя до последней версии.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nRollback часто забывают доработать и приходится на тестовых средах руками чистить базы. Протестируем-ка и его! Алгоритм получается следующий:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Col\u003E\r\n\u003Cli\u003Eудалить все под корень (для чистоты эксперимента)\u003C\u002Fli\u003E\r\n\u003Cli\u003Eобновить до последней версии\u003C\u002Fli\u003E\r\n\u003Cli\u003Eвыполнить rollback на 1-2 версии назад\u003C\u002Fli\u003E\r\n\u003Cli\u003Eобновить до последней версии (тесты надо на новой структуре БД гонять, плюс проверка, что rollback не забыл удалить ничего, что помешает повторному накату обновления)\u003C\u002Fli\u003E\r\n\u003C\u002Fol\u003E\u003Cbr\u002F\u003E\r\nКоллеги разработчики не хотят при запуске каждого теста запускать тестирование rollback. Делаем рубильник.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"kotlin\"\u003E    project.ext.doRollbackTest = { Boolean.parseBoolean(localConfig['test.rollback.enabled'] as String) }\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nПока идет тренировка на кошечках все ок. Но динамично развивающийся проект вносит свои коррективы — 2 пулреквеста, одновременная сборка. Один инстанс что-то тестирует, а второй выбивает у него из под ног базу. Решается простым запретом параллельных сборок.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" alt=\"image\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fmy\u002F64\u002Fhm\u002Fmy64hmqfabt8qg0jcuz-xwiddvi.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nИ снова падение — решил прогнать тесты с использованием учетки Jenkins, т.к. на личной все ок, а пул реквесты падают по не ясным причинам. Вспоминаем пылкие речи о том, что DevOps — это культура и недопустимо использование технических учеток в личных целях.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" alt=\"image\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Ffr\u002Flb\u002Fxf\u002Ffrlbxfbj6ck-8pdbhff0v5kpeta.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nНакопилось 10 пул реквестов. Все собраны, отревьювлены, можно сливать. Первый пошел, изменилась основная ветка — остальные дружно встают в очередь на пересборку. Можно сливать по мере прохождения, но есть же приоритеты. Более срочные пулреквесты, менее срочные, есть и зависающие из-за ошибок в коде. В общем — распараллелить обратно.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nСборка должна быть простой, состоять из простых шагов и быть понятна даже вчерашнему студенту. В 99% нет проблем в том, что сборки пул реквестов и релизов идут последовательно, а не параллельно. Если на ревью не накапливается больше 1-2 PR, то вполне достаточно запрета одновременных сборок.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nА для параллельного запуска нам нужны базы или схемы, к которым у каждого запущенного теста будет монопольный доступ.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВариант первый — выделять динамически. Создание схемы в БД происходит быстро. Имея облако с API можно выделять БД там.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЕсли не проработать удаление старых баз, можно быстро прикончить место на дисках, когда тесты будут падать и «забывать» освободить ресурсы. Именно «когда», а не «если».\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВариант второй — пул баз \u002F схем с отдельным сервисом по управлению. Наружу торчит API дайБазуНаВремя, забериОбратноСвободнуюБазуРаньшеСрока. Что оно будет возвращать: выделенный сервер с БД или только схемку, не важно. Главное, что ресурс не будет безвовратно утрачен.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВариант третий — пул баз \u002F схем на саморегуляции. Необходимы ресурс для обмена информацией о блокировках и сам пул баз.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЯ остановился на последнем варианте, поскольку мне его проще прикрутить и поддерживать особенно не требуется. Логика следующая — создается несколько (10 например) схем и на общем ресурсе складывается вся необходимая информация о подключении к ним, каждый инстанс теста перед запуском делает отметку старта, после окончания — удаляет её. Если тест упал, не успев финализироваться, схема будет считаться свободной по окончанию таймаута.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЧтение настроек:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"kotlin\"\u003E    project.ext.localConfig = new Properties()\n    localConfig.load(file(\"${rootDir}\u002Flocal.properties\").newReader())\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nРабота с sql из gradle скриптов требует загрузку драйвера:\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"kotlin\"\u003E    configurations {\n        driver\n    }\n    dependencies {\n        driver group: \"oracle\", name: \"ojdbc6\", version: \"11.+\"\n    }\n    task initDriver {\n        doLast {\n            ClassLoader loader = GroovyObject.class.classLoader\n            configurations.driver.each { File file -\u003E\n                loader.addURL(file.toURL())\n            }\n        }\n    }\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nПодключение:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"kotlin\"\u003E    import groovy.sql.Sql\n    project.ext.createSqlInstance = {\n        return Sql.newInstance(\n                url: localConfig[\"pool.db.url\"],\n                user: localConfig[\"pool.db.username\"],\n                password: localConfig[\"pool.db.password\"],\n                driver: localConfig[\"pool.db.driverClass\"])\n    }\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nОбмен информацией можно проводить через таблицу БД. Инициализация опорной таблицы (должна отработать один раз, потом таблица живет до скончания веков):\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"kotlin\"\u003E    task initDbPool {\n        dependsOn initDriver\n        doLast {\n            Integer poolSize = 10\n            Sql sql = createSqlInstance() as Sql\n            String tableName = localConfig[\"pool.db.referenceTable\"]\n            String baseName = localConfig[\"pool.db.baseName\"]\n            String basePass = localConfig[\"pool.db.basePass\"]\n            String token = \"{id}\"\n            List tableExists = sql.rows(\"select table_name from all_tables where table_name=?\", [tableName])\n            assert tableExists.isEmpty()\n            sql.execute(\"\"\"\n                CREATE TABLE ${tableName} (\n                ID NUMBER(2) NOT NULL PRIMARY KEY,\n                METADATA VARCHAR2(200) NOT NULL,\n                PROCESSED TIMESTAMP NULL,\n                GUID VARCHAR2(36) NULL)\n            \"\"\", [])\n\n            for (Integer i = 0 ; i &lt; poolSize ; i++) {\n                String username = baseName.replace(token, i.toString())\n                String password = basePass.replace(token, i.toString())\n                sql.execute(\"\"\"\n                    CREATE USER ${username}\n                    IDENTIFIED BY \"${password}\"\n                    DEFAULT TABLESPACE USERS\n                    TEMPORARY TABLESPACE TEMP\n                    PROFILE DEFAULT\n                    QUOTA UNLIMITED ON USERS\n                \"\"\", [])\n                sql.execute(\"grant connect to ${username}\", [])\n                sql.execute(\"grant create sequence to ${username}\", [])\n                sql.execute(\"grant create session to ${username}\", [])\n                sql.execute(\"grant create table to ${username}\", [])\n                String metadata = JsonOutput.toJson([\n                    \"app.db.driverClass\": localConfig[\"pool.db.driverClass\"],\n                    \"app.db.url\": localConfig[\"pool.db.url\"],\n                    \"app.db.username\": username,\n                    \"app.db.password\": password\n                        ])\n\n                sql.execute(\"\"\"\n                    INSERT INTO ${tableName} (id, metadata)\n                    values (?, ?)\n                \"\"\", [i, metadata])\n            }\n        }\n    }\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nУ разработчиков есть собственные схемы для отладки и сборки, потому использование пула надо выключать:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"kotlin\"\u003E    project.ext.isCiBuild = { Boolean.parseBoolean(localConfig['pool.db.enabled'] as String) }\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nЗанять и освободить базу:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"kotlin\"\u003E    task lockDb {\n        dependsOn initDriver\n        onlyIf isCiBuild\n        doLast {\n            project.ext.lockUid = UUID.randomUUID().toString()\n            String tableName = localConfig[\"pool.db.referenceTable\"]\n            Sql sql = createSqlInstance() as Sql\n            sql.executeUpdate(\"\"\"UPDATE ${tableName} SET GUID = ?, PROCESSED = SYSDATE\n                    WHERE ID IN (\n                        SELECT ID FROM (\n                            SELECT ID, ROW_NUMBER() OVER (ORDER BY PROCESSED) AS RN\n                            FROM ${tableName} WHERE GUID IS NULL OR PROCESSED &lt; (SYSDATE - NUMTODSINTERVAL(?, 'MINUTE'))\n                        ) WHERE RN = 1\n                    )\n                    \"\"\", [lockUid, 15])\n\n            def meta = sql.firstRow(\"SELECT METADATA FROM ${tableName} WHERE GUID = ?\", [lockUid])\n            assert meta != null, \"No free databases in pool\"\n            def slurper = new JsonSlurper()\n            Map metadata = slurper.parseText(meta[\"METADATA\"] as String) as Map\n            localConfig.putAll(metadata)\n            logger.info(\"Database locked, {}\", metadata)\n        }\n    }\n\n    task unlockDb {\n        dependsOn lockDb \u002F\u002F init lockUid\n        onlyIf isCiBuild\n        doLast {\n            try {\n                String tableName = localConfig[\"pool.db.referenceTable\"]\n                Sql sql = createSqlInstance() as Sql\n                sql.executeUpdate(\"UPDATE ${tableName} SET GUID = NULL WHERE GUID = ?\",\n                        [lockUid])\n                logger.info(\"Database unlocked\")\n            } catch (ignored) {\n                logger.error(ignored)\n            }\n        }\n    }\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nЕсли выполнить сборку 2 раза подряд, могут быть выделены разные схемы и при сборке property-файлов останутся разные подставленные значения. Для локальных запусков настройки статичны.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"kotlin\"\u003E    configure([processResources, processTestResources]) { Task t -\u003E\n        if (project.ext.isCiBuild()) {\n            t.outputs.upToDateWhen { false }\n        }\n        t.filesMatching('**\u002F*.properties') {\n            filter(ReplaceTokens, tokens: localConfig, beginToken: '${', endToken: '}')\n        }\n    }\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nТаски для тестирования rollback:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"kotlin\"\u003E    task restoreAfterRollbackTest(type: LiquibaseTask) {\n        command = 'update'\n    }\n\n    task rollbackTest(type: LiquibaseTask) {\n        dependsOn lockDb\n        command = 'rollback'\n        requiresValue = true\n        doFirst {\n            project.ext.liquibaseCommandValue = localConfig['test.rollback.tag']\n        }\n        doLast {\n            project.ext.liquibaseCommandValue = null\n        }\n    }\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nИ настроить порядок выполнения:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"kotlin\"\u003E    configure([project]) {\n        tasks.withType(LiquibaseTask.class) { LiquibaseTask t -\u003E\n            logger.info(\"Liquibase task {} must run after {}\", t.getName(), configLiquibase.getName())\n            (t as Task).dependsOn configLiquibase\n            if (isCiBuild()) {\n                logger.info(\"Liquibase task {} must run after {}\", t.getName(), lockDb.getName())\n                (t as Task).dependsOn lockDb\n                (t as Task).finalizedBy unlockDb\n            }\n        }\n        \u002F\u002F На этапе CI:\n        \u002F\u002F 1. Чистим БД в 0 (dropAll)\n        \u002F\u002F 2. Обновляем БД для проверки rollback (update)\n        \u002F\u002F 3. Проверяем, что работает откат до изначального состояния (rollback tag)\n        \u002F\u002F 4. Обновляем БД для прогона тестов (update)\n        \u002F\u002F 5. Прогоняем тесты на БД\n        if (doRollbackTest()) {\n            def setTaskOrdering = { List&lt;Task\u003E lst -\u003E\n                for (int i = 0; i &lt; lst.size() - 1; i++) {\n                    logger.info(\"Task {} must run after {}\", lst[i + 1].getName(), lst[i].getName())\n                    lst[i + 1].dependsOn lst[i]\n                }\n            }\n\n            setTaskOrdering([\n                    lockDb,\n                    configLiquibase,\n                    dropAll,\n                    update,\n                    rollbackTest,\n                    restoreAfterRollbackTest,\n                    processTestResources,\n                    test,\n            ])\n\n            lockDb.finalizedBy unlockDb\n            test.finalizedBy unlockDb\n        }\n    }\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nВыделение базы и тестирование rollback можно поместить внутрь тестов. Способы запуска кода перед и после выполнения всех тестов: в Junit5 это BeforeAllCallback, в TestNG BeforeSuite.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nНа вопрос «зачем тестировать sql java-программисту» ответ — тестировать надо любой код. Бывают исключения и некоторый код тестировать нерационально в данный момент времени.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nХотелось бы узнать, как проблема тестирования взаимодействия с БД решается другими программистами? Пришли ли контейнеры в каждый дом или тестирование интеграций перекладывается на плечи тестировщиков?\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cdiv class=\"spoiler\"\u003E\u003Cb class=\"spoiler_title\"\u003EПолный листинг\u003C\u002Fb\u003E\u003Cdiv class=\"spoiler_text\"\u003E\u003Cpre\u003E\u003Ccode class=\"kotlin\"\u003Eimport groovy.json.JsonOutput\nimport groovy.json.JsonSlurper\nimport groovy.sql.Sql\nimport org.apache.tools.ant.filters.ReplaceTokens\nimport org.liquibase.gradle.LiquibaseTask\n\nplugins {\n    id 'java'\n    id 'org.liquibase.gradle' version '2.0.1'\n}\n\nconfigurations {\n    driver\n}\n\nrepositories {\n    jcenter()\n    mavenCentral()\n    maven {\n        url = \"http:\u002F\u002Fwww.datanucleus.org\u002Fdownloads\u002Fmaven2\u002F\"\n    }\n}\n\ndependencies {\n    implementation 'com.google.guava:guava:27.0.1-jre'\n    implementation 'org.springframework:spring-core:5.1.7.RELEASE'\n    implementation 'org.springframework:spring-context:5.1.7.RELEASE'\n    implementation 'org.springframework:spring-jdbc:5.1.7.RELEASE'\n\n    testImplementation 'junit:junit:4.12'\n    testImplementation 'org.springframework:spring-test:5.1.7.RELEASE'\n\n    testRuntime 'oracle:ojdbc6:11.+'\n\n    liquibaseRuntime 'org.liquibase:liquibase-core:3.6.1'\n    liquibaseRuntime 'oracle:ojdbc6:11.+'\n    liquibaseRuntime 'org.yaml:snakeyaml:1.24'\n\n\n    driver group: \"oracle\", name: \"ojdbc6\", version: \"11.+\"\n}\n\nproject.ext.localConfig = new Properties()\nlocalConfig.load(file(\"${rootDir}\u002Flocal.properties\").newReader())\n\nproject.ext.isCiBuild = { Boolean.parseBoolean(localConfig['pool.db.enabled'] as String) }\n\nproject.ext.doRollbackTest = { Boolean.parseBoolean(localConfig['test.rollback.enabled'] as String) }\n\ntask configLiquibase {\n    doLast {\n        liquibase {\n            activities {\n                testdb {\n                    changeLogFile 'changelog.yaml'\n                    url localConfig['app.db.url']\n                    driver localConfig['app.db.driverClass']\n                    username localConfig['app.db.username']\n                    password localConfig['app.db.password']\n                    logLevel 'debug'\n                    classpath \"${project.projectDir}\u002Fdb\"\n                    contexts 'main'\n                }\n                runList = 'testdb'\n            }\n        }\n    }\n}\n\ntask initDriver {\n    doLast {\n        ClassLoader loader = GroovyObject.class.classLoader\n        configurations.driver.each { File file -\u003E\n            loader.addURL(file.toURL())\n        }\n    }\n}\n\nproject.ext.createSqlInstance = {\n    return Sql.newInstance(\n            url: localConfig[\"pool.db.url\"],\n            user: localConfig[\"pool.db.username\"],\n            password: localConfig[\"pool.db.password\"],\n            driver: localConfig[\"pool.db.driverClass\"])\n}\n\ntask initDbPool {\n    dependsOn initDriver\n    doLast {\n        Integer poolSize = 10\n        Sql sql = createSqlInstance() as Sql\n        String tableName = localConfig[\"pool.db.referenceTable\"]\n        String baseName = localConfig[\"pool.db.baseName\"]\n        String basePass = localConfig[\"pool.db.basePass\"]\n        String token = \"{id}\"\n        List tableExists = sql.rows(\"select table_name from all_tables where table_name=?\", [tableName])\n        assert tableExists.isEmpty()\n        sql.execute(\"\"\"\n            CREATE TABLE ${tableName} (\n            ID NUMBER(2) NOT NULL PRIMARY KEY,\n            METADATA VARCHAR2(200) NOT NULL,\n            PROCESSED TIMESTAMP NULL,\n            GUID VARCHAR2(36) NULL)\n        \"\"\", [])\n\n        for (Integer i = 0 ; i &lt; poolSize ; i++) {\n            String username = baseName.replace(token, i.toString())\n            String password = basePass.replace(token, i.toString())\n            sql.execute(\"\"\"\n                CREATE USER ${username}\n                IDENTIFIED BY \"${password}\"\n                DEFAULT TABLESPACE USERS\n                TEMPORARY TABLESPACE TEMP\n                PROFILE DEFAULT\n                QUOTA UNLIMITED ON USERS\n            \"\"\", [])\n            sql.execute(\"grant connect to ${username}\", [])\n            sql.execute(\"grant create sequence to ${username}\", [])\n            sql.execute(\"grant create session to ${username}\", [])\n            sql.execute(\"grant create table to ${username}\", [])\n            String metadata = JsonOutput.toJson([\n                \"app.db.driverClass\": localConfig[\"pool.db.driverClass\"],\n                \"app.db.url\": localConfig[\"pool.db.url\"],\n                \"app.db.username\": username,\n                \"app.db.password\": password\n                    ])\n\n            sql.execute(\"\"\"\n                INSERT INTO ${tableName} (id, metadata)\n                values (?, ?)\n            \"\"\", [i, metadata])\n        }\n    }\n}\n\ntask lockDb {\n    dependsOn initDriver\n    onlyIf isCiBuild\n    doLast {\n        project.ext.lockUid = UUID.randomUUID().toString()\n        String tableName = localConfig[\"pool.db.referenceTable\"]\n        Sql sql = createSqlInstance() as Sql\n        sql.executeUpdate(\"\"\"UPDATE ${tableName} SET GUID = ?, PROCESSED = SYSDATE\n                WHERE ID IN (\n                    SELECT ID FROM (\n                        SELECT ID, ROW_NUMBER() OVER (ORDER BY PROCESSED) AS RN\n                        FROM ${tableName} WHERE GUID IS NULL OR PROCESSED &lt; (SYSDATE - NUMTODSINTERVAL(?, 'MINUTE'))\n                    ) WHERE RN = 1\n                )\n                \"\"\", [lockUid, 15])\n\n        def meta = sql.firstRow(\"SELECT METADATA FROM ${tableName} WHERE GUID = ?\", [lockUid])\n        assert meta != null, \"No free databases in pool\"\n        def slurper = new JsonSlurper()\n        Map metadata = slurper.parseText(meta[\"METADATA\"] as String) as Map\n        localConfig.putAll(metadata)\n        logger.info(\"Database locked, {}\", metadata)\n    }\n}\n\ntask unlockDb {\n    dependsOn lockDb \u002F\u002F init lockUid\n    onlyIf isCiBuild\n    doLast {\n        try {\n            String tableName = localConfig[\"pool.db.referenceTable\"]\n            Sql sql = createSqlInstance() as Sql\n            sql.executeUpdate(\"UPDATE ${tableName} SET GUID = NULL WHERE GUID = ?\",\n                    [lockUid])\n            logger.info(\"Database unlocked\")\n        } catch (ignored) {\n            logger.error(ignored)\n        }\n    }\n}\n\nconfigure([processResources, processTestResources]) { Task t -\u003E\n    if (project.ext.isCiBuild()) {\n        t.outputs.upToDateWhen { false }\n    }\n    t.filesMatching('**\u002F*.properties') {\n        filter(ReplaceTokens, tokens: localConfig, beginToken: '${', endToken: '}')\n    }\n}\n\ntask restoreAfterRollbackTest(type: LiquibaseTask) {\n    command = 'update'\n}\n\ntask rollbackTest(type: LiquibaseTask) {\n    dependsOn lockDb\n    command = 'rollback'\n    requiresValue = true\n    doFirst {\n        project.ext.liquibaseCommandValue = localConfig['test.rollback.tag']\n    }\n    doLast {\n        project.ext.liquibaseCommandValue = null\n    }\n}\n\nconfigure([project]) {\n    tasks.withType(LiquibaseTask.class) { LiquibaseTask t -\u003E\n        logger.info(\"Liquibase task {} must run after {}\", t.getName(), configLiquibase.getName())\n        (t as Task).dependsOn configLiquibase\n        if (isCiBuild()) {\n            logger.info(\"Liquibase task {} must run after {}\", t.getName(), lockDb.getName())\n            (t as Task).dependsOn lockDb\n            (t as Task).finalizedBy unlockDb\n        }\n    }\n    \u002F\u002F На этапе CI:\n    \u002F\u002F 1. Чистим БД в 0 (dropAll)\n    \u002F\u002F 2. Обновляем БД для проверки rollback (update)\n    \u002F\u002F 3. Проверяем, что работает откат до изначального состояния (rollback tag)\n    \u002F\u002F 4. Обновляем БД для прогона тестов (update)\n    \u002F\u002F 5. Прогоняем тесты на БД\n    if (doRollbackTest()) {\n        def setTaskOrdering = { List&lt;Task\u003E lst -\u003E\n            for (int i = 0; i &lt; lst.size() - 1; i++) {\n                logger.info(\"Task {} must run after {}\", lst[i + 1].getName(), lst[i].getName())\n                lst[i + 1].dependsOn lst[i]\n            }\n        }\n\n        setTaskOrdering([\n                lockDb,\n                configLiquibase,\n                dropAll,\n                update,\n                rollbackTest,\n                restoreAfterRollbackTest,\n                processTestResources,\n                test,\n        ])\n\n        lockDb.finalizedBy unlockDb\n        test.finalizedBy unlockDb\n    }\n}\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"bash\"\u003Epool.db.enabled=false\ntest.rollback.enabled=true\n\npool.db.driverClass=oracle.jdbc.driver.OracleDriver\npool.db.url=jdbc:oracle:thin:@localhost:1527:ORCLCDB\npool.db.username=SYSTEM\npool.db.password=Oradoc_db1\n\npool.db.referenceTable=c##test_user1.REF_TABLE\npool.db.baseName=C##CI_SCHEMA_{id}\npool.db.basePass=CI_SCHEMA_{id}_PASS\n\napp.db.driverClass=\napp.db.url=\napp.db.username=\napp.db.password=\n\ntest.rollback.tag=version_1\n\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003C\u002Fdiv\u003E\u003C\u002Fdiv\u003E\u003C\u002Fdiv\u003E","tags":[{"titleHtml":"gradle"},{"titleHtml":"тестирование"},{"titleHtml":"непрерывная интеграция"}],"metadata":{"stylesUrls":[],"scriptUrls":[],"shareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F452722\u002Faa73647c1646c3ffbfff260b1b5c262d\u002F","shareImageWidth":1200,"shareImageHeight":630,"vkShareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F452722\u002Faa73647c1646c3ffbfff260b1b5c262d\u002F?format=vk","schemaJsonLd":"{\"@context\":\"http:\\\u002F\\\u002Fschema.org\",\"@type\":\"Article\",\"mainEntityOfPage\":{\"@type\":\"WebPage\",\"@id\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fru\\\u002Fpost\\\u002F452722\\\u002F\"},\"headline\":\"Подружить CI, unit-тесты и базу данных\",\"datePublished\":\"2019-05-21T08:13:11+03:00\",\"dateModified\":\"2019-05-21T10:31:40+03:00\",\"author\":{\"@type\":\"Person\",\"name\":\"kotbajan\"},\"publisher\":{\"@type\":\"Organization\",\"name\":\"Habr\",\"logo\":{\"@type\":\"ImageObject\",\"url\":\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fa_\\\u002Flk\\\u002F9m\\\u002Fa_lk9mjkccjox-zccjrpfolmkmq.png\"}},\"description\":\"Статья про тестирование взаимодействия с БД в CI. Я видел несколько решений использующих docker и testcontainers, но у меня есть своё и им я хочу поделиться.  М...\",\"url\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fru\\\u002Fpost\\\u002F452722\\\u002F#post-content-body\",\"about\":[\"h_gradle\",\"f_develop\"],\"image\":[\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fp9\\\u002F2f\\\u002Fhw\\\u002Fp92fhwlfahzagt8w9wzxpfclgzw.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fjs\\\u002Fro\\\u002Fnh\\\u002Fjsronhgbydvhziosboj6velwb5w.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fmy\\\u002F64\\\u002Fhm\\\u002Fmy64hmqfabt8qg0jcuz-xwiddvi.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Ffr\\\u002Flb\\\u002Fxf\\\u002Ffrlbxfbj6ck-8pdbhff0v5kpeta.png\"]}","metaDescription":"Статья про тестирование взаимодействия с БД в CI. Я видел несколько решений использующих docker и testcontainers, но у меня есть своё и им я хочу поделиться.\r\n\r\nМой прошлый java проект был тесно...","mainImageUrl":null,"amp":false},"polls":[],"commentsEnabled":true,"rulesRemindEnabled":false,"votesEnabled":true,"status":"published","plannedPublishTime":null,"checked":null,"isEditorial":false}},"articlesIds":{},"isLoading":false,"pagesCount":{},"route":{},"reasonsList":null,"view":"cards","lastVisitedRoute":{},"ssrCommentsArticleIds":[""],"karma":{}},"authorContribution":{"authors":{}},"betaTest":{"currentAnnouncement":null,"announcements":{},"announcementCards":null,"announcementComments":{},"announcementCommentThreads":{},"announcementCommentingStatuses":{},"archivedList":[]},"authorStatistics":{"articleRefs":{},"articleIds":{},"pagesCount":{},"route":{},"viewsCount":[],"maxStatsCount":{}},"career":{"seoLandings":[],"hubs":"gradle"},"comments":{"articleComments":{},"searchCommentsResults":null,"previewComment":null,"pagesCount":null,"commentAccess":{},"scrollParents":{},"pageArticleComments":{"lastViewedComment":0,"postId":null,"lastCommentTimestamp":"","moderated":[],"moderatedIds":[],"commentRoute":""}},"companies":{"companyRefs":{},"companyIds":{},"companyTopIds":{},"pagesCount":{},"companyProfiles":{},"companiesCategories":[],"companiesCategoriesTotalCount":0,"companiesWidgets":{},"companiesWorkers":{},"companiesFans":{},"route":{},"isLoading":false,"companyWorkersLoading":false,"companyFansLoading":false,"vacancies":{}},"companiesContribution":{"hubs":{},"flows":{},"companyRefs":{}},"companyHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"conversation":{"messages":[],"respondent":null,"isLoadMore":false},"conversations":{"conversations":[],"unreadCount":0,"pagesCount":0,"isLoadMore":false},"desktopState":{"desktopFl":null,"desktopHl":null,"isChecked":false,"isLoginDemanded":false},"dfp":{"slotsDict":{}},"docs":{"menu":{},"articles":{},"mainMenu":[],"loading":{"main":false,"dropdown":false,"article":false}},"feature":{"isProbablyVisible":"true"},"flows":{"flows":[{"alias":"develop","id":1,"route":{"name":"FLOW_PAGE","params":{"flowName":"develop"}}},{"alias":"admin","id":6,"route":{"name":"FLOW_PAGE","params":{"flowName":"admin"}}},{"alias":"design","id":2,"route":{"name":"FLOW_PAGE","params":{"flowName":"design"}}},{"alias":"management","id":3,"route":{"name":"FLOW_PAGE","params":{"flowName":"management"}}},{"alias":"marketing","id":4,"route":{"name":"FLOW_PAGE","params":{"flowName":"marketing"}}},{"alias":"popsci","id":7,"route":{"name":"FLOW_PAGE","params":{"flowName":"popsci"}}}]},"global":{"isPwa":false,"device":"desktop","isHabrCom":true},"hubs":{"hubRefs":{},"hubIds":{},"pagesCount":{},"isLoading":false,"route":{}},"hubsBlock":{"hubRefs":{},"hubIds":{}},"i18n":{"fl":"ru","hl":"ru"},"info":{"infoPage":{},"isLoading":true},"location":{"urlStruct":{"protocol":null,"slashes":null,"auth":null,"host":null,"port":null,"hostname":null,"hash":null,"search":null,"query":{},"pathname":null,"path":null,"href":""},"searchQuery":null},"me":{"user":null,"ppgDemanded":false,"karmaResetInfo":{"canReincarnate":null,"wasReincarnated":null,"currentScore":null},"notes":null},"mostReadingList":{"mostReadingListIds":[],"mostReadingListRefs":null,"promoPost":null},"pinnedPost":{"pinnedPost":null},"ppa":{"articles":{},"card":null,"transactions":null,"totalTransactions":null,"isAccessible":null},"projectsBlocks":{"activeBlocks":{}},"pullRefresh":{"shouldRefresh":false},"sandbox":{"articleIds":[],"articleRefs":{},"pagesCount":null,"route":{},"lastVisitedRoute":{},"isLoading":false},"settingsOther":{"inputs":{"uiLang":{"errors":[],"ref":null,"value":""},"articlesLangEnglish":{"errors":[],"ref":null,"value":false},"articlesLangRussian":{"errors":[],"ref":null,"value":false},"agreement":{"errors":[],"ref":null,"value":false},"email":{"errors":[],"ref":null,"value":true},"digest":{"errors":[],"ref":null,"value":true}}},"similarList":{"similarListIds":[],"similarListRefs":null},"ssr":{"error":null,"isDataLoaded":false,"isDataLoading":false,"isHydrationFailed":false,"isServer":false},"userHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"userInvites":{"availableInvites":0,"usedInvitesIds":[],"usedInvitesRefs":{},"usedInvitesPagesCount":0,"unusedInvitesIds":[],"unusedInvitesRefs":{},"unusedInvitesPagesCount":0},"users":{"authorRefs":{},"authorIds":{},"pagesCount":{},"authorProfiles":{},"userHubs":{},"userInvitations":{},"authorFollowers":{},"authorFollowed":{},"karmaStats":[],"statistics":null,"isLoading":false,"authorFollowersLoading":false,"authorFollowedLoading":false,"userHubsLoading":false,"userInvitationsLoading":false,"route":{}},"viewport":{"prevScrollY":{},"scrollY":0,"width":0},"tracker":{"items":{},"pagesCache":{},"markedViewedSilently":{},"markedRead":{},"unreadCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null},"unviewedCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null}}};(function(){var s;(s=document.currentScript||document.scripts[document.scripts.length-1]).parentNode.removeChild(s);}());</script>
+<script src="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" defer></script><script src="https://assets.habr.com/habr-web/js/app.c0af73e7.js" defer></script>
+
+
+
+    <script>
+      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+        (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+        m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+      })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+    </script>
+  
+  <script type="text/javascript" >
+    (function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+    m[i].l=1*new Date();k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})
+    (window, document, "script", "https://mc.yandex.ru/metrika/tag.js", "ym");
+
+    ym(24049213, "init", {
+      defer:true,
+      trackLinks:true,
+      accurateTrackBounce:true,
+      webvisor:false,
+    });
+  </script>
+  <noscript>
+    <div>
+      <img src="https://mc.yandex.ru/watch/24049213" style="position:absolute; left:-9999px;" alt="" />
+    </div>
+  </noscript>
+  
+    <script type="text/javascript">
+      window.addEventListener('load', function () {
+        setTimeout(() => {
+          const img = new Image();
+          img.src = 'https://vk.com/rtrg?p=VK-RTRG-421343-57vKE';
+        }, 0);
+      });
+    </script>
+  
+</body>
+</html>

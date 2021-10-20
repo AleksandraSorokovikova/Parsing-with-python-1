@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="ru" data-vue-meta="%7B%22lang%22:%7B%22ssr%22:%22ru%22%7D%7D">
+<head >
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
+  <title>Реверс-инжиниринг клиента Dropbox / Хабр</title>
+  <style>
+    /* cyrillic-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSxf6TF0.woff2) format('woff2');
+      unicode-range: U+0460-052F, U+1C80-1C88, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+    }
+
+    /* cyrillic */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveQhf6TF0.woff2) format('woff2');
+      unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+    }
+
+    /* latin-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSBf6TF0.woff2) format('woff2');
+      unicode-range: U+0100-024F, U+0259, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20CF, U+2113, U+2C60-2C7F, U+A720-A7FF;
+    }
+
+    /* latin */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveRhf6.woff2) format('woff2');
+      unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+    }
+  </style>
+  <link rel="preload" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" as="script"><link rel="preload" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/app.c0af73e7.js" as="script">
+  <link rel="stylesheet" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css"><link rel="stylesheet" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css">
+  <script>window.i18nFetch = new Promise((res, rej) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open('GET', '/js/i18n/ru-compiled.85eb77f0b17c8235e7b64b9f81ea5ec2.json');
+          xhr.responseType = 'json';
+          xhr.onload = function(e) {
+            if (this.status === 200) {
+              res({ru: xhr.response});
+            } else {
+              rej(e);
+            }
+          };
+          xhr.send();
+        });</script>
+  
+  <script data-vue-meta="ssr" src="/js/ads.js" onload="window['zhY4i4nJ9K'] = true" data-vmid="checkad"></script><script data-vue-meta="ssr" type="application/ld+json" data-vmid="ldjson-schema">{"@context":"http:\/\/schema.org","@type":"Article","mainEntityOfPage":{"@type":"WebPage","@id":"https:\/\/habr.com\/ru\/post\/452276\/"},"headline":"Реверс-инжиниринг клиента Dropbox","datePublished":"2019-05-17T12:38:23+03:00","dateModified":"2019-05-17T13:52:04+03:00","author":{"@type":"Person","name":"Анатолий Ализар"},"publisher":{"@type":"Organization","name":"Habr","logo":{"@type":"ImageObject","url":"https:\/\/habrastorage.org\/webt\/a_\/lk\/9m\/a_lk9mjkccjox-zccjrpfolmkmq.png"}},"description":"TL;DR. В статье рассказывается об обратной разработке клиента Dropbox, взломе механизмов обфускации и декомпиляции клиента на Python, а также изменении программы...","url":"https:\/\/habr.com\/ru\/post\/452276\/#post-content-body","about":["h_python","h_debug","h_reverse-engineering","h_soft","f_develop","f_popsci"],"image":["https:\/\/habrastorage.org\/getpro\/habr\/post_images\/e83\/d0a\/a4f\/e83d0aa4f475709108cb1cfc0cb16d74.png","https:\/\/habrastorage.org\/getpro\/habr\/post_images\/619\/c68\/385\/619c6838574ff7023a0dbdf27b880b2d.png"]}</script>
+  <script src="//www.googletagservices.com/tag/js/gpt.js" async></script>
+  <style>.grecaptcha-badge{visibility: hidden;}</style>
+  <meta name="habr-version" content="2.49.0">
+  
+  <meta data-vue-meta="ssr" property="fb:app_id" content="444736788986613"><meta data-vue-meta="ssr" property="fb:pages" content="472597926099084"><meta data-vue-meta="ssr" name="twitter:card" content="summary_large_image"><meta data-vue-meta="ssr" name="twitter:site" content="@habr_eng"><meta data-vue-meta="ssr" property="og:title" content="Реверс-инжиниринг клиента Dropbox" data-vmid="og:title"><meta data-vue-meta="ssr" name="twitter:title" content="Реверс-инжиниринг клиента Dropbox" data-vmid="twitter:title"><meta data-vue-meta="ssr" name="aiturec:title" content="Реверс-инжиниринг клиента Dropbox" data-vmid="aiturec:title"><meta data-vue-meta="ssr" name="description" content="TL;DR. В статье рассказывается об обратной разработке клиента Dropbox, взломе механизмов обфускации и декомпиляции клиента на Python, а также изменении программы для активации функций отладки, которые..." data-vmid="description"><meta data-vue-meta="ssr" itemprop="description" content="TL;DR. В статье рассказывается об обратной разработке клиента Dropbox, взломе механизмов обфускации и декомпиляции клиента на Python, а также изменении программы для активации функций отладки, которые..." data-vmid="description:itemprop"><meta data-vue-meta="ssr" property="og:description" content="TL;DR. В статье рассказывается об обратной разработке клиента Dropbox, взломе механизмов обфускации и декомпиляции клиента на Python, а также изменении программы для активации функций отладки, которые..." data-vmid="og:description"><meta data-vue-meta="ssr" name="twitter:description" content="TL;DR. В статье рассказывается об обратной разработке клиента Dropbox, взломе механизмов обфускации и декомпиляции клиента на Python, а также изменении программы для активации функций отладки, которые..." data-vmid="twitter:description"><meta data-vue-meta="ssr" property="aiturec:description" content="TL;DR. В статье рассказывается об обратной разработке клиента Dropbox, взломе механизмов обфускации и декомпиляции клиента на Python, а также изменении программы для активации функций отладки, которые..." data-vmid="aiturec:description"><meta data-vue-meta="ssr" itemprop="image" content="https://habr.com/share/publication/452276/acffc490872378ac7d69d88429b92ba5/" data-vmid="image:itemprop"><meta data-vue-meta="ssr" property="og:image" content="https://habr.com/share/publication/452276/acffc490872378ac7d69d88429b92ba5/" data-vmid="og:image"><meta data-vue-meta="ssr" property="aiturec:image" content="https://habr.com/share/publication/452276/acffc490872378ac7d69d88429b92ba5/" data-vmid="aiturec:image"><meta data-vue-meta="ssr" name="twitter:image" content="https://habr.com/share/publication/452276/acffc490872378ac7d69d88429b92ba5/" data-vmid="twitter:image"><meta data-vue-meta="ssr" property="vk:image" content="https://habr.com/share/publication/452276/acffc490872378ac7d69d88429b92ba5/" data-vmid="vk:image"><meta data-vue-meta="ssr" property="aiturec:item_id" content="452276" data-vmid="aiturec:item_id"><meta data-vue-meta="ssr" property="aiturec:datetime" content="2019-05-17T09:38:23.000Z" data-vmid="aiturec:datetime"><meta data-vue-meta="ssr" property="og:type" content="article" data-vmid="og:type"><meta data-vue-meta="ssr" property="og:locale" content="ru_RU" data-vmid="og:locale"><meta data-vue-meta="ssr" property="og:image:width" content="1200" data-vmid="og:image:width"><meta data-vue-meta="ssr" property="og:image:height" content="630" data-vmid="og:image:height">
+  <link data-vue-meta="ssr" href="https://habr.com/ru/rss/post/452276/?fl=ru" type="application/rss+xml" title="" rel="alternate" name="rss"><link data-vue-meta="ssr" href="https://habr.com/ru/post/452276/" rel="canonical" data-vmid="canonical"><link data-vue-meta="ssr" data-vmid="hreflang"><link data-vue-meta="ssr" image_src="image" href="https://habr.com/share/publication/452276/acffc490872378ac7d69d88429b92ba5/" data-vmid="image:href">
+  <meta name="apple-mobile-web-app-status-bar-style" content="#303b44">
+  <meta name="msapplication-TileColor" content="#629FBC">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="16x16"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-16.png"
+  >
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="32x32"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-32.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="76x76"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-76.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="120x120"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="152x152"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-152.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="180x180"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-180.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="256x256"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-256.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1136x640.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2436x1125.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1792x828.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_828x1792.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1334x750.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2208x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1125x2436.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2208.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2732x2048.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2688x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2224x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_750x1334.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x2732.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2388x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2224.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_640x1136.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2388.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x1536.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1536x2048.png"
+  >
+  <link
+    rel="mask-icon"
+    color="#77a2b6"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.svg"
+  >
+  <link
+    crossorigin="use-credentials"
+    href="/manifest.webmanifest"
+    rel="manifest"
+  >
+</head>
+<body>
+
+
+<div id="app" data-server-rendered="true" data-async-called="true"><div class="tm-layout__wrapper"><!----> <div></div> <!----> <header class="tm-header"><div class="tm-page-width"><div class="tm-header__container"><!----> <span class="tm-header__logo-wrap"><a href="/ru/" class="tm-header__logo tm-header__logo_ru"><svg height="16" width="16" class="tm-svg-img tm-header__icon"><title>Хабр</title> <use xlink:href="/img/habr-logo-ru.svg#logo"></use></svg></a> <span class="tm-header__beta-sign" style="display:none;">β</span></span> <div class="tm-dropdown tm-header__projects"><div class="tm-dropdown__head"><button class="tm-header__dropdown-toggle"><svg height="16" width="16" class="tm-svg-img tm-header__icon tm-header__icon_dropdown"><title>Открыть список</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#arrow-down"></use></svg></button></div> <!----></div> <a href="/ru/sandbox/start/" class="tm-header__become-author-btn">
+            Как стать автором
+          </a> <div class="tm-feature tm-header__feature tm-feature_variant-inline"><!----></div> <!----> <!----></div></div></header> <div class="tm-layout"><div class="tm-page-progress-bar"></div> <div data-menu-sticky="true" class="tm-base-layout__header tm-base-layout__header_is-sticky"><div class="tm-page-width"><div class="tm-base-layout__header-wrapper"><div class="tm-main-menu"><div class="tm-main-menu__section"><nav class="tm-main-menu__section-content"><!----> <a href="/ru/all/" class="tm-main-menu__item">
+        Все потоки
+      </a> <a href="/ru/flows/develop/" class="tm-main-menu__item">
+          Разработка
+        </a><a href="/ru/flows/admin/" class="tm-main-menu__item">
+          Администрирование
+        </a><a href="/ru/flows/design/" class="tm-main-menu__item">
+          Дизайн
+        </a><a href="/ru/flows/management/" class="tm-main-menu__item">
+          Менеджмент
+        </a><a href="/ru/flows/marketing/" class="tm-main-menu__item">
+          Маркетинг
+        </a><a href="/ru/flows/popsci/" class="tm-main-menu__item">
+          Научпоп
+        </a></nav></div></div> <div class="tm-header-user-menu tm-base-layout__user-menu"><a href="/ru/search/" class="tm-header-user-menu__item tm-header-user-menu__search"><svg height="24" width="24" class="tm-svg-img tm-header-user-menu__icon tm-header-user-menu__icon_search tm-header-user-menu__icon_dark"><title>Поиск</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#search"></use></svg></a> <!----> <!----> <!----> <div class="tm-header-user-menu__item tm-header-user-menu__user_desktop"><div class="tm-dropdown"><div class="tm-dropdown__head"><svg height="24" width="24" data-test-id="menu-toggle-guest" class="tm-svg-img tm-header-user-menu__icon"><title>Профиль</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#header-user"></use></svg> <!----></div> <!----></div> <!----></div> <!----></div></div></div></div> <!----> <div class="tm-page-width"></div> <main class="tm-layout__container"><div hl="ru" data-async-called="true" class="tm-page"><div class="tm-page-width"><!----> <div class="tm-page__wrapper"><div class="tm-page__main tm-page__main_has-sidebar"><div class="pull-down"><div class="pull-down__header" style="height:0px;"><div class="pull-down__content" style="bottom:10px;"><svg height="24" width="24" class="tm-svg-img pull-down__arrow"><title>Обновить</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#pull-arrow"></use></svg></div></div> <div class="tm-article-presenter"> <div class="tm-article-presenter__body"><div class="tm-misprint-area"><div class="tm-misprint-area__wrapper"><article class="tm-article-presenter__content tm-article-presenter__content_narrow"><div class="tm-article-presenter__header"> <div class="tm-article-snippet tm-article-presenter__snippet"><div class="tm-article-snippet__meta-container"><div class="tm-article-snippet__meta"><span class="tm-user-info tm-article-snippet__author"><a href="/ru/users/m1rko/" title="m1rko" class="tm-user-info__userpic"><div class="tm-entity-image"><img alt="" height="24" loading="lazy" src="//habrastorage.org/r/w32/getpro/habr/avatars/4ec/bd0/85d/4ecbd085d692835a931d03174ff19539.png" width="24" class="tm-entity-image__pic"></div></a> <span class="tm-user-info__user"><a href="/ru/users/m1rko/" class="tm-user-info__username">
+      m1rko
+    </a> </span></span> <span class="tm-article-snippet__datetime-published"><time datetime="2019-05-17T09:38:23.000Z" title="2019-05-17, 12:38">17  мая  2019 в 12:38</time></span></div> <!----></div> <h1 lang="ru" class="tm-article-snippet__title tm-article-snippet__title_h1"><span>Реверс-инжиниринг клиента Dropbox</span></h1> <div class="tm-article-snippet__hubs"><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/python/" class="tm-article-snippet__hubs-item-link"><span>Python</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/debug/" class="tm-article-snippet__hubs-item-link"><span>Отладка</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/reverse-engineering/" class="tm-article-snippet__hubs-item-link"><span>Реверс-инжиниринг</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/soft/" class="tm-article-snippet__hubs-item-link"><span>Софт</span> <!----></a></span></div> <div class="tm-article-snippet__labels"><div class="tm-article-snippet__label"><span>
+        Перевод
+      </span></div></div> <!----> <!----></div></div> <div class="tm-article-presenter__origin"><a href="https://anvilventures.com/blog/looking-inside-the-box.html" target="_blank" class="tm-article-presenter__origin-link">
+                Автор оригинала:
+                <span>
+                  Vincent Berg
+                </span></a></div> <div data-gallery-root="" lang="ru" class="tm-article-body"><div id="post-content-body" class="article-formatted-body article-formatted-body_version-1"><div xmlns="http://www.w3.org/1999/xhtml"><i>TL;DR. В статье рассказывается об обратной разработке клиента Dropbox, взломе механизмов обфускации и декомпиляции клиента на Python, а также изменении программы для активации функций отладки, которые скрыты в обычном режиме. Если вас интересует только соответствующий код и инструкции, пролистайте до конца. На момент написания статьи код совместим с последними версиями Dropbox, основанными на интерпретаторе CPython 3.6.</i><br/>
+<br/>
+<h3>Введение</h3><br/>
+Dropbox очаровал меня сразу с момента своего появления. Концепция по-прежнему обманчиво проста. Вот папка. Кладёшь туда файлы. Он синхронизируется. Переходишь к другому устройству. Он опять синхронизируется. Папка и файлы теперь появились и там!<br/>
+<br/>
+Объём скрытой фоновой работы на самом деле поражает. Во-первых, никуда не исчезают все проблемы, с которыми приходится иметь дело при создании и обслуживании кросс-платформенного приложения для основных десктопных операционных систем (OS X, Linux, Windows). Добавьте к этому поддержку различных веб-браузеров, различных мобильных операционных систем. И мы говорим только о клиентской части. Меня интересует также бэкенд Dropbox, который позволил достичь такой масштабируемости и низкой задержки с безумно тяжёлой рабочей нагрузкой, которую создают полмиллиарда пользователей.<br/>
+<a name="habracut"></a><br/>
+Именно по этим причинам мне всегда нравилось смотреть, что Dropbox делает под капотом и как он развивался на протяжении многих лет. Примерно восемь лет назад я впервые попробовал выяснить, как на самом деле работает клиент Dropbox, когда я заметил трансляцию неизвестного трафика, находясь в отеле. Расследование показало, что это часть функции Dropbox под названием LanSync, которая позволяет быстрее синхронизироваться, если узлы Dropbox в той же локальной сети имеют доступ к тем же файлам. Однако протокол не был задокументирован, и мне хотелось узнать больше. Поэтому я решил взглянуть более подробно, и в итоге провёл реверс-инжиниринг почти всей программы. Это исследование никогда не публиковалось, хотя я иногда делился заметками с некоторыми людьми.<br/>
+<br/>
+Открыв компанию Anvil Ventures, мы с Крисом оценили ряд инструментов для хранения документов, совместного использования и совместной работы. Одним из них, очевидно, стал Dropbox, а для меня это ещё одна причина откопать старые исследования и проверить их на текущей версии клиента.<br/>
+<br/>
+<h3>Расшифровка и деобфускация</h3><br/>
+Сначала я загрузил клиент для Linux и быстро выяснил, что он написан на Python. Поскольку лицензия Python довольно разрешительна, людям легко модифицировать и распространять интерпретатор Python вместе с другими зависимостями как коммерческое программное обеспечение. Затем я приступил к реверс-инжинирингу, чтобы понять, как работает клиент.<br/>
+<br/>
+В то время файлы с байт-кодом лежали в ZIP-файле, объединённом с исполняемым бинарником. Основной двоичный файл представлял собой просто модифицированный интерпретатор Python, который загружался путём захвата механизмов импорта Python. Каждый последующий вызов импорта перенаправлялся в этот бинарник с разбором ZIP-файла. Конечно, несложно извлечь этот ZIP из бинарника. Например, полезный инструмент <a href="https://github.com/ReFirmLabs/binwalk">binwalk</a> извлекает его со всеми байт-скомпилированными файлами .pyc.<br/>
+<br/>
+Тогда я не мог сломать шифрование для файлов .pyc, а в итоге взял общий объект стандартной библиотеки Python и перекомпилировал его, внедрив внутрь «бэкдор». Теперь, когда клиент Dropbox загружал этот объект, я мог легко выполнить произвольный код Python в работающем интерпретаторе. Хотя я обнаружил это самостоятельно, тот же метод использовал Флориан Леду и Николя Рафф в <a href="http://archive.hack.lu/2012/Dropbox%20security.pdf">презентации</a> на Hack.lu в 2012 году.<br/>
+<br/>
+Возможность исследовать и манипулировать запущенным кодом в Dropbox позволила многое выяснить. В коде использовалось несколько защитных трюков, чтобы затруднить дамп <a href="https://docs.python.org/3.6/library/functions.html#compile">объектов кода</a>. Например, в обычном интерпретаторе CPython легко восстановить скомпилированный байт-код, представляющий функцию. Простой пример:<br/>
+<br/>
+<pre><code class="python">    >>> def f(i=0):
+    ...     return i * i
+    ...
+    >>> f.__code__
+    &lt;code object f at 0x109deb540, file "&lt;stdin>", line 1>
+    >>> f.__code__.co_code
+    b'|\x00|\x00\x14\x00S\x00'
+    >>> import dis
+    >>> dis.dis(f)
+      2           0 LOAD_FAST                0 (i)
+                  2 LOAD_FAST                0 (i)
+                  4 BINARY_MULTIPLY
+                  6 RETURN_VALUE
+    >>></code></pre><br/>
+Но в скомпилированной версии <i>Objects/codeobject.c</i> свойство <code>co_code</code> удалили из открытого списка. Этот member list обычно выглядит примерно так:<br/>
+<br/>
+<pre><code class="python">    static PyMemberDef code_memberlist[] = {
+    ...
+        {"co_flags",        T_INT,          OFF(co_flags),          READONLY},
+        {"co_code",         T_OBJECT,       OFF(co_code),           READONLY},
+        {"co_consts",       T_OBJECT,       OFF(co_consts),         READONLY},
+    ...
+    };</code></pre><br/>
+Исчезновение свойства <code>co_code</code> делает невозможным дамп этих объектов кода.<br/>
+<br/>
+Кроме того, были удалены другие библиотеки, такие как стандартный <a href="https://docs.python.org/3.6/library/dis.html">дизассемблер</a> Python. В итоге мне всё-таки удалось сделать дамп объектов кода в файлы, но я всё ещё не мог их декомпилировать. Потребовалось некоторое время, прежде чем я понял, что опкоды, используемые интерпретатором Dropbox, не совпадают со стандартными опкодами Python. Таким образом, нужно было разобраться в новых опкодах, чтобы переписать объекты кода обратно в оригинальный байт-код Python.<br/>
+<br/>
+Один из вариантов — <i>трансляция опкодов</i> (opcode remapping). Насколько мне известно, эту технику разработал Рич Смит и представил на <a href="https://www.youtube.com/watch?v=tYHsv7Mzv5g">Defcon 18</a>. В том выступлении он также показал инструмент <a href="https://github.com/MyNameIsMeerkat/pyREtic">pyREtic</a> для реверс-инжиниринга байт-кода Python в памяти. Кажется, код pyREtic слабо поддерживается, а инструмент нацелен на «старые» бинарники Python 2.х. Для знакомства с техниками, которые придумал Рич, очень рекомендуется посмотреть его выступление.<br/>
+<br/>
+Метод трансляции опкодов берёт все объекты кода стандартной библиотеки Python и сравнивает их с объектами, извлечёнными из бинарника Dropbox. Например, объекты кода из <i>hashlib.pyc</i> или <i>socket.pyc</i>, которые находятся в стандартной библиотеке. Скажем, если каждый раз опкод <code>0x43</code> соответствует деобфусцированному опкоду <code>0x21</code>, можно постепенно построить таблицу трансляции для перезаписи объектов кода. Затем эти объекты кода можно провести через декомпилятор Python. Чтобы делать дампы, по-прежнему нужен исправленный интерпретатор с корректным объектом <code>co_code</code>.<br/>
+<br/>
+Другой вариант — взломать формат сериализации. В Python сериализация называется <a href="https://docs.python.org/3.6/library/marshal.html">маршалинг</a>. Десериализация обфусцированных файлов обычным способом не сработала. При обратной разработке двоичного файла в IDA Pro я обнаружил этап расшифровки. Насколько я знаю, первым что-то публично опубликовал на эту тему Хаген Фрич в <a href="https://itooktheredpill.irgendwo.org/2012/dropbox-decrypt/">своём блоге</a>. Там он ссылается на изменения в новых версиях Dropbox (когда Dropbox перешёл с Python 2.5 на Python 2.7). Алгоритм работает следующим образом:<br/>
+<br/>
+<ul>
+<li>При распаковке pyc-файла считывается заголовок для определения версии маршалинга. Этот формат не документирован, за исключением самой реализации CPython.<br/>
+</li>
+<li>Формат определяет список типов, которые в нём закодированы. Типы <code>True</code>, <code>False</code>, <code>floats</code> и т. д., но самый важный — тип для вышеупомянутых объектов кода Python, <code>code object</code>.<br/>
+</li>
+<li>При загрузке <code>code object</code> сначала считываются два дополнительных значения из входного файла.<br/>
+</li>
+<li>Первое из них — 32-битное значение <code>random</code>.<br/>
+</li>
+<li>Второе — 32-битное значение <code>length</code>, обозначающее размер сериализированного объекта кода.<br/>
+</li>
+<li>Затем значения <code>rand</code> и <code>length</code> подаются в простую функцию RNG, которая генерирует <code>seed</code>.<br/>
+</li>
+<li>Данный сид поставляется в <a href="https://en.wikipedia.org/wiki/Mersenne_Twister">вихрь Мерсенна</a>, который генерирует четыре 32-битных значения.<br/>
+</li>
+<li>Объединённые вместе, эти четыре значения дают ключ шифрования для сериализированных данных. Алгоритм шифрования затем расшифровывает данные с помощью <a href="https://en.wikipedia.org/wiki/Tiny_Encryption_Algorithm">Tiny Encryption Algorithm</a>.</li>
+</ul><br/>
+В своём коде я с нуля написал процедуру демаршалинга на Python. Часть, которая расшифровывает объекты кода, выглядит примерно как фрагмент ниже. Следует отметить, что этот метод придётся вызывать рекурсивно. Объект верхнего уровня для файла pyc — это объект кода, который сам содержит объекты кода, которые могут быть классами, функциями или лямбдами. В свою очередь, они тоже могут содержать методы, функции или лямбды. Всё это объекты кода вниз по иерархии!<br/>
+<br/>
+<pre><code class="python">    def load_code(self):
+        rand = self.r_long()
+        length = self.r_long()
+    
+        seed = rng(rand, length)
+        mt = MT19937(seed)
+        key = []
+        for i in range(0, 4):
+            key.append(mt.extract_number())
+    
+        # take care of padding for size calculation
+        sz = (length + 15) &amp; ~0xf
+        words = sz / 4
+    
+        # convert data to list of dwords
+        buf = self._read(sz)
+        data = list(struct.unpack("&lt;%dL" % words, buf))
+    
+        # decrypt and convert back to stream of bytes
+        data = tea.tea_decipher(data, key)
+        data = struct.pack("&lt;%dL" % words, *data)</code></pre><br/>
+Возможность расшифровать объекты кода означает, что после десериализации процедур нужно переписать фактический байт-код. Объекты кода содержат информацию о номерах строк, константах и другую информацию. Фактический байт-код находится в объекте <code>co_code</code>. Когда мы построили таблицу трансляции опкодов, то можем просто заменить обфусцированные значения Dropbox на стандартные эквиваленты Python 3.6.<br/>
+<br/>
+Теперь объекты кода в обычном формате Python 3.6, и их можно передать в декомпилятор. Качество декомпиляторов Python значительно выросло благодаря проекту <a href="https://github.com/rocky/python-uncompyle6">uncompyle6</a> Р. Бернштейна. Декомпиляция дала довольно хороший результат, и я смог собрать всё вместе в инструменте, который в меру своих возможностей декомпилирует текущую версию клиента Dropbox.<br/>
+<br/>
+Если вы клонируете этот <a href="https://github.com/anvilventures/lookinsidethebox">репозиторий</a> и выполните инструкции, результат будет примерно таким:<br/>
+<br/>
+<pre>    ...
+    __main__ - INFO - Successfully decompiled dropbox/client/features/browse_search/__init__.pyc
+    __main__ - INFO - Decrypting, patching and decompiling _bootstrap_overrides.pyc
+    __main__ - INFO - Successfully decompiled _bootstrap_overrides.pyc
+    __main__ - INFO - Processed 3713 files (3591 succesfully decompiled, 122 failed)
+    opcodemap - WARNING - NOT writing opcode map as force overwrite not set</pre><br/>
+Это означает, что теперь у вас есть каталог <code>out/</code> с декомпилированной версией исходного кода Dropbox.<br/>
+<br/>
+<h3>Включение трассировки Dropbox</h3><br/>
+В открытых исходниках я начал искать что-нибудь интересное, и моё внимание привлёк следующий фрагмент. Обработчики трассировки в <code>out/dropbox/client/high_trace.py</code> устанавливаются только в том случае, если сборка не заморожена или в строке <code>1430</code> не установлен ограничивающие функциональность «волшебный ключ» или файл куки.<br/>
+<br/>
+<pre><code class="python">    1424 def install_global_trace_handlers(flags=None, args=None):
+    1425     global _tracing_initialized
+    1426     if _tracing_initialized:
+    1427         TRACE('!! Already enabled tracing system')
+    1428         return
+    1429     _tracing_initialized = True
+    1430     if not build_number.is_frozen() or magic_trace_key_is_set() or limited_support_cookie_is_set():
+    1431         if not os.getenv('DBNOLOCALTRACE'):
+    1432             add_trace_handler(db_thread(LtraceThread)().trace)
+    1433         if os.getenv('DBTRACEFILE'):
+    1434             pass</code></pre><br/>
+Упоминание frozen-билдов относится к внутренним отладочным билдам Dropbox. А немного выше в этом же файле можно найти такие строчки:<br/>
+<br/>
+<pre><code class="python">    272 def is_valid_time_limited_cookie(cookie):
+    273     try:
+    274         try:
+    275             t_when = int(cookie[:8], 16) ^ 1686035233
+    276         except ValueError:
+    277             return False
+    278         else:
+    279             if abs(time.time() - t_when) &lt; SECONDS_PER_DAY * 2 and md5(make_bytes(cookie[:8]) + b'traceme').hexdigest()[:6] == cookie[8:]:
+    280                 return True
+    281     except Exception:
+    282         report_exception()
+    283
+    284     return False
+    285
+    286
+    287 def limited_support_cookie_is_set():
+    288     dbdev = os.getenv('DBDEV')
+    289     return dbdev is not None and is_valid_time_limited_cookie(dbdev)
+    build_number/environment.py</code></pre><br/>
+Как видно из метода <code>limited_support_cookie_is_set</code> в строке <code>287</code>, трассировка включается только в том случае, если переменная среды с названием <code>DBDEV</code> правильно установлена в куки с ограниченным временем жизни. Что ж, это интересно! И теперь мы знаем, как генерировать такие куки, ограниченные по времени. Судя по названию, инженеры Dropbox могут генерировать такие куки, а затем временно включать трассировку в отдельных случаях, когда это требуется для поддержки клиентов. После перезагрузки Dropbox или перезагрузки компьютера, даже если указанный файл cookie всё ещё на месте, он автоматически истекает. Предполагаю, что это должно предотвратить, например, ухудшение производительности из-за непрерывной трассировки. Это также затрудняет обратную разработку Dropbox.<br/>
+<br/>
+Однако небольшой скрипт может просто постоянно генерировать и устанавливать эти куки. Что-то вроде этого:<br/>
+<br/>
+<pre><code class="python">    #!/usr/bin/env python3
+    def output_env(name, value):
+        print("%s=%s; export %s" % (name, value, name))
+    
+    def generate_time_cookie():
+        t = int(time.time())
+        c = 1686035233
+        s = "%.8x" % (t ^ c)
+        h = md5(s.encode("utf-8?") + b"traceme").hexdigest()
+        ret = "%s%s" % (s, h[:6])
+        return ret
+    c = generate_time_cookie()
+    output_env("DBDEV", c)</code></pre><br/>
+Затем создаётся файл cookie на основе времени:<br/>
+<br/>
+<pre><code class="python">    $ python3 setenv.py
+    DBDEV=38b28b3f349714; export DBDEV;</code></pre><br/>
+Затем правильно загрузите выдачу этого скрипта в окружение и запустите клиент Dropbox.<br/>
+<br/>
+<pre><code class="python">    $ eval `python3 setenv.py`
+    $ ~/.dropbox-dist/dropbox-lnx_64-71.4.108/dropbox</code></pre><br/>
+Это включает вывод трассировки, с разноцветным форматированием и всё такое. Выглядит примерно как в этом незарегистрированном клиенте:<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/getpro/habr/post_images/e83/d0a/a4f/e83d0aa4f475709108cb1cfc0cb16d74.png"/><br/>
+<br/>
+<h3>Внедрение нового кода</h3><br/>
+Всё это слегка забавно. Изучая дальше декомпилированный код, мы находим <code>out/build_number/environment.pyc</code>. Там есть функция, которая проверяет, установлен ли определённый magic key. Этот ключ не закодирован жёстко в коде, но сравнивается с хэшем SHA-256. Вот соответствующий фрагмент.<br/>
+<br/>
+<pre><code class="python">      1 import hashlib, os
+      2 from typing import Optional, Text
+      3 _MAGIC_TRACE_KEY_IS_SET = None
+      4
+      5 def magic_trace_key_is_set():
+      6     global _MAGIC_TRACE_KEY_IS_SET
+      7     if _MAGIC_TRACE_KEY_IS_SET is None:
+      8         dbdev = os.getenv('DBDEV') or ''
+      9         if isinstance(dbdev, Text):
+     10             bytes_dbdev = dbdev.encode('ascii')
+     11         else:
+     12             bytes_dbdev = dbdev
+     13         dbdev_hash = hashlib.sha256(bytes_dbdev).hexdigest()
+     14         _MAGIC_TRACE_KEY_IS_SET = dbdev_hash == 'e27eae61e774b19f4053361e523c771a92e838026da42c60e6b097d9cb2bc825'
+     15     return _MAGIC_TRACE_KEY_IS_SET</code></pre><br/>
+Этот метод многократно вызывается из разных мест в коде для проверки, установлен ли волшебный ключ трассировки. Я попытался было взломать хеш SHA-256 брутфорсом <a href="https://www.openwall.com/john/">John the Ripper</a>, но простой перебор идёт слишком долго, а я не мог сократить количество вариантов, потому что не было догадок о содержимом. В Dropbox у разработчиков может быть конкретный жёстко закодированный ключ разработки, который они устанавливают в случае необходимости, активируя режим работы клиента с «волшебным ключом» для трассировки.<br/>
+<br/>
+Это меня раздражало, поскольку я хотел найти быстрый и простой способ запустить Dropbox с этим набором ключей для трассировки. Поэтому я написал процедуру маршалинга, которая генерирует зашифрованные файлы pyc в соответствии с шифрованием Dropbox. Таким образом, я смог ввести свой собственный код или просто заменить вышеуказанный хеш. Этот код в репозитории на Github находится в файле <code>patchzip.py</code>. В итоге хеш заменяется SHA-256 хешем <code>ANVILVENTURES</code>. Потом объект кода повторно шифруется и помещается в zip, где хранится весь обфусцированный код. Это позволяет сделать следующее:<br/>
+<br/>
+<pre>    $ DBDEV=ANVILVENTURES; export DBDEV;
+    $ ~/.dropbox-dist/dropbox-lnx_64-71.4.108/dropbox</pre><br/>
+Теперь все функции отладки отображаются при щелчке правой кнопкой мыши по значку Dropbox в системном трее.<br/>
+<br/>
+<div style="text-align:center;"><img src="/img/image-loader.svg" data-src="https://habrastorage.org/getpro/habr/post_images/619/c68/385/619c6838574ff7023a0dbdf27b880b2d.png"/></div><br/>
+<br/>
+Изучая дальше декомпилированные исходники, в файле <code>dropbox/webdebugger/server.py</code> я обнаружил метод с названием <code>is_enabled</code>. Похоже, он проверяет, нужно ли включить встроенный веб-отладчик. Прежде всего, он проверяет упомянутый волшебный ключ. Поскольку мы заменили хеш SHA-256, то мы можем просто установить значение <code>ANVILVENTURES</code>. Вторая часть в строках <code>201</code> и <code>202</code> проверяет, есть ли переменная окружения с именем <code>DB&lt;x></code>, у которой <code>x</code> равно хешу SHA-256. Значение окружения устанавливает куки с ограничением по времени, как мы уже видели.<br/>
+<br/>
+<pre><code class="python">    191     @classmethod
+    192     def is_enabled(cls):
+    193         if cls._magic_key_set:
+    194             return cls._magic_key_set
+    195         else:
+    196             cls._magic_key_set = False
+    197             if not magic_trace_key_is_set():
+    198                 return False
+    199             for var in os.environ:
+    200                 if var.startswith('DB'):
+    201                     var_hash = hashlib.sha256(make_bytes(var[2:])).hexdigest()
+    202                     if var_hash == '5df50a9c69f00ac71f873d02ff14f3b86e39600312c0b603cbb76b8b8a433d3ff0757214287b25fb01' and is_valid_time_limited_cookie(os.environ[var]):
+    203                         cls._magic_key_set = True
+    204                         return True
+    205
+    206             return False</code></pre><br/>
+Используя точно такую же технику, заменив этот хеш на SHA-256, который использовался раньше, мы теперь можем изменить ранее написанный скрипт <code>setenv</code> на что-то вроде такого:<br/>
+<br/>
+<pre><code class="python">    $ cat setenv.py
+    …
+    c = generate_time_cookie()
+    output_env("DBDEV", "ANVILVENTURES")
+    output_env("DBANVILVENTURES", c)
+    $ python3 setenv.py
+    DBDEV=ANVILVENTURES; export DBDEV;
+    DBANVILVENTURES=38b285c4034a67; export DBANVILVENTURES
+    $ eval `python3 setenv.py`
+    $ ~/.dropbox-dist/dropbox-lnx_64-71.4.108/dropbox</code></pre><br/>
+Как видим, после запуска клиента открывается на прослушивание новый порт TCP. Он не откроется, если правильно не задать переменные окружения.<br/>
+<br/>
+<pre>    $ netstat --tcp -lnp | grep dropbox
+    tcp        0      0 127.0.0.1:4242              0.0.0.0:*               LISTEN      1517/dropbox   </pre><br/>
+Дальше в коде можно найти интерфейс WebSocket в файле <code>webpdb.pyc</code>. Это обёртка для стандартных питоновских утилит <a href="https://docs.python.org/3.6/library/pdb.html">pdb</a>. Доступ к интерфейсу осуществляется через HTTP-сервер на этом порту. Давайте установим <a href="https://github.com/vi/websocat">клиент websocket</a> и испытаем его:<br/>
+<br/>
+<pre>    $ websocat -t ws://127.0.0.1:4242/pdb
+    --Return--
+    
+    > /home/gvb/dropbox/webdebugger/webpdb.pyc(101)run()->None
+    >
+    (Pdb) from build_number.environment import magic_trace_key_is_set as ms
+    (Pdb) ms()
+    True</pre><br/>
+Таким образом, теперь у нас полноценный отладчик в клиенте, который во всех остальных отношениях работает как и раньше. Мы можем выполнять произвольный код Python, нам удалось включить внутреннее меню отладки и функции трассировки. Всё это очень поможет в дальнейшем анализе клиента Dropbox.<br/>
+<br/>
+<h3>Заключение</h3><br/>
+Нам удалось провести обратную разработку Dropbox, написать инструменты для расшифровки и инъекции кода, которые работают с текущими клиентами Dropbox на базе Python 3.6. Мы сделали реверс-инжиниринг отдельных скрытых функций и активировали их. Очевидно, что отладчик действительно поможет в дальнейшем взломе. Особенно с рядом файлов, которые не удаётся успешно декомпилировать из-за недостатков decompyle6.<br/>
+<br/>
+<h3>Код</h3><br/>
+Код можно найти <a href="https://github.com/anvilventures/lookinsidethebox">на Github</a>. Инструкции по использованию там же. В этом репозитории лежит также мой старый код, написанный в 2011 году. Он должен работать всего с несколькими модификациями при условии, что у кого-то более старые версии Dropbox, основанные на Python 2.7.<br/>
+<br/>
+В репозитории также лежат скрипты для трансляции опкодов, инструкция по установке переменных среды Dropbox и всё необходимое для изменения zip-файла.<br/>
+<br/>
+<h3>Благодарности</h3><br/>
+Спасибо Брайану из Anvil Ventures за ревью моего кода. Работа над этим кодом продолжалась несколько лет, время от времени я его обновлял, внедрял новые методы и переписывал фрагменты, чтобы восстановить его работу на новых версиях Dropbox.<br/>
+<br/>
+Как упоминалось ранее, отличной отправной точкой для реверс-инжиниринга приложений на Python являются работы Рича Смита, Флориан Леду и Николя Раффа, а также Хагена Фрича. Особенно их работа актуальна для обратной разработки одного из самых больших в мире приложений на Python — клиента Dropbox.<br/>
+<br/>
+Следует отметить, что декомпиляция питоновского кода сильно продвинулась благодаря проекту uncompyle6 во главе с Р. Бернштейном. В этом декомпиляторе собрано и улучшено множество различных декомпиляторов Python.<br/>
+<br/>
+Также большое спасибо коллегам Брайану, Остину, Стефану и Крису за рецензирование этой статьи.</div></div> <!----> <!----></div> <div class="tm-article-presenter__meta"><div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Теги:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5BDropbox%5D" class="tm-tags-list__link">Dropbox</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5BPython%5D" class="tm-tags-list__link">Python</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5B%D0%B4%D0%B5%D0%BA%D0%BE%D0%BC%D0%BF%D0%B8%D0%BB%D1%8F%D1%86%D0%B8%D1%8F%5D" class="tm-tags-list__link">декомпиляция</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5B%D0%B4%D0%B5%D1%81%D0%B5%D1%80%D0%B8%D0%B0%D0%BB%D0%B8%D0%B7%D0%B0%D1%86%D0%B8%D1%8F%5D" class="tm-tags-list__link">десериализация</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5B%D0%B4%D0%B5%D0%BC%D0%B0%D1%80%D1%88%D0%B0%D0%BB%D0%B8%D0%BD%D0%B3%5D" class="tm-tags-list__link">демаршалинг</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5BCPython%5D" class="tm-tags-list__link">CPython</a></li></ul></div> <div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Хабы:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/hub/python/" class="tm-hubs-list__link">
+    Python
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/debug/" class="tm-hubs-list__link">
+    Отладка
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/reverse-engineering/" class="tm-hubs-list__link">
+    Реверс-инжиниринг
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/soft/" class="tm-hubs-list__link">
+    Софт
+  </a></li></ul></div></div></article></div> <!----></div> <div class="tm-article-sticky-panel"><div class="tm-data-icons tm-article-sticky-panel__icons"><div class="tm-article-rating tm-data-icons__item"><div class="tm-votes-meter tm-article-rating__votes-switcher"><svg height="16" width="16" class="tm-svg-img tm-votes-meter__icon tm-votes-meter__icon_medium"><title>Всего голосов 39: ↑39 и ↓0</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-rating"></use></svg> <span title="Всего голосов 39: ↑39 и ↓0" class="tm-votes-meter__value tm-votes-meter__value_positive tm-votes-meter__value_medium">+39</span></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----> <span title="Количество просмотров" class="tm-icon-counter tm-data-icons__item"><svg height="16" width="16" class="tm-svg-img tm-icon-counter__icon"><title>Просмотры</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-views"></use></svg> <span class="tm-icon-counter__value">9.1K</span></span> <button title="Добавить в закладки" type="button" class="bookmarks-button tm-data-icons__item"><span title="Добавить в закладки" class="tm-svg-icon__wrapper bookmarks-button__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Добавить в закладки</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-favorite"></use></svg></span> <span title="Количество пользователей, добавивших публикацию в закладки" class="bookmarks-button__counter">
+    78
+  </span></button> <!----> <div title="Поделиться" class="tm-sharing tm-data-icons__item"><button type="button" class="tm-sharing__button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="tm-sharing__icon"><path fill="currentColor" d="M10.33.275l9.047 7.572a.2.2 0 010 .306l-9.048 7.572a.2.2 0 01-.328-.153V11c-8 0-9.94 6-9.94 6S-1 5 10 5V.428a.2.2 0 01.328-.153z"></path></svg></button> <!----></div> <DIV class="v-portal" style="display:none;"></DIV></div> </div></div> <!----> <!----> <div class="tm-article-presenter__footer"><div class="tm-article-blocks"><!----> <section class="tm-block tm-block_spacing-bottom"><!----> <div class="tm-block__body tm-block__body_variant-balanced"><div class="tm-article-author"> <div class="tm-user-card tm-article-author__user-card tm-user-card_variant-article"><div class="tm-user-card__info-container"><div class="tm-user-card__header"><div class="tm-user-card__header-data"><a href="/ru/users/m1rko/" class="tm-user-card__userpic tm-user-card__userpic_size-40"><div class="tm-entity-image"><img alt="" src="//habrastorage.org/getpro/habr/avatars/4ec/bd0/85d/4ecbd085d692835a931d03174ff19539.png" class="tm-entity-image__pic"></div></a> <div class="tm-user-card__meta"><div title=" 1501 голос " class="tm-karma tm-user-card__karma"><div class="tm-karma__votes tm-karma__votes_positive">
+    1229.5
+  </div> <div class="tm-karma__text">
+    Карма
+  </div></div> <div title="Рейтинг пользователя" class="tm-rating tm-user-card__rating"><div class="tm-rating__header"> <div class="tm-rating__counter">0</div></div> <div class="tm-rating__text">
+    Рейтинг
+  </div></div></div></div></div> <div class="tm-user-card__info tm-user-card__info_variant-article"><div class="tm-user-card__title tm-user-card__title_variant-article"><span class="tm-user-card__name tm-user-card__name_variant-article">Анатолий Ализар</span> <a href="/ru/users/m1rko/" class="tm-user-card__nickname tm-user-card__nickname_variant-article">
+          @m1rko
+        </a> <!----></div> <p class="tm-user-card__short-info tm-user-card__short-info_variant-article">автор, переводчик, редактор</p></div></div> <div class="tm-user-card__buttons tm-user-card__buttons_variant-article"><!----> <!----> <!----> <!----> <!----></div></div> <!----></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----></section> <div class="tm-article-blocks__comments"><div class="tm-article-page-comments"><div class="tm-article-comments-counter-link tm-article-comments-counter-button"><a href="/ru/post/452276/comments/" class="tm-article-comments-counter-link__link tm-article-comments-counter-link__link_button-style"><svg height="16" width="16" class="tm-svg-img tm-article-comments-counter-link__icon tm-article-comments-counter-link__icon_contrasted"><title>Комментарии</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-comments"></use></svg> <span class="tm-article-comments-counter-link__value tm-article-comments-counter-link__value_contrasted">
+       Комментарии 2 
+    </span></a> <!----></div></div></div> <div class="tm-ad-banner__container tm-page-article__banner"><!----> <div id="articleBottomBanner" class="tm-ad-banner"></div></div> <!----> <!----> <!----> <!----> </div></div></div></div></div> <div class="tm-page__sidebar"><div class="tm-layout-sidebar"><div class="tm-layout-sidebar__ads tm-layout-sidebar__ads_initial"><div class="tm-ad-banner__container tm-layout-sidebar__banner"><!----> <div id="sidebarBanner" class="tm-ad-banner"></div></div></div> <div class="tm-sexy-sidebar tm-sexy-sidebar_initial" style="margin-top:0px;"><!----> <!----></div></div></div></div></div></div></main> <!----></div> <div class="tm-footer-menu"><div class="tm-page-width"><div class="tm-footer-menu__container"><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Ваш аккаунт
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr/?back=/ru/post/452276/&amp;hl=ru" rel="nofollow" target="_self">
+                Войти
+              </a></li><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr-register/?back=/ru/post/452276/&amp;hl=ru" rel="nofollow" target="_self">
+                Регистрация
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Разделы
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/" class="footer-menu__item-link router-link-active">
+                Публикации
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/news/" class="footer-menu__item-link">
+                Новости
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/hubs/" class="footer-menu__item-link">
+                Хабы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/companies/" class="footer-menu__item-link">
+                Компании
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/users/" class="footer-menu__item-link">
+                Авторы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/sandbox/" class="footer-menu__item-link">
+                Песочница
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Информация
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/docs/help/" class="footer-menu__item-link">
+                Устройство сайта
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/authors/codex/" class="footer-menu__item-link">
+                Для авторов
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/companies/corpblogs/" class="footer-menu__item-link">
+                Для компаний
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/docs/transparency/" class="footer-menu__item-link">
+                Документы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/agreement" target="_blank">
+                Соглашение
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/confidential/" target="_blank">
+                Конфиденциальность
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Услуги
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQLwRfQmXibiUlWaRg-BAc38s7oM3lJiaPju7qmdJsp8ysIvZ_G-Npem0njJLMozE2bPHMpDqiI5hhy/pub?start=false&amp;loop=false&amp;delayms=60000&amp;slide=id.g91a03369cd_4_297" target="_blank">
+                Реклама
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://habrastorage.org/storage/stuff/habr/service_price.pdf" target="_blank">
+                Тарифы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQJJds8-Di7BQSP_guHxICN7woVYoN5NP_22ra-BIo4bqnTT9FR6fB-Ku2P0AoRpX0Ds-LRkDeAoD8F/pub?start=false&amp;loop=false&amp;delayms=60000" target="_blank">
+                Контент
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://tmtm.timepad.ru/" target="_blank">
+                Семинары
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/megaprojects/" class="footer-menu__item-link">
+                Мегапроекты
+              </a></li></ul></div></div></div></div></div> <div class="tm-footer"><div class="tm-page-width"><div class="tm-footer__container"><!----> <div class="tm-footer__social"><a href="https://www.facebook.com/habrahabr.ru" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Facebook</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-facebook"></use></svg></a><a href="https://twitter.com/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Twitter</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-twitter"></use></svg></a><a href="https://vk.com/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>VK</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-vkontakte"></use></svg></a><a href="https://telegram.me/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Telegram</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-telegram"></use></svg></a><a href="https://www.youtube.com/channel/UCd_sTwKqVrweTt4oAKY5y4w" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Youtube</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-youtube"></use></svg></a><a href="https://zen.yandex.ru/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Яндекс Дзен</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-zen"></use></svg></a></div> <DIV class="v-portal" style="display:none;"></DIV> <button class="tm-footer__link"><!---->
+        Настройка языка
+      </button> <a href="/ru/about" class="tm-footer__link">
+        О сайте
+      </a> <a href="/ru/feedback/" class="tm-footer__link">
+        Техническая поддержка
+      </a> <!----> <a href="/berserk-mode-nope" class="tm-footer__link">
+        Вернуться на старую версию
+      </a> <div class="tm-footer-copyright"><span class="tm-copyright"><span class="tm-copyright__years">© 2006–2021 </span> <span class="tm-copyright__name">«<a href="https://company.habr.com/" rel="noopener" target="_blank" class="tm-copyright__link">Habr</a>»</span></span></div></div></div></div> <!----> <!----></div> <div class="vue-portal-target"></div></div>
+<script>window.__INITIAL_STATE__={"adblock":{"hasAcceptableAdsFilter":false,"hasAdblock":false},"articlesList":{"articlesList":{"452276":{"id":"452276","timePublished":"2019-05-17T09:38:23+00:00","isCorporative":false,"lang":"ru","titleHtml":"Реверс-инжиниринг клиента Dropbox","leadData":{"textHtml":"\u003Ci\u003ETL;DR. В статье рассказывается об обратной разработке клиента Dropbox, взломе механизмов обфускации и декомпиляции клиента на Python, а также изменении программы для активации функций отладки, которые скрыты в обычном режиме. Если вас интересует только соответствующий код и инструкции, пролистайте до конца. На момент написания статьи код совместим с последними версиями Dropbox, основанными на интерпретаторе CPython 3.6.\u003C\u002Fi\u003E\u003Cbr\u003E\r\n\u003Cbr\u003E\r\n\u003Ch3\u003EВведение\u003C\u002Fh3\u003E\u003Cbr\u003E\r\nDropbox очаровал меня сразу с момента своего появления. Концепция по-прежнему обманчиво проста. Вот папка. Кладёшь туда файлы. Он синхронизируется. Переходишь к другому устройству. Он опять синхронизируется. Папка и файлы теперь появились и там!\u003Cbr\u003E\r\n\u003Cbr\u003E\r\nОбъём скрытой фоновой работы на самом деле поражает. Во-первых, никуда не исчезают все проблемы, с которыми приходится иметь дело при создании и обслуживании кросс-платформенного приложения для основных десктопных операционных систем (OS X, Linux, Windows). Добавьте к этому поддержку различных веб-браузеров, различных мобильных операционных систем. И мы говорим только о клиентской части. Меня интересует также бэкенд Dropbox, который позволил достичь такой масштабируемости и низкой задержки с безумно тяжёлой рабочей нагрузкой, которую создают полмиллиарда пользователей.\u003Cbr\u003E","imageUrl":null,"buttonTextHtml":"Читать дальше →","image":null},"editorVersion":"1.0","postType":"article","postLabels":[{"type":"translation","data":{"originalAuthorName":"Vincent Berg","originalUrl":"https:\u002F\u002Fanvilventures.com\u002Fblog\u002Flooking-inside-the-box.html"}}],"author":{"scoreStats":{"score":1229.5,"votesCount":1501},"rating":0,"relatedData":null,"contacts":[],"authorContacts":[],"paymentDetails":{"paymentYandexMoney":null,"paymentPayPalMe":null,"paymentWebmoney":null},"id":"1371978","alias":"m1rko","fullname":"Анатолий Ализар","avatarUrl":"\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Favatars\u002F4ec\u002Fbd0\u002F85d\u002F4ecbd085d692835a931d03174ff19539.png","speciality":"автор, переводчик, редактор"},"statistics":{"commentsCount":2,"favoritesCount":78,"readingCount":9133,"score":39,"votesCount":39},"hubs":[{"relatedData":null,"id":"340","alias":"python","type":"collective","title":"Python","titleHtml":"Python","isProfiled":true},{"relatedData":null,"id":"17716","alias":"debug","type":"collective","title":"Отладка","titleHtml":"Отладка","isProfiled":true},{"relatedData":null,"id":"19011","alias":"reverse-engineering","type":"collective","title":"Реверс-инжиниринг","titleHtml":"Реверс-инжиниринг","isProfiled":true},{"relatedData":null,"id":"21918","alias":"soft","type":"collective","title":"Софт","titleHtml":"Софт","isProfiled":false}],"flows":[{"id":"1","alias":"develop","title":"Разработка"},{"id":"7","alias":"popsci","title":"Научпоп"}],"relatedData":null,"textHtml":"\u003Cdiv xmlns=\"http:\u002F\u002Fwww.w3.org\u002F1999\u002Fxhtml\"\u003E\u003Ci\u003ETL;DR. В статье рассказывается об обратной разработке клиента Dropbox, взломе механизмов обфускации и декомпиляции клиента на Python, а также изменении программы для активации функций отладки, которые скрыты в обычном режиме. Если вас интересует только соответствующий код и инструкции, пролистайте до конца. На момент написания статьи код совместим с последними версиями Dropbox, основанными на интерпретаторе CPython 3.6.\u003C\u002Fi\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch3\u003EВведение\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\nDropbox очаровал меня сразу с момента своего появления. Концепция по-прежнему обманчиво проста. Вот папка. Кладёшь туда файлы. Он синхронизируется. Переходишь к другому устройству. Он опять синхронизируется. Папка и файлы теперь появились и там!\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nОбъём скрытой фоновой работы на самом деле поражает. Во-первых, никуда не исчезают все проблемы, с которыми приходится иметь дело при создании и обслуживании кросс-платформенного приложения для основных десктопных операционных систем (OS X, Linux, Windows). Добавьте к этому поддержку различных веб-браузеров, различных мобильных операционных систем. И мы говорим только о клиентской части. Меня интересует также бэкенд Dropbox, который позволил достичь такой масштабируемости и низкой задержки с безумно тяжёлой рабочей нагрузкой, которую создают полмиллиарда пользователей.\u003Cbr\u002F\u003E\r\n\u003Ca name=\"habracut\"\u003E\u003C\u002Fa\u003E\u003Cbr\u002F\u003E\r\nИменно по этим причинам мне всегда нравилось смотреть, что Dropbox делает под капотом и как он развивался на протяжении многих лет. Примерно восемь лет назад я впервые попробовал выяснить, как на самом деле работает клиент Dropbox, когда я заметил трансляцию неизвестного трафика, находясь в отеле. Расследование показало, что это часть функции Dropbox под названием LanSync, которая позволяет быстрее синхронизироваться, если узлы Dropbox в той же локальной сети имеют доступ к тем же файлам. Однако протокол не был задокументирован, и мне хотелось узнать больше. Поэтому я решил взглянуть более подробно, и в итоге провёл реверс-инжиниринг почти всей программы. Это исследование никогда не публиковалось, хотя я иногда делился заметками с некоторыми людьми.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nОткрыв компанию Anvil Ventures, мы с Крисом оценили ряд инструментов для хранения документов, совместного использования и совместной работы. Одним из них, очевидно, стал Dropbox, а для меня это ещё одна причина откопать старые исследования и проверить их на текущей версии клиента.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch3\u003EРасшифровка и деобфускация\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\nСначала я загрузил клиент для Linux и быстро выяснил, что он написан на Python. Поскольку лицензия Python довольно разрешительна, людям легко модифицировать и распространять интерпретатор Python вместе с другими зависимостями как коммерческое программное обеспечение. Затем я приступил к реверс-инжинирингу, чтобы понять, как работает клиент.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВ то время файлы с байт-кодом лежали в ZIP-файле, объединённом с исполняемым бинарником. Основной двоичный файл представлял собой просто модифицированный интерпретатор Python, который загружался путём захвата механизмов импорта Python. Каждый последующий вызов импорта перенаправлялся в этот бинарник с разбором ZIP-файла. Конечно, несложно извлечь этот ZIP из бинарника. Например, полезный инструмент \u003Ca href=\"https:\u002F\u002Fgithub.com\u002FReFirmLabs\u002Fbinwalk\"\u003Ebinwalk\u003C\u002Fa\u003E извлекает его со всеми байт-скомпилированными файлами .pyc.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nТогда я не мог сломать шифрование для файлов .pyc, а в итоге взял общий объект стандартной библиотеки Python и перекомпилировал его, внедрив внутрь «бэкдор». Теперь, когда клиент Dropbox загружал этот объект, я мог легко выполнить произвольный код Python в работающем интерпретаторе. Хотя я обнаружил это самостоятельно, тот же метод использовал Флориан Леду и Николя Рафф в \u003Ca href=\"http:\u002F\u002Farchive.hack.lu\u002F2012\u002FDropbox%20security.pdf\"\u003Eпрезентации\u003C\u002Fa\u003E на Hack.lu в 2012 году.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВозможность исследовать и манипулировать запущенным кодом в Dropbox позволила многое выяснить. В коде использовалось несколько защитных трюков, чтобы затруднить дамп \u003Ca href=\"https:\u002F\u002Fdocs.python.org\u002F3.6\u002Flibrary\u002Ffunctions.html#compile\"\u003Eобъектов кода\u003C\u002Fa\u003E. Например, в обычном интерпретаторе CPython легко восстановить скомпилированный байт-код, представляющий функцию. Простой пример:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"python\"\u003E    \u003E\u003E\u003E def f(i=0):\n    ...     return i * i\n    ...\n    \u003E\u003E\u003E f.__code__\n    &lt;code object f at 0x109deb540, file \"&lt;stdin\u003E\", line 1\u003E\n    \u003E\u003E\u003E f.__code__.co_code\n    b'|\\x00|\\x00\\x14\\x00S\\x00'\n    \u003E\u003E\u003E import dis\n    \u003E\u003E\u003E dis.dis(f)\n      2           0 LOAD_FAST                0 (i)\n                  2 LOAD_FAST                0 (i)\n                  4 BINARY_MULTIPLY\n                  6 RETURN_VALUE\n    \u003E\u003E\u003E\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nНо в скомпилированной версии \u003Ci\u003EObjects\u002Fcodeobject.c\u003C\u002Fi\u003E свойство \u003Ccode\u003Eco_code\u003C\u002Fcode\u003E удалили из открытого списка. Этот member list обычно выглядит примерно так:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"python\"\u003E    static PyMemberDef code_memberlist[] = {\n    ...\n        {\"co_flags\",        T_INT,          OFF(co_flags),          READONLY},\n        {\"co_code\",         T_OBJECT,       OFF(co_code),           READONLY},\n        {\"co_consts\",       T_OBJECT,       OFF(co_consts),         READONLY},\n    ...\n    };\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nИсчезновение свойства \u003Ccode\u003Eco_code\u003C\u002Fcode\u003E делает невозможным дамп этих объектов кода.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nКроме того, были удалены другие библиотеки, такие как стандартный \u003Ca href=\"https:\u002F\u002Fdocs.python.org\u002F3.6\u002Flibrary\u002Fdis.html\"\u003Eдизассемблер\u003C\u002Fa\u003E Python. В итоге мне всё-таки удалось сделать дамп объектов кода в файлы, но я всё ещё не мог их декомпилировать. Потребовалось некоторое время, прежде чем я понял, что опкоды, используемые интерпретатором Dropbox, не совпадают со стандартными опкодами Python. Таким образом, нужно было разобраться в новых опкодах, чтобы переписать объекты кода обратно в оригинальный байт-код Python.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nОдин из вариантов — \u003Ci\u003Eтрансляция опкодов\u003C\u002Fi\u003E (opcode remapping). Насколько мне известно, эту технику разработал Рич Смит и представил на \u003Ca href=\"https:\u002F\u002Fwww.youtube.com\u002Fwatch?v=tYHsv7Mzv5g\"\u003EDefcon 18\u003C\u002Fa\u003E. В том выступлении он также показал инструмент \u003Ca href=\"https:\u002F\u002Fgithub.com\u002FMyNameIsMeerkat\u002FpyREtic\"\u003EpyREtic\u003C\u002Fa\u003E для реверс-инжиниринга байт-кода Python в памяти. Кажется, код pyREtic слабо поддерживается, а инструмент нацелен на «старые» бинарники Python 2.х. Для знакомства с техниками, которые придумал Рич, очень рекомендуется посмотреть его выступление.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nМетод трансляции опкодов берёт все объекты кода стандартной библиотеки Python и сравнивает их с объектами, извлечёнными из бинарника Dropbox. Например, объекты кода из \u003Ci\u003Ehashlib.pyc\u003C\u002Fi\u003E или \u003Ci\u003Esocket.pyc\u003C\u002Fi\u003E, которые находятся в стандартной библиотеке. Скажем, если каждый раз опкод \u003Ccode\u003E0x43\u003C\u002Fcode\u003E соответствует деобфусцированному опкоду \u003Ccode\u003E0x21\u003C\u002Fcode\u003E, можно постепенно построить таблицу трансляции для перезаписи объектов кода. Затем эти объекты кода можно провести через декомпилятор Python. Чтобы делать дампы, по-прежнему нужен исправленный интерпретатор с корректным объектом \u003Ccode\u003Eco_code\u003C\u002Fcode\u003E.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nДругой вариант — взломать формат сериализации. В Python сериализация называется \u003Ca href=\"https:\u002F\u002Fdocs.python.org\u002F3.6\u002Flibrary\u002Fmarshal.html\"\u003Eмаршалинг\u003C\u002Fa\u003E. Десериализация обфусцированных файлов обычным способом не сработала. При обратной разработке двоичного файла в IDA Pro я обнаружил этап расшифровки. Насколько я знаю, первым что-то публично опубликовал на эту тему Хаген Фрич в \u003Ca href=\"https:\u002F\u002Fitooktheredpill.irgendwo.org\u002F2012\u002Fdropbox-decrypt\u002F\"\u003Eсвоём блоге\u003C\u002Fa\u003E. Там он ссылается на изменения в новых версиях Dropbox (когда Dropbox перешёл с Python 2.5 на Python 2.7). Алгоритм работает следующим образом:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003EПри распаковке pyc-файла считывается заголовок для определения версии маршалинга. Этот формат не документирован, за исключением самой реализации CPython.\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003Cli\u003EФормат определяет список типов, которые в нём закодированы. Типы \u003Ccode\u003ETrue\u003C\u002Fcode\u003E, \u003Ccode\u003EFalse\u003C\u002Fcode\u003E, \u003Ccode\u003Efloats\u003C\u002Fcode\u003E и т. д., но самый важный — тип для вышеупомянутых объектов кода Python, \u003Ccode\u003Ecode object\u003C\u002Fcode\u003E.\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003Cli\u003EПри загрузке \u003Ccode\u003Ecode object\u003C\u002Fcode\u003E сначала считываются два дополнительных значения из входного файла.\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003Cli\u003EПервое из них — 32-битное значение \u003Ccode\u003Erandom\u003C\u002Fcode\u003E.\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003Cli\u003EВторое — 32-битное значение \u003Ccode\u003Elength\u003C\u002Fcode\u003E, обозначающее размер сериализированного объекта кода.\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003Cli\u003EЗатем значения \u003Ccode\u003Erand\u003C\u002Fcode\u003E и \u003Ccode\u003Elength\u003C\u002Fcode\u003E подаются в простую функцию RNG, которая генерирует \u003Ccode\u003Eseed\u003C\u002Fcode\u003E.\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003Cli\u003EДанный сид поставляется в \u003Ca href=\"https:\u002F\u002Fen.wikipedia.org\u002Fwiki\u002FMersenne_Twister\"\u003Eвихрь Мерсенна\u003C\u002Fa\u003E, который генерирует четыре 32-битных значения.\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003Cli\u003EОбъединённые вместе, эти четыре значения дают ключ шифрования для сериализированных данных. Алгоритм шифрования затем расшифровывает данные с помощью \u003Ca href=\"https:\u002F\u002Fen.wikipedia.org\u002Fwiki\u002FTiny_Encryption_Algorithm\"\u003ETiny Encryption Algorithm\u003C\u002Fa\u003E.\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\nВ своём коде я с нуля написал процедуру демаршалинга на Python. Часть, которая расшифровывает объекты кода, выглядит примерно как фрагмент ниже. Следует отметить, что этот метод придётся вызывать рекурсивно. Объект верхнего уровня для файла pyc — это объект кода, который сам содержит объекты кода, которые могут быть классами, функциями или лямбдами. В свою очередь, они тоже могут содержать методы, функции или лямбды. Всё это объекты кода вниз по иерархии!\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"python\"\u003E    def load_code(self):\n        rand = self.r_long()\n        length = self.r_long()\n    \n        seed = rng(rand, length)\n        mt = MT19937(seed)\n        key = []\n        for i in range(0, 4):\n            key.append(mt.extract_number())\n    \n        # take care of padding for size calculation\n        sz = (length + 15) &amp; ~0xf\n        words = sz \u002F 4\n    \n        # convert data to list of dwords\n        buf = self._read(sz)\n        data = list(struct.unpack(\"&lt;%dL\" % words, buf))\n    \n        # decrypt and convert back to stream of bytes\n        data = tea.tea_decipher(data, key)\n        data = struct.pack(\"&lt;%dL\" % words, *data)\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nВозможность расшифровать объекты кода означает, что после десериализации процедур нужно переписать фактический байт-код. Объекты кода содержат информацию о номерах строк, константах и другую информацию. Фактический байт-код находится в объекте \u003Ccode\u003Eco_code\u003C\u002Fcode\u003E. Когда мы построили таблицу трансляции опкодов, то можем просто заменить обфусцированные значения Dropbox на стандартные эквиваленты Python 3.6.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nТеперь объекты кода в обычном формате Python 3.6, и их можно передать в декомпилятор. Качество декомпиляторов Python значительно выросло благодаря проекту \u003Ca href=\"https:\u002F\u002Fgithub.com\u002Frocky\u002Fpython-uncompyle6\"\u003Euncompyle6\u003C\u002Fa\u003E Р. Бернштейна. Декомпиляция дала довольно хороший результат, и я смог собрать всё вместе в инструменте, который в меру своих возможностей декомпилирует текущую версию клиента Dropbox.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЕсли вы клонируете этот \u003Ca href=\"https:\u002F\u002Fgithub.com\u002Fanvilventures\u002Flookinsidethebox\"\u003Eрепозиторий\u003C\u002Fa\u003E и выполните инструкции, результат будет примерно таким:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E    ...\n    __main__ - INFO - Successfully decompiled dropbox\u002Fclient\u002Ffeatures\u002Fbrowse_search\u002F__init__.pyc\n    __main__ - INFO - Decrypting, patching and decompiling _bootstrap_overrides.pyc\n    __main__ - INFO - Successfully decompiled _bootstrap_overrides.pyc\n    __main__ - INFO - Processed 3713 files (3591 succesfully decompiled, 122 failed)\n    opcodemap - WARNING - NOT writing opcode map as force overwrite not set\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nЭто означает, что теперь у вас есть каталог \u003Ccode\u003Eout\u002F\u003C\u002Fcode\u003E с декомпилированной версией исходного кода Dropbox.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch3\u003EВключение трассировки Dropbox\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\nВ открытых исходниках я начал искать что-нибудь интересное, и моё внимание привлёк следующий фрагмент. Обработчики трассировки в \u003Ccode\u003Eout\u002Fdropbox\u002Fclient\u002Fhigh_trace.py\u003C\u002Fcode\u003E устанавливаются только в том случае, если сборка не заморожена или в строке \u003Ccode\u003E1430\u003C\u002Fcode\u003E не установлен ограничивающие функциональность «волшебный ключ» или файл куки.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"python\"\u003E    1424 def install_global_trace_handlers(flags=None, args=None):\n    1425     global _tracing_initialized\n    1426     if _tracing_initialized:\n    1427         TRACE('!! Already enabled tracing system')\n    1428         return\n    1429     _tracing_initialized = True\n    1430     if not build_number.is_frozen() or magic_trace_key_is_set() or limited_support_cookie_is_set():\n    1431         if not os.getenv('DBNOLOCALTRACE'):\n    1432             add_trace_handler(db_thread(LtraceThread)().trace)\n    1433         if os.getenv('DBTRACEFILE'):\n    1434             pass\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nУпоминание frozen-билдов относится к внутренним отладочным билдам Dropbox. А немного выше в этом же файле можно найти такие строчки:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"python\"\u003E    272 def is_valid_time_limited_cookie(cookie):\n    273     try:\n    274         try:\n    275             t_when = int(cookie[:8], 16) ^ 1686035233\n    276         except ValueError:\n    277             return False\n    278         else:\n    279             if abs(time.time() - t_when) &lt; SECONDS_PER_DAY * 2 and md5(make_bytes(cookie[:8]) + b'traceme').hexdigest()[:6] == cookie[8:]:\n    280                 return True\n    281     except Exception:\n    282         report_exception()\n    283\n    284     return False\n    285\n    286\n    287 def limited_support_cookie_is_set():\n    288     dbdev = os.getenv('DBDEV')\n    289     return dbdev is not None and is_valid_time_limited_cookie(dbdev)\n    build_number\u002Fenvironment.py\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nКак видно из метода \u003Ccode\u003Elimited_support_cookie_is_set\u003C\u002Fcode\u003E в строке \u003Ccode\u003E287\u003C\u002Fcode\u003E, трассировка включается только в том случае, если переменная среды с названием \u003Ccode\u003EDBDEV\u003C\u002Fcode\u003E правильно установлена в куки с ограниченным временем жизни. Что ж, это интересно! И теперь мы знаем, как генерировать такие куки, ограниченные по времени. Судя по названию, инженеры Dropbox могут генерировать такие куки, а затем временно включать трассировку в отдельных случаях, когда это требуется для поддержки клиентов. После перезагрузки Dropbox или перезагрузки компьютера, даже если указанный файл cookie всё ещё на месте, он автоматически истекает. Предполагаю, что это должно предотвратить, например, ухудшение производительности из-за непрерывной трассировки. Это также затрудняет обратную разработку Dropbox.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nОднако небольшой скрипт может просто постоянно генерировать и устанавливать эти куки. Что-то вроде этого:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"python\"\u003E    #!\u002Fusr\u002Fbin\u002Fenv python3\n    def output_env(name, value):\n        print(\"%s=%s; export %s\" % (name, value, name))\n    \n    def generate_time_cookie():\n        t = int(time.time())\n        c = 1686035233\n        s = \"%.8x\" % (t ^ c)\n        h = md5(s.encode(\"utf-8?\") + b\"traceme\").hexdigest()\n        ret = \"%s%s\" % (s, h[:6])\n        return ret\n    c = generate_time_cookie()\n    output_env(\"DBDEV\", c)\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nЗатем создаётся файл cookie на основе времени:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"python\"\u003E    $ python3 setenv.py\n    DBDEV=38b28b3f349714; export DBDEV;\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nЗатем правильно загрузите выдачу этого скрипта в окружение и запустите клиент Dropbox.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"python\"\u003E    $ eval `python3 setenv.py`\n    $ ~\u002F.dropbox-dist\u002Fdropbox-lnx_64-71.4.108\u002Fdropbox\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nЭто включает вывод трассировки, с разноцветным форматированием и всё такое. Выглядит примерно как в этом незарегистрированном клиенте:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fpost_images\u002Fe83\u002Fd0a\u002Fa4f\u002Fe83d0aa4f475709108cb1cfc0cb16d74.png\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch3\u003EВнедрение нового кода\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\nВсё это слегка забавно. Изучая дальше декомпилированный код, мы находим \u003Ccode\u003Eout\u002Fbuild_number\u002Fenvironment.pyc\u003C\u002Fcode\u003E. Там есть функция, которая проверяет, установлен ли определённый magic key. Этот ключ не закодирован жёстко в коде, но сравнивается с хэшем SHA-256. Вот соответствующий фрагмент.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"python\"\u003E      1 import hashlib, os\n      2 from typing import Optional, Text\n      3 _MAGIC_TRACE_KEY_IS_SET = None\n      4\n      5 def magic_trace_key_is_set():\n      6     global _MAGIC_TRACE_KEY_IS_SET\n      7     if _MAGIC_TRACE_KEY_IS_SET is None:\n      8         dbdev = os.getenv('DBDEV') or ''\n      9         if isinstance(dbdev, Text):\n     10             bytes_dbdev = dbdev.encode('ascii')\n     11         else:\n     12             bytes_dbdev = dbdev\n     13         dbdev_hash = hashlib.sha256(bytes_dbdev).hexdigest()\n     14         _MAGIC_TRACE_KEY_IS_SET = dbdev_hash == 'e27eae61e774b19f4053361e523c771a92e838026da42c60e6b097d9cb2bc825'\n     15     return _MAGIC_TRACE_KEY_IS_SET\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nЭтот метод многократно вызывается из разных мест в коде для проверки, установлен ли волшебный ключ трассировки. Я попытался было взломать хеш SHA-256 брутфорсом \u003Ca href=\"https:\u002F\u002Fwww.openwall.com\u002Fjohn\u002F\"\u003EJohn the Ripper\u003C\u002Fa\u003E, но простой перебор идёт слишком долго, а я не мог сократить количество вариантов, потому что не было догадок о содержимом. В Dropbox у разработчиков может быть конкретный жёстко закодированный ключ разработки, который они устанавливают в случае необходимости, активируя режим работы клиента с «волшебным ключом» для трассировки.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЭто меня раздражало, поскольку я хотел найти быстрый и простой способ запустить Dropbox с этим набором ключей для трассировки. Поэтому я написал процедуру маршалинга, которая генерирует зашифрованные файлы pyc в соответствии с шифрованием Dropbox. Таким образом, я смог ввести свой собственный код или просто заменить вышеуказанный хеш. Этот код в репозитории на Github находится в файле \u003Ccode\u003Epatchzip.py\u003C\u002Fcode\u003E. В итоге хеш заменяется SHA-256 хешем \u003Ccode\u003EANVILVENTURES\u003C\u002Fcode\u003E. Потом объект кода повторно шифруется и помещается в zip, где хранится весь обфусцированный код. Это позволяет сделать следующее:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E    $ DBDEV=ANVILVENTURES; export DBDEV;\n    $ ~\u002F.dropbox-dist\u002Fdropbox-lnx_64-71.4.108\u002Fdropbox\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nТеперь все функции отладки отображаются при щелчке правой кнопкой мыши по значку Dropbox в системном трее.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cdiv style=\"text-align:center;\"\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fpost_images\u002F619\u002Fc68\u002F385\u002F619c6838574ff7023a0dbdf27b880b2d.png\"\u002F\u003E\u003C\u002Fdiv\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nИзучая дальше декомпилированные исходники, в файле \u003Ccode\u003Edropbox\u002Fwebdebugger\u002Fserver.py\u003C\u002Fcode\u003E я обнаружил метод с названием \u003Ccode\u003Eis_enabled\u003C\u002Fcode\u003E. Похоже, он проверяет, нужно ли включить встроенный веб-отладчик. Прежде всего, он проверяет упомянутый волшебный ключ. Поскольку мы заменили хеш SHA-256, то мы можем просто установить значение \u003Ccode\u003EANVILVENTURES\u003C\u002Fcode\u003E. Вторая часть в строках \u003Ccode\u003E201\u003C\u002Fcode\u003E и \u003Ccode\u003E202\u003C\u002Fcode\u003E проверяет, есть ли переменная окружения с именем \u003Ccode\u003EDB&lt;x\u003E\u003C\u002Fcode\u003E, у которой \u003Ccode\u003Ex\u003C\u002Fcode\u003E равно хешу SHA-256. Значение окружения устанавливает куки с ограничением по времени, как мы уже видели.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"python\"\u003E    191     @classmethod\n    192     def is_enabled(cls):\n    193         if cls._magic_key_set:\n    194             return cls._magic_key_set\n    195         else:\n    196             cls._magic_key_set = False\n    197             if not magic_trace_key_is_set():\n    198                 return False\n    199             for var in os.environ:\n    200                 if var.startswith('DB'):\n    201                     var_hash = hashlib.sha256(make_bytes(var[2:])).hexdigest()\n    202                     if var_hash == '5df50a9c69f00ac71f873d02ff14f3b86e39600312c0b603cbb76b8b8a433d3ff0757214287b25fb01' and is_valid_time_limited_cookie(os.environ[var]):\n    203                         cls._magic_key_set = True\n    204                         return True\n    205\n    206             return False\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nИспользуя точно такую же технику, заменив этот хеш на SHA-256, который использовался раньше, мы теперь можем изменить ранее написанный скрипт \u003Ccode\u003Esetenv\u003C\u002Fcode\u003E на что-то вроде такого:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"python\"\u003E    $ cat setenv.py\n    …\n    c = generate_time_cookie()\n    output_env(\"DBDEV\", \"ANVILVENTURES\")\n    output_env(\"DBANVILVENTURES\", c)\n    $ python3 setenv.py\n    DBDEV=ANVILVENTURES; export DBDEV;\n    DBANVILVENTURES=38b285c4034a67; export DBANVILVENTURES\n    $ eval `python3 setenv.py`\n    $ ~\u002F.dropbox-dist\u002Fdropbox-lnx_64-71.4.108\u002Fdropbox\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nКак видим, после запуска клиента открывается на прослушивание новый порт TCP. Он не откроется, если правильно не задать переменные окружения.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E    $ netstat --tcp -lnp | grep dropbox\n    tcp        0      0 127.0.0.1:4242              0.0.0.0:*               LISTEN      1517\u002Fdropbox   \u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nДальше в коде можно найти интерфейс WebSocket в файле \u003Ccode\u003Ewebpdb.pyc\u003C\u002Fcode\u003E. Это обёртка для стандартных питоновских утилит \u003Ca href=\"https:\u002F\u002Fdocs.python.org\u002F3.6\u002Flibrary\u002Fpdb.html\"\u003Epdb\u003C\u002Fa\u003E. Доступ к интерфейсу осуществляется через HTTP-сервер на этом порту. Давайте установим \u003Ca href=\"https:\u002F\u002Fgithub.com\u002Fvi\u002Fwebsocat\"\u003Eклиент websocket\u003C\u002Fa\u003E и испытаем его:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E    $ websocat -t ws:\u002F\u002F127.0.0.1:4242\u002Fpdb\n    --Return--\n    \n    \u003E \u002Fhome\u002Fgvb\u002Fdropbox\u002Fwebdebugger\u002Fwebpdb.pyc(101)run()-\u003ENone\n    \u003E\n    (Pdb) from build_number.environment import magic_trace_key_is_set as ms\n    (Pdb) ms()\n    True\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nТаким образом, теперь у нас полноценный отладчик в клиенте, который во всех остальных отношениях работает как и раньше. Мы можем выполнять произвольный код Python, нам удалось включить внутреннее меню отладки и функции трассировки. Всё это очень поможет в дальнейшем анализе клиента Dropbox.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch3\u003EЗаключение\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\nНам удалось провести обратную разработку Dropbox, написать инструменты для расшифровки и инъекции кода, которые работают с текущими клиентами Dropbox на базе Python 3.6. Мы сделали реверс-инжиниринг отдельных скрытых функций и активировали их. Очевидно, что отладчик действительно поможет в дальнейшем взломе. Особенно с рядом файлов, которые не удаётся успешно декомпилировать из-за недостатков decompyle6.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch3\u003EКод\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\nКод можно найти \u003Ca href=\"https:\u002F\u002Fgithub.com\u002Fanvilventures\u002Flookinsidethebox\"\u003Eна Github\u003C\u002Fa\u003E. Инструкции по использованию там же. В этом репозитории лежит также мой старый код, написанный в 2011 году. Он должен работать всего с несколькими модификациями при условии, что у кого-то более старые версии Dropbox, основанные на Python 2.7.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВ репозитории также лежат скрипты для трансляции опкодов, инструкция по установке переменных среды Dropbox и всё необходимое для изменения zip-файла.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch3\u003EБлагодарности\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\nСпасибо Брайану из Anvil Ventures за ревью моего кода. Работа над этим кодом продолжалась несколько лет, время от времени я его обновлял, внедрял новые методы и переписывал фрагменты, чтобы восстановить его работу на новых версиях Dropbox.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nКак упоминалось ранее, отличной отправной точкой для реверс-инжиниринга приложений на Python являются работы Рича Смита, Флориан Леду и Николя Раффа, а также Хагена Фрича. Особенно их работа актуальна для обратной разработки одного из самых больших в мире приложений на Python — клиента Dropbox.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nСледует отметить, что декомпиляция питоновского кода сильно продвинулась благодаря проекту uncompyle6 во главе с Р. Бернштейном. В этом декомпиляторе собрано и улучшено множество различных декомпиляторов Python.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nТакже большое спасибо коллегам Брайану, Остину, Стефану и Крису за рецензирование этой статьи.\u003C\u002Fdiv\u003E","tags":[{"titleHtml":"Dropbox"},{"titleHtml":"Python"},{"titleHtml":"декомпиляция"},{"titleHtml":"десериализация"},{"titleHtml":"демаршалинг"},{"titleHtml":"CPython"}],"metadata":{"stylesUrls":[],"scriptUrls":[],"shareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F452276\u002Facffc490872378ac7d69d88429b92ba5\u002F","shareImageWidth":1200,"shareImageHeight":630,"vkShareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F452276\u002Facffc490872378ac7d69d88429b92ba5\u002F?format=vk","schemaJsonLd":"{\"@context\":\"http:\\\u002F\\\u002Fschema.org\",\"@type\":\"Article\",\"mainEntityOfPage\":{\"@type\":\"WebPage\",\"@id\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fru\\\u002Fpost\\\u002F452276\\\u002F\"},\"headline\":\"Реверс-инжиниринг клиента Dropbox\",\"datePublished\":\"2019-05-17T12:38:23+03:00\",\"dateModified\":\"2019-05-17T13:52:04+03:00\",\"author\":{\"@type\":\"Person\",\"name\":\"Анатолий Ализар\"},\"publisher\":{\"@type\":\"Organization\",\"name\":\"Habr\",\"logo\":{\"@type\":\"ImageObject\",\"url\":\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fa_\\\u002Flk\\\u002F9m\\\u002Fa_lk9mjkccjox-zccjrpfolmkmq.png\"}},\"description\":\"TL;DR. В статье рассказывается об обратной разработке клиента Dropbox, взломе механизмов обфускации и декомпиляции клиента на Python, а также изменении программы...\",\"url\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fru\\\u002Fpost\\\u002F452276\\\u002F#post-content-body\",\"about\":[\"h_python\",\"h_debug\",\"h_reverse-engineering\",\"h_soft\",\"f_develop\",\"f_popsci\"],\"image\":[\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fgetpro\\\u002Fhabr\\\u002Fpost_images\\\u002Fe83\\\u002Fd0a\\\u002Fa4f\\\u002Fe83d0aa4f475709108cb1cfc0cb16d74.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fgetpro\\\u002Fhabr\\\u002Fpost_images\\\u002F619\\\u002Fc68\\\u002F385\\\u002F619c6838574ff7023a0dbdf27b880b2d.png\"]}","metaDescription":"TL;DR. В статье рассказывается об обратной разработке клиента Dropbox, взломе механизмов обфускации и декомпиляции клиента на Python, а также изменении программы для активации функций отладки, которые...","mainImageUrl":null,"amp":false},"polls":[],"commentsEnabled":true,"rulesRemindEnabled":false,"votesEnabled":true,"status":"published","plannedPublishTime":null,"checked":null,"isEditorial":false}},"articlesIds":{},"isLoading":false,"pagesCount":{},"route":{},"reasonsList":null,"view":"cards","lastVisitedRoute":{},"ssrCommentsArticleIds":[""],"karma":{}},"authorContribution":{"authors":{}},"betaTest":{"currentAnnouncement":null,"announcements":{},"announcementCards":null,"announcementComments":{},"announcementCommentThreads":{},"announcementCommentingStatuses":{},"archivedList":[]},"authorStatistics":{"articleRefs":{},"articleIds":{},"pagesCount":{},"route":{},"viewsCount":[],"maxStatsCount":{}},"career":{"seoLandings":[],"hubs":"python,debug,reverse-engineering,soft"},"comments":{"articleComments":{},"searchCommentsResults":null,"previewComment":null,"pagesCount":null,"commentAccess":{},"scrollParents":{},"pageArticleComments":{"lastViewedComment":0,"postId":null,"lastCommentTimestamp":"","moderated":[],"moderatedIds":[],"commentRoute":""}},"companies":{"companyRefs":{},"companyIds":{},"companyTopIds":{},"pagesCount":{},"companyProfiles":{},"companiesCategories":[],"companiesCategoriesTotalCount":0,"companiesWidgets":{},"companiesWorkers":{},"companiesFans":{},"route":{},"isLoading":false,"companyWorkersLoading":false,"companyFansLoading":false,"vacancies":{}},"companiesContribution":{"hubs":{},"flows":{},"companyRefs":{}},"companyHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"conversation":{"messages":[],"respondent":null,"isLoadMore":false},"conversations":{"conversations":[],"unreadCount":0,"pagesCount":0,"isLoadMore":false},"desktopState":{"desktopFl":null,"desktopHl":null,"isChecked":false,"isLoginDemanded":false},"dfp":{"slotsDict":{}},"docs":{"menu":{},"articles":{},"mainMenu":[],"loading":{"main":false,"dropdown":false,"article":false}},"feature":{"isProbablyVisible":"true"},"flows":{"flows":[{"alias":"develop","id":1,"route":{"name":"FLOW_PAGE","params":{"flowName":"develop"}}},{"alias":"admin","id":6,"route":{"name":"FLOW_PAGE","params":{"flowName":"admin"}}},{"alias":"design","id":2,"route":{"name":"FLOW_PAGE","params":{"flowName":"design"}}},{"alias":"management","id":3,"route":{"name":"FLOW_PAGE","params":{"flowName":"management"}}},{"alias":"marketing","id":4,"route":{"name":"FLOW_PAGE","params":{"flowName":"marketing"}}},{"alias":"popsci","id":7,"route":{"name":"FLOW_PAGE","params":{"flowName":"popsci"}}}]},"global":{"isPwa":false,"device":"desktop","isHabrCom":true},"hubs":{"hubRefs":{},"hubIds":{},"pagesCount":{},"isLoading":false,"route":{}},"hubsBlock":{"hubRefs":{},"hubIds":{}},"i18n":{"fl":"ru","hl":"ru"},"info":{"infoPage":{},"isLoading":true},"location":{"urlStruct":{"protocol":null,"slashes":null,"auth":null,"host":null,"port":null,"hostname":null,"hash":null,"search":null,"query":{},"pathname":null,"path":null,"href":""},"searchQuery":null},"me":{"user":null,"ppgDemanded":false,"karmaResetInfo":{"canReincarnate":null,"wasReincarnated":null,"currentScore":null},"notes":null},"mostReadingList":{"mostReadingListIds":[],"mostReadingListRefs":null,"promoPost":null},"pinnedPost":{"pinnedPost":null},"ppa":{"articles":{},"card":null,"transactions":null,"totalTransactions":null,"isAccessible":null},"projectsBlocks":{"activeBlocks":{}},"pullRefresh":{"shouldRefresh":false},"sandbox":{"articleIds":[],"articleRefs":{},"pagesCount":null,"route":{},"lastVisitedRoute":{},"isLoading":false},"settingsOther":{"inputs":{"uiLang":{"errors":[],"ref":null,"value":""},"articlesLangEnglish":{"errors":[],"ref":null,"value":false},"articlesLangRussian":{"errors":[],"ref":null,"value":false},"agreement":{"errors":[],"ref":null,"value":false},"email":{"errors":[],"ref":null,"value":true},"digest":{"errors":[],"ref":null,"value":true}}},"similarList":{"similarListIds":[],"similarListRefs":null},"ssr":{"error":null,"isDataLoaded":false,"isDataLoading":false,"isHydrationFailed":false,"isServer":false},"userHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"userInvites":{"availableInvites":0,"usedInvitesIds":[],"usedInvitesRefs":{},"usedInvitesPagesCount":0,"unusedInvitesIds":[],"unusedInvitesRefs":{},"unusedInvitesPagesCount":0},"users":{"authorRefs":{},"authorIds":{},"pagesCount":{},"authorProfiles":{},"userHubs":{},"userInvitations":{},"authorFollowers":{},"authorFollowed":{},"karmaStats":[],"statistics":null,"isLoading":false,"authorFollowersLoading":false,"authorFollowedLoading":false,"userHubsLoading":false,"userInvitationsLoading":false,"route":{}},"viewport":{"prevScrollY":{},"scrollY":0,"width":0},"tracker":{"items":{},"pagesCache":{},"markedViewedSilently":{},"markedRead":{},"unreadCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null},"unviewedCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null}}};(function(){var s;(s=document.currentScript||document.scripts[document.scripts.length-1]).parentNode.removeChild(s);}());</script>
+<script src="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" defer></script><script src="https://assets.habr.com/habr-web/js/app.c0af73e7.js" defer></script>
+
+
+
+    <script>
+      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+        (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+        m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+      })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+    </script>
+  
+  <script type="text/javascript" >
+    (function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+    m[i].l=1*new Date();k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})
+    (window, document, "script", "https://mc.yandex.ru/metrika/tag.js", "ym");
+
+    ym(24049213, "init", {
+      defer:true,
+      trackLinks:true,
+      accurateTrackBounce:true,
+      webvisor:false,
+    });
+  </script>
+  <noscript>
+    <div>
+      <img src="https://mc.yandex.ru/watch/24049213" style="position:absolute; left:-9999px;" alt="" />
+    </div>
+  </noscript>
+  
+    <script type="text/javascript">
+      window.addEventListener('load', function () {
+        setTimeout(() => {
+          const img = new Image();
+          img.src = 'https://vk.com/rtrg?p=VK-RTRG-421343-57vKE';
+        }, 0);
+      });
+    </script>
+  
+</body>
+</html>

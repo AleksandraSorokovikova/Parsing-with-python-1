@@ -1,0 +1,877 @@
+<!DOCTYPE html>
+<html lang="ru" data-vue-meta="%7B%22lang%22:%7B%22ssr%22:%22ru%22%7D%7D">
+<head >
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
+  <title>Краткий и бодрый обзор архитектуры компиляторов / Хабр</title>
+  <style>
+    /* cyrillic-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSxf6TF0.woff2) format('woff2');
+      unicode-range: U+0460-052F, U+1C80-1C88, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+    }
+
+    /* cyrillic */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveQhf6TF0.woff2) format('woff2');
+      unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+    }
+
+    /* latin-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSBf6TF0.woff2) format('woff2');
+      unicode-range: U+0100-024F, U+0259, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20CF, U+2113, U+2C60-2C7F, U+A720-A7FF;
+    }
+
+    /* latin */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveRhf6.woff2) format('woff2');
+      unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+    }
+  </style>
+  <link rel="preload" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" as="script"><link rel="preload" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/app.c0af73e7.js" as="script">
+  <link rel="stylesheet" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css"><link rel="stylesheet" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css">
+  <script>window.i18nFetch = new Promise((res, rej) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open('GET', '/js/i18n/ru-compiled.85eb77f0b17c8235e7b64b9f81ea5ec2.json');
+          xhr.responseType = 'json';
+          xhr.onload = function(e) {
+            if (this.status === 200) {
+              res({ru: xhr.response});
+            } else {
+              rej(e);
+            }
+          };
+          xhr.send();
+        });</script>
+  
+  <script data-vue-meta="ssr" src="/js/ads.js" onload="window['zhY4i4nJ9K'] = true" data-vmid="checkad"></script><script data-vue-meta="ssr" type="application/ld+json" data-vmid="ldjson-schema">{"@context":"http:\/\/schema.org","@type":"Article","mainEntityOfPage":{"@type":"WebPage","@id":"https:\/\/habr.com\/ru\/company\/vk\/blog\/451894\/"},"headline":"Краткий и бодрый обзор архитектуры компиляторов","datePublished":"2019-05-15T15:42:21+03:00","dateModified":"2019-06-07T11:13:42+03:00","author":{"@type":"Person","name":"Макс"},"publisher":{"@type":"Organization","name":"Habr","logo":{"@type":"ImageObject","url":"https:\/\/habrastorage.org\/webt\/a_\/lk\/9m\/a_lk9mjkccjox-zccjrpfolmkmq.png"}},"description":"Большинство компиляторов имеют следующую архитектуру:     В данной статье я собираюсь детально препарировать эту архитектуру, элемент за элементом.  Можно сказа...","url":"https:\/\/habr.com\/ru\/company\/vk\/blog\/451894\/#post-content-body","about":["c_vk","h_programming","h_analysis_design","h_complete_code","h_compilers","f_develop"],"image":["https:\/\/habrastorage.org\/webt\/sl\/ej\/-i\/slej-ivpokabgczeqdbgiafc0rw.jpeg","https:\/\/habrastorage.org\/getpro\/habr\/post_images\/73e\/ff7\/c46\/73eff7c467213f5de1b9134666f9e569.png","https:\/\/habrastorage.org\/getpro\/habr\/post_images\/98c\/61a\/cb3\/98c61acb355e7887b53b5c37de0aa34f.png","https:\/\/habrastorage.org\/getpro\/habr\/post_images\/330\/914\/1b9\/3309141b9d53be1d9e5c8f77fb46d982.jpg"]}</script>
+  <script src="//www.googletagservices.com/tag/js/gpt.js" async></script>
+  <style>.grecaptcha-badge{visibility: hidden;}</style>
+  <meta name="habr-version" content="2.49.0">
+  
+  <meta data-vue-meta="ssr" property="fb:app_id" content="444736788986613"><meta data-vue-meta="ssr" property="fb:pages" content="472597926099084"><meta data-vue-meta="ssr" name="twitter:card" content="summary_large_image"><meta data-vue-meta="ssr" name="twitter:site" content="@habr_eng"><meta data-vue-meta="ssr" property="og:title" content="Краткий и бодрый обзор архитектуры компиляторов" data-vmid="og:title"><meta data-vue-meta="ssr" name="twitter:title" content="Краткий и бодрый обзор архитектуры компиляторов" data-vmid="twitter:title"><meta data-vue-meta="ssr" name="aiturec:title" content="Краткий и бодрый обзор архитектуры компиляторов" data-vmid="aiturec:title"><meta data-vue-meta="ssr" name="description" content="Большинство компиляторов имеют следующую архитектуру:
+
+ 
+
+В данной статье я собираюсь детально препарировать эту архитектуру, элемент за элементом. 
+Можно сказать, что эта статья — дополнение к..." data-vmid="description"><meta data-vue-meta="ssr" itemprop="description" content="Большинство компиляторов имеют следующую архитектуру:
+
+ 
+
+В данной статье я собираюсь детально препарировать эту архитектуру, элемент за элементом. 
+Можно сказать, что эта статья — дополнение к..." data-vmid="description:itemprop"><meta data-vue-meta="ssr" property="og:description" content="Большинство компиляторов имеют следующую архитектуру:
+
+ 
+
+В данной статье я собираюсь детально препарировать эту архитектуру, элемент за элементом. 
+Можно сказать, что эта статья — дополнение к..." data-vmid="og:description"><meta data-vue-meta="ssr" name="twitter:description" content="Большинство компиляторов имеют следующую архитектуру:
+
+ 
+
+В данной статье я собираюсь детально препарировать эту архитектуру, элемент за элементом. 
+Можно сказать, что эта статья — дополнение к..." data-vmid="twitter:description"><meta data-vue-meta="ssr" property="aiturec:description" content="Большинство компиляторов имеют следующую архитектуру:
+
+ 
+
+В данной статье я собираюсь детально препарировать эту архитектуру, элемент за элементом. 
+Можно сказать, что эта статья — дополнение к..." data-vmid="aiturec:description"><meta data-vue-meta="ssr" itemprop="image" content="https://habr.com/share/publication/451894/edb8731b63e952f36c613cecb5920add/" data-vmid="image:itemprop"><meta data-vue-meta="ssr" property="og:image" content="https://habr.com/share/publication/451894/edb8731b63e952f36c613cecb5920add/" data-vmid="og:image"><meta data-vue-meta="ssr" property="aiturec:image" content="https://habr.com/share/publication/451894/edb8731b63e952f36c613cecb5920add/" data-vmid="aiturec:image"><meta data-vue-meta="ssr" name="twitter:image" content="https://habr.com/share/publication/451894/edb8731b63e952f36c613cecb5920add/" data-vmid="twitter:image"><meta data-vue-meta="ssr" property="vk:image" content="https://habr.com/share/publication/451894/edb8731b63e952f36c613cecb5920add/" data-vmid="vk:image"><meta data-vue-meta="ssr" property="aiturec:item_id" content="451894" data-vmid="aiturec:item_id"><meta data-vue-meta="ssr" property="aiturec:datetime" content="2019-05-15T12:42:21.000Z" data-vmid="aiturec:datetime"><meta data-vue-meta="ssr" property="og:type" content="article" data-vmid="og:type"><meta data-vue-meta="ssr" property="og:locale" content="ru_RU" data-vmid="og:locale"><meta data-vue-meta="ssr" property="og:image:width" content="1200" data-vmid="og:image:width"><meta data-vue-meta="ssr" property="og:image:height" content="630" data-vmid="og:image:height">
+  <link data-vue-meta="ssr" href="https://habr.com/ru/rss/post/451894/?fl=ru" type="application/rss+xml" title="" rel="alternate" name="rss"><link data-vue-meta="ssr" href="https://habr.com/ru/company/vk/blog/451894/" rel="canonical" data-vmid="canonical"><link data-vue-meta="ssr" data-vmid="hreflang"><link data-vue-meta="ssr" image_src="image" href="https://habr.com/share/publication/451894/edb8731b63e952f36c613cecb5920add/" data-vmid="image:href">
+  <meta name="apple-mobile-web-app-status-bar-style" content="#303b44">
+  <meta name="msapplication-TileColor" content="#629FBC">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="16x16"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-16.png"
+  >
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="32x32"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-32.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="76x76"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-76.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="120x120"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="152x152"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-152.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="180x180"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-180.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="256x256"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-256.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1136x640.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2436x1125.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1792x828.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_828x1792.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1334x750.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2208x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1125x2436.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2208.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2732x2048.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2688x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2224x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_750x1334.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x2732.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2388x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2224.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_640x1136.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2388.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x1536.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1536x2048.png"
+  >
+  <link
+    rel="mask-icon"
+    color="#77a2b6"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.svg"
+  >
+  <link
+    crossorigin="use-credentials"
+    href="/manifest.webmanifest"
+    rel="manifest"
+  >
+</head>
+<body>
+
+
+<div id="app" data-server-rendered="true" data-async-called="true"><div class="tm-layout__wrapper"><!----> <div></div> <!----> <header class="tm-header"><div class="tm-page-width"><div class="tm-header__container"><!----> <span class="tm-header__logo-wrap"><a href="/ru/" class="tm-header__logo tm-header__logo_ru"><svg height="16" width="16" class="tm-svg-img tm-header__icon"><title>Хабр</title> <use xlink:href="/img/habr-logo-ru.svg#logo"></use></svg></a> <span class="tm-header__beta-sign" style="display:none;">β</span></span> <div class="tm-dropdown tm-header__projects"><div class="tm-dropdown__head"><button class="tm-header__dropdown-toggle"><svg height="16" width="16" class="tm-svg-img tm-header__icon tm-header__icon_dropdown"><title>Открыть список</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#arrow-down"></use></svg></button></div> <!----></div> <a href="/ru/sandbox/start/" class="tm-header__become-author-btn">
+            Как стать автором
+          </a> <div class="tm-feature tm-header__feature tm-feature_variant-inline"><!----></div> <!----> <!----></div></div></header> <div class="tm-layout"><div class="tm-page-progress-bar"></div> <div data-menu-sticky="true" class="tm-base-layout__header tm-base-layout__header_is-sticky"><div class="tm-page-width"><div class="tm-base-layout__header-wrapper"><div class="tm-main-menu"><div class="tm-main-menu__section"><nav class="tm-main-menu__section-content"><!----> <a href="/ru/all/" class="tm-main-menu__item">
+        Все потоки
+      </a> <a href="/ru/flows/develop/" class="tm-main-menu__item">
+          Разработка
+        </a><a href="/ru/flows/admin/" class="tm-main-menu__item">
+          Администрирование
+        </a><a href="/ru/flows/design/" class="tm-main-menu__item">
+          Дизайн
+        </a><a href="/ru/flows/management/" class="tm-main-menu__item">
+          Менеджмент
+        </a><a href="/ru/flows/marketing/" class="tm-main-menu__item">
+          Маркетинг
+        </a><a href="/ru/flows/popsci/" class="tm-main-menu__item">
+          Научпоп
+        </a></nav></div></div> <div class="tm-header-user-menu tm-base-layout__user-menu"><a href="/ru/search/" class="tm-header-user-menu__item tm-header-user-menu__search"><svg height="24" width="24" class="tm-svg-img tm-header-user-menu__icon tm-header-user-menu__icon_search tm-header-user-menu__icon_dark"><title>Поиск</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#search"></use></svg></a> <!----> <!----> <!----> <div class="tm-header-user-menu__item tm-header-user-menu__user_desktop"><div class="tm-dropdown"><div class="tm-dropdown__head"><svg height="24" width="24" data-test-id="menu-toggle-guest" class="tm-svg-img tm-header-user-menu__icon"><title>Профиль</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#header-user"></use></svg> <!----></div> <!----></div> <!----></div> <!----></div></div></div></div> <!----> <div class="tm-page-width"></div> <main class="tm-layout__container"><div hl="ru" companyName="vk" data-async-called="true" class="tm-page"><div class="tm-page-width"><div class="tm-page__header"><div class="tm-company-card__branding tm-company-article__branding tm-company-card__branding_loading"><div class="tm-company-card__branding-placeholder"><!----></div> <a href="https://vk.com/vkteam"><img src="//habrastorage.org/getpro/habr/branding/174/2c4/3a5/1742c43a5b504987a0fadf577a0bd4de.png" width="100%" class="tm-company-card__branding-image"></a></div></div> <div class="tm-page__wrapper"><div class="tm-page__main tm-page__main_has-sidebar"><div class="pull-down"><div class="pull-down__header" style="height:0px;"><div class="pull-down__content" style="bottom:10px;"><svg height="24" width="24" class="tm-svg-img pull-down__arrow"><title>Обновить</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#pull-arrow"></use></svg></div></div> <div class="tm-article-presenter"><div class="tm-company-card tm-company-article__company-card"><div class="tm-company-card__info"><div class="tm-company-card__header"><a href="/ru/company/vk/profile/" class="tm-company-card__avatar"><div class="tm-entity-image"><img alt="" height="48" src="//habrastorage.org/getpro/habr/company/9ed/c74/6b4/9edc746b484c805ecad1f941b5f7068a.png" width="48" class="tm-entity-image__pic"></div></a> <a href="https://career.habr.com/companies/vk" rel="noopener" target="_blank" class="tm-grade tm-company-card__rating"><div class="tm-rating"><div class="tm-rating__header"><svg height="24" width="24" class="tm-svg-img tm-svg-grade__icon"><title>Оценка компании на Хабр Карьере</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#grade"></use></svg> <div class="tm-rating__counter tm-rating__counter_variant-grade">4.37</div></div> <div class="tm-rating__text tm-rating__text_variant-grade">
+    Оценка
+  </div></div></a> <div class="tm-rating tm-company-card__rating"><div class="tm-rating__header"> <div class="tm-rating__counter">331.85</div></div> <div class="tm-rating__text">
+    Рейтинг
+  </div></div></div> <div class="tm-company-card__info"><a href="/ru/company/vk/profile/" class="tm-company-card__name">
+        VK
+      </a> <div class="tm-company-card__description">Технологии, которые объединяют</div></div></div> <div class="tm-company-card__buttons"><!----> <!----></div></div> <div class="tm-article-presenter__body"><div class="tm-misprint-area"><div class="tm-misprint-area__wrapper"><article class="tm-article-presenter__content tm-article-presenter__content_narrow"><div class="tm-article-presenter__header"> <div class="tm-article-snippet tm-article-presenter__snippet"><div class="tm-article-snippet__meta-container"><div class="tm-article-snippet__meta"><span class="tm-user-info tm-article-snippet__author"><a href="/ru/users/AloneCoder/" title="AloneCoder" class="tm-user-info__userpic"><div class="tm-entity-image"><img alt="" height="24" loading="lazy" src="//habrastorage.org/r/w32/getpro/habr/avatars/741/45e/bea/74145ebeab7f222cce402aed2683f9d7.png" width="24" class="tm-entity-image__pic"></div></a> <span class="tm-user-info__user"><a href="/ru/users/AloneCoder/" class="tm-user-info__username">
+      AloneCoder
+    </a> </span></span> <span class="tm-article-snippet__datetime-published"><time datetime="2019-05-15T12:42:21.000Z" title="2019-05-15, 15:42">15  мая  2019 в 15:42</time></span></div> <!----></div> <h1 lang="ru" class="tm-article-snippet__title tm-article-snippet__title_h1"><span>Краткий и бодрый обзор архитектуры компиляторов</span></h1> <div class="tm-article-snippet__hubs"><span class="tm-article-snippet__hubs-item"><a href="/ru/company/vk/blog/" class="tm-article-snippet__hubs-item-link router-link-active"><span>Блог компании VK</span> <!----></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/programming/" class="tm-article-snippet__hubs-item-link"><span>Программирование</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/analysis_design/" class="tm-article-snippet__hubs-item-link"><span>Анализ и проектирование систем</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/complete_code/" class="tm-article-snippet__hubs-item-link"><span>Совершенный код</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/compilers/" class="tm-article-snippet__hubs-item-link"><span>Компиляторы</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span></div> <div class="tm-article-snippet__labels"><div class="tm-article-snippet__label"><span>
+        Перевод
+      </span></div></div> <!----> <!----></div></div> <div class="tm-article-presenter__origin"><a href="https://blog.felixangell.com/compilers-brief-and-brisk" target="_blank" class="tm-article-presenter__origin-link">
+                Автор оригинала:
+                <span>
+                  Felix Angell
+                </span></a></div> <div data-gallery-root="" lang="ru" class="tm-article-body"><div id="post-content-body" class="article-formatted-body article-formatted-body_version-1"><div xmlns="http://www.w3.org/1999/xhtml"><div style="text-align:center;"><img src="https://habrastorage.org/r/w780q1/webt/sl/ej/-i/slej-ivpokabgczeqdbgiafc0rw.jpeg" data-src="https://habrastorage.org/webt/sl/ej/-i/slej-ivpokabgczeqdbgiafc0rw.jpeg" data-blurred="true"/></div><br/>
+Большинство компиляторов имеют следующую архитектуру:<br/>
+<br/>
+<img src="/img/image-loader.svg" data-src="https://habrastorage.org/getpro/habr/post_images/73e/ff7/c46/73eff7c467213f5de1b9134666f9e569.png"/> <br/>
+<br/>
+В данной статье я собираюсь детально препарировать эту архитектуру, элемент за элементом. <br/>
+Можно сказать, что эта статья — дополнение к огромному количеству существующих ресурсов на тему компиляторов. Она является автономным источником, который позволит вам разобраться в основах дизайна и реализации языков программирования.<br/>
+<br/>
+Целевая аудитория статьи — люди, чье представление о работе компиляторов крайне ограничено (максимум — то, что они занимаются компилированием). Однако я жду, что читатель разбирается в структурах и алгоритмах данных.<br/>
+<br/>
+Статья ни в коем случае не посвящена современным производственным компиляторам с миллионами строк кода — нет, это краткий курс «компиляторы для чайников», помогающий разобраться, что такое компилятор.<br/>
+<a name="habracut"></a><br/>
+<h2>Введение</h2><br/>
+Сейчас я работаю над системным языком <a href="https://krug-lang.org/">Krug</a>, вдохновленным Rust и Go. В статье я буду обращаться к Krug в качестве примера для иллюстрации своих мыслей. Krug находится в стадии разработки, но уже доступен на <a href="https://github.com/krug-lang">https://github.com/krug-lang</a> в репозиториях <a href="https://github.com/krug-lang/caasper">caasper</a> и <a href="https://github.com/krug-lang/krug">krug</a>. Язык не совсем типичен по сравнению с обычной архитектурой компиляторов, что отчасти и вдохновило меня на написание статьи — но об этом позже.<br/>
+<br/>
+Спешу сообщить, что я ни в коей степени не являюсь специалистом по компиляторам! У меня нет докторской степени, и я не проходил никакого формального обучения — все описанное в статье я изучил самостоятельно в свободное время. Также должен сказать, что я не описываю фактический, единственно верный подход к созданию компилятора, а, скорее, представляю базовые методы, пригодные для создания небольшого «игрушечного» компилятора.<br/>
+<br/>
+<h2>Фронтенд</h2><br/>
+Вернемся к диаграмме выше: направленные к полю frontend стрелочки слева — известные и любимые нами языки вроде C. Фронтенд выглядит примерно так: лексический анализ -> парсер.<br/>
+<br/>
+<h2>Лексический анализ</h2><br/>
+Когда я начинал изучать компиляторы и дизайн языков, мне сказали, что лексический анализ — то же самое, что и токенизация. Этим описанием мы и воспользуемся. Анализатор берет вводные данные в форме строк или потока символов и распознает в них паттерны, которые он нарезает в токены.<br/>
+<br/>
+В случае компилятора на вход он получает написанную программу. Она считывается в строку из файла, а анализатор токенизирует ее исходный код.<br/>
+<br/>
+<pre><code class="plaintext">enum TokenType {
+  Identifier,
+  Number,
+};
+
+struct Token {
+  std::string Lexeme;
+  TokenType type;
+  // ...
+  // It's also handy to store things in here
+  // like the position of the token (start to end row:col)
+};</code></pre><br/>
+В данном фрагменте, написанном на C-образном языке, можно увидеть структуру, содержащую вышеупомянутую lexeme, а также TokenType, который служит для распознавания данной лексемы.<br/>
+<br/>
+Примечание: статья не является инструкцией для создания языка с примерами — но для лучшего понимания я буду время от времени вставлять фрагменты кода.<br/>
+<br/>
+Обычно анализаторы являются простейшими компонентами компилятора. Весь фронтенд, по сути, довольно прост по сравнению с остальными кусочками паззла. Хотя это во многом зависит от вашей работы.<br/>
+<br/>
+Возьмем следующий кусочек кода на C:<br/>
+<br/>
+<pre><code class="cpp">int main() {
+  printf("Hello world!\n");
+  return 0;
+}</code></pre><br/>
+Считав его из файла в строку и проведя линейное сканирование, вы, возможно, сможете нарезать токены. Мы идентифицируем токены естественным образом — видя, что int — это «слово», а 0 в операторе возврата — «число». Лексический анализатор проделывает ту же процедуру, что и мы — позже мы разберемся в этом процессе детальнее. Например, проанализируем числа: <br/>
+<br/>
+<pre><code class="plaintext">0xdeadbeef — HexNumber (шестнадцатеричное число)
+1231234234 — WholeNumber (целое число)
+3.1412 — FloatingNumber (число с плавающей запятой)
+55.5555 — FloatingNumber (число с плавающей запятой)
+0b0001 — BinaryNumber (двоичное число)</code></pre><br/>
+Определение слов может представлять сложность. Большинство языков определяют слово как последовательность букв и цифр, а идентификатор, как правило, должен начинаться с буквы или нижнего подчеркивания. Например:<br/>
+<br/>
+<pre><code class="plaintext">123foobar := 3
+person-age := 5
+fmt.Println(123foobar)</code></pre><br/>
+В Go этот код не будет считаться правильным и будет разобран на следующие токены:<br/>
+<br/>
+<pre><code class="plaintext">Number(123), Identifier(foobar), Symbol(:=), Number(3) ...</code></pre><br/>
+Большинство встречающихся идентификаторов выглядят так:<br/>
+<br/>
+<pre><code class="plaintext">foo_bar
+__uint8_t
+fooBar123</code></pre><br/>
+Анализаторам придется решать и другие проблемы, связанные, например, с пробелами, многострочными и однострочными комментариями, идентификаторами, числами, системами счисления и форматированием чисел (например, 1_000_000) и кодировками (например, поддержкой UTF8 вместо ASCII).<br/>
+<br/>
+И если вы думаете, что можете прибегнуть к регулярным выражениям — лучше не стоит. Гораздо проще написать анализатор с нуля, но я очень рекомендую прочесть <a href="https://commandcenter.blogspot.com/2011/08/regular-expressions-in-lexing-and.html">эту статью</a> от нашего царя и бога Роба Пайка. Причины, по которым нам не подойдет Regex, описаны во множестве других статей, так что этот момент я опущу. К тому же, писать анализатор гораздо интереснее, чем мучиться над длинными многословными выражениями, загруженными на regex101.com в 5:24 утра. В своем первом языке я использовал для токенизации функцию <code>split(str)</code> — и далеко не продвинулся.<br/>
+<br/>
+<h2>Парсинг</h2><br/>
+Парсинг несколько сложнее, чем лексический анализ. Существует множество парсеров и парсеров-генераторов — здесь начинается игра по-крупному.<br/>
+<br/>
+Парсеры в компиляторах обычно принимают входные данные в форме токенов и строят определенное дерево — абстрактное синтаксическое дерево или дерево парсинга. По своей природе они сходны, но имеют некоторые различия.<br/>
+<br/>
+Эти этапы можно представить в виде функций:<br/>
+<br/>
+<pre><code class="plaintext">fn lex(string input) []Token {...}
+fn parse(tokens []Token) AST {...}
+
+let input = "int main() { return 0; }";
+let tokens = lex(input);
+let parse_tree = parse(tokens);
+// ....</code></pre><br/>
+Обычно компиляторы строятся из множества маленьких компонентов, которые берут входные данные, меняют их или преобразуют их в различные выходные данные. Это одна из причин, по которым функциональные языки хорошо подходят для создания компиляторов. Другие причины — прекрасное сопоставление с эталоном и довольно обширные стандартные библиотеки. Прикольный факт: первая реализация компилятора <a href="https://en.wikipedia.org/wiki/Rust_(programming_language)">Rust</a> была на Ocaml.<br/>
+<br/>
+Советую держать эти компоненты как можно более простыми и автономными — модульность сильно облегчит процесс. По-моему, то же можно сказать и о многих других аспектах разработки ПО.<br/>
+<br/>
+<h2>Деревья</h2><br/>
+<h4>Дерево парсинга</h4><br/>
+Что это, блин, такое? Также известное как дерево грамматического разбора, это густое дерево служит для визуализации программы-источника. В них содержится вся информация (или большая ее часть) о программе ввода, обычно совпадающая с тем, что описано в грамматике вашего языка. Каждый узел дерева будет концевым или неконцевым, например, NumberConstant или StringConstant.<br/>
+<br/>
+<h4>Абстрактное синтаксическое дерево</h4><br/>
+Как можно понять из названия, АСД — <i>абстрактное</i> синтаксическое дерево. Дерево парсинга содержит множество (часто излишней) информации о вашей программе, а в случае АСД она не требуется. АСД не нуждается в бесполезной информации о структуре и грамматике, которая не влияет на семантику программы.<br/>
+<br/>
+Предположим, в вашем дереве есть выражение типа ((5+5)-3)+2. В дереве парсинга вы хранили бы его полностью, вместе со скобками, операторами и значениями 5, 5, 3 и 2. Но с АСД можно просто провести ассоциации — нам нужно знать только значения, операторы и их порядок.<br/>
+<br/>
+На картинке ниже показано дерево для выражения a+b/c. <br/>
+<br/>
+<div style="text-align:center;"><img src="/img/image-loader.svg" data-src="https://habrastorage.org/getpro/habr/post_images/98c/61a/cb3/98c61acb355e7887b53b5c37de0aa34f.png" data-width="400"/></div> <br/>
+АСД можно представить следующим образом:<br/>
+<br/>
+<pre><code class="plaintext">interface Expression { ... };
+
+struct UnaryExpression {
+  Expression value;
+  char op;
+};
+
+struct BinaryExpression {
+  Expression lhand, rhand;
+  string op; // string because the op could be more than 1 char.
+};
+
+interface Node { ... };
+
+// or for something like a variable
+struct Variable : Node {
+  Token identifier;
+  Expression value;
+};</code></pre><br/>
+Это представление достаточно ограничено, но, надеюсь, вы сможете увидеть, как будут структурированы ваши узлы. Для парсинга можно прибегнуть к следующей процедуре:<br/>
+<br/>
+<pre><code class="plaintext">Node parseNode() {
+  Token current = consume();
+  switch (current.lexeme) {
+  case "var":
+    return parseVariableNode();
+  // ...
+  }
+  panic("unrecognized input!");
+}
+
+Node n = parseNode();
+if (n != null) {
+  // append to some list of top level nodes?
+  // or append to a block of nodes!
+}</code></pre><br/>
+Надеюсь, что вы уловили суть того, как будет проходить пошаговый парсинг остальных узлов, начиная с высокоуровневых языковых конструкций. Как именно реализуется синтаксический анализатор с рекурсивным спуском, вам нужно изучить самостоятельно.<br/>
+<br/>
+<h2>Грамматика</h2><br/>
+Проведение парсинга в АСД из набора токенов может оказаться непростым. Обычно вам следует начать с грамматики вашего языка. По сути, грамматика определяет структуру вашего языка. Существует несколько языков для определения языков, которые могут описать (или разобрать) сами себя. <br/>
+<br/>
+Пример языка для определения языков — <a href="https://ru.wikipedia.org/wiki/%D0%A0%D0%B0%D1%81%D1%88%D0%B8%D1%80%D0%B5%D0%BD%D0%BD%D0%B0%D1%8F_%D1%84%D0%BE%D1%80%D0%BC%D0%B0_%D0%91%D1%8D%D0%BA%D1%83%D1%81%D0%B0_%E2%80%94_%D0%9D%D0%B0%D1%83%D1%80%D0%B0">расширенная форма Бэкуса-Наура</a> (РБНФ). Она представляет собой вариацию <a href="https://dlang.org/spec/grammar.html">БНФ</a> с меньшим количеством угловых скобок. Вот пример РБНФ из статьи Википедии: <br/>
+<br/>
+<pre><code class="plaintext">digit excluding zero = "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" ;
+digit                = "0" | digit excluding zero ;</code></pre><br/>
+Продукционные правила определены: они указывают, какой шаблон терминалов составляет «нетерминал». Терминалы — часть алфавита, например, токен if или 0 и 1 в примере выше — терминалы. Нетерминалы — их противоположность, они находятся в левой части продукционных правил, и их можно считать переменными или «именованными указателями» на группы терминалов и нетерминалов. <br/>
+<br/>
+Во многих языках имеются спецификации, которые содержат грамматику. Например, для <a href="https://golang.org/ref/spec#Function_declarations">Go</a>, <a href="https://doc.rust-lang.org/reference/">Rust</a> и <a href="https://dlang.org/spec/grammar.html">D</a>.<br/>
+<br/>
+<h2>Анализаторы с рекурсивным спуском</h2><br/>
+Рекурсивный спуск — самый простой из многочисленных подходов к парсингу.<br/>
+<br/>
+Анализаторы с рекурсивным спуском — нисходящие, основанные на рекурсивных процедурах. Гораздо проще написать парсер, ведь в вашей грамматике нет <a href="https://en.wikipedia.org/wiki/Left_recursion">левой рекурсии</a>. В большинстве «игрушечных» языков этой техники достаточна для парсинга. В GCC используется написанный вручную нисходящий парсер, хотя до того использовался YACC.<br/>
+<br/>
+Впрочем, с парсингом этих языков могут возникать проблемы. В особенности C, где<br/>
+<br/>
+<pre><code class="cpp">foo * bar</code></pre><br/>
+может быть интерпретировано как<br/>
+<br/>
+<pre><code class="plaintext">int foo = 3;
+int bar = 4;
+foo * bar; // unused expression</code></pre><br/>
+или как <br/>
+<br/>
+<pre><code class="plaintext">typedef struct {
+int b;
+} foo;
+foo* bar;
+bar.b = 3;</code></pre><br/>
+В реализации Clang также используется анализатор с рекурсивным спуском:<br/>
+<br/>
+<i>Поскольку это обычный код для C++, рекурсивный спуск позволяет новичкам легко его понять. Он поддерживает специально созданные правила и другие странные штуки, требуемые C/C++ и помогает с легкостью реализовать диагностику и исправление ошибок. </i><br/>
+<br/>
+Также стоит обратить внимание на другие подходы: <br/>
+<br/>
+<ul>
+<li>нисходящий LL, рекурсивный спуск</li>
+<li>восходящий LR, сдвиг, восходящий спуск</li>
+</ul><br/>
+<h2>Парсер-генераторы</h2><br/>
+Еще один хороший способ. Конечно, есть и минусы — но это можно сказать про любой другой выбор, который делают программисты при создании ПО.<br/>
+<br/>
+Парсер-генераторы работают очень резво. Использовать их проще, чем написать собственный анализатор и получить качественный результат — хотя они и не очень дружелюбны к пользователю и не всегда выводят сообщения об ошибках. К тому же вам придется учиться использовать парсер-генератор, а при раскрутке компилятора, вероятно, придется раскручивать и парсер-генератор.<br/>
+<br/>
+Пример генератора парсеров — <a href="https://www.antlr.org/">ANTLR</a>, есть и множество других. <br/>
+<br/>
+Думаю, что этот инструмент подходит для тех, кому не хочется тратить время на написание фронтенда, и кто предпочел бы написать середину и бэкенд компилятора/интерпретатора и анализировать что бы то ни было. <br/>
+<br/>
+<h2>Применение парсинга</h2><br/>
+Если вы еще не поняли сами. Даже фронтенд компилятора (lex/parse) может применяться и для решения других проблем:<br/>
+<br/>
+<ul>
+<li>подсветка синтаксиса</li>
+<li>парсинг HTML/CSS для механизма визуализации</li>
+<li>транспиляторы: TypeScript, CoffeeScript</li>
+<li>компоновщики</li>
+<li>REGEX</li>
+<li>анализ интерфейсных данных</li>
+<li>парсинг URL</li>
+<li>форматирование инструментов типа <i>gofmt</i></li>
+<li>парсинг SQL и многое другое.</li>
+</ul><br/>
+<h2>Середина</h2><br/>
+Семантический анализ! Анализ семантики языка — одна из сложнейших задач при создании компилятора.<br/>
+<br/>
+Нужно удостовериться, что все входные программы работают правильно. В мой язык Krug пока не включены аспекты, связанные с семантическим анализом, а без него программист будет обязан всегда писать верный код. В реальности это невозможно — и мы все время пишем, компилируем, иногда запускаем, исправляем ошибки. Эта спираль бесконечна.<br/>
+<br/>
+Кроме того, компиляция программ невозможна без анализа правильности семантики на соответствующем этапе компиляции.<br/>
+<br/>
+Когда-то мне попадалась диаграмма, посвященная процентному соотношению фронтенда, миддленда и бэкенда. Тогда оно выглядело как <br/>
+<br/>
+<pre><code class="plaintext">F: 20% M: 20%: B: 60%</code></pre><br/>
+ Сегодня оно представляет собой что-то вроде<br/>
+<br/>
+<pre><code class="plaintext">F: 5% M: 60% B: 35%</code></pre><br/>
+Фронтендом занимается, в основном, генератор, а в бесконтекстных языках, не обладающих двойственностью грамматики, их можно выполнить довольно быстро — здесь поможет рекурсивный спуск. <br/>
+<br/>
+С технологией LLVM большая часть работы по оптимизации может быть загружена во фреймворк, в котором представлен целый ряд готовых оптимизаций.<br/>
+<br/>
+Следующий шаг — семантический анализ, важнейшая часть фазы компиляции. <br/>
+<br/>
+Например, в Rust с его моделью управления памятью компилятор выступает как большая мощная машина, которая проводит различные виды статического анализа на вводных формах. Отчасти эта задача состоит в конвертации входных данных в более удобную для анализа форму.<br/>
+<br/>
+По этой причине семантический анализ играет важную роль в архитектуре компилятора, а изнурительная подготовительная работа вроде оптимизации сгенерированной сборки или считывания входных данных в АСД выполняется за вас. <br/>
+<br/>
+<h2>Семантические проходы</h2><br/>
+В ходе семантического анализа большинство компиляторов проводят большое количество «семантических проходов» по АСД или другой абстрактной форме выражения кода. <a href="https://blogs.msdn.microsoft.com/ericlippert/2010/02/04/how-many-passes/">В этой статье</a> содержатся детали о большинстве проходов, производящихся в компиляторе .NET C#. <br/>
+<br/>
+Я не буду рассматривать каждый проход, тем более что они разнятся в зависимости от языка, но ниже описано несколько шагов в Krug.<br/>
+<br/>
+<h2>Объявление высшего уровня</h2><br/>
+Компилятор пройдется по всем объявлениям «высшего уровня» в модулях и осознает их существование. Глубже в блоки он не пойдет — он просто объявит, какие структуры, функции и т.д. имеются в том или ином модуле. <br/>
+<br/>
+<h2>Разрешение имени/символа</h2><br/>
+Компилятор проходит по всем блокам кода в функциях и т.п. и разрешает их — то есть, находит символы, требующие разрешения. Это распространенный проход, и именно отсюда, как правило, приходит ошибка <i>No such symbol XYZ</i> при компиляции кода Go.<br/>
+<br/>
+Выполнить этот проход может быть очень непросто, особенно если в вашей диаграмме зависимостей есть циклические зависимости. Некоторые языки их не допускают, например, Go выдаст ошибку, если какой-то из ваших пакетов формирует цикл, как и мой язык Krug. Циклические зависимости можно считать побочным эффектом плохой архитектуры. <br/>
+<br/>
+Циклы можно определять, модифицируя DFS в диаграмме зависимостей, или воспользовавшись <a href="https://ru.wikipedia.org/wiki/%D0%90%D0%BB%D0%B3%D0%BE%D1%80%D0%B8%D1%82%D0%BC_%D0%A2%D0%B0%D1%80%D1%8C%D1%8F%D0%BD%D0%B0">алгоритмом Тарьяна</a> (как это сделано в Krug) для определения (множественных) циклов. <br/>
+<br/>
+<h2>Выведение типов (Type Inference)</h2><br/>
+Компилятор проходит через все переменные и выводит их типы. Выведение типов в Krug очень слабое, оно просто выводит переменные на основе их значений. Это никоим образом не причудливая система, вроде тех, можно встретить в функциональных языках наподобие Haskell.<br/>
+<br/>
+Выводить типы можно с помощью процесса «унификации», или «унификации типов». Для более простых систем типов можно использовать очень простую реализацию.<br/>
+<br/>
+Типы реализованы в Krug так:<br/>
+<br/>
+<pre><code class="plaintext">interface Type {};
+
+struct IntegerType : Type {
+  int width;
+  bool signed;
+};
+
+struct FloatingType : Type {
+  int width;
+};
+
+struct ArrayType : Type {
+  Type base_type;
+  uint64 length;
+};</code></pre><br/>
+Также у вас может быть простое выведение типов, при котором вы будете присваивать тип узлам выражений, например, <code>IntegerConstantNode</code> может иметь тип IntegerType(64). А затем у вас может появиться функция <code>unify(t1, t2)</code>, которая выберет самый широкий тип, который можно использовать для выведения типа более сложных выражений, скажем, бинарных. Так что это вопрос присвоения переменной слева значений приведённых типов справа.<br/>
+<br/>
+Когда-то я написал простое <a href="https://github.com/felixangell/type-inference">приведение типов</a> на Go, которое стало прототипом реализации для Krug.<br/>
+<br/>
+<h2>Проход на изменяемость переменных (Mutability Pass)</h2><br/>
+Krug (как и Rust) по умолчанию является неизменяемым языком, то есть переменные остаются неизменными, если не задано иное:<br/>
+<br/>
+<pre><code class="plaintext">let x = 3;
+x = 4; // BAD!
+
+mut y = 5;
+y = 6; // OK!</code></pre><br/>
+Компилятор проходит по всем блокам и функциям и проверяет, что их «переменные корректны», то есть мы не меняем то, что не следует, и что все переменные, передаваемые определённым функциям, являются постоянными или изменяемым там, где требуется.<br/>
+<br/>
+Это делается с помощью символьной информации, которая собрана за предыдущие проходы. Символьная таблица, построенная по результатам семантического прохода, содержит имена токенов и признаки изменяемости переменных. Она может содержать и другие данные, к примеру, в С++ в таблице может храниться информация о том, является символ внешним или статичным.<br/>
+<br/>
+<h2>Символьные таблицы</h2><br/>
+Символьная таблица, или «stab», это таблица для поиска символов, которые используются в вашей программе. Для каждой области видимости создаётся по одной таблице, и все они содержат информацию о символах, присутствующих в конкретной области видимости.<br/>
+<br/>
+К этой информации относятся такие свойства, как имя символа, тип, признак изменяемости, наличие внешней связи, расположение в статичной памяти и прочее.<br/>
+<br/>
+<h3>Область видимости</h3><br/>
+Это важная концепция в языках программирования. Конечно, ваш язык не обязан давать возможность создавать вложенные области видимости, всё можно поместить в одно общее пространство имён!<br/>
+<br/>
+Хотя представление области видимости является интересной задачей для архитектуры компилятора, в большинстве С-подобных языков область видимости ведёт себя (или является) как стековая структура данных (stack data structure).<br/>
+<br/>
+Обычно мы создаём и уничтожаем области видимости, и обычно они используются для управления именами, то есть позволяют нам скрывать (shadowing) переменные:<br/>
+<br/>
+<pre><code class="plaintext">{ // push scope
+  let x = 3;
+  { // push scope
+    let x = 4; // OK!
+  } // pop scope
+} // pop scope</code></pre><br/>
+Это можно представить иначе:<br/>
+<br/>
+<pre><code class="plaintext">struct Scope {
+  Scope* outer;
+  SymbolTable symbols;
+}</code></pre><br/>
+Небольшой оффтоп, но рекомендую почитать про <a href="https://en.wikipedia.org/wiki/Parent_pointer_tree">спагетти-стек</a>. Это структура данных, которая используется для хранения областей видимости в АСД-узлах противоположных блоков. <br/>
+<br/>
+<h2>Системы типов</h2><br/>
+Многие из последующих разделов можно развить в отдельные статьи, но мне кажется, этот заголовок заслуживает этого больше всего. Сегодня доступно много информации о системах типов, как и разновидностей самих систем, вокруг которых ломается много копий. Я не будут глубоко погружаться в эту тему, лишь оставлю ссылку на <a href="https://blog.steveklabnik.com/posts/2010-07-17-what-to-know-before-debating-type-systems">прекрасную статью Стива Клабника</a>.<br/>
+<br/>
+Система типов — это то, что обеспечивается и семантически определяется в компиляторе с помощью представлений компилятора и анализа этих представлений.<br/>
+<br/>
+<h2>Владение</h2><br/>
+Эта концепция используется в программировании всё шире. Принципы семантики владения и перемещения заложены в язык <a href="https://en.wikipedia.org/wiki/Rust_(programming_language)">Rust</a>, и надеюсь, будут появляться и в других языках. В Rust выполняется много разных видов статического анализа, с помощью которого проверяется, удовлетворяют ли входные данные набору правил в отношении памяти: кто и какой памятью владеет, когда память уничтожается и сколько существует ссылок (или заимствований) на эти значения или память.<br/>
+<br/>
+Красота Rust заключается в том, что всё это выполняется в ходе компиляции, внутри компилятора, так что программисту не приходится заниматься сборкой мусора или подсчётом ссылок. Все эти семантики отнесены к системе типов и могут обеспечиваться ещё до того, как программа будет представлена в виде завершённого бинарного файла. <br/>
+<br/>
+Я не могу сказать, как всё это устроено под капотом, но всё это является результатом статического анализа и замечательного исследования команды Mozilla и участников проекта <a href="https://en.wikipedia.org/wiki/Cyclone_(programming_language)">Cyclone</a>.<br/>
+<br/>
+<h2>Графы потоков управления (Control Flow Graphs)</h2><br/>
+Для представления потоков программ мы используем графы потоков управления (CFG), которые содержат все пути, по которым может пойти исполнение программы. Это используется при семантическом анализе для исключения нерабочих участков кода, то есть блоков, функций и даже модулей, которые никогда не будут достигнуты в ходе исполнения программы. Также графы можно применять для выявления циклов, которые не могут прерваться. Или для поиска недоступного кода, например, когда вы вызываете «панику» (call a panic), или возвращаете в цикле, а код снаружи цикла не исполняется. <a href="https://en.wikipedia.org/wiki/Data-flow_analysis">Анализ потока данных</a> играет важную роль в ходе семантической фазы работы компилятора, так что рекомендую почитать о тех видах анализа, которые вы можете выполнять, как они работают и какие оптимизации могут делать.<br/>
+<br/>
+<h2>Бэкенд</h2><br/>
+<img src="https://habrastorage.org/r/w780q1/getpro/habr/post_images/330/914/1b9/3309141b9d53be1d9e5c8f77fb46d982.jpg" data-src="https://habrastorage.org/getpro/habr/post_images/330/914/1b9/3309141b9d53be1d9e5c8f77fb46d982.jpg" data-blurred="true"/><br/>
+<i>Заключительная часть нашей схемы архитектуры.</i><br/>
+<br/>
+Мы сделали большую часть работы по генерированию исполняемых бинарников. Сделать это можно разными способами, которые мы обсудим ниже.<br/>
+<br/>
+Не обязательно сильно менять фазу семантического анализа из-за информации, содержащейся в дереве. Возможно, лучше вообще её не менять, чтобы избежать возникновения «спагетти».<br/>
+<br/>
+<h2>Несколько слов о транспиляторах</h2><br/>
+Это разновидность компиляторов, которые преобразуют код на одном языке в исходный код на другом. Например, вы можете написать код, который компилируется в исходники на С. На мой взгляд, вещь довольно бессмысленная, если только ваш язык не уступает сильно тому языку, в который он компилируется. Обычно траспиляция имеет смысл для относительно высокоуровневых языков, или для языков с ограниченными возможностями.<br/>
+<br/>
+Тем не менее, в истории компиляторов очень часто встречается преобразование в код на С. По сути, первый компилятор С++ — Cfront — транспилировал в код на C.<br/>
+<br/>
+Хорошим примером является JavaScript. В его код транспилирует TypeScript и многие другие языки, чтобы привнести больше возможностей и, что ещё важнее, чувствительную систему типов с разным количеством видов статического анализа для ловли багов и ошибок, прежде чем мы столкнёмся с ними в ходе исполнения. <br/>
+<br/>
+Это одна из «целей» компилятора, причём чаще всего самая простая, поскольку вам не нужно думать в рамках более низкоуровневых концепций о присвоении переменных, о работе с оптимизацией и так далее, ведь вы просто «падаете на хвост» другому языку. Однако у этого подхода есть очевидный недостаток — большие накладные расходы, к тому же вы обычно ограничены возможностями языка, в который транспилируете свой код.<br/>
+<br/>
+<h2>LLVM</h2><br/>
+Многие современные компиляторы обычно используют в качестве своего бэкенда LLVM: Rust, Swift, C/C++ (clang), D, Haskell.<br/>
+<br/>
+Это можно считать «простым путём», потому что за вас проделали большую часть работы по поддержке широкого спектра архитектур, и вам доступны оптимизации высочайшего уровня. По сравнению с вышеупомянутой транспиляцией, LLVM предоставляет и большие возможности по управлению. Уж точно больше, чем если бы вы компилировали в С. К примеру, вы можете решать, насколько большими должны быть типы, скажем, 1, 4, 8 или 16-битные. В С это сделать не так просто, иногда невозможно, а для каких-то платформ даже нельзя определить.<br/>
+<br/>
+<h2>Генерирование ассемблер-кода</h2><br/>
+Генерирование кода под конкретную архитектуру — то есть генерирование машинного кода, — это технически самый популярный путь, который применяется во множестве языков программирования.<br/>
+<br/>
+Go — это пример современного языка, который не пользуется преимуществами фреймворка LLVM (на момент написания этой статьи). Go генерирует код для нескольких платформ, в том числе Windows, Linux и MacOS. Забавно, что в прототипе Krug раньше тоже генерировался ассемблер-код.<br/>
+<br/>
+У этого подхода есть много достоинств и недостатков. Однако сегодня, когда доступны технологии вроде LLVM, уже неразумно самостоятельно генерировать ассемблер, потому что маловероятно, что игрушечный компилятор с собственным бэкендом превзойдёт LLVM по уровню оптимизации для одной платформы, не говоря уже о нескольких.<br/>
+<br/>
+Тем не менее, значительное преимущество самостоятельного генерирования ассемблера заключается в том, что ваш компилятор наверняка окажется гораздо быстрее, чем если бы вы использовали фреймворк наподобие LLVM, который сначала должен собрать ваш IR, оптимизировать и так далее, и потом, наконец, сможет выдать ассемблер (или что вы там выберете).<br/>
+<br/>
+Но попытаться всё равно приятно. И к тому же будет интересно, если вы захотите узнать больше о программировании на ассемблере, или о том, как языки программирования работают на нижних уровнях. Проще всего открыть АСД или сгенерированный IR (если у вас он есть) и «выдать» инструкции ассемблера в файл с помощью fprintf или другой утилиты. Так работает<a href="https://github.com/rui314/8cc"> 8cc</a>.<br/>
+<br/>
+<h2>Генерирование байткода</h2><br/>
+Также вы можете генерировать байткод для виртуальной машины определённого вида или интерпретатора байткода. Яркий пример — Java: по сути,<a href="https://en.wikipedia.org/wiki/Java_virtual_machine"> JVM</a> породила целое семейство генерирующих для неё байткод языков, например, Kotlin.<br/>
+<br/>
+У генерирования байткода много преимуществ, и для Java главным была портируемость. Если вы можете где угодно запускать свою виртуальную машину, то любой выполняемый на ней код тоже будет работать где угодно. К тому же гораздо проще запускать на машинах абстрактный набор байткодовых инструкций, чем генерировать код по стопицот компьютерных архитектур.<br/>
+Насколько я знаю, JVM с помощью JIT превращает часто используемый код в нативные функции, а также применяет другие JIT-ухищрения, чтобы выжать ещё больше производительности.<br/>
+<br/>
+<h2>Оптимизации</h2><br/>
+Они являются неотъемлемой частью компилятора, никому не нужен медленно работающий код! Обычно оптимизации составляют большую часть бэкенда, и разработчики прикладывают много усилий, чтобы повысить производительность. Если вы когда-нибудь скомпилируете код на С и запустите его со всеми оптимизациями, ты вы удивитесь, какое безумие получится. <a href="https://godbolt.org/">Godbolt</a> — прекрасный инструмент, позволяющий понять, как современные компиляторы генерируют код и какие инструкции к какому исходному коду относятся. Также вы сможете задать нужный уровень оптимизаций, цели, версии компиляторов и так далее.<br/>
+<br/>
+Если вы когда либо писали компилятор, то можете начать с создания простой программы на С, выключить все оптимизации и символы отладки (strip the debug symbols), и посмотрите, что сгенерирует GCC. Можете потом использовать как памятку, если когда-нибудь возникнут затруднения.<br/>
+<br/>
+При настройке оптимизаций можно находить компромисс между точностью и скоростью работы программы. Однако нащупать верный баланс не так просто. Некоторые оптимизации очень специфичны, и в некоторых случаях могут приводить к ошибочному результату. По очевидным причинам их не включают в production-компиляторы.<br/>
+<br/>
+В <a href="https://news.ycombinator.com/item?id=19756087">комментариях</a> к этой статье на другом ресурсе пользователь rwmj заметил, что достаточно всего 8 оптимизирующих проходов, чтобы получить 80% от максимальной производительности вашего компилятора. И все эти оптимизации были описаны в 1971-м! Речь идёт о <a href="http://venge.net/graydon/talks/CompilerTalk-2019.pdf">публикации</a> Грейдона Хоара, вдохновителя Rust.<br/>
+<br/>
+<h2>IR</h2><br/>
+Промежуточное представление (intermediate representation, IR) не обязательно, но полезно. Вы можете генерировать код из АСД, хотя это может быть довольно утомительно и неаккуратно, а результат сложно будет оптимизировать.<br/>
+<br/>
+Можно считать IR более высокоуровневым представлением генерируемого кода. Оно должно очень точно отражать то, что представляет, и содержать всю информацию, необходимую для генерирования кода.<br/>
+<br/>
+Есть конкретные виды IR, или «формы», которые вы можете создать с помощью IR для упрощения оптимизаций. Например, SSA — Static Single Assignment, единственное статическое присваивание, при котором каждая переменная присваивается лишь один раз.<br/>
+<br/>
+В Go перед генерированием кода строится IR на основе SSA. IR в LLVM основан на SSA, чтобы обеспечить его оптимизации.<br/>
+<br/>
+Изначально SSA предоставляет несколько оптимизаций, к примеру, подстановка констант (constant propagation), исключение нерабочего кода и (очень важное) распределение регистров.<br/>
+<br/>
+<h2>Распределение регистров</h2><br/>
+Это не требование для генерирования кода, а оптимизация. Одна абстракция, которую мы считаем данностью, заключается в том, что мы можем определять столько переменных, сколько нужно нашим программам. Однако в ассемблере нам доступно конечное количество регистров (обычно от 16 до 32), которые нужно держать в голове, или мы можем воспользоваться стеком (spill to the stack).<br/>
+<br/>
+Распределение регистров — это попытка выбрать для конкретной переменной конкретный регистр в определённый момент времени (без перезаписывания других значений). Это гораздо эффективнее использования стека, хотя может повлечь дополнительные расходы, да и компьютер не всегда может вычислить идеальную схему распределения.<br/>
+<br/>
+Есть несколько алгоритмов распределения регистров: <br/>
+<br/>
+<ul>
+<li>Раскрашивание графов (graph colouring) — вычислительно сложен (NP-полная задача). Требуется представлять код в виде графа, чтобы вычислять диапазон жизни (liveness ranges) переменных.<br/>
+</li>
+<li>Линейное сканирование — просматривает переменные и определяет их диапазоны жизни.<br/>
+</li>
+</ul><br/>
+<h2>О чём нужно помнить</h2><br/>
+О компиляторах написано очень много. Столько, что не поместится ни в одну статью. Я хочу напомнить, или хотя бы упомянуть несколько важных моментов, о которых нужно помнить в ходе ваших будущих проектов.<br/>
+<br/>
+<h2>Искажение имён (<a href="https://en.wikipedia.org/wiki/Name_mangling">Name Mangling</a>)</h2><br/>
+Если вы генерируете ассемблер-код, в котором на самом деле нет никаких областей видимости или пространств имён, то у вас часто будут возникать конфликты символов. Особенно если ваш язык поддерживает переопределение функций или классов, и тому подобное.<br/>
+<br/>
+<pre><code class="plaintext">fn main() int {
+  let x = 0;
+  {
+    let x = 0;
+    {
+      let x = 0;
+    }
+  }
+  return 0;
+}</code></pre><br/>
+Например, в этом коде (если переменные каким-либо образом не оптимизированы :) ) вам придётся искажать имена этих символов, чтобы в ассемблере они не конфликтовали. Также искажение обычно используется для обозначения типа информации, или оно может содержать информацию о пространстве имён.<br/>
+<br/>
+<h2>Отладочная информация</h2><br/>
+Инструменты вроде LLDB обычно используют стандарты наподобие<a href="https://en.wikipedia.org/wiki/DWARF"> DWARF</a>. Одно из замечательных свойств LLVM заключается в том, что благодаря DWARF вы получается относительно простую интеграцию с существующим отладочным GNU-инструментарием. Возможно, вашему языку понадобится отладочный инструмент, и всегда легче использовать готовый, чем писать свой.<br/>
+<br/>
+<h2>Интерфейс внешних функций (Foreign Function Interface, <a href="https://en.wikipedia.org/wiki/Libffi">FFI</a>)</h2><br/>
+Обычно от libc никуда не деться, вам нужно почитать об этой библиотеке и подумать, как встроить её в свой язык. Как вы подключитесь к коду на С, или как вы откроете свой код для С?<br/>
+<br/>
+<h2>Линкер</h2><br/>
+Написание линкера — отдельная задача. Когда ваш компилятор генерирует код, то он генерирует машинные инструкции (в файл .s/.asm)? Он пишет код напрямую в файл объекта? Например, в языке программирования <a href="https://www.youtube.com/watch?v=TH9VCN6UkyQ">Jai</a> весь код предположительно пишется в один файл объекта. Существуют разные варианты, для которых характерны свои компромиссы.<br/>
+<br/>
+<h2>Компилятор как сервис (CaaS)</h2><br/>
+Здесь все рассмотренные выше фазы компилятора распределены по API-маршрутам. Это означает, что текстовый редактор может обращаться к Krug-серверу, чтобы тот токенизировал файл и вернул в ответ токены. Кроме того, все маршруты статического анализа открыты, так что применять инструментарий становится проще.<br/>
+<br/>
+Конечно, у этого подхода есть недостатки, например, задержка при отправке и получении файлов. К тому же многие аспекты архитектуры компилятора нужно переосмыслить, чтобы работать в контексте API-маршрутов.<br/>
+<br/>
+Мало какие production-компиляторы используются подход CaaS. На память приходит Microsofts Roslyn, хотя я мало знаю об этом компиляторе, так что изучите его самостоятельно. И я могу ошибаться, но, похоже, во многих компиляторах реализован этот подход, но их авторы пишут API-машруты, которые подключаются к существующим компиляторам, например, в Rust есть<a href="https://github.com/rust-lang/rls"> RLS</a>.<br/>
+<br/>
+В моём языке Krug — который ещё активно разрабатывается и работает неустойчиво — в компиляторе Caasper используется CaaS-архитектура.<br/>
+<br/>
+Caasper выполняется локально на вашей машине (или, если захотите, на сервере), а затем фронтенды или клиенты например, krug, взаимодействуют с этим сервисом. Плюс в том, что у вас может быть много реализаций фронтенда, а единственный фронтенд можно загружать (bootstrap) в самом языке, прежде чем переписывать весь компилятор.<br/>
+<br/>
+Фронтенд для Krug реализован на JavaScript, хотя будут и альтернативные реализации на Go*, а также, надеюсь, на самом Krug. JavaScript был выбран за его доступность, его можно скачать с очень популярными менеджерами пакетов yarn/npm.<br/>
+<br/>
+<i>* Изначально фронтенд был написан на Go и оказался (ожидаемо) значительно быстрее, чем вариант на JS.</i><br/>
+<br/>
+Исходный код компилятора Caasper лежит<a href="https://github.com/krug-lang/caasper/"> здесь</a>. В моём <a href="http://github.com/felixangell/krug/">личном</a> Github лежит прототип Krug, он написан на D и компилируется в LLVM. Также можете посмотреть демо на моём YouTube-<a href="https://www.youtube.com/watch?v=DT6l4T7yzKs">канале</a>.<br/>
+<br/>
+Руководство по Krug (промежуточное) лежит <a href="https://github.com/krug-lang/caasper/blob/master/docs/tutorial.md">здесь</a>.<br/>
+<br/>
+<h2>Полезные ссылки</h2><br/>
+<ul>
+<li><a href="https://compilers.iecc.com/crenshaw/">Jack Crenshaw</a> — моя личная дверь в мир реализации языков программирования.<br/>
+</li>
+<li><a href="https://craftinginterpreters.com/">Crafting Interpreters</a><br/>
+</li>
+<li><a href="https://blog.felixangell.com/an-introduction-to-llvm-in-go">Введение в LLVM (с Go)</a> — я!<br/>
+</li>
+<li><a href="https://en.wikipedia.org/wiki/PL/0">PL/0</a><br/>
+</li>
+<li>The Dragon Book — классическая книга, в которой есть всё.<br/>
+</li>
+<li><a href="https://github.com/rui314/8cc">8cc</a><br/>
+</li>
+</ul></div></div> <!----> <!----></div> <div class="tm-article-presenter__meta"><div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Теги:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5B%D0%BA%D0%BE%D0%BC%D0%BF%D0%B8%D0%BB%D1%8F%D1%82%D0%BE%D1%80%D1%8B%5D" class="tm-tags-list__link">компиляторы</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5B%D0%BD%D0%B8%D0%BA%D1%82%D0%BE%20%D0%BD%D0%B5%20%D1%87%D0%B8%D1%82%D0%B0%D0%B5%D1%82%20%D1%82%D0%B5%D0%B3%D0%B8%5D" class="tm-tags-list__link">никто не читает теги</a></li></ul></div> <div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Хабы:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/company/vk/blog/" class="tm-hubs-list__link router-link-active">
+    Блог компании VK
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/programming/" class="tm-hubs-list__link">
+    Программирование
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/analysis_design/" class="tm-hubs-list__link">
+    Анализ и проектирование систем
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/complete_code/" class="tm-hubs-list__link">
+    Совершенный код
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/compilers/" class="tm-hubs-list__link">
+    Компиляторы
+  </a></li></ul></div></div></article></div> <!----></div> <div class="tm-article-sticky-panel"><div class="tm-data-icons tm-article-sticky-panel__icons"><div class="tm-article-rating tm-data-icons__item"><div class="tm-votes-meter tm-article-rating__votes-switcher"><svg height="16" width="16" class="tm-svg-img tm-votes-meter__icon tm-votes-meter__icon_medium"><title>Всего голосов 68: ↑63 и ↓5</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-rating"></use></svg> <span title="Всего голосов 68: ↑63 и ↓5" class="tm-votes-meter__value tm-votes-meter__value_positive tm-votes-meter__value_medium">+58</span></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----> <span title="Количество просмотров" class="tm-icon-counter tm-data-icons__item"><svg height="16" width="16" class="tm-svg-img tm-icon-counter__icon"><title>Просмотры</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-views"></use></svg> <span class="tm-icon-counter__value">24K</span></span> <button title="Добавить в закладки" type="button" class="bookmarks-button tm-data-icons__item"><span title="Добавить в закладки" class="tm-svg-icon__wrapper bookmarks-button__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Добавить в закладки</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-favorite"></use></svg></span> <span title="Количество пользователей, добавивших публикацию в закладки" class="bookmarks-button__counter">
+    217
+  </span></button> <!----> <div title="Поделиться" class="tm-sharing tm-data-icons__item"><button type="button" class="tm-sharing__button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="tm-sharing__icon"><path fill="currentColor" d="M10.33.275l9.047 7.572a.2.2 0 010 .306l-9.048 7.572a.2.2 0 01-.328-.153V11c-8 0-9.94 6-9.94 6S-1 5 10 5V.428a.2.2 0 01.328-.153z"></path></svg></button> <!----></div> <DIV class="v-portal" style="display:none;"></DIV></div> </div></div> <!----> <!----> <div class="tm-article-presenter__footer"><div class="tm-article-blocks"><!----> <section class="tm-block tm-block_spacing-bottom"><!----> <div class="tm-block__body tm-block__body_variant-balanced"><div class="tm-article-author"><div class="tm-article-author__company"><div class="tm-article-author__company-card"><div class="tm-company-snippet"><a href="/ru/company/vk/profile/" class="tm-company-snippet__logo-link"><div class="tm-entity-image"><img alt="" height="40" src="//habrastorage.org/getpro/habr/company/9ed/c74/6b4/9edc746b484c805ecad1f941b5f7068a.png" width="40" class="tm-entity-image__pic"></div></a> <div class="tm-company-snippet__info"><a href="/ru/company/vk/profile/" class="tm-company-snippet__title">VK</a> <div class="tm-company-snippet__description">Технологии, которые объединяют</div></div></div> <div class="tm-article-author__buttons"><!----> <!----></div></div> <div class="tm-article-author__company-contacts"><a href="https://facebook.com/insidevk" rel="noopener" target="_blank" class="tm-article-author__contact">
+      Facebook
+    </a><a href="https://twitter.com/inside_vk" rel="noopener" target="_blank" class="tm-article-author__contact">
+      Twitter
+    </a><a href="https://vk.com/insidevk" rel="noopener" target="_blank" class="tm-article-author__contact">
+      ВКонтакте
+    </a><a href="https://instagram.com/inside.vk" rel="noopener" target="_blank" class="tm-article-author__contact">
+      Instagram
+    </a><a href="https://telegram.me/inside_vk" rel="noopener" target="_blank" class="tm-article-author__contact">
+      Telegram
+    </a></div> <div class="tm-article-author__separator"></div></div> <div class="tm-user-card tm-article-author__user-card tm-user-card_variant-article"><div class="tm-user-card__info-container"><div class="tm-user-card__header"><div class="tm-user-card__header-data"><a href="/ru/users/AloneCoder/" class="tm-user-card__userpic tm-user-card__userpic_size-40"><div class="tm-entity-image"><img alt="" src="//habrastorage.org/getpro/habr/avatars/741/45e/bea/74145ebeab7f222cce402aed2683f9d7.png" class="tm-entity-image__pic"></div></a> <div class="tm-user-card__meta"><div title=" 569 голосов " class="tm-karma tm-user-card__karma"><div class="tm-karma__votes tm-karma__votes_positive">
+    353.7
+  </div> <div class="tm-karma__text">
+    Карма
+  </div></div> <div title="Рейтинг пользователя" class="tm-rating tm-user-card__rating"><div class="tm-rating__header"> <div class="tm-rating__counter">0</div></div> <div class="tm-rating__text">
+    Рейтинг
+  </div></div></div></div></div> <div class="tm-user-card__info tm-user-card__info_variant-article"><div class="tm-user-card__title tm-user-card__title_variant-article"><span class="tm-user-card__name tm-user-card__name_variant-article">Макс</span> <a href="/ru/users/AloneCoder/" class="tm-user-card__nickname tm-user-card__nickname_variant-article">
+          @AloneCoder
+        </a> <!----></div> <p class="tm-user-card__short-info tm-user-card__short-info_variant-article">¯\_(ツ)_/¯</p></div></div> <div class="tm-user-card__buttons tm-user-card__buttons_variant-article"><!----> <!----> <!----> <!----> <!----></div></div> <!----></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----></section> <div class="tm-article-blocks__comments"><div class="tm-article-page-comments"><div class="tm-article-comments-counter-link tm-article-comments-counter-button"><a href="/ru/company/vk/blog/451894/comments/" class="tm-article-comments-counter-link__link tm-article-comments-counter-link__link_button-style"><svg height="16" width="16" class="tm-svg-img tm-article-comments-counter-link__icon tm-article-comments-counter-link__icon_contrasted"><title>Комментарии</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-comments"></use></svg> <span class="tm-article-comments-counter-link__value tm-article-comments-counter-link__value_contrasted">
+       Комментарии 38 
+    </span></a> <!----></div></div></div>  <!---->  <!----> <!----></div></div></div></div></div> <div class="tm-page__sidebar"><div class="tm-layout-sidebar"><div class="tm-layout-sidebar__placeholder_initial"></div> <div class="tm-sexy-sidebar tm-sexy-sidebar_initial" style="margin-top:0px;"><!----> <section class="tm-block tm-block_spacing-bottom"><header class="tm-block__header"><h2 class="tm-block__title">Информация</h2> <!----></header> <div class="tm-block__body"><div class="tm-company-basic-info"><dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Дата основания</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><time datetime="1998-10-14T20:00:00.000Z" title="1998-10-15, 00:00">15  октября  1998</time></dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Местоположение</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap">
+    Россия
+  </dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Сайт</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><a href="https://vk.com/vkteam" target="_blank" class="tm-company-basic-info__link">
+      vk.com
+    </a></dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Численность</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap">
+    5 001–10 000 человек
+  </dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Дата регистрации</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><time datetime="2008-08-09T07:42:32.000Z" title="2008-08-09, 11:42">9  августа  2008</time></dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Представитель</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><a href="/ru/users/somuchmich/" class="tm-company-basic-info__link">
+      Миша Буданов
+    </a></dd></dl></div></div> <!----></section> <div class="tm-company-widgets"></div> <!----></div></div></div></div></div></div></main> <!----></div> <div class="tm-footer-menu"><div class="tm-page-width"><div class="tm-footer-menu__container"><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Ваш аккаунт
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr/?back=/ru/company/vk/blog/451894/&amp;hl=ru" rel="nofollow" target="_self">
+                Войти
+              </a></li><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr-register/?back=/ru/company/vk/blog/451894/&amp;hl=ru" rel="nofollow" target="_self">
+                Регистрация
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Разделы
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/" class="footer-menu__item-link router-link-active">
+                Публикации
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/news/" class="footer-menu__item-link">
+                Новости
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/hubs/" class="footer-menu__item-link">
+                Хабы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/companies/" class="footer-menu__item-link">
+                Компании
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/users/" class="footer-menu__item-link">
+                Авторы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/sandbox/" class="footer-menu__item-link">
+                Песочница
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Информация
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/docs/help/" class="footer-menu__item-link">
+                Устройство сайта
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/authors/codex/" class="footer-menu__item-link">
+                Для авторов
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/companies/corpblogs/" class="footer-menu__item-link">
+                Для компаний
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/docs/transparency/" class="footer-menu__item-link">
+                Документы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/agreement" target="_blank">
+                Соглашение
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/confidential/" target="_blank">
+                Конфиденциальность
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Услуги
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQLwRfQmXibiUlWaRg-BAc38s7oM3lJiaPju7qmdJsp8ysIvZ_G-Npem0njJLMozE2bPHMpDqiI5hhy/pub?start=false&amp;loop=false&amp;delayms=60000&amp;slide=id.g91a03369cd_4_297" target="_blank">
+                Реклама
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://habrastorage.org/storage/stuff/habr/service_price.pdf" target="_blank">
+                Тарифы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQJJds8-Di7BQSP_guHxICN7woVYoN5NP_22ra-BIo4bqnTT9FR6fB-Ku2P0AoRpX0Ds-LRkDeAoD8F/pub?start=false&amp;loop=false&amp;delayms=60000" target="_blank">
+                Контент
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://tmtm.timepad.ru/" target="_blank">
+                Семинары
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/megaprojects/" class="footer-menu__item-link">
+                Мегапроекты
+              </a></li></ul></div></div></div></div></div> <div class="tm-footer"><div class="tm-page-width"><div class="tm-footer__container"><!----> <div class="tm-footer__social"><a href="https://www.facebook.com/habrahabr.ru" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Facebook</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-facebook"></use></svg></a><a href="https://twitter.com/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Twitter</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-twitter"></use></svg></a><a href="https://vk.com/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>VK</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-vkontakte"></use></svg></a><a href="https://telegram.me/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Telegram</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-telegram"></use></svg></a><a href="https://www.youtube.com/channel/UCd_sTwKqVrweTt4oAKY5y4w" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Youtube</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-youtube"></use></svg></a><a href="https://zen.yandex.ru/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Яндекс Дзен</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-zen"></use></svg></a></div> <DIV class="v-portal" style="display:none;"></DIV> <button class="tm-footer__link"><!---->
+        Настройка языка
+      </button> <a href="/ru/about" class="tm-footer__link">
+        О сайте
+      </a> <a href="/ru/feedback/" class="tm-footer__link">
+        Техническая поддержка
+      </a> <!----> <a href="/berserk-mode-nope" class="tm-footer__link">
+        Вернуться на старую версию
+      </a> <div class="tm-footer-copyright"><span class="tm-copyright"><span class="tm-copyright__years">© 2006–2021 </span> <span class="tm-copyright__name">«<a href="https://company.habr.com/" rel="noopener" target="_blank" class="tm-copyright__link">Habr</a>»</span></span></div></div></div></div> <!----> <!----></div> <div class="vue-portal-target"></div></div>
+<script>window.__INITIAL_STATE__={"adblock":{"hasAcceptableAdsFilter":false,"hasAdblock":false},"articlesList":{"articlesList":{"451894":{"id":"451894","timePublished":"2019-05-15T12:42:21+00:00","isCorporative":true,"lang":"ru","titleHtml":"Краткий и бодрый обзор архитектуры компиляторов","leadData":{"textHtml":"\u003Cdiv style=\"text-align:center;\"\u003E\u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fsl\u002Fej\u002F-i\u002Fslej-ivpokabgczeqdbgiafc0rw.jpeg\"\u003E\u003C\u002Fdiv\u003E\u003Cbr\u003E\r\nБольшинство компиляторов имеют следующую архитектуру:\u003Cbr\u003E\r\n\u003Cbr\u003E\r\n\u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fpost_images\u002F73e\u002Fff7\u002Fc46\u002F73eff7c467213f5de1b9134666f9e569.png\"\u003E \u003Cbr\u003E\r\n\u003Cbr\u003E\r\nВ данной статье я собираюсь детально препарировать эту архитектуру, элемент за элементом. \u003Cbr\u003E\r\nМожно сказать, что эта статья — дополнение к огромному количеству существующих ресурсов на тему компиляторов. Она является автономным источником, который позволит вам разобраться в основах дизайна и реализации языков программирования.\u003Cbr\u003E\r\n\u003Cbr\u003E\r\nЦелевая аудитория статьи — люди, чье представление о работе компиляторов крайне ограничено (максимум — то, что они занимаются компилированием). Однако я жду, что читатель разбирается в структурах и алгоритмах данных.\u003Cbr\u003E\r\n\u003Cbr\u003E\r\nСтатья ни в коем случае не посвящена современным производственным компиляторам с миллионами строк кода — нет, это краткий курс «компиляторы для чайников», помогающий разобраться, что такое компилятор.\u003Cbr\u003E","imageUrl":null,"buttonTextHtml":"Читать дальше →","image":null},"editorVersion":"1.0","postType":"article","postLabels":[{"type":"translation","data":{"originalAuthorName":"Felix Angell","originalUrl":"https:\u002F\u002Fblog.felixangell.com\u002Fcompilers-brief-and-brisk"}}],"author":{"scoreStats":{"score":353.7,"votesCount":569},"rating":0,"relatedData":null,"contacts":[],"authorContacts":[],"paymentDetails":{"paymentYandexMoney":null,"paymentPayPalMe":null,"paymentWebmoney":null},"id":"63394","alias":"AloneCoder","fullname":"Макс","avatarUrl":"\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Favatars\u002F741\u002F45e\u002Fbea\u002F74145ebeab7f222cce402aed2683f9d7.png","speciality":"¯\\_(ツ)_\u002F¯"},"statistics":{"commentsCount":38,"favoritesCount":217,"readingCount":24046,"score":58,"votesCount":68},"hubs":[{"relatedData":null,"id":"4992","alias":"vk","type":"corporative","title":"Блог компании VK","titleHtml":"Блог компании VK","isProfiled":false},{"relatedData":null,"id":"359","alias":"programming","type":"collective","title":"Программирование","titleHtml":"Программирование","isProfiled":true},{"relatedData":null,"id":"397","alias":"analysis_design","type":"collective","title":"Анализ и проектирование систем","titleHtml":"Анализ и проектирование систем","isProfiled":true},{"relatedData":null,"id":"524","alias":"complete_code","type":"collective","title":"Совершенный код","titleHtml":"Совершенный код","isProfiled":true},{"relatedData":null,"id":"17188","alias":"compilers","type":"collective","title":"Компиляторы","titleHtml":"Компиляторы","isProfiled":true}],"flows":[{"id":"1","alias":"develop","title":"Разработка"}],"relatedData":null,"textHtml":"\u003Cdiv xmlns=\"http:\u002F\u002Fwww.w3.org\u002F1999\u002Fxhtml\"\u003E\u003Cdiv style=\"text-align:center;\"\u003E\u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fr\u002Fw780q1\u002Fwebt\u002Fsl\u002Fej\u002F-i\u002Fslej-ivpokabgczeqdbgiafc0rw.jpeg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fsl\u002Fej\u002F-i\u002Fslej-ivpokabgczeqdbgiafc0rw.jpeg\" data-blurred=\"true\"\u002F\u003E\u003C\u002Fdiv\u003E\u003Cbr\u002F\u003E\r\nБольшинство компиляторов имеют следующую архитектуру:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fpost_images\u002F73e\u002Fff7\u002Fc46\u002F73eff7c467213f5de1b9134666f9e569.png\"\u002F\u003E \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВ данной статье я собираюсь детально препарировать эту архитектуру, элемент за элементом. \u003Cbr\u002F\u003E\r\nМожно сказать, что эта статья — дополнение к огромному количеству существующих ресурсов на тему компиляторов. Она является автономным источником, который позволит вам разобраться в основах дизайна и реализации языков программирования.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЦелевая аудитория статьи — люди, чье представление о работе компиляторов крайне ограничено (максимум — то, что они занимаются компилированием). Однако я жду, что читатель разбирается в структурах и алгоритмах данных.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nСтатья ни в коем случае не посвящена современным производственным компиляторам с миллионами строк кода — нет, это краткий курс «компиляторы для чайников», помогающий разобраться, что такое компилятор.\u003Cbr\u002F\u003E\r\n\u003Ca name=\"habracut\"\u003E\u003C\u002Fa\u003E\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EВведение\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nСейчас я работаю над системным языком \u003Ca href=\"https:\u002F\u002Fkrug-lang.org\u002F\"\u003EKrug\u003C\u002Fa\u003E, вдохновленным Rust и Go. В статье я буду обращаться к Krug в качестве примера для иллюстрации своих мыслей. Krug находится в стадии разработки, но уже доступен на \u003Ca href=\"https:\u002F\u002Fgithub.com\u002Fkrug-lang\"\u003Ehttps:\u002F\u002Fgithub.com\u002Fkrug-lang\u003C\u002Fa\u003E в репозиториях \u003Ca href=\"https:\u002F\u002Fgithub.com\u002Fkrug-lang\u002Fcaasper\"\u003Ecaasper\u003C\u002Fa\u003E и \u003Ca href=\"https:\u002F\u002Fgithub.com\u002Fkrug-lang\u002Fkrug\"\u003Ekrug\u003C\u002Fa\u003E. Язык не совсем типичен по сравнению с обычной архитектурой компиляторов, что отчасти и вдохновило меня на написание статьи — но об этом позже.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nСпешу сообщить, что я ни в коей степени не являюсь специалистом по компиляторам! У меня нет докторской степени, и я не проходил никакого формального обучения — все описанное в статье я изучил самостоятельно в свободное время. Также должен сказать, что я не описываю фактический, единственно верный подход к созданию компилятора, а, скорее, представляю базовые методы, пригодные для создания небольшого «игрушечного» компилятора.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EФронтенд\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nВернемся к диаграмме выше: направленные к полю frontend стрелочки слева — известные и любимые нами языки вроде C. Фронтенд выглядит примерно так: лексический анализ -\u003E парсер.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EЛексический анализ\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nКогда я начинал изучать компиляторы и дизайн языков, мне сказали, что лексический анализ — то же самое, что и токенизация. Этим описанием мы и воспользуемся. Анализатор берет вводные данные в форме строк или потока символов и распознает в них паттерны, которые он нарезает в токены.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВ случае компилятора на вход он получает написанную программу. Она считывается в строку из файла, а анализатор токенизирует ее исходный код.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003Eenum TokenType {\n  Identifier,\n  Number,\n};\n\nstruct Token {\n  std::string Lexeme;\n  TokenType type;\n  \u002F\u002F ...\n  \u002F\u002F It's also handy to store things in here\n  \u002F\u002F like the position of the token (start to end row:col)\n};\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nВ данном фрагменте, написанном на C-образном языке, можно увидеть структуру, содержащую вышеупомянутую lexeme, а также TokenType, который служит для распознавания данной лексемы.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПримечание: статья не является инструкцией для создания языка с примерами — но для лучшего понимания я буду время от времени вставлять фрагменты кода.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nОбычно анализаторы являются простейшими компонентами компилятора. Весь фронтенд, по сути, довольно прост по сравнению с остальными кусочками паззла. Хотя это во многом зависит от вашей работы.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВозьмем следующий кусочек кода на C:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"cpp\"\u003Eint main() {\n  printf(\"Hello world!\\n\");\n  return 0;\n}\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nСчитав его из файла в строку и проведя линейное сканирование, вы, возможно, сможете нарезать токены. Мы идентифицируем токены естественным образом — видя, что int — это «слово», а 0 в операторе возврата — «число». Лексический анализатор проделывает ту же процедуру, что и мы — позже мы разберемся в этом процессе детальнее. Например, проанализируем числа: \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E0xdeadbeef — HexNumber (шестнадцатеричное число)\n1231234234 — WholeNumber (целое число)\n3.1412 — FloatingNumber (число с плавающей запятой)\n55.5555 — FloatingNumber (число с плавающей запятой)\n0b0001 — BinaryNumber (двоичное число)\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nОпределение слов может представлять сложность. Большинство языков определяют слово как последовательность букв и цифр, а идентификатор, как правило, должен начинаться с буквы или нижнего подчеркивания. Например:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E123foobar := 3\nperson-age := 5\nfmt.Println(123foobar)\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nВ Go этот код не будет считаться правильным и будет разобран на следующие токены:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003ENumber(123), Identifier(foobar), Symbol(:=), Number(3) ...\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nБольшинство встречающихся идентификаторов выглядят так:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003Efoo_bar\n__uint8_t\nfooBar123\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nАнализаторам придется решать и другие проблемы, связанные, например, с пробелами, многострочными и однострочными комментариями, идентификаторами, числами, системами счисления и форматированием чисел (например, 1_000_000) и кодировками (например, поддержкой UTF8 вместо ASCII).\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nИ если вы думаете, что можете прибегнуть к регулярным выражениям — лучше не стоит. Гораздо проще написать анализатор с нуля, но я очень рекомендую прочесть \u003Ca href=\"https:\u002F\u002Fcommandcenter.blogspot.com\u002F2011\u002F08\u002Fregular-expressions-in-lexing-and.html\"\u003Eэту статью\u003C\u002Fa\u003E от нашего царя и бога Роба Пайка. Причины, по которым нам не подойдет Regex, описаны во множестве других статей, так что этот момент я опущу. К тому же, писать анализатор гораздо интереснее, чем мучиться над длинными многословными выражениями, загруженными на regex101.com в 5:24 утра. В своем первом языке я использовал для токенизации функцию \u003Ccode\u003Esplit(str)\u003C\u002Fcode\u003E — и далеко не продвинулся.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EПарсинг\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nПарсинг несколько сложнее, чем лексический анализ. Существует множество парсеров и парсеров-генераторов — здесь начинается игра по-крупному.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПарсеры в компиляторах обычно принимают входные данные в форме токенов и строят определенное дерево — абстрактное синтаксическое дерево или дерево парсинга. По своей природе они сходны, но имеют некоторые различия.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЭти этапы можно представить в виде функций:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003Efn lex(string input) []Token {...}\nfn parse(tokens []Token) AST {...}\n\nlet input = \"int main() { return 0; }\";\nlet tokens = lex(input);\nlet parse_tree = parse(tokens);\n\u002F\u002F ....\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nОбычно компиляторы строятся из множества маленьких компонентов, которые берут входные данные, меняют их или преобразуют их в различные выходные данные. Это одна из причин, по которым функциональные языки хорошо подходят для создания компиляторов. Другие причины — прекрасное сопоставление с эталоном и довольно обширные стандартные библиотеки. Прикольный факт: первая реализация компилятора \u003Ca href=\"https:\u002F\u002Fen.wikipedia.org\u002Fwiki\u002FRust_(programming_language)\"\u003ERust\u003C\u002Fa\u003E была на Ocaml.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nСоветую держать эти компоненты как можно более простыми и автономными — модульность сильно облегчит процесс. По-моему, то же можно сказать и о многих других аспектах разработки ПО.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EДеревья\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\n\u003Ch4\u003EДерево парсинга\u003C\u002Fh4\u003E\u003Cbr\u002F\u003E\r\nЧто это, блин, такое? Также известное как дерево грамматического разбора, это густое дерево служит для визуализации программы-источника. В них содержится вся информация (или большая ее часть) о программе ввода, обычно совпадающая с тем, что описано в грамматике вашего языка. Каждый узел дерева будет концевым или неконцевым, например, NumberConstant или StringConstant.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch4\u003EАбстрактное синтаксическое дерево\u003C\u002Fh4\u003E\u003Cbr\u002F\u003E\r\nКак можно понять из названия, АСД — \u003Ci\u003Eабстрактное\u003C\u002Fi\u003E синтаксическое дерево. Дерево парсинга содержит множество (часто излишней) информации о вашей программе, а в случае АСД она не требуется. АСД не нуждается в бесполезной информации о структуре и грамматике, которая не влияет на семантику программы.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПредположим, в вашем дереве есть выражение типа ((5+5)-3)+2. В дереве парсинга вы хранили бы его полностью, вместе со скобками, операторами и значениями 5, 5, 3 и 2. Но с АСД можно просто провести ассоциации — нам нужно знать только значения, операторы и их порядок.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nНа картинке ниже показано дерево для выражения a+b\u002Fc. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cdiv style=\"text-align:center;\"\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fpost_images\u002F98c\u002F61a\u002Fcb3\u002F98c61acb355e7887b53b5c37de0aa34f.png\" data-width=\"400\"\u002F\u003E\u003C\u002Fdiv\u003E \u003Cbr\u002F\u003E\r\nАСД можно представить следующим образом:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003Einterface Expression { ... };\n\nstruct UnaryExpression {\n  Expression value;\n  char op;\n};\n\nstruct BinaryExpression {\n  Expression lhand, rhand;\n  string op; \u002F\u002F string because the op could be more than 1 char.\n};\n\ninterface Node { ... };\n\n\u002F\u002F or for something like a variable\nstruct Variable : Node {\n  Token identifier;\n  Expression value;\n};\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nЭто представление достаточно ограничено, но, надеюсь, вы сможете увидеть, как будут структурированы ваши узлы. Для парсинга можно прибегнуть к следующей процедуре:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003ENode parseNode() {\n  Token current = consume();\n  switch (current.lexeme) {\n  case \"var\":\n    return parseVariableNode();\n  \u002F\u002F ...\n  }\n  panic(\"unrecognized input!\");\n}\n\nNode n = parseNode();\nif (n != null) {\n  \u002F\u002F append to some list of top level nodes?\n  \u002F\u002F or append to a block of nodes!\n}\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nНадеюсь, что вы уловили суть того, как будет проходить пошаговый парсинг остальных узлов, начиная с высокоуровневых языковых конструкций. Как именно реализуется синтаксический анализатор с рекурсивным спуском, вам нужно изучить самостоятельно.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EГрамматика\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nПроведение парсинга в АСД из набора токенов может оказаться непростым. Обычно вам следует начать с грамматики вашего языка. По сути, грамматика определяет структуру вашего языка. Существует несколько языков для определения языков, которые могут описать (или разобрать) сами себя. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПример языка для определения языков — \u003Ca href=\"https:\u002F\u002Fru.wikipedia.org\u002Fwiki\u002F%D0%A0%D0%B0%D1%81%D1%88%D0%B8%D1%80%D0%B5%D0%BD%D0%BD%D0%B0%D1%8F_%D1%84%D0%BE%D1%80%D0%BC%D0%B0_%D0%91%D1%8D%D0%BA%D1%83%D1%81%D0%B0_%E2%80%94_%D0%9D%D0%B0%D1%83%D1%80%D0%B0\"\u003Eрасширенная форма Бэкуса-Наура\u003C\u002Fa\u003E (РБНФ). Она представляет собой вариацию \u003Ca href=\"https:\u002F\u002Fdlang.org\u002Fspec\u002Fgrammar.html\"\u003EБНФ\u003C\u002Fa\u003E с меньшим количеством угловых скобок. Вот пример РБНФ из статьи Википедии: \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003Edigit excluding zero = \"1\" | \"2\" | \"3\" | \"4\" | \"5\" | \"6\" | \"7\" | \"8\" | \"9\" ;\ndigit                = \"0\" | digit excluding zero ;\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nПродукционные правила определены: они указывают, какой шаблон терминалов составляет «нетерминал». Терминалы — часть алфавита, например, токен if или 0 и 1 в примере выше — терминалы. Нетерминалы — их противоположность, они находятся в левой части продукционных правил, и их можно считать переменными или «именованными указателями» на группы терминалов и нетерминалов. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВо многих языках имеются спецификации, которые содержат грамматику. Например, для \u003Ca href=\"https:\u002F\u002Fgolang.org\u002Fref\u002Fspec#Function_declarations\"\u003EGo\u003C\u002Fa\u003E, \u003Ca href=\"https:\u002F\u002Fdoc.rust-lang.org\u002Freference\u002F\"\u003ERust\u003C\u002Fa\u003E и \u003Ca href=\"https:\u002F\u002Fdlang.org\u002Fspec\u002Fgrammar.html\"\u003ED\u003C\u002Fa\u003E.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EАнализаторы с рекурсивным спуском\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nРекурсивный спуск — самый простой из многочисленных подходов к парсингу.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nАнализаторы с рекурсивным спуском — нисходящие, основанные на рекурсивных процедурах. Гораздо проще написать парсер, ведь в вашей грамматике нет \u003Ca href=\"https:\u002F\u002Fen.wikipedia.org\u002Fwiki\u002FLeft_recursion\"\u003Eлевой рекурсии\u003C\u002Fa\u003E. В большинстве «игрушечных» языков этой техники достаточна для парсинга. В GCC используется написанный вручную нисходящий парсер, хотя до того использовался YACC.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВпрочем, с парсингом этих языков могут возникать проблемы. В особенности C, где\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"cpp\"\u003Efoo * bar\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nможет быть интерпретировано как\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003Eint foo = 3;\nint bar = 4;\nfoo * bar; \u002F\u002F unused expression\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nили как \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003Etypedef struct {\nint b;\n} foo;\nfoo* bar;\nbar.b = 3;\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nВ реализации Clang также используется анализатор с рекурсивным спуском:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ci\u003EПоскольку это обычный код для C++, рекурсивный спуск позволяет новичкам легко его понять. Он поддерживает специально созданные правила и другие странные штуки, требуемые C\u002FC++ и помогает с легкостью реализовать диагностику и исправление ошибок. \u003C\u002Fi\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nТакже стоит обратить внимание на другие подходы: \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003Eнисходящий LL, рекурсивный спуск\u003C\u002Fli\u003E\r\n\u003Cli\u003Eвосходящий LR, сдвиг, восходящий спуск\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EПарсер-генераторы\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nЕще один хороший способ. Конечно, есть и минусы — но это можно сказать про любой другой выбор, который делают программисты при создании ПО.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПарсер-генераторы работают очень резво. Использовать их проще, чем написать собственный анализатор и получить качественный результат — хотя они и не очень дружелюбны к пользователю и не всегда выводят сообщения об ошибках. К тому же вам придется учиться использовать парсер-генератор, а при раскрутке компилятора, вероятно, придется раскручивать и парсер-генератор.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПример генератора парсеров — \u003Ca href=\"https:\u002F\u002Fwww.antlr.org\u002F\"\u003EANTLR\u003C\u002Fa\u003E, есть и множество других. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nДумаю, что этот инструмент подходит для тех, кому не хочется тратить время на написание фронтенда, и кто предпочел бы написать середину и бэкенд компилятора\u002Fинтерпретатора и анализировать что бы то ни было. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EПрименение парсинга\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nЕсли вы еще не поняли сами. Даже фронтенд компилятора (lex\u002Fparse) может применяться и для решения других проблем:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003Eподсветка синтаксиса\u003C\u002Fli\u003E\r\n\u003Cli\u003Eпарсинг HTML\u002FCSS для механизма визуализации\u003C\u002Fli\u003E\r\n\u003Cli\u003Eтранспиляторы: TypeScript, CoffeeScript\u003C\u002Fli\u003E\r\n\u003Cli\u003Eкомпоновщики\u003C\u002Fli\u003E\r\n\u003Cli\u003EREGEX\u003C\u002Fli\u003E\r\n\u003Cli\u003Eанализ интерфейсных данных\u003C\u002Fli\u003E\r\n\u003Cli\u003Eпарсинг URL\u003C\u002Fli\u003E\r\n\u003Cli\u003Eформатирование инструментов типа \u003Ci\u003Egofmt\u003C\u002Fi\u003E\u003C\u002Fli\u003E\r\n\u003Cli\u003Eпарсинг SQL и многое другое.\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EСередина\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nСемантический анализ! Анализ семантики языка — одна из сложнейших задач при создании компилятора.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nНужно удостовериться, что все входные программы работают правильно. В мой язык Krug пока не включены аспекты, связанные с семантическим анализом, а без него программист будет обязан всегда писать верный код. В реальности это невозможно — и мы все время пишем, компилируем, иногда запускаем, исправляем ошибки. Эта спираль бесконечна.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nКроме того, компиляция программ невозможна без анализа правильности семантики на соответствующем этапе компиляции.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nКогда-то мне попадалась диаграмма, посвященная процентному соотношению фронтенда, миддленда и бэкенда. Тогда оно выглядело как \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003EF: 20% M: 20%: B: 60%\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n Сегодня оно представляет собой что-то вроде\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003EF: 5% M: 60% B: 35%\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nФронтендом занимается, в основном, генератор, а в бесконтекстных языках, не обладающих двойственностью грамматики, их можно выполнить довольно быстро — здесь поможет рекурсивный спуск. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nС технологией LLVM большая часть работы по оптимизации может быть загружена во фреймворк, в котором представлен целый ряд готовых оптимизаций.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nСледующий шаг — семантический анализ, важнейшая часть фазы компиляции. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nНапример, в Rust с его моделью управления памятью компилятор выступает как большая мощная машина, которая проводит различные виды статического анализа на вводных формах. Отчасти эта задача состоит в конвертации входных данных в более удобную для анализа форму.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПо этой причине семантический анализ играет важную роль в архитектуре компилятора, а изнурительная подготовительная работа вроде оптимизации сгенерированной сборки или считывания входных данных в АСД выполняется за вас. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EСемантические проходы\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nВ ходе семантического анализа большинство компиляторов проводят большое количество «семантических проходов» по АСД или другой абстрактной форме выражения кода. \u003Ca href=\"https:\u002F\u002Fblogs.msdn.microsoft.com\u002Fericlippert\u002F2010\u002F02\u002F04\u002Fhow-many-passes\u002F\"\u003EВ этой статье\u003C\u002Fa\u003E содержатся детали о большинстве проходов, производящихся в компиляторе .NET C#. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЯ не буду рассматривать каждый проход, тем более что они разнятся в зависимости от языка, но ниже описано несколько шагов в Krug.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EОбъявление высшего уровня\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nКомпилятор пройдется по всем объявлениям «высшего уровня» в модулях и осознает их существование. Глубже в блоки он не пойдет — он просто объявит, какие структуры, функции и т.д. имеются в том или ином модуле. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EРазрешение имени\u002Fсимвола\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nКомпилятор проходит по всем блокам кода в функциях и т.п. и разрешает их — то есть, находит символы, требующие разрешения. Это распространенный проход, и именно отсюда, как правило, приходит ошибка \u003Ci\u003ENo such symbol XYZ\u003C\u002Fi\u003E при компиляции кода Go.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВыполнить этот проход может быть очень непросто, особенно если в вашей диаграмме зависимостей есть циклические зависимости. Некоторые языки их не допускают, например, Go выдаст ошибку, если какой-то из ваших пакетов формирует цикл, как и мой язык Krug. Циклические зависимости можно считать побочным эффектом плохой архитектуры. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЦиклы можно определять, модифицируя DFS в диаграмме зависимостей, или воспользовавшись \u003Ca href=\"https:\u002F\u002Fru.wikipedia.org\u002Fwiki\u002F%D0%90%D0%BB%D0%B3%D0%BE%D1%80%D0%B8%D1%82%D0%BC_%D0%A2%D0%B0%D1%80%D1%8C%D1%8F%D0%BD%D0%B0\"\u003Eалгоритмом Тарьяна\u003C\u002Fa\u003E (как это сделано в Krug) для определения (множественных) циклов. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EВыведение типов (Type Inference)\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nКомпилятор проходит через все переменные и выводит их типы. Выведение типов в Krug очень слабое, оно просто выводит переменные на основе их значений. Это никоим образом не причудливая система, вроде тех, можно встретить в функциональных языках наподобие Haskell.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВыводить типы можно с помощью процесса «унификации», или «унификации типов». Для более простых систем типов можно использовать очень простую реализацию.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nТипы реализованы в Krug так:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003Einterface Type {};\n\nstruct IntegerType : Type {\n  int width;\n  bool signed;\n};\n\nstruct FloatingType : Type {\n  int width;\n};\n\nstruct ArrayType : Type {\n  Type base_type;\n  uint64 length;\n};\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nТакже у вас может быть простое выведение типов, при котором вы будете присваивать тип узлам выражений, например, \u003Ccode\u003EIntegerConstantNode\u003C\u002Fcode\u003E может иметь тип IntegerType(64). А затем у вас может появиться функция \u003Ccode\u003Eunify(t1, t2)\u003C\u002Fcode\u003E, которая выберет самый широкий тип, который можно использовать для выведения типа более сложных выражений, скажем, бинарных. Так что это вопрос присвоения переменной слева значений приведённых типов справа.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nКогда-то я написал простое \u003Ca href=\"https:\u002F\u002Fgithub.com\u002Ffelixangell\u002Ftype-inference\"\u003Eприведение типов\u003C\u002Fa\u003E на Go, которое стало прототипом реализации для Krug.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EПроход на изменяемость переменных (Mutability Pass)\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nKrug (как и Rust) по умолчанию является неизменяемым языком, то есть переменные остаются неизменными, если не задано иное:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003Elet x = 3;\nx = 4; \u002F\u002F BAD!\n\nmut y = 5;\ny = 6; \u002F\u002F OK!\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nКомпилятор проходит по всем блокам и функциям и проверяет, что их «переменные корректны», то есть мы не меняем то, что не следует, и что все переменные, передаваемые определённым функциям, являются постоянными или изменяемым там, где требуется.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЭто делается с помощью символьной информации, которая собрана за предыдущие проходы. Символьная таблица, построенная по результатам семантического прохода, содержит имена токенов и признаки изменяемости переменных. Она может содержать и другие данные, к примеру, в С++ в таблице может храниться информация о том, является символ внешним или статичным.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EСимвольные таблицы\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nСимвольная таблица, или «stab», это таблица для поиска символов, которые используются в вашей программе. Для каждой области видимости создаётся по одной таблице, и все они содержат информацию о символах, присутствующих в конкретной области видимости.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nК этой информации относятся такие свойства, как имя символа, тип, признак изменяемости, наличие внешней связи, расположение в статичной памяти и прочее.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch3\u003EОбласть видимости\u003C\u002Fh3\u003E\u003Cbr\u002F\u003E\r\nЭто важная концепция в языках программирования. Конечно, ваш язык не обязан давать возможность создавать вложенные области видимости, всё можно поместить в одно общее пространство имён!\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nХотя представление области видимости является интересной задачей для архитектуры компилятора, в большинстве С-подобных языков область видимости ведёт себя (или является) как стековая структура данных (stack data structure).\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nОбычно мы создаём и уничтожаем области видимости, и обычно они используются для управления именами, то есть позволяют нам скрывать (shadowing) переменные:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003E{ \u002F\u002F push scope\n  let x = 3;\n  { \u002F\u002F push scope\n    let x = 4; \u002F\u002F OK!\n  } \u002F\u002F pop scope\n} \u002F\u002F pop scope\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nЭто можно представить иначе:\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003Estruct Scope {\n  Scope* outer;\n  SymbolTable symbols;\n}\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nНебольшой оффтоп, но рекомендую почитать про \u003Ca href=\"https:\u002F\u002Fen.wikipedia.org\u002Fwiki\u002FParent_pointer_tree\"\u003Eспагетти-стек\u003C\u002Fa\u003E. Это структура данных, которая используется для хранения областей видимости в АСД-узлах противоположных блоков. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EСистемы типов\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nМногие из последующих разделов можно развить в отдельные статьи, но мне кажется, этот заголовок заслуживает этого больше всего. Сегодня доступно много информации о системах типов, как и разновидностей самих систем, вокруг которых ломается много копий. Я не будут глубоко погружаться в эту тему, лишь оставлю ссылку на \u003Ca href=\"https:\u002F\u002Fblog.steveklabnik.com\u002Fposts\u002F2010-07-17-what-to-know-before-debating-type-systems\"\u003Eпрекрасную статью Стива Клабника\u003C\u002Fa\u003E.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nСистема типов — это то, что обеспечивается и семантически определяется в компиляторе с помощью представлений компилятора и анализа этих представлений.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EВладение\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nЭта концепция используется в программировании всё шире. Принципы семантики владения и перемещения заложены в язык \u003Ca href=\"https:\u002F\u002Fen.wikipedia.org\u002Fwiki\u002FRust_(programming_language)\"\u003ERust\u003C\u002Fa\u003E, и надеюсь, будут появляться и в других языках. В Rust выполняется много разных видов статического анализа, с помощью которого проверяется, удовлетворяют ли входные данные набору правил в отношении памяти: кто и какой памятью владеет, когда память уничтожается и сколько существует ссылок (или заимствований) на эти значения или память.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nКрасота Rust заключается в том, что всё это выполняется в ходе компиляции, внутри компилятора, так что программисту не приходится заниматься сборкой мусора или подсчётом ссылок. Все эти семантики отнесены к системе типов и могут обеспечиваться ещё до того, как программа будет представлена в виде завершённого бинарного файла. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЯ не могу сказать, как всё это устроено под капотом, но всё это является результатом статического анализа и замечательного исследования команды Mozilla и участников проекта \u003Ca href=\"https:\u002F\u002Fen.wikipedia.org\u002Fwiki\u002FCyclone_(programming_language)\"\u003ECyclone\u003C\u002Fa\u003E.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EГрафы потоков управления (Control Flow Graphs)\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nДля представления потоков программ мы используем графы потоков управления (CFG), которые содержат все пути, по которым может пойти исполнение программы. Это используется при семантическом анализе для исключения нерабочих участков кода, то есть блоков, функций и даже модулей, которые никогда не будут достигнуты в ходе исполнения программы. Также графы можно применять для выявления циклов, которые не могут прерваться. Или для поиска недоступного кода, например, когда вы вызываете «панику» (call a panic), или возвращаете в цикле, а код снаружи цикла не исполняется. \u003Ca href=\"https:\u002F\u002Fen.wikipedia.org\u002Fwiki\u002FData-flow_analysis\"\u003EАнализ потока данных\u003C\u002Fa\u003E играет важную роль в ходе семантической фазы работы компилятора, так что рекомендую почитать о тех видах анализа, которые вы можете выполнять, как они работают и какие оптимизации могут делать.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EБэкенд\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\n\u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fr\u002Fw780q1\u002Fgetpro\u002Fhabr\u002Fpost_images\u002F330\u002F914\u002F1b9\u002F3309141b9d53be1d9e5c8f77fb46d982.jpg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fpost_images\u002F330\u002F914\u002F1b9\u002F3309141b9d53be1d9e5c8f77fb46d982.jpg\" data-blurred=\"true\"\u002F\u003E\u003Cbr\u002F\u003E\r\n\u003Ci\u003EЗаключительная часть нашей схемы архитектуры.\u003C\u002Fi\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nМы сделали большую часть работы по генерированию исполняемых бинарников. Сделать это можно разными способами, которые мы обсудим ниже.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nНе обязательно сильно менять фазу семантического анализа из-за информации, содержащейся в дереве. Возможно, лучше вообще её не менять, чтобы избежать возникновения «спагетти».\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EНесколько слов о транспиляторах\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nЭто разновидность компиляторов, которые преобразуют код на одном языке в исходный код на другом. Например, вы можете написать код, который компилируется в исходники на С. На мой взгляд, вещь довольно бессмысленная, если только ваш язык не уступает сильно тому языку, в который он компилируется. Обычно траспиляция имеет смысл для относительно высокоуровневых языков, или для языков с ограниченными возможностями.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nТем не менее, в истории компиляторов очень часто встречается преобразование в код на С. По сути, первый компилятор С++ — Cfront — транспилировал в код на C.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nХорошим примером является JavaScript. В его код транспилирует TypeScript и многие другие языки, чтобы привнести больше возможностей и, что ещё важнее, чувствительную систему типов с разным количеством видов статического анализа для ловли багов и ошибок, прежде чем мы столкнёмся с ними в ходе исполнения. \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЭто одна из «целей» компилятора, причём чаще всего самая простая, поскольку вам не нужно думать в рамках более низкоуровневых концепций о присвоении переменных, о работе с оптимизацией и так далее, ведь вы просто «падаете на хвост» другому языку. Однако у этого подхода есть очевидный недостаток — большие накладные расходы, к тому же вы обычно ограничены возможностями языка, в который транспилируете свой код.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003ELLVM\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nМногие современные компиляторы обычно используют в качестве своего бэкенда LLVM: Rust, Swift, C\u002FC++ (clang), D, Haskell.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЭто можно считать «простым путём», потому что за вас проделали большую часть работы по поддержке широкого спектра архитектур, и вам доступны оптимизации высочайшего уровня. По сравнению с вышеупомянутой транспиляцией, LLVM предоставляет и большие возможности по управлению. Уж точно больше, чем если бы вы компилировали в С. К примеру, вы можете решать, насколько большими должны быть типы, скажем, 1, 4, 8 или 16-битные. В С это сделать не так просто, иногда невозможно, а для каких-то платформ даже нельзя определить.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EГенерирование ассемблер-кода\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nГенерирование кода под конкретную архитектуру — то есть генерирование машинного кода, — это технически самый популярный путь, который применяется во множестве языков программирования.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nGo — это пример современного языка, который не пользуется преимуществами фреймворка LLVM (на момент написания этой статьи). Go генерирует код для нескольких платформ, в том числе Windows, Linux и MacOS. Забавно, что в прототипе Krug раньше тоже генерировался ассемблер-код.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nУ этого подхода есть много достоинств и недостатков. Однако сегодня, когда доступны технологии вроде LLVM, уже неразумно самостоятельно генерировать ассемблер, потому что маловероятно, что игрушечный компилятор с собственным бэкендом превзойдёт LLVM по уровню оптимизации для одной платформы, не говоря уже о нескольких.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nТем не менее, значительное преимущество самостоятельного генерирования ассемблера заключается в том, что ваш компилятор наверняка окажется гораздо быстрее, чем если бы вы использовали фреймворк наподобие LLVM, который сначала должен собрать ваш IR, оптимизировать и так далее, и потом, наконец, сможет выдать ассемблер (или что вы там выберете).\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nНо попытаться всё равно приятно. И к тому же будет интересно, если вы захотите узнать больше о программировании на ассемблере, или о том, как языки программирования работают на нижних уровнях. Проще всего открыть АСД или сгенерированный IR (если у вас он есть) и «выдать» инструкции ассемблера в файл с помощью fprintf или другой утилиты. Так работает\u003Ca href=\"https:\u002F\u002Fgithub.com\u002Frui314\u002F8cc\"\u003E 8cc\u003C\u002Fa\u003E.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EГенерирование байткода\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nТакже вы можете генерировать байткод для виртуальной машины определённого вида или интерпретатора байткода. Яркий пример — Java: по сути,\u003Ca href=\"https:\u002F\u002Fen.wikipedia.org\u002Fwiki\u002FJava_virtual_machine\"\u003E JVM\u003C\u002Fa\u003E породила целое семейство генерирующих для неё байткод языков, например, Kotlin.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nУ генерирования байткода много преимуществ, и для Java главным была портируемость. Если вы можете где угодно запускать свою виртуальную машину, то любой выполняемый на ней код тоже будет работать где угодно. К тому же гораздо проще запускать на машинах абстрактный набор байткодовых инструкций, чем генерировать код по стопицот компьютерных архитектур.\u003Cbr\u002F\u003E\r\nНасколько я знаю, JVM с помощью JIT превращает часто используемый код в нативные функции, а также применяет другие JIT-ухищрения, чтобы выжать ещё больше производительности.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EОптимизации\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nОни являются неотъемлемой частью компилятора, никому не нужен медленно работающий код! Обычно оптимизации составляют большую часть бэкенда, и разработчики прикладывают много усилий, чтобы повысить производительность. Если вы когда-нибудь скомпилируете код на С и запустите его со всеми оптимизациями, ты вы удивитесь, какое безумие получится. \u003Ca href=\"https:\u002F\u002Fgodbolt.org\u002F\"\u003EGodbolt\u003C\u002Fa\u003E — прекрасный инструмент, позволяющий понять, как современные компиляторы генерируют код и какие инструкции к какому исходному коду относятся. Также вы сможете задать нужный уровень оптимизаций, цели, версии компиляторов и так далее.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЕсли вы когда либо писали компилятор, то можете начать с создания простой программы на С, выключить все оптимизации и символы отладки (strip the debug symbols), и посмотрите, что сгенерирует GCC. Можете потом использовать как памятку, если когда-нибудь возникнут затруднения.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nПри настройке оптимизаций можно находить компромисс между точностью и скоростью работы программы. Однако нащупать верный баланс не так просто. Некоторые оптимизации очень специфичны, и в некоторых случаях могут приводить к ошибочному результату. По очевидным причинам их не включают в production-компиляторы.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВ \u003Ca href=\"https:\u002F\u002Fnews.ycombinator.com\u002Fitem?id=19756087\"\u003Eкомментариях\u003C\u002Fa\u003E к этой статье на другом ресурсе пользователь rwmj заметил, что достаточно всего 8 оптимизирующих проходов, чтобы получить 80% от максимальной производительности вашего компилятора. И все эти оптимизации были описаны в 1971-м! Речь идёт о \u003Ca href=\"http:\u002F\u002Fvenge.net\u002Fgraydon\u002Ftalks\u002FCompilerTalk-2019.pdf\"\u003Eпубликации\u003C\u002Fa\u003E Грейдона Хоара, вдохновителя Rust.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EIR\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nПромежуточное представление (intermediate representation, IR) не обязательно, но полезно. Вы можете генерировать код из АСД, хотя это может быть довольно утомительно и неаккуратно, а результат сложно будет оптимизировать.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nМожно считать IR более высокоуровневым представлением генерируемого кода. Оно должно очень точно отражать то, что представляет, и содержать всю информацию, необходимую для генерирования кода.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЕсть конкретные виды IR, или «формы», которые вы можете создать с помощью IR для упрощения оптимизаций. Например, SSA — Static Single Assignment, единственное статическое присваивание, при котором каждая переменная присваивается лишь один раз.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВ Go перед генерированием кода строится IR на основе SSA. IR в LLVM основан на SSA, чтобы обеспечить его оптимизации.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nИзначально SSA предоставляет несколько оптимизаций, к примеру, подстановка констант (constant propagation), исключение нерабочего кода и (очень важное) распределение регистров.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EРаспределение регистров\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nЭто не требование для генерирования кода, а оптимизация. Одна абстракция, которую мы считаем данностью, заключается в том, что мы можем определять столько переменных, сколько нужно нашим программам. Однако в ассемблере нам доступно конечное количество регистров (обычно от 16 до 32), которые нужно держать в голове, или мы можем воспользоваться стеком (spill to the stack).\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nРаспределение регистров — это попытка выбрать для конкретной переменной конкретный регистр в определённый момент времени (без перезаписывания других значений). Это гораздо эффективнее использования стека, хотя может повлечь дополнительные расходы, да и компьютер не всегда может вычислить идеальную схему распределения.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nЕсть несколько алгоритмов распределения регистров: \u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003EРаскрашивание графов (graph colouring) — вычислительно сложен (NP-полная задача). Требуется представлять код в виде графа, чтобы вычислять диапазон жизни (liveness ranges) переменных.\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003Cli\u003EЛинейное сканирование — просматривает переменные и определяет их диапазоны жизни.\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EО чём нужно помнить\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nО компиляторах написано очень много. Столько, что не поместится ни в одну статью. Я хочу напомнить, или хотя бы упомянуть несколько важных моментов, о которых нужно помнить в ходе ваших будущих проектов.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EИскажение имён (\u003Ca href=\"https:\u002F\u002Fen.wikipedia.org\u002Fwiki\u002FName_mangling\"\u003EName Mangling\u003C\u002Fa\u003E)\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nЕсли вы генерируете ассемблер-код, в котором на самом деле нет никаких областей видимости или пространств имён, то у вас часто будут возникать конфликты символов. Особенно если ваш язык поддерживает переопределение функций или классов, и тому подобное.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003Efn main() int {\n  let x = 0;\n  {\n    let x = 0;\n    {\n      let x = 0;\n    }\n  }\n  return 0;\n}\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\nНапример, в этом коде (если переменные каким-либо образом не оптимизированы :) ) вам придётся искажать имена этих символов, чтобы в ассемблере они не конфликтовали. Также искажение обычно используется для обозначения типа информации, или оно может содержать информацию о пространстве имён.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EОтладочная информация\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nИнструменты вроде LLDB обычно используют стандарты наподобие\u003Ca href=\"https:\u002F\u002Fen.wikipedia.org\u002Fwiki\u002FDWARF\"\u003E DWARF\u003C\u002Fa\u003E. Одно из замечательных свойств LLVM заключается в том, что благодаря DWARF вы получается относительно простую интеграцию с существующим отладочным GNU-инструментарием. Возможно, вашему языку понадобится отладочный инструмент, и всегда легче использовать готовый, чем писать свой.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EИнтерфейс внешних функций (Foreign Function Interface, \u003Ca href=\"https:\u002F\u002Fen.wikipedia.org\u002Fwiki\u002FLibffi\"\u003EFFI\u003C\u002Fa\u003E)\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nОбычно от libc никуда не деться, вам нужно почитать об этой библиотеке и подумать, как встроить её в свой язык. Как вы подключитесь к коду на С, или как вы откроете свой код для С?\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EЛинкер\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nНаписание линкера — отдельная задача. Когда ваш компилятор генерирует код, то он генерирует машинные инструкции (в файл .s\u002F.asm)? Он пишет код напрямую в файл объекта? Например, в языке программирования \u003Ca href=\"https:\u002F\u002Fwww.youtube.com\u002Fwatch?v=TH9VCN6UkyQ\"\u003EJai\u003C\u002Fa\u003E весь код предположительно пишется в один файл объекта. Существуют разные варианты, для которых характерны свои компромиссы.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EКомпилятор как сервис (CaaS)\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\nЗдесь все рассмотренные выше фазы компилятора распределены по API-маршрутам. Это означает, что текстовый редактор может обращаться к Krug-серверу, чтобы тот токенизировал файл и вернул в ответ токены. Кроме того, все маршруты статического анализа открыты, так что применять инструментарий становится проще.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nКонечно, у этого подхода есть недостатки, например, задержка при отправке и получении файлов. К тому же многие аспекты архитектуры компилятора нужно переосмыслить, чтобы работать в контексте API-маршрутов.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nМало какие production-компиляторы используются подход CaaS. На память приходит Microsofts Roslyn, хотя я мало знаю об этом компиляторе, так что изучите его самостоятельно. И я могу ошибаться, но, похоже, во многих компиляторах реализован этот подход, но их авторы пишут API-машруты, которые подключаются к существующим компиляторам, например, в Rust есть\u003Ca href=\"https:\u002F\u002Fgithub.com\u002Frust-lang\u002Frls\"\u003E RLS\u003C\u002Fa\u003E.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nВ моём языке Krug — который ещё активно разрабатывается и работает неустойчиво — в компиляторе Caasper используется CaaS-архитектура.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nCaasper выполняется локально на вашей машине (или, если захотите, на сервере), а затем фронтенды или клиенты например, krug, взаимодействуют с этим сервисом. Плюс в том, что у вас может быть много реализаций фронтенда, а единственный фронтенд можно загружать (bootstrap) в самом языке, прежде чем переписывать весь компилятор.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nФронтенд для Krug реализован на JavaScript, хотя будут и альтернативные реализации на Go*, а также, надеюсь, на самом Krug. JavaScript был выбран за его доступность, его можно скачать с очень популярными менеджерами пакетов yarn\u002Fnpm.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ci\u003E* Изначально фронтенд был написан на Go и оказался (ожидаемо) значительно быстрее, чем вариант на JS.\u003C\u002Fi\u003E\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nИсходный код компилятора Caasper лежит\u003Ca href=\"https:\u002F\u002Fgithub.com\u002Fkrug-lang\u002Fcaasper\u002F\"\u003E здесь\u003C\u002Fa\u003E. В моём \u003Ca href=\"http:\u002F\u002Fgithub.com\u002Ffelixangell\u002Fkrug\u002F\"\u003Eличном\u003C\u002Fa\u003E Github лежит прототип Krug, он написан на D и компилируется в LLVM. Также можете посмотреть демо на моём YouTube-\u003Ca href=\"https:\u002F\u002Fwww.youtube.com\u002Fwatch?v=DT6l4T7yzKs\"\u003Eканале\u003C\u002Fa\u003E.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\nРуководство по Krug (промежуточное) лежит \u003Ca href=\"https:\u002F\u002Fgithub.com\u002Fkrug-lang\u002Fcaasper\u002Fblob\u002Fmaster\u002Fdocs\u002Ftutorial.md\"\u003Eздесь\u003C\u002Fa\u003E.\u003Cbr\u002F\u003E\r\n\u003Cbr\u002F\u003E\r\n\u003Ch2\u003EПолезные ссылки\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003E\u003Ca href=\"https:\u002F\u002Fcompilers.iecc.com\u002Fcrenshaw\u002F\"\u003EJack Crenshaw\u003C\u002Fa\u003E — моя личная дверь в мир реализации языков программирования.\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Ca href=\"https:\u002F\u002Fcraftinginterpreters.com\u002F\"\u003ECrafting Interpreters\u003C\u002Fa\u003E\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Ca href=\"https:\u002F\u002Fblog.felixangell.com\u002Fan-introduction-to-llvm-in-go\"\u003EВведение в LLVM (с Go)\u003C\u002Fa\u003E — я!\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Ca href=\"https:\u002F\u002Fen.wikipedia.org\u002Fwiki\u002FPL\u002F0\"\u003EPL\u002F0\u003C\u002Fa\u003E\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003Cli\u003EThe Dragon Book — классическая книга, в которой есть всё.\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Ca href=\"https:\u002F\u002Fgithub.com\u002Frui314\u002F8cc\"\u003E8cc\u003C\u002Fa\u003E\u003Cbr\u002F\u003E\r\n\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003C\u002Fdiv\u003E","tags":[{"titleHtml":"компиляторы"},{"titleHtml":"никто не читает теги"}],"metadata":{"stylesUrls":[],"scriptUrls":[],"shareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F451894\u002Fedb8731b63e952f36c613cecb5920add\u002F","shareImageWidth":1200,"shareImageHeight":630,"vkShareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F451894\u002Fedb8731b63e952f36c613cecb5920add\u002F?format=vk","schemaJsonLd":"{\"@context\":\"http:\\\u002F\\\u002Fschema.org\",\"@type\":\"Article\",\"mainEntityOfPage\":{\"@type\":\"WebPage\",\"@id\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fru\\\u002Fcompany\\\u002Fvk\\\u002Fblog\\\u002F451894\\\u002F\"},\"headline\":\"Краткий и бодрый обзор архитектуры компиляторов\",\"datePublished\":\"2019-05-15T15:42:21+03:00\",\"dateModified\":\"2019-06-07T11:13:42+03:00\",\"author\":{\"@type\":\"Person\",\"name\":\"Макс\"},\"publisher\":{\"@type\":\"Organization\",\"name\":\"Habr\",\"logo\":{\"@type\":\"ImageObject\",\"url\":\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fa_\\\u002Flk\\\u002F9m\\\u002Fa_lk9mjkccjox-zccjrpfolmkmq.png\"}},\"description\":\"Большинство компиляторов имеют следующую архитектуру:     В данной статье я собираюсь детально препарировать эту архитектуру, элемент за элементом.  Можно сказа...\",\"url\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fru\\\u002Fcompany\\\u002Fvk\\\u002Fblog\\\u002F451894\\\u002F#post-content-body\",\"about\":[\"c_vk\",\"h_programming\",\"h_analysis_design\",\"h_complete_code\",\"h_compilers\",\"f_develop\"],\"image\":[\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fsl\\\u002Fej\\\u002F-i\\\u002Fslej-ivpokabgczeqdbgiafc0rw.jpeg\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fgetpro\\\u002Fhabr\\\u002Fpost_images\\\u002F73e\\\u002Fff7\\\u002Fc46\\\u002F73eff7c467213f5de1b9134666f9e569.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fgetpro\\\u002Fhabr\\\u002Fpost_images\\\u002F98c\\\u002F61a\\\u002Fcb3\\\u002F98c61acb355e7887b53b5c37de0aa34f.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fgetpro\\\u002Fhabr\\\u002Fpost_images\\\u002F330\\\u002F914\\\u002F1b9\\\u002F3309141b9d53be1d9e5c8f77fb46d982.jpg\"]}","metaDescription":"Большинство компиляторов имеют следующую архитектуру:\r\n\r\n \r\n\r\nВ данной статье я собираюсь детально препарировать эту архитектуру, элемент за элементом. \r\nМожно сказать, что эта статья — дополнение к...","mainImageUrl":null,"amp":false},"polls":[],"commentsEnabled":true,"rulesRemindEnabled":false,"votesEnabled":true,"status":"published","plannedPublishTime":null,"checked":null,"isEditorial":false}},"articlesIds":{},"isLoading":false,"pagesCount":{},"route":{},"reasonsList":null,"view":"cards","lastVisitedRoute":{},"ssrCommentsArticleIds":[""],"karma":{}},"authorContribution":{"authors":{}},"betaTest":{"currentAnnouncement":null,"announcements":{},"announcementCards":null,"announcementComments":{},"announcementCommentThreads":{},"announcementCommentingStatuses":{},"archivedList":[]},"authorStatistics":{"articleRefs":{},"articleIds":{},"pagesCount":{},"route":{},"viewsCount":[],"maxStatsCount":{}},"career":{"seoLandings":[],"hubs":""},"comments":{"articleComments":{},"searchCommentsResults":null,"previewComment":null,"pagesCount":null,"commentAccess":{},"scrollParents":{},"pageArticleComments":{"lastViewedComment":0,"postId":null,"lastCommentTimestamp":"","moderated":[],"moderatedIds":[],"commentRoute":""}},"companies":{"companyRefs":{"vk":{"alias":"vk","imageUrl":"\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fcompany\u002F9ed\u002Fc74\u002F6b4\u002F9edc746b484c805ecad1f941b5f7068a.png","titleHtml":"VK","descriptionHtml":"Технологии, которые объединяют","relatedData":null,"statistics":{"postsCount":2250,"newsCount":142,"vacanciesCount":24,"employeesCount":693,"careerRating":4.37,"subscribersCount":124428,"rating":331.85,"invest":null},"foundationDate":{"year":"1998","month":"10","day":"15"},"location":{"city":{"id":"447159","title":"Москва"},"region":{"id":"1885","title":"Москва и Московская обл."},"country":{"id":"168","title":"Россия"}},"siteUrl":"https:\u002F\u002Fvk.com\u002Fvkteam","staffNumber":"5 001–10 000 человек","registrationDate":"2008-08-09T07:42:32+00:00","representativeUser":{"alias":"somuchmich","fullname":"Миша Буданов"},"contacts":[{"title":"Facebook","url":"https:\u002F\u002Ffacebook.com\u002Finsidevk"},{"title":"Twitter","url":"https:\u002F\u002Ftwitter.com\u002Finside_vk"},{"title":"ВКонтакте","url":"https:\u002F\u002Fvk.com\u002Finsidevk"},{"title":"Instagram","url":"https:\u002F\u002Finstagram.com\u002Finside.vk"},{"title":"Telegram","url":"https:\u002F\u002Ftelegram.me\u002Finside_vk"}],"settings":{"analyticsSettings":[{"type":"ga","trackingId":"UA-16546458-6"}],"branding":{"imageUrl":"\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fbranding\u002F174\u002F2c4\u002F3a5\u002F1742c43a5b504987a0fadf577a0bd4de.png","linkUrl":"https:\u002F\u002Fvk.com\u002Fvkteam","pixelUrl":""},"status":"active"},"metadata":{"titleHtml":"VK, Москва - Технологии, которые объединяют с 15 октября 1998 г.","title":"VK, Москва - Технологии, которые объединяют с 15 октября 1998 г.","keywords":["Программирование","DevOps","Kubernetes","Облачные вычисления","Tarantool"],"descriptionHtml":"2 250 статей от авторов компании VK","description":"2 250 статей от авторов компании VK"},"aDeskSettings":null,"careerAlias":"vk","maxCustomTrackerLinks":3}},"companyIds":{},"companyTopIds":{},"pagesCount":{},"companyProfiles":{},"companiesCategories":[],"companiesCategoriesTotalCount":0,"companiesWidgets":{},"companiesWorkers":{},"companiesFans":{},"route":{},"isLoading":false,"companyWorkersLoading":false,"companyFansLoading":false,"vacancies":{}},"companiesContribution":{"hubs":{},"flows":{},"companyRefs":{}},"companyHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"conversation":{"messages":[],"respondent":null,"isLoadMore":false},"conversations":{"conversations":[],"unreadCount":0,"pagesCount":0,"isLoadMore":false},"desktopState":{"desktopFl":null,"desktopHl":null,"isChecked":false,"isLoginDemanded":false},"dfp":{"slotsDict":{}},"docs":{"menu":{},"articles":{},"mainMenu":[],"loading":{"main":false,"dropdown":false,"article":false}},"feature":{"isProbablyVisible":"true"},"flows":{"flows":[{"alias":"develop","id":1,"route":{"name":"FLOW_PAGE","params":{"flowName":"develop"}}},{"alias":"admin","id":6,"route":{"name":"FLOW_PAGE","params":{"flowName":"admin"}}},{"alias":"design","id":2,"route":{"name":"FLOW_PAGE","params":{"flowName":"design"}}},{"alias":"management","id":3,"route":{"name":"FLOW_PAGE","params":{"flowName":"management"}}},{"alias":"marketing","id":4,"route":{"name":"FLOW_PAGE","params":{"flowName":"marketing"}}},{"alias":"popsci","id":7,"route":{"name":"FLOW_PAGE","params":{"flowName":"popsci"}}}]},"global":{"isPwa":false,"device":"desktop","isHabrCom":true},"hubs":{"hubRefs":{},"hubIds":{},"pagesCount":{},"isLoading":false,"route":{}},"hubsBlock":{"hubRefs":{},"hubIds":{}},"i18n":{"fl":"ru","hl":"ru"},"info":{"infoPage":{},"isLoading":true},"location":{"urlStruct":{"protocol":null,"slashes":null,"auth":null,"host":null,"port":null,"hostname":null,"hash":null,"search":null,"query":{},"pathname":null,"path":null,"href":""},"searchQuery":null},"me":{"user":null,"ppgDemanded":false,"karmaResetInfo":{"canReincarnate":null,"wasReincarnated":null,"currentScore":null},"notes":null},"mostReadingList":{"mostReadingListIds":[],"mostReadingListRefs":null,"promoPost":null},"pinnedPost":{"pinnedPost":null},"ppa":{"articles":{},"card":null,"transactions":null,"totalTransactions":null,"isAccessible":null},"projectsBlocks":{"activeBlocks":{}},"pullRefresh":{"shouldRefresh":false},"sandbox":{"articleIds":[],"articleRefs":{},"pagesCount":null,"route":{},"lastVisitedRoute":{},"isLoading":false},"settingsOther":{"inputs":{"uiLang":{"errors":[],"ref":null,"value":""},"articlesLangEnglish":{"errors":[],"ref":null,"value":false},"articlesLangRussian":{"errors":[],"ref":null,"value":false},"agreement":{"errors":[],"ref":null,"value":false},"email":{"errors":[],"ref":null,"value":true},"digest":{"errors":[],"ref":null,"value":true}}},"similarList":{"similarListIds":[],"similarListRefs":null},"ssr":{"error":null,"isDataLoaded":false,"isDataLoading":false,"isHydrationFailed":false,"isServer":false},"userHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"userInvites":{"availableInvites":0,"usedInvitesIds":[],"usedInvitesRefs":{},"usedInvitesPagesCount":0,"unusedInvitesIds":[],"unusedInvitesRefs":{},"unusedInvitesPagesCount":0},"users":{"authorRefs":{},"authorIds":{},"pagesCount":{},"authorProfiles":{},"userHubs":{},"userInvitations":{},"authorFollowers":{},"authorFollowed":{},"karmaStats":[],"statistics":null,"isLoading":false,"authorFollowersLoading":false,"authorFollowedLoading":false,"userHubsLoading":false,"userInvitationsLoading":false,"route":{}},"viewport":{"prevScrollY":{},"scrollY":0,"width":0},"tracker":{"items":{},"pagesCache":{},"markedViewedSilently":{},"markedRead":{},"unreadCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null},"unviewedCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null}}};(function(){var s;(s=document.currentScript||document.scripts[document.scripts.length-1]).parentNode.removeChild(s);}());</script>
+<script src="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" defer></script><script src="https://assets.habr.com/habr-web/js/app.c0af73e7.js" defer></script>
+
+
+
+    <script>
+      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+        (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+        m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+      })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+    </script>
+  
+  <script type="text/javascript" >
+    (function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+    m[i].l=1*new Date();k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})
+    (window, document, "script", "https://mc.yandex.ru/metrika/tag.js", "ym");
+
+    ym(24049213, "init", {
+      defer:true,
+      trackLinks:true,
+      accurateTrackBounce:true,
+      webvisor:false,
+    });
+  </script>
+  <noscript>
+    <div>
+      <img src="https://mc.yandex.ru/watch/24049213" style="position:absolute; left:-9999px;" alt="" />
+    </div>
+  </noscript>
+  
+    <script type="text/javascript">
+      window.addEventListener('load', function () {
+        setTimeout(() => {
+          const img = new Image();
+          img.src = 'https://vk.com/rtrg?p=VK-RTRG-421343-57vKE';
+        }, 0);
+      });
+    </script>
+  
+</body>
+</html>

@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="ru" data-vue-meta="%7B%22lang%22:%7B%22ssr%22:%22ru%22%7D%7D">
+<head >
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
+  <title>RBKmoney Payments под капотом — инфраструктура платежной платформы / Хабр</title>
+  <style>
+    /* cyrillic-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSxf6TF0.woff2) format('woff2');
+      unicode-range: U+0460-052F, U+1C80-1C88, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+    }
+
+    /* cyrillic */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveQhf6TF0.woff2) format('woff2');
+      unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+    }
+
+    /* latin-ext */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveSBf6TF0.woff2) format('woff2');
+      unicode-range: U+0100-024F, U+0259, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20CF, U+2113, U+2C60-2C7F, U+A720-A7FF;
+    }
+
+    /* latin */
+    @font-face {
+      font-family: 'Fira Sans';
+      font-style: normal;
+      font-weight: 500;
+      font-display: swap;
+      src: url(https://fonts.gstatic.com/s/firasans/v11/va9B4kDNxMZdWfMOD5VnZKveRhf6.woff2) format('woff2');
+      unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+    }
+  </style>
+  <link rel="preload" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" as="script"><link rel="preload" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css" as="style"><link rel="preload" href="https://assets.habr.com/habr-web/js/app.c0af73e7.js" as="script">
+  <link rel="stylesheet" href="https://assets.habr.com/habr-web/css/chunk-vendors.e7843cc0.css"><link rel="stylesheet" href="https://assets.habr.com/habr-web/css/app.02ee25a4.css">
+  <script>window.i18nFetch = new Promise((res, rej) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open('GET', '/js/i18n/ru-compiled.85eb77f0b17c8235e7b64b9f81ea5ec2.json');
+          xhr.responseType = 'json';
+          xhr.onload = function(e) {
+            if (this.status === 200) {
+              res({ru: xhr.response});
+            } else {
+              rej(e);
+            }
+          };
+          xhr.send();
+        });</script>
+  
+  <script data-vue-meta="ssr" src="/js/ads.js" onload="window['zhY4i4nJ9K'] = true" data-vmid="checkad"></script><script data-vue-meta="ssr" type="application/ld+json" data-vmid="ldjson-schema">{"@context":"http:\/\/schema.org","@type":"Article","mainEntityOfPage":{"@type":"WebPage","@id":"https:\/\/habr.com\/ru\/company\/osnova\/blog\/451814\/"},"headline":"RBKmoney Payments под капотом — инфраструктура платежной платформы","datePublished":"2019-05-15T12:58:46+03:00","dateModified":"2019-05-15T17:37:25+03:00","author":{"@type":"Person","name":"Anton Kuranda"},"publisher":{"@type":"Organization","name":"Habr","logo":{"@type":"ImageObject","url":"https:\/\/habrastorage.org\/webt\/a_\/lk\/9m\/a_lk9mjkccjox-zccjrpfolmkmq.png"}},"description":"Привет, Хабр! Описание работы внутренностей большой платежной платформы логично будет продолжить описанием того, как именно все эти компоненты работают в реальн...","url":"https:\/\/habr.com\/ru\/company\/osnova\/blog\/451814\/#post-content-body","about":["c_osnova","h_pay_system","h_java","h_erlang","h_ecommerce_development","f_develop"],"image":["https:\/\/habrastorage.org\/webt\/4q\/i3\/tx\/4qi3txdbqxbtwlhqrqmhbutpyxs.jpeg","https:\/\/habrastorage.org\/webt\/s4\/oi\/m1\/s4oim1l0d58ti3s50leca-58-mm.jpeg","https:\/\/habrastorage.org\/webt\/rn\/ce\/ho\/rncehoigde-wwzp3etasz6ewwkw.jpeg","https:\/\/habrastorage.org\/webt\/ug\/je\/s5\/ugjes5aw-7xwah9ykzbjrms8o9a.jpeg","https:\/\/habrastorage.org\/webt\/yi\/me\/o0\/yimeo0j7lk-s-rtyhabbeuayvyq.png","https:\/\/habrastorage.org\/webt\/za\/1m\/7p\/za1m7pqa6mdn0cvc6lot6tdwxis.png","https:\/\/habrastorage.org\/webt\/e9\/fm\/pi\/e9fmpipuhko3jcmbeix8lgtfv2a.png","https:\/\/habrastorage.org\/webt\/_p\/yh\/wh\/_pyhwho6dvp3vful4zg46fg8_so.png","https:\/\/habrastorage.org\/webt\/05\/zb\/ia\/05zbiakiuub6ghwchckesii7an0.jpeg"]}</script>
+  <script src="//www.googletagservices.com/tag/js/gpt.js" async></script>
+  <style>.grecaptcha-badge{visibility: hidden;}</style>
+  <meta name="habr-version" content="2.49.0">
+  
+  <meta data-vue-meta="ssr" property="fb:app_id" content="444736788986613"><meta data-vue-meta="ssr" property="fb:pages" content="472597926099084"><meta data-vue-meta="ssr" name="twitter:card" content="summary_large_image"><meta data-vue-meta="ssr" name="twitter:site" content="@habr_eng"><meta data-vue-meta="ssr" property="og:title" content="RBKmoney Payments под капотом — инфраструктура платежной платформы" data-vmid="og:title"><meta data-vue-meta="ssr" name="twitter:title" content="RBKmoney Payments под капотом — инфраструктура платежной платформы" data-vmid="twitter:title"><meta data-vue-meta="ssr" name="aiturec:title" content="RBKmoney Payments под капотом — инфраструктура платежной платформы" data-vmid="aiturec:title"><meta data-vue-meta="ssr" name="description" content="Привет, Хабр! Описание работы внутренностей большой платежной платформы логично будет продолжить описанием того, как именно все эти компоненты работают в реальном мире на физическом железе. В этом..." data-vmid="description"><meta data-vue-meta="ssr" itemprop="description" content="Привет, Хабр! Описание работы внутренностей большой платежной платформы логично будет продолжить описанием того, как именно все эти компоненты работают в реальном мире на физическом железе. В этом..." data-vmid="description:itemprop"><meta data-vue-meta="ssr" property="og:description" content="Привет, Хабр! Описание работы внутренностей большой платежной платформы логично будет продолжить описанием того, как именно все эти компоненты работают в реальном мире на физическом железе. В этом..." data-vmid="og:description"><meta data-vue-meta="ssr" name="twitter:description" content="Привет, Хабр! Описание работы внутренностей большой платежной платформы логично будет продолжить описанием того, как именно все эти компоненты работают в реальном мире на физическом железе. В этом..." data-vmid="twitter:description"><meta data-vue-meta="ssr" property="aiturec:description" content="Привет, Хабр! Описание работы внутренностей большой платежной платформы логично будет продолжить описанием того, как именно все эти компоненты работают в реальном мире на физическом железе. В этом..." data-vmid="aiturec:description"><meta data-vue-meta="ssr" itemprop="image" content="https://habr.com/share/publication/451814/173208aa75d487ca2ef4b29075b831f5/" data-vmid="image:itemprop"><meta data-vue-meta="ssr" property="og:image" content="https://habr.com/share/publication/451814/173208aa75d487ca2ef4b29075b831f5/" data-vmid="og:image"><meta data-vue-meta="ssr" property="aiturec:image" content="https://habr.com/share/publication/451814/173208aa75d487ca2ef4b29075b831f5/" data-vmid="aiturec:image"><meta data-vue-meta="ssr" name="twitter:image" content="https://habr.com/share/publication/451814/173208aa75d487ca2ef4b29075b831f5/" data-vmid="twitter:image"><meta data-vue-meta="ssr" property="vk:image" content="https://habr.com/share/publication/451814/173208aa75d487ca2ef4b29075b831f5/" data-vmid="vk:image"><meta data-vue-meta="ssr" property="aiturec:item_id" content="451814" data-vmid="aiturec:item_id"><meta data-vue-meta="ssr" property="aiturec:datetime" content="2019-05-15T09:58:46.000Z" data-vmid="aiturec:datetime"><meta data-vue-meta="ssr" property="og:type" content="article" data-vmid="og:type"><meta data-vue-meta="ssr" property="og:locale" content="ru_RU" data-vmid="og:locale"><meta data-vue-meta="ssr" property="og:image:width" content="1200" data-vmid="og:image:width"><meta data-vue-meta="ssr" property="og:image:height" content="630" data-vmid="og:image:height">
+  <link data-vue-meta="ssr" href="https://habr.com/ru/rss/post/451814/?fl=ru" type="application/rss+xml" title="" rel="alternate" name="rss"><link data-vue-meta="ssr" href="https://habr.com/ru/company/osnova/blog/451814/" rel="canonical" data-vmid="canonical"><link data-vue-meta="ssr" data-vmid="hreflang"><link data-vue-meta="ssr" image_src="image" href="https://habr.com/share/publication/451814/173208aa75d487ca2ef4b29075b831f5/" data-vmid="image:href">
+  <meta name="apple-mobile-web-app-status-bar-style" content="#303b44">
+  <meta name="msapplication-TileColor" content="#629FBC">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="16x16"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-16.png"
+  >
+  <link
+    rel="shortcut icon"
+    type="image/png"
+    sizes="32x32"
+    href="https://assets.habr.com/habr-web/img/favicons/favicon-32.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="76x76"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-76.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="120x120"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="152x152"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-152.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="180x180"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-180.png"
+  >
+  <link
+    rel="apple-touch-icon"
+    type="image/png"
+    sizes="256x256"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-256.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1136x640.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2436x1125.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1792x828.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_828x1792.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1334x750.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2208x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1125x2436.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1242x2208.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2732x2048.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2688x1242.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2224x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_750x1334.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x2732.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2388x1668.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2224.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_640x1136.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1668x2388.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_2048x1536.png"
+  >
+  <link
+    rel="apple-touch-startup-image"
+    media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+    href="https://assets.habr.com/habr-web/img/splashes/splash_1536x2048.png"
+  >
+  <link
+    rel="mask-icon"
+    color="#77a2b6"
+    href="https://assets.habr.com/habr-web/img/favicons/apple-touch-icon-120.svg"
+  >
+  <link
+    crossorigin="use-credentials"
+    href="/manifest.webmanifest"
+    rel="manifest"
+  >
+</head>
+<body>
+
+
+<div id="app" data-server-rendered="true" data-async-called="true"><div class="tm-layout__wrapper"><!----> <div></div> <!----> <header class="tm-header"><div class="tm-page-width"><div class="tm-header__container"><!----> <span class="tm-header__logo-wrap"><a href="/ru/" class="tm-header__logo tm-header__logo_ru"><svg height="16" width="16" class="tm-svg-img tm-header__icon"><title>Хабр</title> <use xlink:href="/img/habr-logo-ru.svg#logo"></use></svg></a> <span class="tm-header__beta-sign" style="display:none;">β</span></span> <div class="tm-dropdown tm-header__projects"><div class="tm-dropdown__head"><button class="tm-header__dropdown-toggle"><svg height="16" width="16" class="tm-svg-img tm-header__icon tm-header__icon_dropdown"><title>Открыть список</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#arrow-down"></use></svg></button></div> <!----></div> <a href="/ru/sandbox/start/" class="tm-header__become-author-btn">
+            Как стать автором
+          </a> <div class="tm-feature tm-header__feature tm-feature_variant-inline"><!----></div> <!----> <!----></div></div></header> <div class="tm-layout"><div class="tm-page-progress-bar"></div> <div data-menu-sticky="true" class="tm-base-layout__header tm-base-layout__header_is-sticky"><div class="tm-page-width"><div class="tm-base-layout__header-wrapper"><div class="tm-main-menu"><div class="tm-main-menu__section"><nav class="tm-main-menu__section-content"><!----> <a href="/ru/all/" class="tm-main-menu__item">
+        Все потоки
+      </a> <a href="/ru/flows/develop/" class="tm-main-menu__item">
+          Разработка
+        </a><a href="/ru/flows/admin/" class="tm-main-menu__item">
+          Администрирование
+        </a><a href="/ru/flows/design/" class="tm-main-menu__item">
+          Дизайн
+        </a><a href="/ru/flows/management/" class="tm-main-menu__item">
+          Менеджмент
+        </a><a href="/ru/flows/marketing/" class="tm-main-menu__item">
+          Маркетинг
+        </a><a href="/ru/flows/popsci/" class="tm-main-menu__item">
+          Научпоп
+        </a></nav></div></div> <div class="tm-header-user-menu tm-base-layout__user-menu"><a href="/ru/search/" class="tm-header-user-menu__item tm-header-user-menu__search"><svg height="24" width="24" class="tm-svg-img tm-header-user-menu__icon tm-header-user-menu__icon_search tm-header-user-menu__icon_dark"><title>Поиск</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#search"></use></svg></a> <!----> <!----> <!----> <div class="tm-header-user-menu__item tm-header-user-menu__user_desktop"><div class="tm-dropdown"><div class="tm-dropdown__head"><svg height="24" width="24" data-test-id="menu-toggle-guest" class="tm-svg-img tm-header-user-menu__icon"><title>Профиль</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#header-user"></use></svg> <!----></div> <!----></div> <!----></div> <!----></div></div></div></div> <!----> <div class="tm-page-width"></div> <main class="tm-layout__container"><div hl="ru" companyName="osnova" data-async-called="true" class="tm-page"><div class="tm-page-width"><div class="tm-page__header"><!----></div> <div class="tm-page__wrapper"><div class="tm-page__main tm-page__main_has-sidebar"><div class="pull-down"><div class="pull-down__header" style="height:0px;"><div class="pull-down__content" style="bottom:10px;"><svg height="24" width="24" class="tm-svg-img pull-down__arrow"><title>Обновить</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#pull-arrow"></use></svg></div></div> <div class="tm-article-presenter"><div class="tm-company-card tm-company-article__company-card"><div class="tm-company-card__info"><div class="tm-company-card__header"><a href="/ru/company/osnova/profile/" class="tm-company-card__avatar"><div class="tm-entity-image"><img alt="" height="48" src="//habrastorage.org/getpro/habr/company/602/862/918/602862918454f128730e1fa475d63038.jpg" width="48" class="tm-entity-image__pic"></div></a> <!----> <div class="tm-rating tm-company-card__rating"><div class="tm-rating__header"> <div class="tm-rating__counter">80.79</div></div> <div class="tm-rating__text">
+    Рейтинг
+  </div></div></div> <div class="tm-company-card__info"><a href="/ru/company/osnova/profile/" class="tm-company-card__name">
+        Osnova
+      </a> <div class="tm-company-card__description">Платежный процессинг на базе Open Source</div></div></div> <div class="tm-company-card__buttons"><!----> <!----></div></div> <div class="tm-article-presenter__body"><div class="tm-misprint-area"><div class="tm-misprint-area__wrapper"><article class="tm-article-presenter__content tm-article-presenter__content_narrow"><div class="tm-article-presenter__header"> <div class="tm-article-snippet tm-article-presenter__snippet"><div class="tm-article-snippet__meta-container"><div class="tm-article-snippet__meta"><span class="tm-user-info tm-article-snippet__author"><a href="/ru/users/akuranda/" title="akuranda" class="tm-user-info__userpic"><div class="tm-entity-image"><img alt="" height="24" loading="lazy" src="//habrastorage.org/r/w32/getpro/habr/avatars/4c2/f7c/f21/4c2f7cf21296929f08f71877719ecceb.jpg" width="24" class="tm-entity-image__pic"></div></a> <span class="tm-user-info__user"><a href="/ru/users/akuranda/" class="tm-user-info__username">
+      akuranda
+    </a> </span></span> <span class="tm-article-snippet__datetime-published"><time datetime="2019-05-15T09:58:46.000Z" title="2019-05-15, 12:58">15  мая  2019 в 12:58</time></span></div> <!----></div> <h1 lang="ru" class="tm-article-snippet__title tm-article-snippet__title_h1"><span>RBKmoney Payments под капотом — инфраструктура платежной платформы</span></h1> <div class="tm-article-snippet__hubs"><span class="tm-article-snippet__hubs-item"><a href="/ru/company/osnova/blog/" class="tm-article-snippet__hubs-item-link router-link-active"><span>Блог компании Osnova</span> <!----></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/pay_system/" class="tm-article-snippet__hubs-item-link"><span>Платежные системы</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/java/" class="tm-article-snippet__hubs-item-link"><span>Java</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/erlang/" class="tm-article-snippet__hubs-item-link"><span>Erlang/OTP</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span><span class="tm-article-snippet__hubs-item"><a href="/ru/hub/ecommerce_development/" class="tm-article-snippet__hubs-item-link"><span>Разработка под e-commerce</span> <span title="Профильный хаб" class="tm-article-snippet__profiled-hub">*</span></a></span></div> <!----> <!----> <!----></div></div> <!----> <div data-gallery-root="" lang="ru" class="tm-article-body"><div id="post-content-body" class="article-formatted-body article-formatted-body_version-1"><div xmlns="http://www.w3.org/1999/xhtml"><p><img src="https://habrastorage.org/r/w780q1/webt/4q/i3/tx/4qi3txdbqxbtwlhqrqmhbutpyxs.jpeg" data-src="https://habrastorage.org/webt/4q/i3/tx/4qi3txdbqxbtwlhqrqmhbutpyxs.jpeg" data-blurred="true"/></p><br/>
+<p>Привет, Хабр! Описание работы <a href="https://habr.com/ru/company/rbkmoney/blog/447440/">внутренностей</a> большой платежной платформы логично будет продолжить описанием того, как именно все эти компоненты работают в реальном мире на физическом железе. В этом посте рассказываю о том, как и где размещены приложения платформы, каким образом до них доходит трафик из внешнего мира, а также опишу схему стандартной для нас стойки с оборудованием, размещенной в любом из наших дата-центров.</p><a name="habracut"></a><br/>
+<h2 id="podhody-i-ogranicheniya">Подходы и ограничения</h2><br/>
+<p><img src="https://habrastorage.org/r/w780q1/webt/s4/oi/m1/s4oim1l0d58ti3s50leca-58-mm.jpeg" data-src="https://habrastorage.org/webt/s4/oi/m1/s4oim1l0d58ti3s50leca-58-mm.jpeg" data-blurred="true"/></p><br/>
+<p>Одно из первых требований, которые мы сформулировали перед разработкой платформы звучит как "возможность близкого к линейному масштабирования вычислительных ресурсов для обеспечения обработки любого количества транзакций". </p><br/>
+<p>Классические подходы платженых систем, используемые участниками рынка, подразумевают под собой наличие потолка, хоть и довольно высокого по заявлениям. Обычно это звучит так: "наш процессинг может принимать 1000 транзакций в секунду".</p><br/>
+<p>В наши бизнес-задачи и архитектуру такой подход не вписывается. Мы не хотим иметь какой-то предел. В самом деле, было бы странно услышать от Яндекса или Гугла заявление "мы можем обработать 1 миллион поисковых запросов в секунду". Платформа должна обработать столько запросов, сколько нужно в текущий момент бизнесу за счет архитектуры, которая позволяет, упрощенно говоря, отправить в ДЦ ИТшника с тележкой серверов, которые он установит в стойки, подключит к коммутатору и уедет. А оркестратор платформы раскатит на новые мощности копии экземпляров бизнес-приложений, в результате чего мы получим нужное нам увеличение RPS.</p><br/>
+<p>Второе важное требование заключается в обеспечении высокой доступности предоставляемых сервисов. Было бы забавно, но не слишком полезно, создать платежную платформу, которая может принимать бесконечное количество платежей в /dev/null.</p><br/>
+<p>Пожалуй, самый эффективный способ достичь высокой доступности — это многократно дублировать сущности, которые обслуживают сервис, с тем чтобы отказ любого разумного количества приложений, оборудования или дата-центров не повлиял на общую доступность платформы.</p><br/>
+<p>Многократное дублирование приложений требует большого количества физических серверов и сопутствующего сетевого оборудования. Это железо стоит денег, количество которых у нас конечно, мы не можем позволить себе покупать много дорогого железа. Так что платформа спроектирована таким образом, чтобы легко размещаться и чувствовать себя хорошо на большом количестве недорогого и не слишком мощного железа, либо вообще в публичном облаке.</p><br/>
+<p>Использование не самых сильных в плане вычислительной мощности серверов имеет свои преимущества — их отказ не оказывает критичного влияния на общее состояние системы в целом. Представьте, что лучше — если сгорит дорогой, большой и супернадежный брендовый сервер, на котором работает СУБД по схеме master-slave (а по закону Мерфи он обязательно сгорит, причем вечером 31 декабря) или парочка серверов в кластере из 30 нод, работающем по masterless-схеме?</p><br/>
+<p>Исходя из этой логики, мы решили не создавать себе еще одну массивную точку отказа в виде централизованного дискового массива. Общие блочные устройства нам обеспечивает кластер Ceph, развернутый гиперконвергентно на тех же серверах, но с отдельной сетевой инфраструктурой.</p><br/>
+<p>Таким образом, мы логически пришли к общей схеме универсальной стойки с вычислительными ресурсами в виде недорогих и не особо мощных серверов в дата-центре. Если нам нужно еще ресурсов, мы или добиваем любую свободную стойку серверами, либо ставим еще одну, желательно поближе.</p><br/>
+<p><img src="https://habrastorage.org/r/w780q1/webt/rn/ce/ho/rncehoigde-wwzp3etasz6ewwkw.jpeg" data-src="https://habrastorage.org/webt/rn/ce/ho/rncehoigde-wwzp3etasz6ewwkw.jpeg" data-blurred="true"/></p><br/>
+<p>Ну и, в конце концов, это просто красиво. Когда в стойки устанавливается понятное количество одинакового железа, это позволяет решить проблемы с качественной укладкой проводного хозяйства, позволяет избавиться от ласточкиных гнезд и опасности запутаться в проводах, уронив процессинг. А хорошая с инженерной точки зрения система должна быть красивой везде — и изнутри в виде кода, и снаружи в виде серверов и сетевого железа. Красивая система работает лучше и надежнее, у меня хватало предостаточно примеров убедиться в этом на личном опыте.</p><br/>
+<p><em>Пожалуйста, не подумайте, что мы крохоборы или бизнес нам зажимает финансирование. Разработка и поддержка распределенной платформы на самом деле очень дорогое удовольствие. По факту это выходит даже дороже, чем владение классической системой, построенной, условно, на мощном брендовом железе с Oracle/MSSQL, серверами приложений и прочей обвязкой.</em></p><br/>
+<p><em>Окупается наш подход высокой надежностью, очень гибкими возможностями горизонтального масштабирования, отсутствием потолка по количеству платежей в секунду, и как бы странно это не звучало — большим количеством фана для ИТ-команды. Для меня уровень удовольствия разработчиков и девопсов от системы, которую они создают, не менее важен, чем предсказуемые сроки разработки, количество и качество выкатываемых фич.</em></p><br/>
+<h2 id="servernaya-infrastruktura">Серверная инфраструктура</h2><br/>
+<p><img src="https://habrastorage.org/r/w780q1/webt/ug/je/s5/ugjes5aw-7xwah9ykzbjrms8o9a.jpeg" data-src="https://habrastorage.org/webt/ug/je/s5/ugjes5aw-7xwah9ykzbjrms8o9a.jpeg" data-blurred="true"/></p><br/>
+<p>Логически, наши серверные мощности можно разделить на два основных класса: сервера для гипервизоров, для которых важна плотность ядер CPU и RAM на юнит, и сервера хранения данных, где основной акцент сделан на объем дискового пространства на юнит, а CPU и RAM уже подбираются под число дисков.</p><br/>
+<p>В текущий момент наш классический сервер для вычислительных мощностей выглядит так:</p><br/>
+<ul>
+<li>2xXeon E5-2630 CPU;</li>
+<li>128G RAM;</li>
+<li>3xSATA SSD (Ceph SSD pool);</li>
+<li>1xNVMe SSD (dm-cache).</li>
+</ul><br/>
+<p>Сервер для хранения состояний:</p><br/>
+<ul>
+<li>1xXeon E5-2630 CPU;</li>
+<li>12-16 HDD;</li>
+<li>2 SSD для block.db;</li>
+<li>32G RAM.</li>
+</ul><br/>
+<h2 id="setevaya-infrastruktura">Сетевая инфраструктура</h2><br/>
+<p>В выборе сетевого железа наш подход несколько отличается. Для коммутации и маршрутизации между vlan-ами мы-таки используем брендовые коммутаторы, сейчас это Cisco SG500X-48 и Cisco Nexus C5020 в SAN.</p><br/>
+<p>Физически каждый сервер включается в сеть 4 физическими портами:</p><br/>
+<ul>
+<li>2x1GbE — сеть управления и RPC между приложениями;</li>
+<li>2x10GbE — сеть для СХД.</li>
+</ul><br/>
+<p>Интерфейсы внутри машин объединяются bonding-ом, дальше тегированный трафик расходится по нужным vlan-ам.</p><br/>
+<p>Пожалуй, это единственное место в нашей инфраструктуре, где можно заметить лейбл известного вендора. Потому что для маршрутизации, сетевой фильтрации и инспекции трафика мы используем линуксовые хосты. Специализированных маршрутизаторов не покупаем. Все, что нам нужно мы настраиваем на серверах под управлением Gentoo (iptables для фильтрации, BIRD для динамической маршрутизации, Suricata в качестве IDS/IPS, Wallarm в качестве WAF).</p><br/>
+<h2 id="tipichnaya-stoyka-v-dc">Типичная стойка в ДЦ</h2><br/>
+<p>Схематически при масштабировании стойки в ДЦ практически не отличаются друг от друга за исключением маршрутизаторов к аплинкам, которые устанавливаются в одной из них. </p><br/>
+<p>Точные пропорции серверов разных классов могут варьироваться, но в целом логика сохраняется — серверов для вычислений больше, чем серверов для хранения данных.</p><br/>
+<p><img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/yi/me/o0/yimeo0j7lk-s-rtyhabbeuayvyq.png"/></p><br/>
+<h2 id="blochnye-ustroystva-i-razdelenie-resursov">Блочные устройства и разделение ресурсов</h2><br/>
+<p>Попробуем собрать все вместе. Представим, что нам нужно разместить несколько наших микросервисов в инфраструктуре, для большей наглядности это будут микросервисы, которым надо между собой общаться по RPC и один из них — Machinegun, который хранит состояние в кластере Riak-а, а также немного вспомогательных сервисов, таких, как ноды ES и Consul.</p><br/>
+<p>Типичная схема размещения будет выглядеть так:</p><br/>
+<p><img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/za/1m/7p/za1m7pqa6mdn0cvc6lot6tdwxis.png"/></p><br/>
+<p>Для VM с приложениями, которым требуется максимальная скорость блочного устройства, вроде Riak и горячих нод Elasticsearch, используются разделы на локальных NVMe дисках. Такие VM жестко привязаны к своему гипервизору, и приложения сами отвечают за доступность и целостность своих данных.</p><br/>
+<p>Для общих блочных устройств мы используем Ceph RBD, обычно с write-through dm-cache на локальном NVMe диске. OSD для устройства могут быть как full-flash, так и HDD c SSD журналом, в зависимости от желаемого времени отклика.</p><br/>
+<h2 id="dostavka-trafika-do-prilozheniy">Доставка трафика до приложений</h2><br/>
+<p><img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/e9/fm/pi/e9fmpipuhko3jcmbeix8lgtfv2a.png"/></p><br/>
+<p>Для балансировки запросов, приходящих снаружи, мы используем стандартную схему OSPFv3 ECMP. Небольшие виртуальные машины с nginx, bird, consul анонсируют в OSPF облако общие anycast адреса с интерфейса lo. На маршрутизаторах для этих адресов bird создает multi-hop routes, обеспечивающие per-flow балансировку, где flow это "src-ip src-port dst-ip dst-port". Для быстрого отключения пропавшего балансера используется протокол BFD.</p><br/>
+<p>При добавлении или выходе из строя любого из балансировщиков у верхнестоящих маршрутизаторов появляется или удаляется соответствующий маршрут, а сетевой трафик до них доставляется согласно подходов Equal-cost multi-path. И если мы специально не вмешиваемся, то весь сетевой трафик равномерно распределяется на все доступные балансировщики по IP-потоку каждому.</p><br/>
+<p><em>Кстати, у подхода с ECMP-балансировкой есть неочевидные <a href="https://blog.cloudflare.com/path-mtu-discovery-in-practice/">подводные камни</a>, которые могут привести к совершенно неочевидным потерям части трафика, особенно если на маршруте между системами находятся другие маршрутизаторы или странным образом сконфигурированные фаерволы.</em></p><br/>
+<p><em>Для решения проблемы мы используем <a href="https://github.com/cloudflare/pmtud">демона PMTUD</a> в этой части инфраструктуры.</em></p><br/>
+<p>Дальше трафик идет вовнутрь платформы к конкретным микросервисам согласно конфигурации nginx-ов на балансировщиках.</p><br/>
+<p>И если с балансировкой наружного трафика все более-менее просто и понятно, то распространить подобную схему дальше вовнутрь было бы затруднительно — нам нужно нечто большее, чем просто проверка доступности контейнера с микросервисом на сетевом уровне.</p><br/>
+<p>Для того чтобы микросервис начал получать и обрабатывать запросы, он должен зарегистрироваться в Service Discovery (мы используем <a href="https://www.consul.io/">Consul</a>), проходить ежесекундные health check-и и иметь разумный RTT.</p><br/>
+<p>Если микросервис чувствует и ведет себя хорошо, Consul начинает резолвить адрес его контейнера при обращении к своему DNS по имени сервиса. Мы используем внутреннюю зону <code>service.consul</code>, и, например, микросервис Common API 2 версии будет иметь имя <code>capi-v2.service.consul</code>.</p><br/>
+<p>Конфиг nginx-а касательно балансировки в итоге у нас выглядит так:</p><br/>
+<pre><code class="plaintext">location = /v2/ {
+    set $service_hostname "${staging_pass}capi-v2.service.consul";
+    proxy_pass http://$service_hostname:8022;
+}</code></pre><br/>
+<p>Таким образом, если мы опять же не вмешиваемся специально, трафик с балансировщиков равномерно распределяется между всеми зарегистрированными в Service Discovery микросервисами, добавление или удаление новых экземпляров нужных микросервисов полностью автоматизировано.</p><br/>
+<p>Если запрос от балансировщика ушел в апстрим, а тот по дороге умер, мы возвращаем наружу 502 — балансировщик на своем уровне не может определить идемпотентный ли был запрос или нет, поэтому обработку таких ошибок мы отдаем на более высокий уровень логики.</p><br/>
+<h2 id="idempotentnost-i-dedlayny">Идемпотентность и дедлайны</h2><br/>
+<p>Вообще, мы не боимся и не стесняемся отдавать с API ошибки 5хх, это нормальная часть работы системы, если сделать правильную обработку таких ошибок на уровне бизнес-логики RPC. Принципы этой обработки у нас описаны в виде небольшого мануала под названием Errors Retry Policy, мы его раздаем нашим клиентам-мерчантам и реализовываем внутри наших сервисов.</p><br/>
+<p>Для упрощения этой обработки мы реализовали несколько подходов. </p><br/>
+<p>Во-первых, для любых изменяющих состояние запросов к нашему API можно указать уникальный в рамках учетной записи ключ идемпотентности, который живет вечно и позволяет быть уверенным в том, что повторный вызов с одинаковым набором данных вернет одинаковый ответ.</p><br/>
+<p>Во-вторых, мы реализовали дополнительный механизм в виде уникального идентификатора платежной сессии, который гарантирует идемпотентность запросов на списание средств, обеспечивая защиту от ошибочных повторных списаний, даже если не генерировать и не передавать отдельный ключ идемпотентности.</p><br/>
+<p>В-третьих, мы решили дать возможность предсказуемого и контролируемого снаружи времени ответа на любой внешний вызов нашего API в виде параметра отсечки по времени, определяющего максимальное время ожидания завершения операции по запросу. Достаточно передать, к примеру, HTTP-заголовок <code>X-Request-Deadline: 10s</code>, чтобы быть уверенным в том, что ваш запрос выполнится в течение 10 секунд или будет убит платформой где-то внутри, после чего к нам можно будет обратиться снова, руководствуясь политикой переотправки запросов.</p><br/>
+<h2 id="upravlenie-i-vladenie-platformoy">Управление и владение платформой</h2><br/>
+<p>Мы используем SaltStack в качестве инструмента управления как конфигурациями, так и инфраструктурой в целом. Отдельные инструменты для автоматизированного управления вычислительной мощностью платформы пока что не взлетели, хотя уже сейчас понимаем, что будем идти в эту сторону. При нашей любви к продуктам <a href="https://www.hashicorp.com/">Hashicorp</a> это скорее всего будет Nomad.</p><br/>
+<p>Основные инструменты мониторинга инфраструктуры — это проверки в Nagios, а вот для бизнес-сущностей в основном настраиваем алерты в Grafana. В ней очень удобный инструмент задания условий, а event-based модель платформы позволяет все записать в Elasticsearch и настроить условия выборки.</p><br/>
+<p><img src="/img/image-loader.svg" data-src="https://habrastorage.org/webt/_p/yh/wh/_pyhwho6dvp3vful4zg46fg8_so.png"/></p><br/>
+<p>Дата-центры находятся в Москве, в них мы арендуем стойко-места, самостоятельно устанавливаем и управляем всем оборудованием. Темную оптику нигде не используем, наружу у нас только интернет от местных провайдеров.</p><br/>
+<p>В остальном же наши подходы к мониторингу, управлению и сопутствующим сервисам скорее стандартны для отрасли, не уверен, что очередное описание интеграции этих сервисов стоит упоминания в посте.</p><br/>
+<p>На этой статье я, пожалуй, закончу цикл обзорных постов про то, как устроена наша платежная платформа.</p><br/>
+<p>Считаю, что цикл получился достаточно откровенным, я встречал мало статей, которые настолько подробно раскрывали бы внутреннюю кухню крупных платежных систем.</p><br/>
+<p><em>Вообще, по моему мнению, высокий уровень открытости и откровенности — очень важная вещь для платежной системы. Такой подход не только повышает уровень доверия партнеров и плательщиков, но и дисциплинирует команду, создателей и операторов сервиса.</em></p><br/>
+<p><em>Так, руководствуясь этим принципом, мы недавно сделали общедоступным статус платформы и историю аптайма наших сервисов. Вся последующая история нашего аптайма, обновлений и падений отныне публична и доступна по адресу <a href="https://status.rbk.money/">https://status.rbk.money/</a>.</em></p><br/>
+<p>Надеюсь, вам было интересно, а возможно, кому-то наши подходы и описанные ошибки окажутся полезными. Если вас заинтересовали какие-либо направления, описанные в постах, и вы хотели бы, чтобы я раскрыл их более подробно, пожалуйста, не стесняйтесь писать в комментариях или в личку.</p><br/>
+<p>Спасибо, что вы с нами!</p><br/>
+<p><img src="https://habrastorage.org/r/w780q1/webt/05/zb/ia/05zbiakiuub6ghwchckesii7an0.jpeg" data-src="https://habrastorage.org/webt/05/zb/ia/05zbiakiuub6ghwchckesii7an0.jpeg" data-blurred="true"/></p><br/>
+<p>P.S. Для вашего удобства указатель по предыдущим статьям цикла:</p><br/>
+<ul>
+<li><a href="https://habr.com/ru/company/rbkmoney/blog/416897/">вступление и описание того, как все начиналось</a>;</li>
+<li><a href="https://habr.com/ru/company/rbkmoney/blog/443518/">микросервисы и бизнес-конфигурация платформы</a>;</li>
+<li><a href="https://habr.com/ru/company/rbkmoney/blog/447440/">реализация обработки бизнес-логики платформы</a>.</li>
+</ul></div></div> <!----> <!----></div> <div class="tm-article-presenter__meta"><div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Теги:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5BRBKmoney%5D" class="tm-tags-list__link">RBKmoney</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bdeveloper.rbk.money%5D" class="tm-tags-list__link">developer.rbk.money</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Berlang%2Fotp%5D" class="tm-tags-list__link">erlang/otp</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5Bjava%5D" class="tm-tags-list__link">java</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5B%D0%BF%D0%BB%D0%B0%D1%82%D0%B5%D0%B6%D0%BD%D1%8B%D0%B5%20%D1%81%D0%B8%D1%81%D1%82%D0%B5%D0%BC%D1%8B%5D" class="tm-tags-list__link">платежные системы</a></li><li class="tm-separated-list__item"><a href="/ru/search/?target_type=posts&amp;order=relevance&amp;q=%5B%D1%80%D0%B0%D1%81%D0%BF%D1%80%D0%B5%D0%B4%D0%B5%D0%BB%D0%B5%D0%BD%D0%BD%D1%8B%D0%B5%20%D1%81%D0%B8%D1%81%D1%82%D0%B5%D0%BC%D1%8B%5D" class="tm-tags-list__link">распределенные системы</a></li></ul></div> <div class="tm-separated-list tm-article-presenter__meta-list"><span class="tm-separated-list__title">Хабы:</span> <ul class="tm-separated-list__list"><li class="tm-separated-list__item"><a href="/ru/company/osnova/blog/" class="tm-hubs-list__link router-link-active">
+    Блог компании Osnova
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/pay_system/" class="tm-hubs-list__link">
+    Платежные системы
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/java/" class="tm-hubs-list__link">
+    Java
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/erlang/" class="tm-hubs-list__link">
+    Erlang/OTP
+  </a></li><li class="tm-separated-list__item"><a href="/ru/hub/ecommerce_development/" class="tm-hubs-list__link">
+    Разработка под e-commerce
+  </a></li></ul></div></div></article></div> <!----></div> <div class="tm-article-sticky-panel"><div class="tm-data-icons tm-article-sticky-panel__icons"><div class="tm-article-rating tm-data-icons__item"><div class="tm-votes-meter tm-article-rating__votes-switcher"><svg height="16" width="16" class="tm-svg-img tm-votes-meter__icon tm-votes-meter__icon_medium"><title>Всего голосов 28: ↑28 и ↓0</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-rating"></use></svg> <span title="Всего голосов 28: ↑28 и ↓0" class="tm-votes-meter__value tm-votes-meter__value_positive tm-votes-meter__value_medium">+28</span></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----> <span title="Количество просмотров" class="tm-icon-counter tm-data-icons__item"><svg height="16" width="16" class="tm-svg-img tm-icon-counter__icon"><title>Просмотры</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-views"></use></svg> <span class="tm-icon-counter__value">4.7K</span></span> <button title="Добавить в закладки" type="button" class="bookmarks-button tm-data-icons__item"><span title="Добавить в закладки" class="tm-svg-icon__wrapper bookmarks-button__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Добавить в закладки</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-favorite"></use></svg></span> <span title="Количество пользователей, добавивших публикацию в закладки" class="bookmarks-button__counter">
+    21
+  </span></button> <!----> <div title="Поделиться" class="tm-sharing tm-data-icons__item"><button type="button" class="tm-sharing__button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="tm-sharing__icon"><path fill="currentColor" d="M10.33.275l9.047 7.572a.2.2 0 010 .306l-9.048 7.572a.2.2 0 01-.328-.153V11c-8 0-9.94 6-9.94 6S-1 5 10 5V.428a.2.2 0 01.328-.153z"></path></svg></button> <!----></div> <DIV class="v-portal" style="display:none;"></DIV></div> </div></div> <!----> <!----> <div class="tm-article-presenter__footer"><div class="tm-article-blocks"><!----> <section class="tm-block tm-block_spacing-bottom"><!----> <div class="tm-block__body tm-block__body_variant-balanced"><div class="tm-article-author"><div class="tm-article-author__company"><div class="tm-article-author__company-card"><div class="tm-company-snippet"><a href="/ru/company/osnova/profile/" class="tm-company-snippet__logo-link"><div class="tm-entity-image"><img alt="" height="40" src="//habrastorage.org/getpro/habr/company/602/862/918/602862918454f128730e1fa475d63038.jpg" width="40" class="tm-entity-image__pic"></div></a> <div class="tm-company-snippet__info"><a href="/ru/company/osnova/profile/" class="tm-company-snippet__title">Osnova</a> <div class="tm-company-snippet__description">Платежный процессинг на базе Open Source</div></div></div> <div class="tm-article-author__buttons"><!----> <!----></div></div> <!----> <div class="tm-article-author__separator"></div></div> <div class="tm-user-card tm-article-author__user-card tm-user-card_variant-article"><div class="tm-user-card__info-container"><div class="tm-user-card__header"><div class="tm-user-card__header-data"><a href="/ru/users/akuranda/" class="tm-user-card__userpic tm-user-card__userpic_size-40"><div class="tm-entity-image"><img alt="" src="//habrastorage.org/getpro/habr/avatars/4c2/f7c/f21/4c2f7cf21296929f08f71877719ecceb.jpg" class="tm-entity-image__pic"></div></a> <div class="tm-user-card__meta"><div title=" 41 голос " class="tm-karma tm-user-card__karma"><div class="tm-karma__votes tm-karma__votes_positive">
+    36.2
+  </div> <div class="tm-karma__text">
+    Карма
+  </div></div> <div title="Рейтинг пользователя" class="tm-rating tm-user-card__rating"><div class="tm-rating__header"> <div class="tm-rating__counter">0</div></div> <div class="tm-rating__text">
+    Рейтинг
+  </div></div></div></div></div> <div class="tm-user-card__info tm-user-card__info_variant-article"><div class="tm-user-card__title tm-user-card__title_variant-article"><span class="tm-user-card__name tm-user-card__name_variant-article">Anton Kuranda</span> <a href="/ru/users/akuranda/" class="tm-user-card__nickname tm-user-card__nickname_variant-article">
+          @akuranda
+        </a> <!----></div> <p class="tm-user-card__short-info tm-user-card__short-info_variant-article">Уверенный пользователь Sublime Text</p></div></div> <div class="tm-user-card__buttons tm-user-card__buttons_variant-article"><!----> <!----> <!----> <!----> <!----></div></div> <!----></div> <DIV class="v-portal" style="display:none;"></DIV></div> <!----></section> <div class="tm-article-blocks__comments"><div class="tm-article-page-comments"><div class="tm-article-comments-counter-link tm-article-comments-counter-button"><a href="/ru/company/osnova/blog/451814/comments/" class="tm-article-comments-counter-link__link tm-article-comments-counter-link__link_button-style"><svg height="16" width="16" class="tm-svg-img tm-article-comments-counter-link__icon tm-article-comments-counter-link__icon_contrasted"><title>Комментарии</title> <use xlink:href="/img/megazord-v24.ce74655c.svg#counter-comments"></use></svg> <span class="tm-article-comments-counter-link__value tm-article-comments-counter-link__value_contrasted">
+       Комментарии 4 
+    </span></a> <!----></div></div></div>  <!---->  <!----> <!----></div></div></div></div></div> <div class="tm-page__sidebar"><div class="tm-layout-sidebar"><div class="tm-layout-sidebar__placeholder_initial"></div> <div class="tm-sexy-sidebar tm-sexy-sidebar_initial" style="margin-top:0px;"><!----> <section class="tm-block tm-block_spacing-bottom"><header class="tm-block__header"><h2 class="tm-block__title">Информация</h2> <!----></header> <div class="tm-block__body"><div class="tm-company-basic-info"><dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Дата основания</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><time datetime="2021-05-12T21:00:00.000Z" title="2021-05-13, 00:00">13  мая  </time></dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Местоположение</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap">
+    Россия
+  </dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Сайт</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><a href="https://osnova.it/" target="_blank" class="tm-company-basic-info__link">
+      osnova.it
+    </a></dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Численность</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap">
+    101–200 человек
+  </dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Дата регистрации</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><time datetime="2010-04-20T15:08:36.000Z" title="2010-04-20, 19:08">20  апреля  2010</time></dd></dl> <dl class="tm-description-list tm-description-list_variant-columns-nowrap"><dt class="tm-description-list__title tm-description-list__title_variant-columns-nowrap">Представитель</dt> <dd class="tm-description-list__body tm-description-list__body_variant-columns-nowrap"><a href="/ru/users/Osnova_it/" class="tm-company-basic-info__link">
+      Osnova_it
+    </a></dd></dl></div></div> <!----></section> <div class="tm-company-widgets"></div> <!----></div></div></div></div></div></div></main> <!----></div> <div class="tm-footer-menu"><div class="tm-page-width"><div class="tm-footer-menu__container"><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Ваш аккаунт
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr/?back=/ru/company/osnova/blog/451814/&amp;hl=ru" rel="nofollow" target="_self">
+                Войти
+              </a></li><li class="tm-footer-menu__list-item"><a href="/kek/v1/auth/habrahabr-register/?back=/ru/company/osnova/blog/451814/&amp;hl=ru" rel="nofollow" target="_self">
+                Регистрация
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Разделы
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/" class="footer-menu__item-link router-link-active">
+                Публикации
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/news/" class="footer-menu__item-link">
+                Новости
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/hubs/" class="footer-menu__item-link">
+                Хабы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/companies/" class="footer-menu__item-link">
+                Компании
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/users/" class="footer-menu__item-link">
+                Авторы
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/sandbox/" class="footer-menu__item-link">
+                Песочница
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Информация
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="/ru/docs/help/" class="footer-menu__item-link">
+                Устройство сайта
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/authors/codex/" class="footer-menu__item-link">
+                Для авторов
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/companies/corpblogs/" class="footer-menu__item-link">
+                Для компаний
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/docs/docs/transparency/" class="footer-menu__item-link">
+                Документы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/agreement" target="_blank">
+                Соглашение
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://account.habr.com/info/confidential/" target="_blank">
+                Конфиденциальность
+              </a></li></ul></div></div><div class="tm-footer-menu__block"><h3 class="tm-footer-menu__block-title">
+          Услуги
+        </h3> <div class="tm-footer-menu__block-content"><ul class="tm-footer-menu__list"><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQLwRfQmXibiUlWaRg-BAc38s7oM3lJiaPju7qmdJsp8ysIvZ_G-Npem0njJLMozE2bPHMpDqiI5hhy/pub?start=false&amp;loop=false&amp;delayms=60000&amp;slide=id.g91a03369cd_4_297" target="_blank">
+                Реклама
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://habrastorage.org/storage/stuff/habr/service_price.pdf" target="_blank">
+                Тарифы
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://docs.google.com/presentation/d/e/2PACX-1vQJJds8-Di7BQSP_guHxICN7woVYoN5NP_22ra-BIo4bqnTT9FR6fB-Ku2P0AoRpX0Ds-LRkDeAoD8F/pub?start=false&amp;loop=false&amp;delayms=60000" target="_blank">
+                Контент
+              </a></li><li class="tm-footer-menu__list-item"><a href="https://tmtm.timepad.ru/" target="_blank">
+                Семинары
+              </a></li><li class="tm-footer-menu__list-item"><a href="/ru/megaprojects/" class="footer-menu__item-link">
+                Мегапроекты
+              </a></li></ul></div></div></div></div></div> <div class="tm-footer"><div class="tm-page-width"><div class="tm-footer__container"><!----> <div class="tm-footer__social"><a href="https://www.facebook.com/habrahabr.ru" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Facebook</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-facebook"></use></svg></a><a href="https://twitter.com/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Twitter</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-twitter"></use></svg></a><a href="https://vk.com/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>VK</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-vkontakte"></use></svg></a><a href="https://telegram.me/habr_com" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Telegram</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-telegram"></use></svg></a><a href="https://www.youtube.com/channel/UCd_sTwKqVrweTt4oAKY5y4w" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Youtube</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-youtube"></use></svg></a><a href="https://zen.yandex.ru/habr" rel="nofollow noopener noreferrer" target="_blank" class="tm-svg-icon__wrapper tm-social-icons__icon"><svg height="16" width="16" class="tm-svg-img tm-svg-icon"><title>Яндекс Дзен</title> <use xlink:href="/img/social-icons-sprite.svg#social-logo-zen"></use></svg></a></div> <DIV class="v-portal" style="display:none;"></DIV> <button class="tm-footer__link"><!---->
+        Настройка языка
+      </button> <a href="/ru/about" class="tm-footer__link">
+        О сайте
+      </a> <a href="/ru/feedback/" class="tm-footer__link">
+        Техническая поддержка
+      </a> <!----> <a href="/berserk-mode-nope" class="tm-footer__link">
+        Вернуться на старую версию
+      </a> <div class="tm-footer-copyright"><span class="tm-copyright"><span class="tm-copyright__years">© 2006–2021 </span> <span class="tm-copyright__name">«<a href="https://company.habr.com/" rel="noopener" target="_blank" class="tm-copyright__link">Habr</a>»</span></span></div></div></div></div> <!----> <!----></div> <div class="vue-portal-target"></div></div>
+<script>window.__INITIAL_STATE__={"adblock":{"hasAcceptableAdsFilter":false,"hasAdblock":false},"articlesList":{"articlesList":{"451814":{"id":"451814","timePublished":"2019-05-15T09:58:46+00:00","isCorporative":true,"lang":"ru","titleHtml":"RBKmoney Payments под капотом — инфраструктура платежной платформы","leadData":{"textHtml":"\u003Cp\u003E\u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002F4q\u002Fi3\u002Ftx\u002F4qi3txdbqxbtwlhqrqmhbutpyxs.jpeg\"\u003E\u003C\u002Fp\u003E\u003Cbr\u003E\r\n\u003Cp\u003EПривет, Хабр! Описание работы \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Frbkmoney\u002Fblog\u002F447440\u002F\"\u003Eвнутренностей\u003C\u002Fa\u003E большой платежной платформы логично будет продолжить описанием того, как именно все эти компоненты работают в реальном мире на физическом железе. В этом посте рассказываю о том, как и где размещены приложения платформы, каким образом до них доходит трафик из внешнего мира, а также опишу схему стандартной для нас стойки с оборудованием, размещенной в любом из наших дата-центров.\u003C\u002Fp\u003E","imageUrl":null,"buttonTextHtml":"Читать дальше →","image":null},"editorVersion":"1.0","postType":"article","postLabels":[],"author":{"scoreStats":{"score":36.2,"votesCount":41},"rating":0,"relatedData":null,"contacts":[],"authorContacts":[],"paymentDetails":{"paymentYandexMoney":null,"paymentPayPalMe":null,"paymentWebmoney":null},"id":"52676","alias":"akuranda","fullname":"Anton Kuranda","avatarUrl":"\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Favatars\u002F4c2\u002Ff7c\u002Ff21\u002F4c2f7cf21296929f08f71877719ecceb.jpg","speciality":"Уверенный пользователь Sublime Text"},"statistics":{"commentsCount":4,"favoritesCount":21,"readingCount":4653,"score":28,"votesCount":28},"hubs":[{"relatedData":null,"id":"15299","alias":"osnova","type":"corporative","title":"Блог компании Osnova","titleHtml":"Блог компании Osnova","isProfiled":false},{"relatedData":null,"id":"233","alias":"pay_system","type":"collective","title":"Платежные системы","titleHtml":"Платежные системы","isProfiled":true},{"relatedData":null,"id":"375","alias":"java","type":"collective","title":"Java","titleHtml":"Java","isProfiled":true},{"relatedData":null,"id":"8238","alias":"erlang","type":"collective","title":"Erlang\u002FOTP","titleHtml":"Erlang\u002FOTP","isProfiled":true},{"relatedData":null,"id":"18810","alias":"ecommerce_development","type":"collective","title":"Разработка под e-commerce","titleHtml":"Разработка под e-commerce","isProfiled":true}],"flows":[{"id":"1","alias":"develop","title":"Разработка"}],"relatedData":null,"textHtml":"\u003Cdiv xmlns=\"http:\u002F\u002Fwww.w3.org\u002F1999\u002Fxhtml\"\u003E\u003Cp\u003E\u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fr\u002Fw780q1\u002Fwebt\u002F4q\u002Fi3\u002Ftx\u002F4qi3txdbqxbtwlhqrqmhbutpyxs.jpeg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002F4q\u002Fi3\u002Ftx\u002F4qi3txdbqxbtwlhqrqmhbutpyxs.jpeg\" data-blurred=\"true\"\u002F\u003E\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EПривет, Хабр! Описание работы \u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Frbkmoney\u002Fblog\u002F447440\u002F\"\u003Eвнутренностей\u003C\u002Fa\u003E большой платежной платформы логично будет продолжить описанием того, как именно все эти компоненты работают в реальном мире на физическом железе. В этом посте рассказываю о том, как и где размещены приложения платформы, каким образом до них доходит трафик из внешнего мира, а также опишу схему стандартной для нас стойки с оборудованием, размещенной в любом из наших дата-центров.\u003C\u002Fp\u003E\u003Ca name=\"habracut\"\u003E\u003C\u002Fa\u003E\u003Cbr\u002F\u003E\r\n\u003Ch2 id=\"podhody-i-ogranicheniya\"\u003EПодходы и ограничения\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003E\u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fr\u002Fw780q1\u002Fwebt\u002Fs4\u002Foi\u002Fm1\u002Fs4oim1l0d58ti3s50leca-58-mm.jpeg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fs4\u002Foi\u002Fm1\u002Fs4oim1l0d58ti3s50leca-58-mm.jpeg\" data-blurred=\"true\"\u002F\u003E\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EОдно из первых требований, которые мы сформулировали перед разработкой платформы звучит как \"возможность близкого к линейному масштабирования вычислительных ресурсов для обеспечения обработки любого количества транзакций\". \u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EКлассические подходы платженых систем, используемые участниками рынка, подразумевают под собой наличие потолка, хоть и довольно высокого по заявлениям. Обычно это звучит так: \"наш процессинг может принимать 1000 транзакций в секунду\".\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EВ наши бизнес-задачи и архитектуру такой подход не вписывается. Мы не хотим иметь какой-то предел. В самом деле, было бы странно услышать от Яндекса или Гугла заявление \"мы можем обработать 1 миллион поисковых запросов в секунду\". Платформа должна обработать столько запросов, сколько нужно в текущий момент бизнесу за счет архитектуры, которая позволяет, упрощенно говоря, отправить в ДЦ ИТшника с тележкой серверов, которые он установит в стойки, подключит к коммутатору и уедет. А оркестратор платформы раскатит на новые мощности копии экземпляров бизнес-приложений, в результате чего мы получим нужное нам увеличение RPS.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EВторое важное требование заключается в обеспечении высокой доступности предоставляемых сервисов. Было бы забавно, но не слишком полезно, создать платежную платформу, которая может принимать бесконечное количество платежей в \u002Fdev\u002Fnull.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EПожалуй, самый эффективный способ достичь высокой доступности — это многократно дублировать сущности, которые обслуживают сервис, с тем чтобы отказ любого разумного количества приложений, оборудования или дата-центров не повлиял на общую доступность платформы.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EМногократное дублирование приложений требует большого количества физических серверов и сопутствующего сетевого оборудования. Это железо стоит денег, количество которых у нас конечно, мы не можем позволить себе покупать много дорогого железа. Так что платформа спроектирована таким образом, чтобы легко размещаться и чувствовать себя хорошо на большом количестве недорогого и не слишком мощного железа, либо вообще в публичном облаке.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EИспользование не самых сильных в плане вычислительной мощности серверов имеет свои преимущества — их отказ не оказывает критичного влияния на общее состояние системы в целом. Представьте, что лучше — если сгорит дорогой, большой и супернадежный брендовый сервер, на котором работает СУБД по схеме master-slave (а по закону Мерфи он обязательно сгорит, причем вечером 31 декабря) или парочка серверов в кластере из 30 нод, работающем по masterless-схеме?\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EИсходя из этой логики, мы решили не создавать себе еще одну массивную точку отказа в виде централизованного дискового массива. Общие блочные устройства нам обеспечивает кластер Ceph, развернутый гиперконвергентно на тех же серверах, но с отдельной сетевой инфраструктурой.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EТаким образом, мы логически пришли к общей схеме универсальной стойки с вычислительными ресурсами в виде недорогих и не особо мощных серверов в дата-центре. Если нам нужно еще ресурсов, мы или добиваем любую свободную стойку серверами, либо ставим еще одну, желательно поближе.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003E\u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fr\u002Fw780q1\u002Fwebt\u002Frn\u002Fce\u002Fho\u002Frncehoigde-wwzp3etasz6ewwkw.jpeg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Frn\u002Fce\u002Fho\u002Frncehoigde-wwzp3etasz6ewwkw.jpeg\" data-blurred=\"true\"\u002F\u003E\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EНу и, в конце концов, это просто красиво. Когда в стойки устанавливается понятное количество одинакового железа, это позволяет решить проблемы с качественной укладкой проводного хозяйства, позволяет избавиться от ласточкиных гнезд и опасности запутаться в проводах, уронив процессинг. А хорошая с инженерной точки зрения система должна быть красивой везде — и изнутри в виде кода, и снаружи в виде серверов и сетевого железа. Красивая система работает лучше и надежнее, у меня хватало предостаточно примеров убедиться в этом на личном опыте.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003E\u003Cem\u003EПожалуйста, не подумайте, что мы крохоборы или бизнес нам зажимает финансирование. Разработка и поддержка распределенной платформы на самом деле очень дорогое удовольствие. По факту это выходит даже дороже, чем владение классической системой, построенной, условно, на мощном брендовом железе с Oracle\u002FMSSQL, серверами приложений и прочей обвязкой.\u003C\u002Fem\u003E\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003E\u003Cem\u003EОкупается наш подход высокой надежностью, очень гибкими возможностями горизонтального масштабирования, отсутствием потолка по количеству платежей в секунду, и как бы странно это не звучало — большим количеством фана для ИТ-команды. Для меня уровень удовольствия разработчиков и девопсов от системы, которую они создают, не менее важен, чем предсказуемые сроки разработки, количество и качество выкатываемых фич.\u003C\u002Fem\u003E\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Ch2 id=\"servernaya-infrastruktura\"\u003EСерверная инфраструктура\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003E\u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fr\u002Fw780q1\u002Fwebt\u002Fug\u002Fje\u002Fs5\u002Fugjes5aw-7xwah9ykzbjrms8o9a.jpeg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fug\u002Fje\u002Fs5\u002Fugjes5aw-7xwah9ykzbjrms8o9a.jpeg\" data-blurred=\"true\"\u002F\u003E\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EЛогически, наши серверные мощности можно разделить на два основных класса: сервера для гипервизоров, для которых важна плотность ядер CPU и RAM на юнит, и сервера хранения данных, где основной акцент сделан на объем дискового пространства на юнит, а CPU и RAM уже подбираются под число дисков.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EВ текущий момент наш классический сервер для вычислительных мощностей выглядит так:\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003E2xXeon E5-2630 CPU;\u003C\u002Fli\u003E\r\n\u003Cli\u003E128G RAM;\u003C\u002Fli\u003E\r\n\u003Cli\u003E3xSATA SSD (Ceph SSD pool);\u003C\u002Fli\u003E\r\n\u003Cli\u003E1xNVMe SSD (dm-cache).\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EСервер для хранения состояний:\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003E1xXeon E5-2630 CPU;\u003C\u002Fli\u003E\r\n\u003Cli\u003E12-16 HDD;\u003C\u002Fli\u003E\r\n\u003Cli\u003E2 SSD для block.db;\u003C\u002Fli\u003E\r\n\u003Cli\u003E32G RAM.\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\n\u003Ch2 id=\"setevaya-infrastruktura\"\u003EСетевая инфраструктура\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EВ выборе сетевого железа наш подход несколько отличается. Для коммутации и маршрутизации между vlan-ами мы-таки используем брендовые коммутаторы, сейчас это Cisco SG500X-48 и Cisco Nexus C5020 в SAN.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EФизически каждый сервер включается в сеть 4 физическими портами:\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003E2x1GbE — сеть управления и RPC между приложениями;\u003C\u002Fli\u003E\r\n\u003Cli\u003E2x10GbE — сеть для СХД.\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EИнтерфейсы внутри машин объединяются bonding-ом, дальше тегированный трафик расходится по нужным vlan-ам.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EПожалуй, это единственное место в нашей инфраструктуре, где можно заметить лейбл известного вендора. Потому что для маршрутизации, сетевой фильтрации и инспекции трафика мы используем линуксовые хосты. Специализированных маршрутизаторов не покупаем. Все, что нам нужно мы настраиваем на серверах под управлением Gentoo (iptables для фильтрации, BIRD для динамической маршрутизации, Suricata в качестве IDS\u002FIPS, Wallarm в качестве WAF).\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Ch2 id=\"tipichnaya-stoyka-v-dc\"\u003EТипичная стойка в ДЦ\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EСхематически при масштабировании стойки в ДЦ практически не отличаются друг от друга за исключением маршрутизаторов к аплинкам, которые устанавливаются в одной из них. \u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EТочные пропорции серверов разных классов могут варьироваться, но в целом логика сохраняется — серверов для вычислений больше, чем серверов для хранения данных.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fyi\u002Fme\u002Fo0\u002Fyimeo0j7lk-s-rtyhabbeuayvyq.png\"\u002F\u003E\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Ch2 id=\"blochnye-ustroystva-i-razdelenie-resursov\"\u003EБлочные устройства и разделение ресурсов\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EПопробуем собрать все вместе. Представим, что нам нужно разместить несколько наших микросервисов в инфраструктуре, для большей наглядности это будут микросервисы, которым надо между собой общаться по RPC и один из них — Machinegun, который хранит состояние в кластере Riak-а, а также немного вспомогательных сервисов, таких, как ноды ES и Consul.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EТипичная схема размещения будет выглядеть так:\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fza\u002F1m\u002F7p\u002Fza1m7pqa6mdn0cvc6lot6tdwxis.png\"\u002F\u003E\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EДля VM с приложениями, которым требуется максимальная скорость блочного устройства, вроде Riak и горячих нод Elasticsearch, используются разделы на локальных NVMe дисках. Такие VM жестко привязаны к своему гипервизору, и приложения сами отвечают за доступность и целостность своих данных.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EДля общих блочных устройств мы используем Ceph RBD, обычно с write-through dm-cache на локальном NVMe диске. OSD для устройства могут быть как full-flash, так и HDD c SSD журналом, в зависимости от желаемого времени отклика.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Ch2 id=\"dostavka-trafika-do-prilozheniy\"\u003EДоставка трафика до приложений\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002Fe9\u002Ffm\u002Fpi\u002Fe9fmpipuhko3jcmbeix8lgtfv2a.png\"\u002F\u003E\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EДля балансировки запросов, приходящих снаружи, мы используем стандартную схему OSPFv3 ECMP. Небольшие виртуальные машины с nginx, bird, consul анонсируют в OSPF облако общие anycast адреса с интерфейса lo. На маршрутизаторах для этих адресов bird создает multi-hop routes, обеспечивающие per-flow балансировку, где flow это \"src-ip src-port dst-ip dst-port\". Для быстрого отключения пропавшего балансера используется протокол BFD.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EПри добавлении или выходе из строя любого из балансировщиков у верхнестоящих маршрутизаторов появляется или удаляется соответствующий маршрут, а сетевой трафик до них доставляется согласно подходов Equal-cost multi-path. И если мы специально не вмешиваемся, то весь сетевой трафик равномерно распределяется на все доступные балансировщики по IP-потоку каждому.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003E\u003Cem\u003EКстати, у подхода с ECMP-балансировкой есть неочевидные \u003Ca href=\"https:\u002F\u002Fblog.cloudflare.com\u002Fpath-mtu-discovery-in-practice\u002F\"\u003Eподводные камни\u003C\u002Fa\u003E, которые могут привести к совершенно неочевидным потерям части трафика, особенно если на маршруте между системами находятся другие маршрутизаторы или странным образом сконфигурированные фаерволы.\u003C\u002Fem\u003E\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003E\u003Cem\u003EДля решения проблемы мы используем \u003Ca href=\"https:\u002F\u002Fgithub.com\u002Fcloudflare\u002Fpmtud\"\u003Eдемона PMTUD\u003C\u002Fa\u003E в этой части инфраструктуры.\u003C\u002Fem\u003E\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EДальше трафик идет вовнутрь платформы к конкретным микросервисам согласно конфигурации nginx-ов на балансировщиках.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EИ если с балансировкой наружного трафика все более-менее просто и понятно, то распространить подобную схему дальше вовнутрь было бы затруднительно — нам нужно нечто большее, чем просто проверка доступности контейнера с микросервисом на сетевом уровне.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EДля того чтобы микросервис начал получать и обрабатывать запросы, он должен зарегистрироваться в Service Discovery (мы используем \u003Ca href=\"https:\u002F\u002Fwww.consul.io\u002F\"\u003EConsul\u003C\u002Fa\u003E), проходить ежесекундные health check-и и иметь разумный RTT.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EЕсли микросервис чувствует и ведет себя хорошо, Consul начинает резолвить адрес его контейнера при обращении к своему DNS по имени сервиса. Мы используем внутреннюю зону \u003Ccode\u003Eservice.consul\u003C\u002Fcode\u003E, и, например, микросервис Common API 2 версии будет иметь имя \u003Ccode\u003Ecapi-v2.service.consul\u003C\u002Fcode\u003E.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EКонфиг nginx-а касательно балансировки в итоге у нас выглядит так:\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cpre\u003E\u003Ccode class=\"plaintext\"\u003Elocation = \u002Fv2\u002F {\n    set $service_hostname \"${staging_pass}capi-v2.service.consul\";\n    proxy_pass http:\u002F\u002F$service_hostname:8022;\n}\u003C\u002Fcode\u003E\u003C\u002Fpre\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EТаким образом, если мы опять же не вмешиваемся специально, трафик с балансировщиков равномерно распределяется между всеми зарегистрированными в Service Discovery микросервисами, добавление или удаление новых экземпляров нужных микросервисов полностью автоматизировано.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EЕсли запрос от балансировщика ушел в апстрим, а тот по дороге умер, мы возвращаем наружу 502 — балансировщик на своем уровне не может определить идемпотентный ли был запрос или нет, поэтому обработку таких ошибок мы отдаем на более высокий уровень логики.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Ch2 id=\"idempotentnost-i-dedlayny\"\u003EИдемпотентность и дедлайны\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EВообще, мы не боимся и не стесняемся отдавать с API ошибки 5хх, это нормальная часть работы системы, если сделать правильную обработку таких ошибок на уровне бизнес-логики RPC. Принципы этой обработки у нас описаны в виде небольшого мануала под названием Errors Retry Policy, мы его раздаем нашим клиентам-мерчантам и реализовываем внутри наших сервисов.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EДля упрощения этой обработки мы реализовали несколько подходов. \u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EВо-первых, для любых изменяющих состояние запросов к нашему API можно указать уникальный в рамках учетной записи ключ идемпотентности, который живет вечно и позволяет быть уверенным в том, что повторный вызов с одинаковым набором данных вернет одинаковый ответ.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EВо-вторых, мы реализовали дополнительный механизм в виде уникального идентификатора платежной сессии, который гарантирует идемпотентность запросов на списание средств, обеспечивая защиту от ошибочных повторных списаний, даже если не генерировать и не передавать отдельный ключ идемпотентности.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EВ-третьих, мы решили дать возможность предсказуемого и контролируемого снаружи времени ответа на любой внешний вызов нашего API в виде параметра отсечки по времени, определяющего максимальное время ожидания завершения операции по запросу. Достаточно передать, к примеру, HTTP-заголовок \u003Ccode\u003EX-Request-Deadline: 10s\u003C\u002Fcode\u003E, чтобы быть уверенным в том, что ваш запрос выполнится в течение 10 секунд или будет убит платформой где-то внутри, после чего к нам можно будет обратиться снова, руководствуясь политикой переотправки запросов.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Ch2 id=\"upravlenie-i-vladenie-platformoy\"\u003EУправление и владение платформой\u003C\u002Fh2\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EМы используем SaltStack в качестве инструмента управления как конфигурациями, так и инфраструктурой в целом. Отдельные инструменты для автоматизированного управления вычислительной мощностью платформы пока что не взлетели, хотя уже сейчас понимаем, что будем идти в эту сторону. При нашей любви к продуктам \u003Ca href=\"https:\u002F\u002Fwww.hashicorp.com\u002F\"\u003EHashicorp\u003C\u002Fa\u003E это скорее всего будет Nomad.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EОсновные инструменты мониторинга инфраструктуры — это проверки в Nagios, а вот для бизнес-сущностей в основном настраиваем алерты в Grafana. В ней очень удобный инструмент задания условий, а event-based модель платформы позволяет все записать в Elasticsearch и настроить условия выборки.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003E\u003Cimg src=\"\u002Fimg\u002Fimage-loader.svg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002F_p\u002Fyh\u002Fwh\u002F_pyhwho6dvp3vful4zg46fg8_so.png\"\u002F\u003E\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EДата-центры находятся в Москве, в них мы арендуем стойко-места, самостоятельно устанавливаем и управляем всем оборудованием. Темную оптику нигде не используем, наружу у нас только интернет от местных провайдеров.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EВ остальном же наши подходы к мониторингу, управлению и сопутствующим сервисам скорее стандартны для отрасли, не уверен, что очередное описание интеграции этих сервисов стоит упоминания в посте.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EНа этой статье я, пожалуй, закончу цикл обзорных постов про то, как устроена наша платежная платформа.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EСчитаю, что цикл получился достаточно откровенным, я встречал мало статей, которые настолько подробно раскрывали бы внутреннюю кухню крупных платежных систем.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003E\u003Cem\u003EВообще, по моему мнению, высокий уровень открытости и откровенности — очень важная вещь для платежной системы. Такой подход не только повышает уровень доверия партнеров и плательщиков, но и дисциплинирует команду, создателей и операторов сервиса.\u003C\u002Fem\u003E\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003E\u003Cem\u003EТак, руководствуясь этим принципом, мы недавно сделали общедоступным статус платформы и историю аптайма наших сервисов. Вся последующая история нашего аптайма, обновлений и падений отныне публична и доступна по адресу \u003Ca href=\"https:\u002F\u002Fstatus.rbk.money\u002F\"\u003Ehttps:\u002F\u002Fstatus.rbk.money\u002F\u003C\u002Fa\u003E.\u003C\u002Fem\u003E\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EНадеюсь, вам было интересно, а возможно, кому-то наши подходы и описанные ошибки окажутся полезными. Если вас заинтересовали какие-либо направления, описанные в постах, и вы хотели бы, чтобы я раскрыл их более подробно, пожалуйста, не стесняйтесь писать в комментариях или в личку.\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EСпасибо, что вы с нами!\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003E\u003Cimg src=\"https:\u002F\u002Fhabrastorage.org\u002Fr\u002Fw780q1\u002Fwebt\u002F05\u002Fzb\u002Fia\u002F05zbiakiuub6ghwchckesii7an0.jpeg\" data-src=\"https:\u002F\u002Fhabrastorage.org\u002Fwebt\u002F05\u002Fzb\u002Fia\u002F05zbiakiuub6ghwchckesii7an0.jpeg\" data-blurred=\"true\"\u002F\u003E\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cp\u003EP.S. Для вашего удобства указатель по предыдущим статьям цикла:\u003C\u002Fp\u003E\u003Cbr\u002F\u003E\r\n\u003Cul\u003E\r\n\u003Cli\u003E\u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Frbkmoney\u002Fblog\u002F416897\u002F\"\u003Eвступление и описание того, как все начиналось\u003C\u002Fa\u003E;\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Frbkmoney\u002Fblog\u002F443518\u002F\"\u003Eмикросервисы и бизнес-конфигурация платформы\u003C\u002Fa\u003E;\u003C\u002Fli\u003E\r\n\u003Cli\u003E\u003Ca href=\"https:\u002F\u002Fhabr.com\u002Fru\u002Fcompany\u002Frbkmoney\u002Fblog\u002F447440\u002F\"\u003Eреализация обработки бизнес-логики платформы\u003C\u002Fa\u003E.\u003C\u002Fli\u003E\r\n\u003C\u002Ful\u003E\u003C\u002Fdiv\u003E","tags":[{"titleHtml":"RBKmoney"},{"titleHtml":"developer.rbk.money"},{"titleHtml":"erlang\u002Fotp"},{"titleHtml":"java"},{"titleHtml":"платежные системы"},{"titleHtml":"распределенные системы"}],"metadata":{"stylesUrls":[],"scriptUrls":[],"shareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F451814\u002F173208aa75d487ca2ef4b29075b831f5\u002F","shareImageWidth":1200,"shareImageHeight":630,"vkShareImageUrl":"https:\u002F\u002Fhabr.com\u002Fshare\u002Fpublication\u002F451814\u002F173208aa75d487ca2ef4b29075b831f5\u002F?format=vk","schemaJsonLd":"{\"@context\":\"http:\\\u002F\\\u002Fschema.org\",\"@type\":\"Article\",\"mainEntityOfPage\":{\"@type\":\"WebPage\",\"@id\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fru\\\u002Fcompany\\\u002Fosnova\\\u002Fblog\\\u002F451814\\\u002F\"},\"headline\":\"RBKmoney Payments под капотом — инфраструктура платежной платформы\",\"datePublished\":\"2019-05-15T12:58:46+03:00\",\"dateModified\":\"2019-05-15T17:37:25+03:00\",\"author\":{\"@type\":\"Person\",\"name\":\"Anton Kuranda\"},\"publisher\":{\"@type\":\"Organization\",\"name\":\"Habr\",\"logo\":{\"@type\":\"ImageObject\",\"url\":\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fa_\\\u002Flk\\\u002F9m\\\u002Fa_lk9mjkccjox-zccjrpfolmkmq.png\"}},\"description\":\"Привет, Хабр! Описание работы внутренностей большой платежной платформы логично будет продолжить описанием того, как именно все эти компоненты работают в реальн...\",\"url\":\"https:\\\u002F\\\u002Fhabr.com\\\u002Fru\\\u002Fcompany\\\u002Fosnova\\\u002Fblog\\\u002F451814\\\u002F#post-content-body\",\"about\":[\"c_osnova\",\"h_pay_system\",\"h_java\",\"h_erlang\",\"h_ecommerce_development\",\"f_develop\"],\"image\":[\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002F4q\\\u002Fi3\\\u002Ftx\\\u002F4qi3txdbqxbtwlhqrqmhbutpyxs.jpeg\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fs4\\\u002Foi\\\u002Fm1\\\u002Fs4oim1l0d58ti3s50leca-58-mm.jpeg\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Frn\\\u002Fce\\\u002Fho\\\u002Frncehoigde-wwzp3etasz6ewwkw.jpeg\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fug\\\u002Fje\\\u002Fs5\\\u002Fugjes5aw-7xwah9ykzbjrms8o9a.jpeg\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fyi\\\u002Fme\\\u002Fo0\\\u002Fyimeo0j7lk-s-rtyhabbeuayvyq.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fza\\\u002F1m\\\u002F7p\\\u002Fza1m7pqa6mdn0cvc6lot6tdwxis.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002Fe9\\\u002Ffm\\\u002Fpi\\\u002Fe9fmpipuhko3jcmbeix8lgtfv2a.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002F_p\\\u002Fyh\\\u002Fwh\\\u002F_pyhwho6dvp3vful4zg46fg8_so.png\",\"https:\\\u002F\\\u002Fhabrastorage.org\\\u002Fwebt\\\u002F05\\\u002Fzb\\\u002Fia\\\u002F05zbiakiuub6ghwchckesii7an0.jpeg\"]}","metaDescription":"Привет, Хабр! Описание работы внутренностей большой платежной платформы логично будет продолжить описанием того, как именно все эти компоненты работают в реальном мире на физическом железе. В этом...","mainImageUrl":null,"amp":false},"polls":[],"commentsEnabled":true,"rulesRemindEnabled":false,"votesEnabled":true,"status":"published","plannedPublishTime":null,"checked":null,"isEditorial":false}},"articlesIds":{},"isLoading":false,"pagesCount":{},"route":{},"reasonsList":null,"view":"cards","lastVisitedRoute":{},"ssrCommentsArticleIds":[""],"karma":{}},"authorContribution":{"authors":{}},"betaTest":{"currentAnnouncement":null,"announcements":{},"announcementCards":null,"announcementComments":{},"announcementCommentThreads":{},"announcementCommentingStatuses":{},"archivedList":[]},"authorStatistics":{"articleRefs":{},"articleIds":{},"pagesCount":{},"route":{},"viewsCount":[],"maxStatsCount":{}},"career":{"seoLandings":[],"hubs":""},"comments":{"articleComments":{},"searchCommentsResults":null,"previewComment":null,"pagesCount":null,"commentAccess":{},"scrollParents":{},"pageArticleComments":{"lastViewedComment":0,"postId":null,"lastCommentTimestamp":"","moderated":[],"moderatedIds":[],"commentRoute":""}},"companies":{"companyRefs":{"osnova":{"alias":"osnova","imageUrl":"\u002F\u002Fhabrastorage.org\u002Fgetpro\u002Fhabr\u002Fcompany\u002F602\u002F862\u002F918\u002F602862918454f128730e1fa475d63038.jpg","titleHtml":"Osnova","descriptionHtml":"Платежный процессинг на базе Open Source","relatedData":null,"statistics":{"postsCount":25,"newsCount":0,"vacanciesCount":0,"employeesCount":7,"careerRating":null,"subscribersCount":201,"rating":80.79,"invest":null},"foundationDate":{"year":"2021","month":"05","day":"13"},"location":{"city":{"id":"447159","title":"Москва"},"region":{"id":"1885","title":"Москва и Московская обл."},"country":{"id":"168","title":"Россия"}},"siteUrl":"https:\u002F\u002Fosnova.it\u002F","staffNumber":"101–200 человек","registrationDate":"2010-04-20T15:08:36+00:00","representativeUser":{"alias":"Osnova_it","fullname":null},"contacts":[],"settings":{"analyticsSettings":[],"branding":null,"status":"active"},"metadata":{"titleHtml":"Osnova, Москва - Платежный процессинг на базе Open Source с 13 мая 2021 г.","title":"Osnova, Москва - Платежный процессинг на базе Open Source с 13 мая 2021 г.","keywords":["Open source","Информационная безопасность","Платежные системы","Блог компании Positive Technologies","Разработка под e-commerce"],"descriptionHtml":"25 статей от авторов компании Osnova","description":"25 статей от авторов компании Osnova"},"aDeskSettings":null,"careerAlias":"rbkmoney","maxCustomTrackerLinks":0}},"companyIds":{},"companyTopIds":{},"pagesCount":{},"companyProfiles":{},"companiesCategories":[],"companiesCategoriesTotalCount":0,"companiesWidgets":{},"companiesWorkers":{},"companiesFans":{},"route":{},"isLoading":false,"companyWorkersLoading":false,"companyFansLoading":false,"vacancies":{}},"companiesContribution":{"hubs":{},"flows":{},"companyRefs":{}},"companyHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"conversation":{"messages":[],"respondent":null,"isLoadMore":false},"conversations":{"conversations":[],"unreadCount":0,"pagesCount":0,"isLoadMore":false},"desktopState":{"desktopFl":null,"desktopHl":null,"isChecked":false,"isLoginDemanded":false},"dfp":{"slotsDict":{}},"docs":{"menu":{},"articles":{},"mainMenu":[],"loading":{"main":false,"dropdown":false,"article":false}},"feature":{"isProbablyVisible":"true"},"flows":{"flows":[{"alias":"develop","id":1,"route":{"name":"FLOW_PAGE","params":{"flowName":"develop"}}},{"alias":"admin","id":6,"route":{"name":"FLOW_PAGE","params":{"flowName":"admin"}}},{"alias":"design","id":2,"route":{"name":"FLOW_PAGE","params":{"flowName":"design"}}},{"alias":"management","id":3,"route":{"name":"FLOW_PAGE","params":{"flowName":"management"}}},{"alias":"marketing","id":4,"route":{"name":"FLOW_PAGE","params":{"flowName":"marketing"}}},{"alias":"popsci","id":7,"route":{"name":"FLOW_PAGE","params":{"flowName":"popsci"}}}]},"global":{"isPwa":false,"device":"desktop","isHabrCom":true},"hubs":{"hubRefs":{},"hubIds":{},"pagesCount":{},"isLoading":false,"route":{}},"hubsBlock":{"hubRefs":{},"hubIds":{}},"i18n":{"fl":"ru","hl":"ru"},"info":{"infoPage":{},"isLoading":true},"location":{"urlStruct":{"protocol":null,"slashes":null,"auth":null,"host":null,"port":null,"hostname":null,"hash":null,"search":null,"query":{},"pathname":null,"path":null,"href":""},"searchQuery":null},"me":{"user":null,"ppgDemanded":false,"karmaResetInfo":{"canReincarnate":null,"wasReincarnated":null,"currentScore":null},"notes":null},"mostReadingList":{"mostReadingListIds":[],"mostReadingListRefs":null,"promoPost":null},"pinnedPost":{"pinnedPost":null},"ppa":{"articles":{},"card":null,"transactions":null,"totalTransactions":null,"isAccessible":null},"projectsBlocks":{"activeBlocks":{}},"pullRefresh":{"shouldRefresh":false},"sandbox":{"articleIds":[],"articleRefs":{},"pagesCount":null,"route":{},"lastVisitedRoute":{},"isLoading":false},"settingsOther":{"inputs":{"uiLang":{"errors":[],"ref":null,"value":""},"articlesLangEnglish":{"errors":[],"ref":null,"value":false},"articlesLangRussian":{"errors":[],"ref":null,"value":false},"agreement":{"errors":[],"ref":null,"value":false},"email":{"errors":[],"ref":null,"value":true},"digest":{"errors":[],"ref":null,"value":true}}},"similarList":{"similarListIds":[],"similarListRefs":null},"ssr":{"error":null,"isDataLoaded":false,"isDataLoading":false,"isHydrationFailed":false,"isServer":false},"userHubsContribution":{"contributionRefs":{"hubRefs":{},"hubIds":{}}},"userInvites":{"availableInvites":0,"usedInvitesIds":[],"usedInvitesRefs":{},"usedInvitesPagesCount":0,"unusedInvitesIds":[],"unusedInvitesRefs":{},"unusedInvitesPagesCount":0},"users":{"authorRefs":{},"authorIds":{},"pagesCount":{},"authorProfiles":{},"userHubs":{},"userInvitations":{},"authorFollowers":{},"authorFollowed":{},"karmaStats":[],"statistics":null,"isLoading":false,"authorFollowersLoading":false,"authorFollowedLoading":false,"userHubsLoading":false,"userInvitationsLoading":false,"route":{}},"viewport":{"prevScrollY":{},"scrollY":0,"width":0},"tracker":{"items":{},"pagesCache":{},"markedViewedSilently":{},"markedRead":{},"unreadCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null},"unviewedCounters":{"applications":null,"system":null,"mentions":null,"subscribers":null,"posts_and_comments":null}}};(function(){var s;(s=document.currentScript||document.scripts[document.scripts.length-1]).parentNode.removeChild(s);}());</script>
+<script src="https://assets.habr.com/habr-web/js/chunk-vendors.c2c3fc9a.js" defer></script><script src="https://assets.habr.com/habr-web/js/app.c0af73e7.js" defer></script>
+
+
+
+    <script>
+      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+        (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+        m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+      })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+    </script>
+  
+  <script type="text/javascript" >
+    (function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+    m[i].l=1*new Date();k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})
+    (window, document, "script", "https://mc.yandex.ru/metrika/tag.js", "ym");
+
+    ym(24049213, "init", {
+      defer:true,
+      trackLinks:true,
+      accurateTrackBounce:true,
+      webvisor:false,
+    });
+  </script>
+  <noscript>
+    <div>
+      <img src="https://mc.yandex.ru/watch/24049213" style="position:absolute; left:-9999px;" alt="" />
+    </div>
+  </noscript>
+  
+    <script type="text/javascript">
+      window.addEventListener('load', function () {
+        setTimeout(() => {
+          const img = new Image();
+          img.src = 'https://vk.com/rtrg?p=VK-RTRG-421343-57vKE';
+        }, 0);
+      });
+    </script>
+  
+</body>
+</html>
